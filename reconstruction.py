@@ -38,7 +38,7 @@ class Reconstructor:
 
         self.mode = "ui16"
 
-    def set_mode(self, mode = "float"):
+    def set_mode(self, mode="float"):
         """
         :param mode: either "float" or "ui16." Save as 32 bit float for best quality, or as 16 but unsigned int when
         using the render result in ImageViewer.

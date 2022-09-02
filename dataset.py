@@ -90,12 +90,10 @@ class Frame:
         # TODO: generalize to use affine transformation matrix instead of just a translation vector.
         tmat = transform.AffineTransform(np.matrix([[1.0, 0.0, self.translation[0]], [0.0, 1.0, self.translation[1]], [0.0, 0.0, 1.0]]))
         self.data = transform.warp(self.data, tmat)
-        self.translation = [0.0, 0.0]
 
     def __str__(self):
-        return "frame obj. with path:\: "+self.path + "\n" + \
-               ("Discarded frame" if self.discard
-                else "Frame is in use." + \
-                f" Particles found: {len(self.maxima)}")
-
+        selfstr = "Frame at path: "+self.path + "\n" \
+        + ("Discarded frame" if self.discard else "Frame in use") \
+        + f"\n{len(self.maxima)} particles found. Shift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
+        return selfstr
 

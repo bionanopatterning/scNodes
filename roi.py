@@ -73,3 +73,31 @@ class ROI:
         self.box[2] = min([width, max([0, self.box[2]])])
         self.box[3] = min([height, max([0, self.box[3]])])
         self.update_va()
+
+
+
+class Marker:
+    def __init__(self, vertices = None, indices = None, colour = (1.0, 0.0, 1.0, 1.0)):
+        self.colour = colour
+        self.vertices = vertices
+        self.indices = indices
+        self.va = VertexArray(attribute_format="xy")
+
+        if self.vertices is not None and self.indices is not None:
+            self.va.update(VertexBuffer(self.vertices), IndexBuffer(self.indices))
+
+    def set_vertices(self, vertices, indices):
+        self.vertices = vertices
+        self.indices = indices
+        self.va.update(VertexBuffer(self.vertices), IndexBuffer(self.indices))
+
+    def render(self, shader, camera, translation):
+        print(translation)
+        self.va.bind()
+        shader.bind()
+        shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
+        shader.uniform3f("lineColour", self.colour)
+        shader.uniform3f("translation", [translation[0], translation[1], 0.0])
+        glDrawElements(GL_LINES, self.va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        shader.unbind()
+        self.va.unbind()

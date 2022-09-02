@@ -15,11 +15,25 @@ from scipy.signal import medfilt
 from skimage.feature import peak_local_max
 from pystackreg import StackReg
 from roi import *
+import pywt
 tkroot = tk.Tk()
 tkroot.withdraw()
 
 
 class NodeEditor:
+    if True:
+        COLOUR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 1.0)
+        CONTEXT_MENU_SIZE = (200, 100)
+        COLOUR_ERROR_WINDOW_BACKGROUND = (0.84, 0.84, 0.84, 1.0)
+        COLOUR_ERROR_WINDOW_HEADER = (0.6, 0.3, 0.3, 1.0)
+        COLOUR_ERROR_WINDOW_HEADER_NEW = (0.8, 0.35, 0.35, 1.0)
+        COLOUR_ERROR_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
+        COLOUR_CM_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 1.0)
+        COLOUR_CM_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
+        COLOUR_CM_OPTION_HOVERED = (1.0, 1.0, 1.0, 1.0)
+        PARTICLE_MARKER_SIZE = 6.0
+        MARKER_COLOUR = (230 / 255, 174 / 255, 13 / 255, 1.0)
+
     nodes = list()
     active_node = None
     next_active_node = None
@@ -30,19 +44,17 @@ class NodeEditor:
     connector_delete_requested = False
     node_move_requested = [0, 0]
     camera_move_requested = [0, 0]
-    COLOUR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 1.0)
-    CONTEXT_MENU_SIZE = (200, 100)
-    COLOUR_ERROR_WINDOW_BACKGROUND = (0.84, 0.84, 0.84, 1.0)
-    COLOUR_ERROR_WINDOW_HEADER = (0.6, 0.3, 0.3, 1.0)
-    COLOUR_ERROR_WINDOW_HEADER_NEW = (0.8, 0.35, 0.35, 1.0)
-    COLOUR_ERROR_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
-    COLOUR_CM_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 1.0)
-    COLOUR_CM_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
-    COLOUR_CM_OPTION_HOVERED = (1.0, 1.0, 1.0, 1.0)
+
     error_msg = None
     error_new = True
+    error_obj = None
 
-    def __init__(self, window, shared_font_atlas = None):
+
+    def __init__(self, window, shared_font_atlas=None):
+        # TODO: move both ROI and Marker to ImageViewer; never use the GPU-side part of these things in NodeEditor.
+        self.particle_marker = Marker(
+        [-NodeEditor.PARTICLE_MARKER_SIZE, 0.0, NodeEditor.PARTICLE_MARKER_SIZE, 0.0, 0.0, -NodeEditor.PARTICLE_MARKER_SIZE, 0.0, NodeEditor.PARTICLE_MARKER_SIZE],
+        [0, 1, 2, 3], NodeEditor.MARKER_COLOUR)
         self.window = window
         self.window.clear_color = NodeEditor.COLOUR_WINDOW_BACKGROUND
         self.window.make_current()
@@ -144,6 +156,8 @@ class NodeEditor:
             _, stay_open = imgui.begin("Error", True)
             imgui.text("Action failed with error:")
             imgui.text(NodeEditor.error_msg)
+            if imgui.button("(debug): raise error", 180, 20):
+                raise(NodeEditor.error_obj)
             if imgui.is_window_focused() and self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
                NodeEditor.error_new = False
             imgui.end()
@@ -201,8 +215,9 @@ class NodeEditor:
             try:
                 new_node.position = self.context_menu_position
                 NodeEditor.active_node = new_node
+                self.context_menu_open = False
             except Exception as e:
-                NodeEditor.error_msg = "Error upon requesting new node (probably not implemented yet.)\nError:"+str(e)
+                NodeEditor.set_error(e, "Error upon requesting new node (probably not implemented yet.)\nError:"+str(e))
 
 
         # End
@@ -240,6 +255,12 @@ class NodeEditor:
         else:
             return False
 
+    @staticmethod
+    def set_error(error_obj, error_msg):
+        NodeEditor.error_msg = error_msg
+        NodeEditor.error_obj = error_obj
+        NodeEditor.error_new = True
+
 
 class Node:
     if True:
@@ -274,7 +295,7 @@ class Node:
         COLOUR[TYPE_GET_IMAGE] = (143 / 255, 143 / 255, 143 / 255, 1.0)
         COLOUR[TYPE_IMAGE_CALCULATOR] = (143 / 255, 143 / 255, 143 / 255, 1.0)
 
-        COLOUR_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 1.0)
+        COLOUR_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 0.96)
         COLOUR_WINDOW_BORDER = (0.45, 0.45, 0.45, 1.0)
         COLOUR_WINDOW_BORDER_ACTIVE_NODE = (0.0, 0.0, 0.0, 1.0)
 
@@ -317,6 +338,10 @@ class Node:
         self.queued_actions = list()
         self.roi = None
         NodeEditor.nodes.append(self)
+
+        # bookkeeping
+        self.last_index_requested = -1
+        self.last_frame_returned = None
 
     def __eq__(self, other):
         if type(self) is type(other):
@@ -450,16 +475,22 @@ class Node:
             if load_data_node:
                 return source
         except Exception as e:
-            NodeEditor.error_msg = "While searching through connection tree for source LoadDataNode, the following\nerror was encountered:\n"+str(e)
+            NodeEditor.set_error(e, "While searching through connection tree for source LoadDataNode, the following\nerror was encountered:\n"+str(e))
 
     # 'Pure virtual' classes below - not sure how to actually make them virtual.
-    def get_image(self, idx=None):
-        try:
-            return self.get_image_impl(idx)
-        except Exception as e:
-            NodeEditor.error_msg = f"{Node.TITLE[self.type]} error: "+str(e)
+    def get_image(self, idx):
+        if idx is self.last_index_requested:
+            return self.last_frame_returned
+        else:
+            try:
+                outframe = self.get_image_impl(idx)
+                self.last_frame_returned = outframe
+                self.last_index_requested = idx
+                return outframe
+            except Exception as e:
+                NodeEditor.set_error(e, f"{Node.TITLE[self.type]} error: "+str(e))
 
-    def get_image_impl(self, idx=None):
+    def get_image_impl(self, idx):
         return None
 
     def on_update(self):
@@ -579,7 +610,7 @@ class ConnectableAttribute:
             if len(self.linked_attributes) == 1:
                 return self.linked_attributes[0].parent
         else:
-            NodeEditor.error_msg = "ConnectableAttribute: trying to get incoming data for unlinked input node."
+            NodeEditor.set_error(Exception(), "ConnectableAttribute: trying to get incoming data for unlinked input node.")
             return False
 
     def connector_logic(self):
@@ -703,7 +734,7 @@ class LoadDataNode(Node):
                     self.path = selected_file
                     self.on_select_file()
                 else:
-                    NodeEditor.error_msg = "LoadDataNode: filetype must be .tif or .tiff"
+                    NodeEditor.set_error(Exception(), "LoadDataNode: filetype must be .tif or .tiff")
             imgui.columns(2, border = False)
             imgui.text("frames:")
             imgui.text("image size:")
@@ -747,15 +778,10 @@ class LoadDataNode(Node):
         self.done_loading = False
         self.to_load_idx = 0
 
-    def get_image_impl(self, idx = None):
-        if idx:
-            retimg = cfg.current_dataset.get_indexed_image(idx)
-            retimg.clean()
-            return retimg
-        else:
-            retimg = cfg.current_dataset.get_active_image()
-            retimg.clean()
-            return retimg
+    def get_image_impl(self, idx):
+        retimg = cfg.current_dataset.get_indexed_image(idx)
+        retimg.clean()
+        return retimg
 
     def on_update(self):
         if not self.load_on_the_fly and not self.done_loading:
@@ -772,7 +798,7 @@ class RegisterNode(Node):
 
     def __init__(self):
         super().__init__(Node.TYPE_REGISTER)  # Was: super(LoadDataNode, self).__init__()
-        self.size = [220, 185]
+        self.size = [230, 185]
 
         # Set up connectable attributes
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent = self)
@@ -831,15 +857,15 @@ class RegisterNode(Node):
         if data_source:
             input_img = data_source.get_image(idx)
             reference_img = None
+            # Get reference frame according to specified pairing method
             if self.reference_method == 2:
                 reference_img = data_source.get_image(idx - 1)
             elif self.reference_method == 0:
-                try:
-                    reference_img = self.image_in.get_incoming_node().get_image()
-                except Exception as e:
-                    NodeEditor.error_msg = "Couldn't find input image for RegisterNode."
+                reference_img = self.image_in.get_incoming_node().get_image(idx=None)
             elif self.reference_method == 1:
                 reference_img = data_source.get_image(self.frame)
+
+            # Perform registration according to specified registration method
             if self.register_method == 0:
                 if reference_img is not None:
                     template = reference_img.load()
@@ -849,9 +875,8 @@ class RegisterNode(Node):
                         image = image[self.roi.box[1]:self.roi.box[3], self.roi.box[0]:self.roi.box[2]]
                     tmat = self.sr.register(template, image)
                     input_img.translation = [tmat[0][2], tmat[1][2]]
-                    print(input_img.translation)
             else:
-                NodeEditor.error_msg = "RegisterNode: reference method not available (may not be implemented yet)."
+                NodeEditor.set_error(Exception(), "RegisterNode: reference method not available (may not be implemented yet).")
 
             input_img.bake_transform()
             return input_img
@@ -863,7 +888,7 @@ class GetImageNode(Node):
 
     def __init__(self):
         super().__init__(Node.TYPE_GET_IMAGE)
-        self.size = [230, 120]
+        self.size = [200, 120]
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT,parent=self)
         self.image_out = ConnectableAttribute(ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.OUTPUT, parent=self)
         self.connectable_attributes.append(self.dataset_in)
@@ -888,6 +913,8 @@ class GetImageNode(Node):
             imgui.push_item_width(140)
             _c, self.mode = imgui.combo("Mode", self.mode, GetImageNode.IMAGE_MODES)
             self.any_change = self.any_change or _c
+            imgui.pop_item_width()
+            imgui.push_item_width(80)
             if self.mode == 0:
                 _c, self.frame = imgui.input_int("Frame nr.", self.frame, 0, 0)
                 self.any_change = self.any_change or _c
@@ -897,7 +924,6 @@ class GetImageNode(Node):
                 self.any_change = self.any_change or _c
             imgui.pop_item_width()
             if self.any_change:
-                print("Change to get image node")
                 self.configure_settings()
 
             super().render_end()
@@ -912,7 +938,7 @@ class GetImageNode(Node):
                 load_data_node.load_on_the_fly = False
                 self.load_data_source = load_data_node
         else:
-            NodeEditor.error_msg = "GetImageNode missing input dataset."
+            NodeEditor.set_error(Exception(), "GetImageNode missing input dataset.")
         self.any_change = True
 
     def on_update(self):
@@ -964,7 +990,7 @@ class ImageCalculatorNode(Node):
         self.connectable_attributes.append(self.dataset_out)
         self.connectable_attributes.append(self.image_out)
 
-        self.operation = 0
+        self.operation = 1
 
     def render(self):
         if super().render_start():
@@ -1016,14 +1042,26 @@ class ImageCalculatorNode(Node):
                     virtual_frame.data = img_out.astype(np.uint16)
                     return virtual_frame
         except Exception as e:
-            NodeEditor.error_msg = "ImageCalculatorNode error:\n"+str(e)
+            NodeEditor.set_error(Exception(), "ImageCalculatorNode error:\n"+str(e))
 
 
 class SpatialFilterNode(Node):
     FILTERS = ["Wavelet", "Gaussian", "Median"]
+    WAVELETS = dict()
+    WAVELETS["Haar"] = 'haar'
+    WAVELETS["Symlet 2"] = 'sym2'
+    WAVELETS["Symlet 3"] = 'sym3'
+    WAVELETS["Daubechies 2"] = 'db2'
+    WAVELETS["Biorthogonal 1.3"] = 'bior1.3'
+    WAVELETS["Reverse biorthogonal 2.2"] = 'rbio2.2'
+    WAVELETS["Other..."] = None
+
+
+    WAVELET_NAMES = list(WAVELETS.keys())
+    WAVELET_OTHER_IDX = WAVELET_NAMES.index("Other...")
     def __init__(self):
         super().__init__(Node.TYPE_SPATIAL_FILTER)  # Was: super(LoadDataNode, self).__init__()
-        self.size = [200, 150]
+        self.size = [210, 160]
 
         # Set up connectable attributes
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent = self)
@@ -1032,10 +1070,11 @@ class SpatialFilterNode(Node):
         self.connectable_attributes.append(self.dataset_out)
         # Set up node-specific vars
         self.filter = 1
-        self.order = 3
-        self.scale = 2
+        self.level = 1
         self.sigma = 2.0
         self.kernel = 7
+        self.wavelet = 0
+        self.custom_wavelet = "e.g. 'bior6.8'"
 
     def render(self):
         if super().render_start():
@@ -1046,16 +1085,24 @@ class SpatialFilterNode(Node):
             imgui.spacing()
             imgui.separator()
             imgui.spacing()
+            imgui.push_item_width(140)
             _c, self.filter = imgui.combo("Filter", self.filter, SpatialFilterNode.FILTERS)
             self.any_change = self.any_change or _c
+            imgui.pop_item_width()
             imgui.push_item_width(70)
             if self.filter == 0:
-                _c, self.order = imgui.input_int("Order", self.order, 0, 0)
+                imgui.push_item_width(140)
+                _c, self.wavelet = imgui.combo("Wavelet", self.wavelet, SpatialFilterNode.WAVELET_NAMES)
+                imgui.pop_item_width()
                 self.any_change = self.any_change or _c
-                _c, self.scale = imgui.input_int("Scale", self.scale, 0, 0)
+                if self.wavelet == SpatialFilterNode.WAVELET_OTHER_IDX:
+                    _c, self.custom_wavelet = imgui.input_text("pywt name", self.custom_wavelet, 16)
+                    self.any_change = self.any_change or _c
+                    imgui.pop_item_width()
+                _c, self.level = imgui.input_int("Level", self.level, 0, 0)
                 self.any_change = self.any_change or _c
             elif self.filter == 1:
-                _c, self.sigma = imgui.input_float("Sigma (px)", self.sigma, 0.0, 0.0, format = "%.1f")
+                _c, self.sigma = imgui.input_float("Sigma (px)", self.sigma, 0.0, 0.0, format="%.1f")
                 self.any_change = self.any_change or _c
             elif self.filter == 2:
                 _c, self.kernel = imgui.input_int("Kernel (px)", self.kernel, 0, 0)
@@ -1071,7 +1118,11 @@ class SpatialFilterNode(Node):
             input_image = data_source.get_image(idx)
             output_image = Frame("virtual_path")
             if self.filter == 0:
-                NodeEditor.error_msg = "SpatialFilterNode: Wavelet filter not yet implemented"
+                chosen_wavelet = SpatialFilterNode.WAVELETS[SpatialFilterNode.WAVELET_NAMES[self.wavelet]]
+                if chosen_wavelet is None:
+                    chosen_wavelet = self.custom_wavelet
+                in_pxd = input_image.load()
+                output_image.data= pywt.swt2(in_pxd, wavelet=chosen_wavelet, level=self.level, norm=True, trim_approx=True)[0]
             elif self.filter == 1:
                 output_image.data = gaussian_filter(input_image.load(), self.sigma)
             elif self.filter == 2:
@@ -1099,7 +1150,7 @@ class TemporalFilterNode(Node):
         self.filter = 0
         self.negative_handling = 1
         self.incomplete_group_handling = 0
-        self.skip = 0
+        self.skip = 1
         self.group_size = 11
         self.group_background_index = 1
         self.window = 3
@@ -1120,6 +1171,7 @@ class TemporalFilterNode(Node):
             _c, self.negative_handling = imgui.combo("Negative handling", self.negative_handling, TemporalFilterNode.NEGATIVE_MODES)
             self.any_change = self.any_change or _c
             imgui.pop_item_width()
+            imgui.push_item_width(70)
             if self.filter == 0 or self.filter == 1 or self.filter == 2:
                 _c, self.skip = imgui.input_int("Step (# frames)", self.skip, 0, 0)
                 self.any_change = self.any_change or _c
@@ -1133,7 +1185,7 @@ class TemporalFilterNode(Node):
             elif self.filter == 4:
                 _c, self.window = imgui.input_int("Window size <--->", self.window, 0, 0)
                 self.any_change = self.any_change or _c
-
+            imgui.pop_item_width()
             super().render_end()
 
     def get_image_impl(self, idx=None):
@@ -1141,11 +1193,11 @@ class TemporalFilterNode(Node):
         if data_source:
             pxd = None
             if self.filter == 0:
-                pxd = data_source.get_image(idx + 1).load() - data_source.get_image(idx).load()
+                pxd = data_source.get_image(idx + self.skip).load() - data_source.get_image(idx).load()
             elif self.filter == 1:
-                pxd = data_source.get_image(idx).load() - data_source.get_image(idx - 1).load()
+                pxd = data_source.get_image(idx).load() - data_source.get_image(idx - self.skip).load()
             elif self.filter == 2:
-                pxd = data_source.get_image(idx + 1).load() - data_source.get_image(idx - 1).load()
+                pxd = data_source.get_image(idx + self.skip).load() - data_source.get_image(idx - self.skip).load()
             elif self.filter == 3:
                 pxd = data_source.get_image(idx // self.group_size) - data_source.get_image(self.group_size * (idx // self.group_size) + self.group_background_index)
             elif self.filter == 4:
@@ -1153,6 +1205,14 @@ class TemporalFilterNode(Node):
                 for i in range(-self.window, self.window + 1):
                     pxd += data_source.get_image(idx + i).load()
                 pxd /= (2 * self.window + 1)
+
+            if self.negative_handling == 0:
+                pxd = np.abs(pxd)
+            elif self.negative_handling == 1:
+                pxd[pxd < 0] = 0
+            elif self.negative_handling == 2:
+                pass
+
             outframe = Frame("virtual_frame")
             outframe.data = pxd
             return outframe
@@ -1227,7 +1287,7 @@ class ReconstructionRendererNode(Node):
                             self.reconstructor.set_particle_data(self.path)
                             any_change = True
                         else:
-                            NodeEditor.error_msg = "Reconstruction data file must be of type '.csv'"
+                            NodeEditor.set_error(Exception(), "Reconstruction data file must be of type '.csv'")
             imgui.push_item_width(70)
             _pixel_in_changed, self.pixel_size_in = imgui.input_float("Raw pixel size (nm)", self.pixel_size_in, 0, 0, format = "%.1f")
             _mag_changed, self.magnification = imgui.input_float("Magnification", self.magnification, 0, 0, format = "%.1f")
@@ -1244,7 +1304,7 @@ class ReconstructionRendererNode(Node):
                     self.latest_image = self.reconstructor.render()
                     self.any_change = True
                 except Exception as e:
-                    NodeEditor.error_msg = str(e)
+                    NodeEditor.set_error(e, str(e))
 
     def get_image_impl(self, idx=None):
         if self.latest_image is not None:
@@ -1252,7 +1312,6 @@ class ReconstructionRendererNode(Node):
             img_wrapper.data = self.latest_image
             return img_wrapper
         else:
-            print("Returning none")
             return None
 
 
@@ -1316,7 +1375,7 @@ class ParticlePainterNode(Node):
 
 
 class ParticleDetectionNode(Node):
-    METHODS = ["Local maximum detection"]
+    METHODS = ["Local maximum"]
     THRESHOLD_OPTIONS = ["Value", "St. Dev.", "Mean"]
 
     def __init__(self):
@@ -1359,6 +1418,7 @@ class ParticleDetectionNode(Node):
                 self.any_change = self.any_change or _c
             elif self.thresholding == 2:
                 _c, self.means = imgui.slider_float("Means", self.means, 0.1, 10.0, format = "%.1f")
+                self.any_change = self.any_change or _c
             imgui.pop_item_width()
             imgui.push_item_width(70)
             _c, self.n_max = imgui.input_int("Max. # of particles", self.n_max, 0, 0)
@@ -1381,6 +1441,7 @@ class ParticleDetectionNode(Node):
                 threshold = self.means * np.mean(image)
             # Perform requested detection method
             coordinates = peak_local_max(image, threshold_abs = threshold, num_peaks = self.n_max, min_distance = self.d_min)
-            print(coordinates)
             image_obj.maxima = coordinates
             return image_obj
+
+

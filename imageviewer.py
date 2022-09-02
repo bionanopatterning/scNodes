@@ -10,8 +10,6 @@ from roi import *
 
 class ImageViewer:
     NO_IMAGE_NOTIFICATION_SIZE = (300, 20)
-    MARKER_SIZE = 8.0
-    MARKER_COLOUR = (230 / 255, 174 / 255, 13 / 255, 1.0)
 
     def __init__(self, window, shared_font_atlas=None):
         # glfw and imgui
@@ -70,14 +68,6 @@ class ImageViewer:
         # ROI data - to be made compatible with NodeEditor later
         self.drawing_roi = False
         self.moving_roi = False
-
-        # Icons / particle marker
-        self.marker = Marker([-ImageViewer.MARKER_SIZE, 0.0,
-                              ImageViewer.MARKER_SIZE, 0.0,
-                              0.0, -ImageViewer.MARKER_SIZE,
-                              0.0, ImageViewer.MARKER_SIZE],
-                             [0, 1, 2, 3],
-                             ImageViewer.MARKER_COLOUR)
         # GUI behaviour
         self.show_frame_select_window = True
 
@@ -289,7 +279,7 @@ class ImageViewer:
             self.shader.uniformmat4("cameraMatrix", self.camera.view_projection_matrix)
             self.shader.uniform3f("contrast_min", self.contrast_min)
             self.shader.uniform3f("contrast_max", self.contrast_max)
-            self.shader.uniform3f("translation", [self.image.translation[1], self.image.translation[0], 0.0])
+            self.shader.uniform3f("translation", [0.0, 0.0, 0.0])
             self.shader.uniform1i("use_lut", 1 if self.mode == "R" else 0)
             glDrawElements(GL_TRIANGLES, self.va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
             self.shader.unbind()
@@ -297,7 +287,7 @@ class ImageViewer:
             glActiveTexture(GL_TEXTURE0)
             for coordinate in self.image.maxima:
                 translation = [coordinate[1] + self.image.translation[1], coordinate[0] + self.image.translation[0]]
-                self.marker.render(self.roi_shader, self.camera, translation)
+                cfg.node_editor.particle_marker.render(self.roi_shader, self.camera, translation)
 
     def _edit_and_render_roi(self):
         if not self.show_image:
@@ -501,29 +491,5 @@ class Camera:
         self.view_projection_matrix = np.matmul(self.projection_matrix, self.view_matrix)
 
 
-class Marker:
-    def __init__(self, vertices = None, indices = None, colour = (1.0, 0.0, 1.0, 1.0)):
-        self.colour = colour
-        self.vertices = vertices
-        self.indices = indices
-        self.va = VertexArray(attribute_format="xy")
-
-        if self.vertices is not None and self.indices is not None:
-            self.va.update(VertexBuffer(self.vertices), IndexBuffer(self.indices))
-
-    def set_vertices(self, vertices, indices):
-        self.vertices = vertices
-        self.indices = indices
-        self.va.update(VertexBuffer(self.vertices), IndexBuffer(self.indices))
-
-    def render(self, shader, camera, translation):
-        self.va.bind()
-        shader.bind()
-        shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
-        shader.uniform3f("lineColour", self.colour)
-        shader.uniform3f("translation", [translation[0], translation[1], 0.0])
-        glDrawElements(GL_LINES, self.va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
-        shader.unbind()
-        self.va.unbind()
 
 
