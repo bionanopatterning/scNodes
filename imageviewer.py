@@ -10,6 +10,8 @@ from roi import *
 
 class ImageViewer:
     NO_IMAGE_NOTIFICATION_SIZE = (300, 20)
+    MARKER_SIZE = 6.0
+    MARKER_COLOUR = (230 / 255, 174 / 255, 13 / 255, 1.0)
 
     def __init__(self, window, shared_font_atlas=None):
         # glfw and imgui
@@ -62,12 +64,16 @@ class ImageViewer:
         self.hist_counts = [list(), list(), list()]
         self.hist_bins = [list(), list(), list()]
         self.mode = "R"
-        self.set_image(cfg.current_dataset.get_active_image())
-        self.show_image = True
+        self.set_image(np.zeros((16, 16)))
+        self.show_image = False
 
         # ROI data - to be made compatible with NodeEditor later
         self.drawing_roi = False
         self.moving_roi = False
+        self.roi = ROI([0, 0, 0, 0], (1.0, 0.0, 1.0, 1.0))
+        self.marker = Marker(
+        [-ImageViewer.MARKER_SIZE, 0.0, ImageViewer.MARKER_SIZE, 0.0, 0.0,-ImageViewer.MARKER_SIZE, 0.0, ImageViewer.MARKER_SIZE],[0, 1, 2, 3], ImageViewer.MARKER_COLOUR)
+
         # GUI behaviour
         self.show_frame_select_window = True
 
@@ -76,7 +82,7 @@ class ImageViewer:
             self.mode = mode
             self.show_frame_select_window = self.mode == "R"
         else:
-            print(f"imageviewer.set_mode with mode = {mode} is not a valid mode!")
+            print(f"ImageViewer.set_mode with mode = {mode} is not a valid mode!")
 
     def on_update(self):
         imgui.set_current_context(self.imgui_context)
@@ -95,7 +101,6 @@ class ImageViewer:
             self.image_requires_update = False
 
         if self.image_size_changed:
-            self.center_camera()
             self.image_size_changed = False
 
         self.camera.on_update()
@@ -106,6 +111,7 @@ class ImageViewer:
         # imgui
         if self.window.focused:
             self.imgui_implementation.process_inputs()
+
         imgui.new_frame()
         # Push overall imgui style vars
         imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.iv_clr_frame_background)
@@ -286,49 +292,54 @@ class ImageViewer:
             self.va.unbind()
             glActiveTexture(GL_TEXTURE0)
             for coordinate in self.image.maxima:
-                translation = [coordinate[1] + self.image.translation[1], coordinate[0] + self.image.translation[0]]
-                cfg.node_editor.particle_marker.render(self.roi_shader, self.camera, translation)
+                translation = [coordinate[1], coordinate[0]]
+                self.marker.render(self.roi_shader, self.camera, translation)
 
     def _edit_and_render_roi(self):
         if not self.show_image:
             return None
         if cfg.node_editor.active_node is None:
             return None
-        if cfg.node_editor.active_node.roi is None:
+        if not cfg.node_editor.active_node.use_roi:
             return None
-        if cfg.node_editor.active_node.roi.use:
-            active_roi = cfg.node_editor.active_node.roi
-            cfg.node_editor.active_node.roi.render(self.roi_shader, self.camera)
+        # if past the above, active node has and used a roi.
+        if cfg.node_editor.active_node.roi == [0, 0, 0, 0]:
+            cfg.node_editor.active_node.roi = [0, 0, self.image_width, self.image_height]
+        else:
+            self.roi.set_box(cfg.node_editor.active_node.roi)
+            self.roi.colour = cfg.node_editor.active_node.colour
+            self.roi.render(self.roi_shader, self.camera)
             # edit roi
             if not imgui.get_io().want_capture_mouse:
                 if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
                     # get world position of mouse click.
                     px_coords = self.get_cursor_image_coordinates()
-                    if active_roi.is_in_roi(px_coords):
+                    if self.roi.is_in_roi(px_coords):
                         self.moving_roi = True
                     else:
                         self.drawing_roi = True
-                        active_roi.set_box([*px_coords, *px_coords])
+                        self.roi.set_box([*px_coords, *px_coords])
 
                 if self.moving_roi:
                     if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.RELEASE):
                         self.moving_roi = False
-                        active_roi.limit(self.image_width, self.image_height)
+                        self.roi.limit(self.image_width, self.image_height)
+                        cfg.node_editor.active_node.any_change = True
                     else:
-                        active_roi.translate(self.cursor_delta_as_world_delta())
+                        self.roi.translate(self.cursor_delta_as_world_delta())
 
                 elif self.drawing_roi:
                     px_coords = self.get_cursor_image_coordinates()
                     if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.RELEASE):
                         self.drawing_roi = False
-                        active_roi.correct_order()
-                        active_roi.limit(self.image_width, self.image_height)
+                        self.roi.correct_order()
+                        self.roi.limit(self.image_width, self.image_height)
+                        cfg.node_editor.active_node.any_change = True
                     else:
-                        new_box = [active_roi.box[0], active_roi.box[1], px_coords[0], px_coords[1]]
-                        active_roi.set_box(new_box)
+                        new_box = [self.roi.box[0], self.roi.box[1], px_coords[0], px_coords[1]]
+                        self.roi.set_box(new_box)
 
-            # always limit roi to image size
-            active_roi.render(self.roi_shader, self.camera)
+            cfg.node_editor.active_node.roi = self.roi.box
 
     def _camera_control(self):
         if not imgui.get_io().want_capture_mouse:

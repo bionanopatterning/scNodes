@@ -6,17 +6,16 @@ from PIL import Image
 from skimage import transform
 
 class Dataset:
-    def __init__(self, path):
+    def __init__(self, path=None):
         """Path must be a path to an image in a folder containing 16-bit tif files - OR a tiffstack. All the imgs in the folder are part of the dataset"""
         self.path = path
-        self.directory = self.path[:self.path.rfind("/") + 1]
         self.frames = list()
         self.n_frames = 0
         self.current_frame = 0
-        self.load_data()
-
-        self.img_width, self.img_height = self.get_indexed_image(0).load().shape
         self.pixel_size = 1
+        self.directory = self.path[:self.path.rfind("/") + 1]
+        self.load_data()
+        self.img_width, self.img_height = self.get_indexed_image(0).load().shape
 
     def load_data(self):
         self.frames = list()
@@ -92,8 +91,11 @@ class Frame:
         self.data = transform.warp(self.data, tmat)
 
     def __str__(self):
+        print(self.maxima)
         selfstr = "Frame at path: "+self.path + "\n" \
         + ("Discarded frame" if self.discard else "Frame in use") \
-        + f"\n{len(self.maxima)} particles found. Shift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
+        + "Shift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
+        if self.maxima is not []:
+            selfstr += f"\n{len(self.maxima)} particles found."
         return selfstr
 
