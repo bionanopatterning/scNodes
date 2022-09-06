@@ -91,7 +91,6 @@ class Frame:
         self.data = transform.warp(self.data, tmat)
 
     def __str__(self):
-        print(self.maxima)
         selfstr = "Frame at path: "+self.path + "\n" \
         + ("Discarded frame" if self.discard else "Frame in use") \
         + "Shift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."

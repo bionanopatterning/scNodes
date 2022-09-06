@@ -247,6 +247,8 @@ class NodeEditor:
             return ImageCalculatorNode()
         elif node_type == Node.TYPE_PARTICLE_DETECTION:
             return ParticleDetectionNode()
+        elif node_type == Node.TYPE_EXPORT_DATA:
+            return ExportDataNode()
         else:
             return False
 
@@ -351,6 +353,7 @@ class Node:
         imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *Node.COLOUR[self.type])
         imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *Node.COLOUR[self.type])
         imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_COLLAPSED, *Node.COLOUR[self.type])
+        imgui.push_style_color(imgui.COLOR_CHECK_MARK, *Node.COLOUR[self.type])
         imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *Node.COLOUR_WINDOW_BACKGROUND)
         if NodeEditor.active_node == self:
             imgui.push_style_color(imgui.COLOR_BORDER, *Node.COLOUR_WINDOW_BORDER_ACTIVE_NODE)
@@ -387,7 +390,7 @@ class Node:
         return True
 
     def render_end(self):
-        imgui.pop_style_color(14)
+        imgui.pop_style_color(15)
         imgui.pop_style_var(2)
         imgui.pop_id()
         imgui.pop_clip_rect()
@@ -1448,7 +1451,7 @@ class ExportDataNode(Node):
 
     def __init__(self):
         super().__init__(Node.TYPE_EXPORT_DATA)
-        self.size = [210, 200]
+        self.size = [210, 220]
 
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT,
                                                parent=self)
@@ -1483,7 +1486,7 @@ class ExportDataNode(Node):
             imgui.spacing()
             imgui.separator()
             imgui.spacing()
-
+            _, self.use_roi = imgui.checkbox("use ROI", self.use_roi)
             imgui.text("Output path")
             imgui.push_item_width(150)
             _, self.path = imgui.input_text("##intxt", self.path, 256, imgui.INPUT_TEXT_ALWAYS_OVERWRITE)
@@ -1514,7 +1517,7 @@ class ExportDataNode(Node):
             super().render_end()
 
     def get_img_and_save(self, idx):
-        img_pxd = self.get_image_impl(idx)
+        img_pxd = self.get_image_impl(idx)[self.roi[1]:self.roi[3],self.roi[0]:self.roi[2]]
         Image.fromarray(img_pxd).save(self.path+"/0"+str(idx)+".tif")
 
     def init_save(self):
@@ -1552,8 +1555,6 @@ class ExportDataNode(Node):
             incoming_img = data_source.get_image(idx)
             img_pxd = incoming_img.load()
             incoming_img.clean()
-            if self.use_roi:
-                img_pxd = img_pxd[self.roi[1]:self.roi[3], self.roi[0]:self.roi[2]]
             return img_pxd
         img_source = self.image_in.get_incoming_node()
         if img_source:
