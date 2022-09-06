@@ -1,6 +1,5 @@
 from itertools import count
 import imgui
-import numpy as np
 from imgui.integrations.glfw import GlfwRenderer
 import config as cfg
 import glfw
@@ -10,14 +9,12 @@ from tkinter import filedialog
 from dataset import *
 from reconstruction import *
 from util import *
-from joblib import Parallel, delayed
+#from joblib import Parallel, delayed
 from scipy.ndimage import gaussian_filter, maximum_filter
 from scipy.signal import medfilt
 from skimage.feature import peak_local_max
 from pystackreg import StackReg
 import pywt
-import os
-
 tkroot = tk.Tk()
 tkroot.withdraw()
 
@@ -33,8 +30,6 @@ class NodeEditor:
         COLOUR_CM_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 1.0)
         COLOUR_CM_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
         COLOUR_CM_OPTION_HOVERED = (1.0, 1.0, 1.0, 1.0)
-        PARTICLE_MARKER_SIZE = 6.0
-        MARKER_COLOUR = (230 / 255, 174 / 255, 13 / 255, 1.0)
 
     nodes = list()
     active_node = None
@@ -54,9 +49,6 @@ class NodeEditor:
 
     def __init__(self, window, shared_font_atlas=None):
         # TODO: move both ROI and Marker to ImageViewer; never use the GPU-side part of these things in NodeEditor.
-        # self.particle_marker = Marker(
-        # [-NodeEditor.PARTICLE_MARKER_SIZE, 0.0, NodeEditor.PARTICLE_MARKER_SIZE, 0.0, 0.0, -NodeEditor.PARTICLE_MARKER_SIZE, 0.0, NodeEditor.PARTICLE_MARKER_SIZE],
-        # [0, 1, 2, 3], NodeEditor.MARKER_COLOUR)
         self.window = window
         self.window.clear_color = NodeEditor.COLOUR_WINDOW_BACKGROUND
         self.window.make_current()
@@ -74,6 +66,7 @@ class NodeEditor:
         self.context_menu_position = [0, 0]
         self.context_menu_open = False
         self.context_menu_can_close = False
+
 
     def get_font_atlas_ptr(self):
         return self.imgui_implementation.io.fonts
@@ -254,8 +247,6 @@ class NodeEditor:
             return ImageCalculatorNode()
         elif node_type == Node.TYPE_PARTICLE_DETECTION:
             return ParticleDetectionNode()
-        elif node_type == Node.TYPE_EXPORT_DATA:
-            return ExportDataNode()
         else:
             return False
 
@@ -681,7 +672,7 @@ class ConnectableAttribute:
             partner.linked_attributes.remove(self)
             partner.notify_disconnect()
         self.linked_attributes = list()
-        self.parent.any_change = self.parent.any_change | True
+        self.parent.any_change = True
         self.colour = ConnectableAttribute.COLOUR[self.type]
 
     def is_connected(self):
@@ -699,6 +690,7 @@ class ConnectableAttribute:
             self.current_type = self.linked_attributes[-1].type
 
     def notify_disconnect(self):
+        self.any_change = True
         if self.type == ConnectableAttribute.TYPE_MULTI and self.direction == ConnectableAttribute.INPUT:
             self.colour = ConnectableAttribute.COLOUR[ConnectableAttribute.TYPE_MULTI]
 
@@ -734,11 +726,12 @@ class LoadDataNode(Node):
             imgui.same_line()
             if imgui.button("...", 26, 19):
                 selected_file = filedialog.askopenfilename()
-                if get_filetype(selected_file) in ['.tiff', '.tif']:
-                    self.path = selected_file
-                    self.on_select_file()
-                else:
-                    NodeEditor.set_error(Exception(), "LoadDataNode: filetype must be .tif or .tiff")
+                if selected_file is not None:
+                    if get_filetype(selected_file) in ['.tiff', '.tif']:
+                        self.path = selected_file
+                        self.on_select_file()
+                    else:
+                        NodeEditor.set_error(Exception(), "LoadDataNode: filetype must be .tif or .tiff")
             imgui.columns(2, border = False)
             imgui.text("frames:")
             imgui.text("image size:")
@@ -785,7 +778,6 @@ class LoadDataNode(Node):
     def get_image_impl(self, idx):
         retimg = cfg.current_dataset.get_indexed_image(idx)
         retimg.clean()
-        print(f"Loaddatanode get {idx}")
         return retimg
 
     def on_update(self):
@@ -818,8 +810,7 @@ class RegisterNode(Node):
         self.reference_method = 1
         self.reference_image = None
         self.frame = 0
-        self.use_roi = False
-        self.roi = None
+        self.roi = [0, 0, 0, 0]
         # StackReg vars
         self.sr = StackReg(StackReg.TRANSLATION)
 
@@ -836,8 +827,6 @@ class RegisterNode(Node):
             self.any_change = self.any_change or _c
             _method_changed, self.register_method = imgui.combo("Method", self.register_method, RegisterNode.METHODS)
             _reference_changed, self.reference_method = imgui.combo("Reference", self.reference_method, RegisterNode.REFERENCES)
-            if _method_changed or _reference_changed or self.dataset_in.newly_connected:
-                self.configure_settings()
             _frame_changed = False
             if self.reference_method == 1:
                 imgui.push_item_width(50)
@@ -851,10 +840,6 @@ class RegisterNode(Node):
             self.any_change = self.any_change or _method_changed or _reference_changed or _frame_changed
 
             super().render_end()
-
-    def configure_settings(self):
-        if self.register_method == 0:
-            self.sr = StackReg(StackReg.TRANSLATION)
 
     def get_image_impl(self, idx=None):
         data_source = self.dataset_in.get_incoming_node()
@@ -935,12 +920,15 @@ class GetImageNode(Node):
     def configure_settings(self):
         datasource = self.dataset_in.get_incoming_node()
         if datasource:
-            if self.mode == 0:
-                self.image = datasource.get_image(self.frame).load()
-            elif self.mode == 1:
-                load_data_node = Node.get_original_load_data_node(self)
-                load_data_node.load_on_the_fly = False
-                self.load_data_source = load_data_node
+            try:
+                if self.mode == 0:
+                    self.image = datasource.get_image(self.frame).load()
+                elif self.mode == 1:
+                    load_data_node = Node.get_original_load_data_node(self)
+                    load_data_node.load_on_the_fly = False
+                    self.load_data_source = load_data_node
+            except Exception as e:
+                NodeEditor.set_error(e, "GetImageNode error upon attempting to gen img.\n"+str(e))
         else:
             NodeEditor.set_error(Exception(), "GetImageNode missing input dataset.")
         self.any_change = True
@@ -968,12 +956,11 @@ class GetImageNode(Node):
         self.any_change = True
 
     def get_image_impl(self, idx=None):
-        if self.image is not None:
-            virtual_frame = Frame("virtual_frame")
-            virtual_frame.data = self.image
-            return virtual_frame
-        else:
-            return None
+        if self.any_change:
+            self.configure_settings()
+        virtual_frame = Frame("virtual_frame")
+        virtual_frame.data = self.image
+        return virtual_frame
 
 
 class ImageCalculatorNode(Node):
@@ -982,7 +969,7 @@ class ImageCalculatorNode(Node):
 
     def __init__(self):
         super().__init__(Node.TYPE_IMAGE_CALCULATOR)
-        self.size = [230, 125]
+        self.size = [230, 105]
         self.input_a = ConnectableAttribute(ConnectableAttribute.TYPE_MULTI, ConnectableAttribute.INPUT, parent=self, allowed_partner_types=[ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.TYPE_IMAGE])
         self.input_b = ConnectableAttribute(ConnectableAttribute.TYPE_MULTI, ConnectableAttribute.INPUT, parent=self, allowed_partner_types=[ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.TYPE_IMAGE])
         self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=self)
@@ -1020,7 +1007,6 @@ class ImageCalculatorNode(Node):
             super().render_end()
 
     def get_image_impl(self, idx=None):
-        ## TODO: float instead of uint16.
         try:
             source_a = self.input_a.get_incoming_node()
             source_b = self.input_b.get_incoming_node()
@@ -1065,7 +1051,7 @@ class SpatialFilterNode(Node):
     WAVELET_OTHER_IDX = WAVELET_NAMES.index("Other...")
     def __init__(self):
         super().__init__(Node.TYPE_SPATIAL_FILTER)  # Was: super(LoadDataNode, self).__init__()
-        self.size = [210, 160]
+        self.size = [210, 130]
 
         # Set up connectable attributes
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent = self)
@@ -1076,9 +1062,9 @@ class SpatialFilterNode(Node):
         self.filter = 1
         self.level = 1
         self.sigma = 2.0
-        self.kernel = 7
+        self.kernel = 3
         self.wavelet = 0
-        self.custom_wavelet = "e.g. 'bior6.8'"
+        self.custom_wavelet = "bior6.8"
 
     def render(self):
         if super().render_start():
@@ -1102,7 +1088,6 @@ class SpatialFilterNode(Node):
                 if self.wavelet == SpatialFilterNode.WAVELET_OTHER_IDX:
                     _c, self.custom_wavelet = imgui.input_text("pywt name", self.custom_wavelet, 16)
                     self.any_change = self.any_change or _c
-                    imgui.pop_item_width()
                 _c, self.level = imgui.input_int("Level", self.level, 0, 0)
                 self.any_change = self.any_change or _c
             elif self.filter == 1:
@@ -1143,7 +1128,7 @@ class TemporalFilterNode(Node):
 
     def __init__(self):
         super().__init__(Node.TYPE_TEMPORAL_FILTER)  # Was: super(LoadDataNode, self).__init__()
-        self.size = [250, 150]
+        self.size = [250, 220]
 
         # Set up connectable attributes
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent = self)
@@ -1169,13 +1154,15 @@ class TemporalFilterNode(Node):
             imgui.separator()
             imgui.spacing()
 
-            imgui.push_item_width(110)
+            imgui.push_item_width(170)
             _c, self.filter = imgui.combo("Filter", self.filter, TemporalFilterNode.FILTERS)
             self.any_change = self.any_change or _c
+            imgui.pop_item_width()
+            imgui.push_item_width(110)
             _c, self.negative_handling = imgui.combo("Negative handling", self.negative_handling, TemporalFilterNode.NEGATIVE_MODES)
             self.any_change = self.any_change or _c
             imgui.pop_item_width()
-            imgui.push_item_width(70)
+            imgui.push_item_width(90)
             if self.filter == 0 or self.filter == 1 or self.filter == 2:
                 _c, self.skip = imgui.input_int("Step (# frames)", self.skip, 0, 0)
                 self.any_change = self.any_change or _c
@@ -1187,7 +1174,7 @@ class TemporalFilterNode(Node):
                 _c, self.incomplete_group_handling = imgui.combo("Incomplete groups", self.incomplete_group_handling, TemporalFilterNode.INCOMPLETE_GROUP_MODES)
                 self.any_change = self.any_change or _c
             elif self.filter == 4:
-                _c, self.window = imgui.input_int("Window size <--->", self.window, 0, 0)
+                _c, self.window = imgui.input_int("Window size", self.window, 0, 0)
                 self.any_change = self.any_change or _c
             imgui.pop_item_width()
             super().render_end()
@@ -1203,7 +1190,7 @@ class TemporalFilterNode(Node):
             elif self.filter == 2:
                 pxd = data_source.get_image(idx + self.skip).load() - data_source.get_image(idx - self.skip).load()
             elif self.filter == 3:
-                pxd = data_source.get_image(idx // self.group_size) - data_source.get_image(self.group_size * (idx // self.group_size) + self.group_background_index)
+                pxd = data_source.get_image(idx // self.group_size).load() - data_source.get_image(self.group_size * (idx // self.group_size) + self.group_background_index).load()
             elif self.filter == 4:
                 pxd = np.zeros_like(data_source.get_image(idx).load())
                 for i in range(-self.window, self.window + 1):
@@ -1384,13 +1371,13 @@ class ParticleDetectionNode(Node):
 
     def __init__(self):
         super().__init__(Node.TYPE_PARTICLE_DETECTION)
-        self.size = [290, 180]
+        self.size = [290, 205]
 
-        self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent = self)
-        self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent = self)
+        self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self)
+        self.reconstruction_out = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.OUTPUT, parent=self)
 
         self.connectable_attributes.append(self.dataset_in)
-        self.connectable_attributes.append(self.dataset_out)
+        self.connectable_attributes.append(self.reconstruction_out)
 
         self.method = 0
         self.thresholding = 1
@@ -1400,16 +1387,21 @@ class ParticleDetectionNode(Node):
         self.n_max = 100
         self.d_min = 1
 
+        self.roi = [0, 0, 0, 0]
+
     def render(self):
         if super().render_start():
             self.dataset_in.render_start()
-            self.dataset_out.render_start()
+            self.reconstruction_out.render_start()
             self.dataset_in.render_end()
-            self.dataset_out.render_end()
+            self.reconstruction_out.render_end()
 
             imgui.spacing()
             imgui.separator()
             imgui.spacing()
+
+            _c, self.use_roi = imgui.checkbox("use ROI", self.use_roi)
+            self.any_change = self.any_change or _c
             imgui.push_item_width(160)
             _c, self.method = imgui.combo("Method", self.method, ParticleDetectionNode.METHODS)
             self.any_change = self.any_change or _c
@@ -1432,134 +1424,23 @@ class ParticleDetectionNode(Node):
             imgui.pop_item_width()
             super().render_end()
 
-    def get_image(self, idx=None):
+    def get_image_impl(self, idx=None):
         source = self.dataset_in.get_incoming_node()
         if source is not None:
             # Find threshold value
             image_obj = source.get_image(idx)
             image = image_obj.load()
+            if self.use_roi:
+                image = image[self.roi[1]:self.roi[3], self.roi[0]:self.roi[2]]
             threshold = self.threshold
             if self.thresholding == 1:
                 threshold = self.sigmas * np.std(image)
             if self.thresholding == 2:
                 threshold = self.means * np.mean(image)
             # Perform requested detection method
-            coordinates = peak_local_max(image, threshold_abs = threshold, num_peaks = self.n_max, min_distance = self.d_min)
+            coordinates = peak_local_max(image, threshold_abs = threshold, num_peaks = self.n_max, min_distance = self.d_min) + np.asarray([self.roi[1], self.roi[0]])
+
             image_obj.maxima = coordinates
             return image_obj
 
 
-class ExportDataNode(Node):
-
-    def __init__(self):
-        super().__init__(Node.TYPE_EXPORT_DATA)
-        self.size = [210, 200]
-
-        self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT,
-                                               parent=self)
-        self.image_in = ConnectableAttribute(ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.INPUT, parent=self)
-        self.connectable_attributes.append(self.dataset_in)
-        self.connectable_attributes.append(self.image_in)
-
-        self.path = "..."
-        self.roi = [0, 0, 0, 0]
-        self.include_discarded_frames = False
-        self.save_requested = False
-        self.file_ready = False
-        self.export_type = 0  # 0 for dataset, 1 for image.
-        self.jobs = list()
-        self.frames_to_load = list()
-
-    def render(self):
-        if super().render_start():
-            self.dataset_in.render_start()
-            self.dataset_in.render_end()
-            imgui.new_line()
-            self.image_in.render_start()
-            self.image_in.render_end()
-
-            if self.image_in.newly_connected:
-                self.export_type = 1
-                self.dataset_in.disconnect_all()
-            elif self.dataset_in.newly_connected:
-                self.image_in.disconnect_all()
-                self.export_type = 0
-
-            imgui.spacing()
-            imgui.separator()
-            imgui.spacing()
-
-            imgui.text("Output path")
-            imgui.push_item_width(150)
-            _, self.path = imgui.input_text("##intxt", self.path, 256, imgui.INPUT_TEXT_ALWAYS_OVERWRITE)
-            imgui.pop_item_width()
-            imgui.same_line()
-            if imgui.button("...", 26, 19):
-                filename = filedialog.asksaveasfilename()
-                if filename is not None:
-                    if '.' in filename:
-                        filename = filename[:filename.rfind(".")]
-                    self.path = filename
-
-            content_width = imgui.get_window_width()
-            save_button_width = 100
-            save_button_height = 40
-
-            if self.export_type == 0:
-                _c, self.include_discarded_frames = imgui.checkbox("Include discarded frames", self.include_discarded_frames)
-            imgui.spacing()
-            imgui.spacing()
-            imgui.spacing()
-            imgui.new_line()
-            imgui.same_line(position=(content_width - save_button_width) // 2)
-
-            if imgui.button("Save", save_button_width, save_button_height):
-                self.init_save()
-
-            super().render_end()
-
-    def get_img_and_save(self, idx):
-        img_pxd = self.get_image_impl(idx)
-        Image.fromarray(img_pxd).save(self.path+"/0"+str(idx)+".tif")
-
-    def init_save(self):
-        if self.export_type == 0:
-            self.save_requested = True
-            self.save_ready = False
-
-            if self.include_discarded_frames:
-                n_active_frames = cfg.current_dataset.n_frames
-                self.frames_to_load = list(range(0, n_active_frames))
-            else:
-                self.frames_to_load = list()
-                for i in range(cfg.current_dataset.n_frames):
-                    self.frames_to_load.append(i)
-
-            if not os.path.isdir(self.path):
-                os.mkdir(self.path)
-
-            Parallel(n_jobs=cfg.n_cpus, verbose=10)(delayed(self.get_img_and_save)(frame_index) for frame_index in self.frames_to_load)
-            # TODO figure out multiprocessing vs. loky
-
-        elif self.export_type == 1:
-            img_pxd = self.get_image_impl(None).load()
-            try:
-                Image.fromarray(img_pxd).save(self.path+".tif")
-            except Exception as e:
-                NodeEditor.set_error(e, "Error saving image: "+str(e))
-
-    def on_update(self):
-        pass
-
-    def get_image_impl(self, idx=None):
-        data_source = self.dataset_in.get_incoming_node()
-        if data_source:
-            incoming_img = data_source.get_image(idx)
-            img_pxd = incoming_img.load()
-            incoming_img.clean()
-            if self.use_roi:
-                img_pxd = img_pxd[self.roi[1]:self.roi[3], self.roi[0]:self.roi[2]]
-            return img_pxd
-        img_source = self.image_in.get_incoming_node()
-        if img_source:
-            return img_source.get_image(idx)

@@ -11,7 +11,6 @@ class ROI:
         self.box = list(box)
         self.colour = colour
         self.va = VertexArray(None, None, attribute_format="xy")
-        self.visible = True
         self.use = False
         self.update_va()
 
@@ -25,19 +24,17 @@ class ROI:
                        right, top,
                        left, top]
         indices = [0, 1, 1, 2, 2, 3, 3, 0]
-        self.visible = not (left == right and top == bottom)
         self.va.update(VertexBuffer(coordinates), IndexBuffer(indices))
 
     def render(self, shader, camera):
-        if self.visible:
-            self.va.bind()
-            shader.bind()
-            shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
-            shader.uniform3f("lineColour", self.colour)
-            shader.uniform3f("translation", [0.0, 0.0, 0.0])
-            glDrawElements(GL_LINES, self.va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
-            shader.unbind()
-            self.va.unbind()
+        self.va.bind()
+        shader.bind()
+        shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
+        shader.uniform3f("lineColour", self.colour)
+        shader.uniform3f("translation", [0.0, 0.0, 0.0])
+        glDrawElements(GL_LINES, self.va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        shader.unbind()
+        self.va.unbind()
 
     def is_in_roi(self, point):
         return self.box[0] < point[0] < self.box[2] and self.box[1] < point[1] < self.box[3]
@@ -92,7 +89,6 @@ class Marker:
         self.va.update(VertexBuffer(self.vertices), IndexBuffer(self.indices))
 
     def render(self, shader, camera, translation):
-        print(translation)
         self.va.bind()
         shader.bind()
         shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
