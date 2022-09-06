@@ -68,6 +68,8 @@ class ImageViewer:
         # ROI data - to be made compatible with NodeEditor later
         self.drawing_roi = False
         self.moving_roi = False
+        self.roi = ROI([0, 0, 0, 0], (1.0, 0.0, 1.0, 1.0))
+
         # GUI behaviour
         self.show_frame_select_window = True
 
@@ -289,46 +291,50 @@ class ImageViewer:
                 translation = [coordinate[1] + self.image.translation[1], coordinate[0] + self.image.translation[0]]
                 cfg.node_editor.particle_marker.render(self.roi_shader, self.camera, translation)
 
+
     def _edit_and_render_roi(self):
         if not self.show_image:
             return None
         if cfg.node_editor.active_node is None:
             return None
-        if cfg.node_editor.active_node.roi is None:
+        if not cfg.node_editor.active_node.use_roi:
             return None
-        if cfg.node_editor.active_node.roi.use:
-            active_roi = cfg.node_editor.active_node.roi
-            cfg.node_editor.active_node.roi.render(self.roi_shader, self.camera)
+        # if all the above passed, the active node has a roi.
+        if cfg.node_editor.active_node.roi is None:
+            cfg.node_editor.active_node.roi = [0, 0, self.image_width, self.image_height]
+        else:
+            self.roi.set_box(cfg.node_editor.active_node.roi)
+            self.roi.colour = cfg.node_editor.active_node.colour
+            self.roi.render(self.roi_shader, self.camera)
             # edit roi
             if not imgui.get_io().want_capture_mouse:
                 if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
                     # get world position of mouse click.
                     px_coords = self.get_cursor_image_coordinates()
-                    if active_roi.is_in_roi(px_coords):
+                    if self.roi.is_in_roi(px_coords):
                         self.moving_roi = True
                     else:
                         self.drawing_roi = True
-                        active_roi.set_box([*px_coords, *px_coords])
+                        self.roi.set_box([*px_coords, *px_coords])
 
                 if self.moving_roi:
                     if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.RELEASE):
                         self.moving_roi = False
-                        active_roi.limit(self.image_width, self.image_height)
+                        self.roi.limit(self.image_width, self.image_height)
                     else:
-                        active_roi.translate(self.cursor_delta_as_world_delta())
+                        self.roi.translate(self.cursor_delta_as_world_delta())
 
                 elif self.drawing_roi:
                     px_coords = self.get_cursor_image_coordinates()
                     if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.RELEASE):
                         self.drawing_roi = False
-                        active_roi.correct_order()
-                        active_roi.limit(self.image_width, self.image_height)
+                        self.roi.correct_order()
+                        self.roi.limit(self.image_width, self.image_height)
                     else:
-                        new_box = [active_roi.box[0], active_roi.box[1], px_coords[0], px_coords[1]]
-                        active_roi.set_box(new_box)
+                        new_box = [self.roi.box[0], self.roi.box[1], px_coords[0], px_coords[1]]
+                        self.roi.set_box(new_box)
 
-            # always limit roi to image size
-            active_roi.render(self.roi_shader, self.camera)
+            cfg.node_editor.active_node.roi = self.roi.box
 
     def _camera_control(self):
         if not imgui.get_io().want_capture_mouse:

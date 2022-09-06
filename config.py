@@ -1,8 +1,8 @@
 from dataset import *
 import colorcet as cc
 
-current_dataset = Dataset("W:/mgflast/9. Devitrification paper/Figure_4_data/s1t4_centered_stack.tif")
-
+current_dataset = Dataset("default_dataset/default_img_00.tif")
+n_cpus = 1
 # TODO: only do imgui process inputs when window focused.
 # TODO: limit load dataset and reconstruction renderer nodes to 1 instance
 
