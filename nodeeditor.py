@@ -9,12 +9,12 @@ from tkinter import filedialog
 from dataset import *
 from reconstruction import *
 from util import *
-#from joblib import Parallel, delayed
 from scipy.ndimage import gaussian_filter, maximum_filter
 from scipy.signal import medfilt
 from skimage.feature import peak_local_max
 from pystackreg import StackReg
 import pywt
+from joblib import Parallel, delayed
 tkroot = tk.Tk()
 tkroot.withdraw()
 
@@ -1444,3 +1444,117 @@ class ParticleDetectionNode(Node):
             return image_obj
 
 
+class ExportDataNode(Node):
+
+    def __init__(self):
+        super().__init__(Node.TYPE_EXPORT_DATA)
+        self.size = [210, 200]
+
+        self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT,
+                                               parent=self)
+        self.image_in = ConnectableAttribute(ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.INPUT, parent=self)
+        self.connectable_attributes.append(self.dataset_in)
+        self.connectable_attributes.append(self.image_in)
+
+        self.path = "..."
+        self.roi = [0, 0, 0, 0]
+        self.include_discarded_frames = False
+        self.save_requested = False
+        self.file_ready = False
+        self.export_type = 0  # 0 for dataset, 1 for image.
+        self.jobs = list()
+        self.frames_to_load = list()
+
+    def render(self):
+        if super().render_start():
+            self.dataset_in.render_start()
+            self.dataset_in.render_end()
+            imgui.new_line()
+            self.image_in.render_start()
+            self.image_in.render_end()
+
+            if self.image_in.newly_connected:
+                self.export_type = 1
+                self.dataset_in.disconnect_all()
+            elif self.dataset_in.newly_connected:
+                self.image_in.disconnect_all()
+                self.export_type = 0
+
+            imgui.spacing()
+            imgui.separator()
+            imgui.spacing()
+
+            imgui.text("Output path")
+            imgui.push_item_width(150)
+            _, self.path = imgui.input_text("##intxt", self.path, 256, imgui.INPUT_TEXT_ALWAYS_OVERWRITE)
+            imgui.pop_item_width()
+            imgui.same_line()
+            if imgui.button("...", 26, 19):
+                filename = filedialog.asksaveasfilename()
+                if filename is not None:
+                    if '.' in filename:
+                        filename = filename[:filename.rfind(".")]
+                    self.path = filename
+
+            content_width = imgui.get_window_width()
+            save_button_width = 100
+            save_button_height = 40
+
+            if self.export_type == 0:
+                _c, self.include_discarded_frames = imgui.checkbox("Include discarded frames", self.include_discarded_frames)
+            imgui.spacing()
+            imgui.spacing()
+            imgui.spacing()
+            imgui.new_line()
+            imgui.same_line(position=(content_width - save_button_width) // 2)
+
+            if imgui.button("Save", save_button_width, save_button_height):
+                self.init_save()
+
+            super().render_end()
+
+    def get_img_and_save(self, idx):
+        img_pxd = self.get_image_impl(idx)
+        Image.fromarray(img_pxd).save(self.path+"/0"+str(idx)+".tif")
+
+    def init_save(self):
+        if self.export_type == 0:
+            self.save_requested = True
+            self.save_ready = False
+
+            if self.include_discarded_frames:
+                n_active_frames = cfg.current_dataset.n_frames
+                self.frames_to_load = list(range(0, n_active_frames))
+            else:
+                self.frames_to_load = list()
+                for i in range(cfg.current_dataset.n_frames):
+                    self.frames_to_load.append(i)
+
+            if not os.path.isdir(self.path):
+                os.mkdir(self.path)
+
+            Parallel(n_jobs=cfg.n_cpus, verbose=10)(delayed(self.get_img_and_save)(frame_index) for frame_index in self.frames_to_load)
+            # TODO figure out multiprocessing vs. loky
+
+        elif self.export_type == 1:
+            img_pxd = self.get_image_impl(None).load()
+            try:
+                Image.fromarray(img_pxd).save(self.path+".tif")
+            except Exception as e:
+                NodeEditor.set_error(e, "Error saving image: "+str(e))
+
+    def on_update(self):
+        pass
+
+    def get_image_impl(self, idx=None):
+        data_source = self.dataset_in.get_incoming_node()
+        if data_source:
+            incoming_img = data_source.get_image(idx)
+            img_pxd = incoming_img.load()
+            incoming_img.clean()
+            if self.use_roi:
+                img_pxd = img_pxd[self.roi[1]:self.roi[3], self.roi[0]:self.roi[2]]
+            return img_pxd
+        img_source = self.image_in.get_incoming_node()
+        if img_source:
+            return img_source.get_image(idx)
