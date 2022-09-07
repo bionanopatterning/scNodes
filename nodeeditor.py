@@ -528,7 +528,7 @@ class ConnectableAttribute:
     TITLE[TYPE_IMAGE] = "Image"
     TITLE[TYPE_RECONSTRUCTION] = "Reconstruction"
     TITLE[TYPE_COLOUR] = "Colour"
-    TITLE[TYPE_MULTI] = "Multi"
+    TITLE[TYPE_MULTI] = "Dataset"
 
     CONNECTOR_SPACING = 10
     CONNECTOR_HORIZONTAL_OFFSET = -8
@@ -968,9 +968,10 @@ class GetImageNode(Node):
     def get_image_impl(self, idx=None):
         if self.any_change:
             self.configure_settings()
-        virtual_frame = Frame("virtual_frame")
-        virtual_frame.data = self.image
-        return virtual_frame
+        if self.image is not None:
+            virtual_frame = Frame("virtual_frame")
+            virtual_frame.data = self.image
+            return virtual_frame
 
 
 class ImageCalculatorNode(Node):
@@ -1240,7 +1241,7 @@ class FrameShiftNode(Node):
             imgui.separator()
             imgui.spacing()
 
-            imgui.push_item_width(60)
+            imgui.push_item_width(80)
             _c, self.shift = imgui.input_int("shift", self.shift, 1, 10)
             self.any_change = _c or self.any_change
 
