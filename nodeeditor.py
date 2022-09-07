@@ -14,7 +14,7 @@ from scipy.signal import medfilt
 from skimage.feature import peak_local_max
 from pystackreg import StackReg
 import pywt
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, cpu_count
 tkroot = tk.Tk()
 tkroot.withdraw()
 
@@ -188,19 +188,13 @@ class NodeEditor:
                     new_node = self.create_node_by_type(key)
             imgui.end_menu()
         if imgui.begin_menu("Image processing"):
-            for key in [Node.TYPE_REGISTER, Node.TYPE_SPATIAL_FILTER, Node.TYPE_TEMPORAL_FILTER, Node.TYPE_FRAME_SELECTION]:
+            for key in [Node.TYPE_REGISTER, Node.TYPE_SPATIAL_FILTER, Node.TYPE_TEMPORAL_FILTER, Node.TYPE_FRAME_SELECTION, Node.TYPE_FRAME_SHIFT, Node.TYPE_BIN_IMAGE, Node.TYPE_IMAGE_CALCULATOR, Node.TYPE_GET_IMAGE]:
                 item_selected, _ = imgui.menu_item(Node.TITLE[key])
                 if item_selected:
                     new_node = self.create_node_by_type(key)
             imgui.end_menu()
         if imgui.begin_menu("Reconstruction nodes"):
             for key in [Node.TYPE_PARTICLE_DETECTION, Node.TYPE_PARTICLE_FITTING, Node.TYPE_PARTICLE_FILTER, Node.TYPE_PARTICLE_PAINTER, Node.TYPE_RECONSTRUCTOR]:
-                item_selected, _ = imgui.menu_item(Node.TITLE[key])
-                if item_selected:
-                    new_node = self.create_node_by_type(key)
-            imgui.end_menu()
-        if imgui.begin_menu("Miscellaneous"):
-            for key in [Node.TYPE_GET_IMAGE, Node.TYPE_IMAGE_CALCULATOR]:
                 item_selected, _ = imgui.menu_item(Node.TITLE[key])
                 if item_selected:
                     new_node = self.create_node_by_type(key)
@@ -249,6 +243,10 @@ class NodeEditor:
             return ParticleDetectionNode()
         elif node_type == Node.TYPE_EXPORT_DATA:
             return ExportDataNode()
+        elif node_type == Node.TYPE_FRAME_SHIFT:
+            return FrameShiftNode()
+        elif node_type == Node.TYPE_BIN_IMAGE:
+            return BinImageNode()
         else:
             return False
 
@@ -276,6 +274,8 @@ class Node:
         TYPE_EXPORT_DATA = 11
         TYPE_GET_IMAGE = 12
         TYPE_IMAGE_CALCULATOR = 13
+        TYPE_FRAME_SHIFT = 14
+        TYPE_BIN_IMAGE = 15
 
         COLOUR = dict()
         COLOUR[TYPE_LOAD_DATA] = (54 / 255, 47 / 255, 192 / 255, 1.0)
@@ -290,7 +290,9 @@ class Node:
         COLOUR[TYPE_PARTICLE_PAINTER] = (143 / 255, 143 / 255, 143 / 255, 1.0)
         COLOUR[TYPE_EXPORT_DATA] = (138 / 255, 8 / 255, 8 / 255, 1.0)
         COLOUR[TYPE_GET_IMAGE] = (143 / 255, 143 / 255, 143 / 255, 1.0)
-        COLOUR[TYPE_IMAGE_CALCULATOR] = (143 / 255, 143 / 255, 143 / 255, 1.0)
+        COLOUR[TYPE_IMAGE_CALCULATOR] = (143 / 255, 123 / 255, 103 / 255, 1.0)
+        COLOUR[TYPE_FRAME_SHIFT] = (50 / 255, 223 / 255, 80 / 255, 1.0)
+        COLOUR[TYPE_BIN_IMAGE] = (143 / 255, 123 / 255, 103 / 255, 1.0)
 
         COLOUR_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 0.96)
         COLOUR_WINDOW_BORDER = (0.45, 0.45, 0.45, 1.0)
@@ -314,6 +316,8 @@ class Node:
         TITLE[TYPE_EXPORT_DATA] = "Export data"
         TITLE[TYPE_GET_IMAGE] = "Dataset to image"
         TITLE[TYPE_IMAGE_CALCULATOR] = "Image calculator"
+        TITLE[TYPE_FRAME_SHIFT] = "Frame shift"
+        TITLE[TYPE_BIN_IMAGE] = "Bin image"
         WINDOW_ROUNDING = 5.0
 
         PLAY_BUTTON_SIZE = 40
@@ -321,6 +325,8 @@ class Node:
         PLAY_BUTTON_ICON_LINEWIDTH = 12.0
         PLAY_BUTTON_ICON_COLOUR = (0.2, 0.8, 0.2, 1.0)
 
+        PROGRESS_BAR_HEIGHT = 10
+        PROGRESS_BAR_PADDING = 8
     def __init__(self, nodetype):
         self.id = next(Node.id_generator)
         self.type = nodetype
@@ -513,7 +519,7 @@ class ConnectableAttribute:
     COLOUR[TYPE_IMAGE] = (255 / 255, 179 / 255, 35 / 255, 1.0)
     COLOUR[TYPE_RECONSTRUCTION] = (243 / 255, 9 / 255, 9 / 255, 1.0)
     COLOUR[TYPE_COLOUR] = (7 / 255, 202 / 255, 16 / 255, 1.0)
-    COLOUR[TYPE_MULTI] = (255 / 255, 255 / 255, 255 / 255, 1.0)
+    COLOUR[TYPE_MULTI] = (242 / 255, 184 / 255, 255 / 255, 1.0)
 
     COLOUR_BORDER = (0.0, 0.0, 0.0, 1.0)
 
@@ -522,7 +528,7 @@ class ConnectableAttribute:
     TITLE[TYPE_IMAGE] = "Image"
     TITLE[TYPE_RECONSTRUCTION] = "Reconstruction"
     TITLE[TYPE_COLOUR] = "Colour"
-    TITLE[TYPE_MULTI] = ""
+    TITLE[TYPE_MULTI] = "Multi"
 
     CONNECTOR_SPACING = 10
     CONNECTOR_HORIZONTAL_OFFSET = -8
@@ -533,7 +539,7 @@ class ConnectableAttribute:
     CONNECTION_LINE_COLOUR = (0.0, 0.0, 0.0, 1.0)
     CONNECTION_LINE_THICKNESS = 2
 
-    def __init__(self, type, direction, parent, allowed_partner_types = None, title = None):
+    def __init__(self, type, direction, parent, allowed_partner_types=None):
         self.id = next(ConnectableAttribute.id_generator)
         self.type = type
         self.title = ConnectableAttribute.TITLE[self.type]
@@ -655,7 +661,7 @@ class ConnectableAttribute:
         io_match = self.direction != partner.direction
         type_match = self.type == partner.type or partner.type in self.allowed_partner_types or self.type in partner.allowed_partner_types
         novel_match = not partner in self.linked_attributes
-        parent_match = self.id != partner.id
+        parent_match = self.parent != partner.parent
         if io_match and type_match and novel_match and parent_match:
             any_change = True
             self.parent.any_change = self.parent.any_change | True
@@ -677,6 +683,8 @@ class ConnectableAttribute:
         self.linked_attributes = list()
         self.parent.any_change = True
         self.colour = ConnectableAttribute.COLOUR[self.type]
+        self.title = ConnectableAttribute.TITLE[self.type]
+
 
     def is_connected(self):
         return len(self.linked_attributes) > 1
@@ -691,16 +699,15 @@ class ConnectableAttribute:
         if self.type == ConnectableAttribute.TYPE_MULTI:
             self.colour = self.linked_attributes[-1].colour
             self.current_type = self.linked_attributes[-1].type
+            self.title = self.linked_attributes[-1].title
 
     def notify_disconnect(self):
         self.any_change = True
-        if self.type == ConnectableAttribute.TYPE_MULTI and self.direction == ConnectableAttribute.INPUT:
-            self.colour = ConnectableAttribute.COLOUR[ConnectableAttribute.TYPE_MULTI]
+        self.colour = ConnectableAttribute.COLOUR[self.type]
+        self.title = ConnectableAttribute.TITLE[self.type]
 
 
 class LoadDataNode(Node):
-    LOAD_BAR_HEIGHT = 10
-    LOAD_BAR_PADDING = 8
 
     def __init__(self):
         super().__init__(Node.TYPE_LOAD_DATA) #Was: super(LoadDataNode, self).__init__()
@@ -762,11 +769,11 @@ class LoadDataNode(Node):
                 origin = imgui.get_window_position()
                 y = imgui.get_cursor_screen_pos()[1]
                 drawlist = imgui.get_window_draw_list()
-                drawlist.add_rect_filled(LoadDataNode.LOAD_BAR_PADDING + origin[0], y,
-                                         LoadDataNode.LOAD_BAR_PADDING + origin[0] + width,
-                                         y + LoadDataNode.LOAD_BAR_HEIGHT,
+                drawlist.add_rect_filled(Node.PROGRESS_BAR_PADDING + origin[0], y,
+                                         Node.PROGRESS_BAR_PADDING + origin[0] + width,
+                                         y + Node.PROGRESS_BAR_HEIGHT,
                                          imgui.get_color_u32_rgba(*Node.colour_whiten(Node.COLOUR[self.type])))
-                drawlist.add_rect_filled(LoadDataNode.LOAD_BAR_PADDING + origin[0], y, LoadDataNode.LOAD_BAR_PADDING + origin[0] + width * min([(self.to_load_idx / self.n_to_load), 1.0]), y + LoadDataNode.LOAD_BAR_HEIGHT, imgui.get_color_u32_rgba(*Node.COLOUR[self.type]))
+                drawlist.add_rect_filled(Node.PROGRESS_BAR_PADDING + origin[0], y, Node.PROGRESS_BAR_PADDING + origin[0] + width * min([(self.to_load_idx / self.n_to_load), 1.0]), y + Node.PROGRESS_BAR_HEIGHT, imgui.get_color_u32_rgba(*Node.COLOUR[self.type]))
 
             super().render_end()
 
@@ -977,8 +984,6 @@ class ImageCalculatorNode(Node):
         self.input_b = ConnectableAttribute(ConnectableAttribute.TYPE_MULTI, ConnectableAttribute.INPUT, parent=self, allowed_partner_types=[ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.TYPE_IMAGE])
         self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=self)
         self.image_out = ConnectableAttribute(ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.OUTPUT, parent=self)
-        self.input_a.title = "Dataset/image"
-        self.input_b.title = "Dataset/image"
         self.connectable_attributes.append(self.input_a)
         self.connectable_attributes.append(self.input_b)
         self.connectable_attributes.append(self.dataset_out)
@@ -1210,6 +1215,41 @@ class TemporalFilterNode(Node):
             outframe = Frame("virtual_frame")
             outframe.data = pxd
             return outframe
+
+
+class FrameShiftNode(Node):
+    def __init__(self):
+        super().__init__(Node.TYPE_FRAME_SHIFT)
+        self.size = [150, 100]
+
+        # Set up connectable attributes
+        self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent = self)
+        self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent = self)
+        self.connectable_attributes.append(self.dataset_in)
+        self.connectable_attributes.append(self.dataset_out)
+
+        self.shift = 0
+
+    def render(self):
+        if super().render_start():
+            self.dataset_out.render_start()
+            self.dataset_in.render_start()
+            self.dataset_out.render_end()
+            self.dataset_in.render_end()
+            imgui.spacing()
+            imgui.separator()
+            imgui.spacing()
+
+            imgui.push_item_width(60)
+            _c, self.shift = imgui.input_int("shift", self.shift, 1, 10)
+            self.any_change = _c or self.any_change
+
+            super().render_end()
+
+    def get_image_impl(self, idx=None):
+        data_source = self.dataset_in.get_incoming_node()
+        if data_source:
+            return data_source.get_image(idx + self.shift)
 
 
 class FrameSelectionNode(Node):
@@ -1462,11 +1502,13 @@ class ExportDataNode(Node):
         self.path = "..."
         self.roi = [0, 0, 0, 0]
         self.include_discarded_frames = False
-        self.save_requested = False
-        self.file_ready = False
+        self.saving = False
         self.export_type = 0  # 0 for dataset, 1 for image.
-        self.jobs = list()
+
         self.frames_to_load = list()
+        self.n_jobs = 1
+        self.n_frames_to_save = 1
+        self.n_frames_saved = 0
 
     def render(self):
         if super().render_start():
@@ -1505,25 +1547,43 @@ class ExportDataNode(Node):
 
             if self.export_type == 0:
                 _c, self.include_discarded_frames = imgui.checkbox("Include discarded frames", self.include_discarded_frames)
+
+            if self.saving:
+                width = imgui.get_content_region_available_width()
+                origin = imgui.get_window_position()
+                y = imgui.get_cursor_screen_pos()[1]
+                drawlist = imgui.get_window_draw_list()
+                drawlist.add_rect_filled(Node.PROGRESS_BAR_PADDING + origin[0], y,
+                                         Node.PROGRESS_BAR_PADDING + origin[0] + width,
+                                         y + Node.PROGRESS_BAR_HEIGHT,
+                                         imgui.get_color_u32_rgba(*Node.colour_whiten(Node.COLOUR[self.type])))
+                drawlist.add_rect_filled(Node.PROGRESS_BAR_PADDING + origin[0], y,
+                                         Node.PROGRESS_BAR_PADDING + origin[0] + width * self.n_frames_saved / self.n_frames_to_save, y + Node.PROGRESS_BAR_HEIGHT,
+                                         imgui.get_color_u32_rgba(*Node.COLOUR[self.type]))
+                print(len(self.frames_to_load))
+
             imgui.spacing()
             imgui.spacing()
             imgui.spacing()
             imgui.new_line()
             imgui.same_line(position=(content_width - save_button_width) // 2)
-
-            if imgui.button("Save", save_button_width, save_button_height):
-                self.init_save()
-
+            if not self.saving:
+                if imgui.button("Save", save_button_width, save_button_height):
+                    self.init_save()
+            else:
+                if imgui.button("Cancel", save_button_width, save_button_height):
+                    self.saving = False
             super().render_end()
 
     def get_img_and_save(self, idx):
-        img_pxd = self.get_image_impl(idx)[self.roi[1]:self.roi[3],self.roi[0]:self.roi[2]]
+        img_pxd = self.get_image_impl(idx)
+        if self.use_roi:
+            img_pxd = img_pxd[self.roi[1]:self.roi[3],self.roi[0]:self.roi[2]]
         Image.fromarray(img_pxd).save(self.path+"/0"+str(idx)+".tif")
 
     def init_save(self):
         if self.export_type == 0:
-            self.save_requested = True
-            self.save_ready = False
+            self.saving = True
 
             if self.include_discarded_frames:
                 n_active_frames = cfg.current_dataset.n_frames
@@ -1532,12 +1592,16 @@ class ExportDataNode(Node):
                 self.frames_to_load = list()
                 for i in range(cfg.current_dataset.n_frames):
                     self.frames_to_load.append(i)
-
+            self.n_frames_to_save = len(self.frames_to_load)
+            self.n_frames_saved = 0
             if not os.path.isdir(self.path):
                 os.mkdir(self.path)
 
-            Parallel(n_jobs=cfg.n_cpus, verbose=10)(delayed(self.get_img_and_save)(frame_index) for frame_index in self.frames_to_load)
-            # TODO figure out multiprocessing vs. loky
+            self.n_jobs = cfg.n_cpus
+            if cfg.n_cpus == -1:
+                self.n_jobs = cpu_count()
+
+
 
         elif self.export_type == 1:
             img_pxd = self.get_image_impl(None).load()
@@ -1547,7 +1611,19 @@ class ExportDataNode(Node):
                 NodeEditor.set_error(e, "Error saving image: "+str(e))
 
     def on_update(self):
-        pass
+        if self.saving:
+            try:
+                indices = list()
+                for i in range(min([self.n_jobs, len(self.frames_to_load)])):
+                    self.n_frames_saved += 1
+                    indices.append(self.frames_to_load[-1])
+                    self.frames_to_load.pop()
+                Parallel(n_jobs=self.n_jobs)(delayed(self.get_img_and_save)(index) for index in indices)
+                if len(self.frames_to_load) == 0:
+                    self.saving = False
+            except Exception as e:
+                self.saving = False
+                NodeEditor.set_error(e, "Error saving stack: \n"+str(e))
 
     def get_image_impl(self, idx=None):
         data_source = self.dataset_in.get_incoming_node()
@@ -1559,3 +1635,56 @@ class ExportDataNode(Node):
         img_source = self.image_in.get_incoming_node()
         if img_source:
             return img_source.get_image(idx)
+
+
+class BinImageNode(Node):
+    MODES = ["Average", "Median", "Min", "Max", "Sum"]
+
+    def __init__(self):
+        super().__init__(Node.TYPE_BIN_IMAGE)
+        self.size = [170, 120]
+        self.input = ConnectableAttribute(ConnectableAttribute.TYPE_MULTI, ConnectableAttribute.INPUT, self, [ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.TYPE_DATASET])
+        self.output = ConnectableAttribute(ConnectableAttribute.TYPE_MULTI, ConnectableAttribute.OUTPUT, self, [ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.TYPE_DATASET])
+        self.connectable_attributes.append(self.input)
+        self.connectable_attributes.append(self.output)
+
+        self.factor = 2
+        self.mode = 0
+
+    def render(self):
+        if super().render_start():
+            self.input.render_start()
+            self.output.render_start()
+            self.input.render_end()
+            self.output.render_end()
+
+            imgui.spacing()
+            imgui.separator()
+            imgui.spacing()
+
+
+            _c, self.mode = imgui.combo("Method", self.mode, BinImageNode.MODES)
+            imgui.push_item_width(60)
+            _c, self.factor = imgui.input_int("Bin factor", self.factor, 0, 0)
+            imgui.pop_item_width()
+            super().render_end()
+
+    def get_image_impl(self, idx=None):
+        data_source = self.input.get_incoming_node()
+        if data_source:
+            pxd = data_source.get_image(idx).load()
+            width, height = pxd.shape
+            pxd = pxd[:self.factor * (width // self.factor), :self.factor * (height // self.factor)]
+            if self.mode == 0:
+                pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).mean(2).mean(0)
+            elif self.mode == 1:
+                pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).mode(2).mode(0)
+            elif self.mode == 2:
+                pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).min(2).min(0)
+            elif self.mode == 3:
+                pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).max(2).max(0)
+            elif self.mode == 4:
+                pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).sum(2).sum(0)
+            virtual_frame = Frame("_")
+            virtual_frame.data = pxd
+            return virtual_frame

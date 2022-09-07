@@ -86,14 +86,13 @@ class Frame:
         self.maxima = list()
 
     def bake_transform(self):
-        # TODO: generalize to use affine transformation matrix instead of just a translation vector.
         tmat = transform.AffineTransform(np.matrix([[1.0, 0.0, self.translation[0]], [0.0, 1.0, self.translation[1]], [0.0, 0.0, 1.0]]))
         self.data = transform.warp(self.data, tmat)
 
     def __str__(self):
         selfstr = "Frame at path: "+self.path + "\n" \
         + ("Discarded frame" if self.discard else "Frame in use") \
-        + "Shift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
+        + f"Shift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
         if self.maxima is not []:
             selfstr += f"\n{len(self.maxima)} particles found."
         return selfstr

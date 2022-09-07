@@ -304,7 +304,7 @@ class ImageViewer:
             return None
         # if past the above, active node has and used a roi.
         if cfg.node_editor.active_node.roi == [0, 0, 0, 0]:
-            cfg.node_editor.active_node.roi = [0, 0, self.image_width, self.image_height]
+            cfg.node_editor.active_node.roi = [self.image_width * 0.25, self.image_height * 0.25, self.image_width * 0.75, self.image_height * 0.75]
         else:
             self.roi.set_box(cfg.node_editor.active_node.roi)
             self.roi.colour = cfg.node_editor.active_node.colour
