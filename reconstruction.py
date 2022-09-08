@@ -197,12 +197,12 @@ class ParticleData:
                     _data[6],
                     _data[7],
                     [1.0, 1.0, 1.0],
-                    1.0
+                    1
                 ))
 
 
 class Particle:
-    def __init__(self, frame, x, y, sigma, intensity, offset, bkgstd, uncertainty, colour, state):
+    def __init__(self, frame, x, y, sigma, intensity, offset=0, bkgstd=-1, uncertainty=-1, colour=(1.0, 1.0, 1.0), state=1):
         self.frame = frame
         self.x = x
         self.y = y

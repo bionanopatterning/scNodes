@@ -1,9 +1,11 @@
 from dataset import *
 import colorcet as cc
 
-current_dataset = Dataset("default_dataset/default_img_00.tif")
+## Dependencies list:
+# numpy, colorcet, pyglfw, pandas, PyWavelets, PyOpenGL, pystackreg, matplotlib,
+# joblib, scikit-image, glfw, pyimgui-wheels, pyGpufit (can't be installed via pip)
 n_cpus = 1
-# TODO: only do imgui process inputs when window focused.
+
 # TODO: limit load dataset and reconstruction renderer nodes to 1 instance
 
 ## Node editor GUI config

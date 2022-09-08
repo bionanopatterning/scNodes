@@ -71,11 +71,13 @@ class ImageViewer:
         self.drawing_roi = False
         self.moving_roi = False
         self.roi = ROI([0, 0, 0, 0], (1.0, 0.0, 1.0, 1.0))
-        self.marker = Marker(
-        [-ImageViewer.MARKER_SIZE, 0.0, ImageViewer.MARKER_SIZE, 0.0, 0.0,-ImageViewer.MARKER_SIZE, 0.0, ImageViewer.MARKER_SIZE],[0, 1, 2, 3], ImageViewer.MARKER_COLOUR)
+        self.marker = Marker([-ImageViewer.MARKER_SIZE, 0.0, ImageViewer.MARKER_SIZE, 0.0, 0.0,-ImageViewer.MARKER_SIZE, 0.0, ImageViewer.MARKER_SIZE], [0, 1, 2, 3], ImageViewer.MARKER_COLOUR)
 
         # GUI behaviour
         self.show_frame_select_window = True
+
+        #
+        self.current_dataset = Dataset()
 
     def set_mode(self, mode):
         if mode in ["R", "RGB"]:
@@ -102,6 +104,7 @@ class ImageViewer:
 
         if self.image_size_changed:
             self.image_size_changed = False
+            self.center_camera()
 
         self.camera.on_update()
         self._camera_control()
@@ -136,11 +139,16 @@ class ImageViewer:
 
         if cfg.node_editor.active_node is not None:
             if self.previous_active_node is not cfg.node_editor.active_node or cfg.node_editor.active_node.any_change:
-                cfg.current_dataset.current_frame = np.clip(cfg.current_dataset.current_frame, 0, cfg.current_dataset.n_frames - 1)
-                new_image = cfg.node_editor.active_node.get_image(cfg.current_dataset.current_frame)
-                if new_image is not None:
-                    self.show_image = True
-                    self.set_image(new_image)
+                an = cfg.node_editor.active_node
+                self.current_dataset = an.get_source_load_data_node(an).dataset
+                if self.current_dataset.initialized:
+                    self.current_dataset.current_frame = np.clip(self.current_dataset.current_frame, 0, self.current_dataset.n_frames - 1)
+                    new_image = cfg.node_editor.active_node.get_image(self.current_dataset.current_frame)
+                    if new_image is not None:
+                        self.show_image = True
+                        self.set_image(new_image)
+                    else:
+                        self.show_image = False
                 else:
                     self.show_image = False
             self.previous_active_node = cfg.node_editor.active_node
@@ -152,7 +160,7 @@ class ImageViewer:
         self.imgui_implementation.shutdown()
 
     def _gui_main(self):
-        if self.show_frame_select_window:
+        if self.show_frame_select_window and self.current_dataset.initialized:
             imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 0.0)
             imgui.set_next_window_position(0, self.window.height - cfg.iv_info_bar_height, imgui.ALWAYS)
             imgui.set_next_window_size(self.window.width, cfg.iv_info_bar_height)
@@ -165,31 +173,31 @@ class ImageViewer:
             available_width = imgui.get_content_region_available_width()
             _frame_idx_changed = False
             if imgui.button("<", width = cfg.iv_frame_select_button_width, height = cfg.iv_frame_select_button_height):
-                cfg.current_dataset.current_frame -= 1
+                self.current_dataset.current_frame -= 1
                 _frame_idx_changed = True
             imgui.same_line(spacing = cfg.iv_frame_select_button_spacing)
             imgui.push_item_width(available_width - 2 * cfg.iv_frame_select_button_width - 2 * cfg.iv_frame_select_button_spacing)
 
-            _slider_changed, cfg.current_dataset.current_frame = imgui.slider_int("##frame_select", cfg.current_dataset.current_frame, 0, cfg.current_dataset.n_frames - 1, f"Frame {cfg.current_dataset.current_frame}/{cfg.current_dataset.n_frames}")
+            _slider_changed, self.current_dataset.current_frame = imgui.slider_int("##frame_select", self.current_dataset.current_frame, 0, self.current_dataset.n_frames - 1, f"Frame {self.current_dataset.current_frame}/{self.current_dataset.n_frames}")
 
             _frame_idx_changed = _slider_changed or _frame_idx_changed
             imgui.same_line(spacing = cfg.iv_frame_select_button_spacing)
             if imgui.button(">", width = cfg.iv_frame_select_button_width, height = cfg.iv_frame_select_button_height):
-                cfg.current_dataset.current_frame += 1
+                self.current_dataset.current_frame += 1
                 _frame_idx_changed = True
             if not self.window.get_key(glfw.KEY_LEFT_SHIFT):
                 if self.window.scroll_delta[1] != 0:
                     _frame_idx_changed = True
-                    cfg.current_dataset.current_frame -= int(self.window.scroll_delta[1])
+                    self.current_dataset.current_frame -= int(self.window.scroll_delta[1])
             if self.window.get_key_event(glfw.KEY_LEFT, glfw.PRESS, mods = 0) or self.window.get_key_event(glfw.KEY_LEFT, glfw.REPEAT, mods = 0):
                 _frame_idx_changed = True
-                cfg.current_dataset.current_frame -= 1
+                self.current_dataset.current_frame -= 1
             if self.window.get_key_event(glfw.KEY_RIGHT, glfw.PRESS, mods = 0) or self.window.get_key_event(glfw.KEY_RIGHT, glfw.REPEAT, mods = 0):
                 _frame_idx_changed = True
-                cfg.current_dataset.current_frame += 1
+                self.current_dataset.current_frame += 1
             if _frame_idx_changed:
-                cfg.current_dataset.current_frame = np.clip(cfg.current_dataset.current_frame, 0, cfg.current_dataset.n_frames - 1)
-                new_image = cfg.node_editor.active_node.get_image(idx=cfg.current_dataset.current_frame)
+                self.current_dataset.current_frame = np.clip(self.current_dataset.current_frame, 0, self.current_dataset.n_frames - 1)
+                new_image = cfg.node_editor.active_node.get_image(idx=self.current_dataset.current_frame)
                 if new_image is not None:
                     self.set_image(new_image)
             imgui.pop_item_width()
@@ -197,7 +205,7 @@ class ImageViewer:
 
             # Image info
             imgui.separator()
-            imgui.text("Current frame - " + str(cfg.current_dataset.get_active_image()))
+            imgui.text("Current frame - " + str(self.current_dataset.get_active_image()))
             imgui.pop_style_var(1)
             imgui.end()
 
@@ -247,8 +255,8 @@ class ImageViewer:
 
             imgui.plot_histogram("##contrast_hist", self.hist_counts[self.contrast_window_channel], graph_size = (available_width, 100))
             imgui.push_item_width(available_width)
-            _min_changed, self.contrast_min[self.contrast_window_channel] = imgui.slider_float("##min_contrast", self.contrast_min[self.contrast_window_channel], 0, self.image_amax[self.contrast_window_channel] + 1, format = "min: %1.0f")
-            _max_changed, self.contrast_max[self.contrast_window_channel] = imgui.slider_float("##max_contrast", self.contrast_max[self.contrast_window_channel], 0, self.image_amax[self.contrast_window_channel] + 1, format = "max: %1.0f")
+            _min_changed, self.contrast_min[self.contrast_window_channel] = imgui.slider_float("##min_contrast", self.contrast_min[self.contrast_window_channel], 0, self.image_amax[self.contrast_window_channel] + 1, format="min: %1.0f")
+            _max_changed, self.contrast_max[self.contrast_window_channel] = imgui.slider_float("##max_contrast", self.contrast_max[self.contrast_window_channel], 0, self.image_amax[self.contrast_window_channel] + 1, format="max: %1.0f")
             if _min_changed or _max_changed:
                 self.autocontrast[self.contrast_window_channel] = False
             imgui.pop_item_width()
@@ -304,7 +312,7 @@ class ImageViewer:
             return None
         # if past the above, active node has and used a roi.
         if cfg.node_editor.active_node.roi == [0, 0, 0, 0]:
-            cfg.node_editor.active_node.roi = [self.image_width * 0.25, self.image_height * 0.25, self.image_width * 0.75, self.image_height * 0.75]
+            cfg.node_editor.active_node.roi = [self.image_width // 4, self.image_height // 4, self.image_width * 3 // 4, self.image_height * 3 // 4]
         else:
             self.roi.set_box(cfg.node_editor.active_node.roi)
             self.roi.colour = cfg.node_editor.active_node.colour

@@ -6,16 +6,25 @@ from PIL import Image
 from skimage import transform
 
 class Dataset:
+    idgen = count(1)
+
     def __init__(self, path=None):
+        self.id = next(Dataset.idgen)
         """Path must be a path to an image in a folder containing 16-bit tif files - OR a tiffstack. All the imgs in the folder are part of the dataset"""
         self.path = path
-        self.frames = list()
+        self.frames = [[]]
         self.n_frames = 0
         self.current_frame = 0
         self.pixel_size = 1
-        self.directory = self.path[:self.path.rfind("/") + 1]
-        self.load_data()
-        self.img_width, self.img_height = self.get_indexed_image(0).load().shape
+        self.initialized = False
+        if self.path is not None:
+            self.load_data()
+            self.directory = self.path[:self.path.rfind("/") + 1]
+            self.img_width, self.img_height = self.get_indexed_image(0).load().shape
+            self.initialized = True
+        else:
+            self.directory = ""
+            self.img_width, self.img_height = (0, 0)
 
     def load_data(self):
         self.frames = list()
@@ -35,10 +44,12 @@ class Dataset:
 
         # folder
         else:
+            i = 0
             files = sorted(glob.glob(self.directory + "*.tif*"), key=numerical_sort)
             for file in files:
                 self.n_frames += 1
-                self.frames.append(Frame(file))
+                self.frames.append(Frame(file, i))
+                i += 1
 
     def get_indexed_image(self, index):
         if 0 <= index < self.n_frames:
@@ -68,6 +79,7 @@ class Frame:
         self.discard = False
         self.translation = [0.0, 0.0]
         self.maxima = list()
+        self.particles = list()
 
     def load(self):
         if self.data is not None:
@@ -91,8 +103,8 @@ class Frame:
 
     def __str__(self):
         selfstr = "Frame at path: "+self.path + "\n" \
-        + ("Discarded frame" if self.discard else "Frame in use") \
-        + f"Shift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
+            + ("Discarded frame" if self.discard else "Frame in use") \
+            + f"\nShift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
         if self.maxima is not []:
             selfstr += f"\n{len(self.maxima)} particles found."
         return selfstr
