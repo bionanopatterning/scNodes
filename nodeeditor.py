@@ -3,6 +3,9 @@ import imgui
 from imgui.integrations.glfw import GlfwRenderer
 import config as cfg
 import glfw
+import time
+
+import util
 from opengl_classes import *
 import tkinter as tk
 from tkinter import filedialog
@@ -16,12 +19,14 @@ from pystackreg import StackReg
 import pywt
 from joblib import Parallel, delayed, cpu_count
 import particlefitting as pfit
+import _pickle as pickle
+import copy
 tkroot = tk.Tk()
 tkroot.withdraw()
 
 
 class NodeEditor:
-    # TODO: pickling node setups - for debug as well as for final use
+    # TODO: figure out how to make pickle work with Node objects.
     if True:
         COLOUR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 1.0)
         CONTEXT_MENU_SIZE = (200, 100)
@@ -29,9 +34,13 @@ class NodeEditor:
         COLOUR_ERROR_WINDOW_HEADER = (0.6, 0.3, 0.3, 1.0)
         COLOUR_ERROR_WINDOW_HEADER_NEW = (0.8, 0.35, 0.35, 1.0)
         COLOUR_ERROR_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
-        COLOUR_CM_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 1.0)
+        COLOUR_MENU_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 1.0)
         COLOUR_CM_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
         COLOUR_CM_OPTION_HOVERED = (1.0, 1.0, 1.0, 1.0)
+
+        COLOUR_MAIN_MENU_BAR = (0.98, 0.98, 0.98, 0.9)
+        COLOUR_MAIN_MENU_BAR_TEXT = (0.0, 0.0, 0.0, 1.0)
+        COLOUR_MAIN_MENU_BAR_HILIGHT = (0.96, 0.95, 0.92, 1.0)
 
     nodes = list()
     active_node = None
@@ -48,6 +57,10 @@ class NodeEditor:
     error_new = True
     error_obj = None
 
+    window_width = 1920
+    window_height = 1080
+
+    current_dataset_pixel_size = 100
 
     def __init__(self, window, shared_font_atlas=None):
         self.window = window
@@ -57,17 +70,15 @@ class NodeEditor:
         if shared_font_atlas is not None:
             self.imgui_context = imgui.create_context(shared_font_atlas)
         else:
-            imgui.get_current_context()
+            #imgui.get_current_context()
             self.imgui_context = imgui.create_context()
         self.imgui_implementation = GlfwRenderer(self.window.glfw_window)
-
         self.window.set_mouse_callbacks()
-
+        self.window.set_window_callbacks()
         # Context menu
         self.context_menu_position = [0, 0]
         self.context_menu_open = False
         self.context_menu_can_close = False
-
 
     def get_font_atlas_ptr(self):
         return self.imgui_implementation.io.fonts
@@ -83,8 +94,11 @@ class NodeEditor:
         if self.window.focused:
             self.imgui_implementation.process_inputs()
         self.window.on_update()
+        NodeEditor.window_width = self.window.width
+        NodeEditor.window_height = self.window.height
 
         for node in NodeEditor.nodes:
+            node.clear_flags()
             node.on_update()
 
         NodeEditor.connector_delete_requested = False
@@ -101,12 +115,11 @@ class NodeEditor:
 
         NodeEditor.node_move_requested = [0, 0]
         NodeEditor.camera_move_requested = [0, 0]
-        if self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT):
-            if imgui.get_io().want_capture_mouse:
-                NodeEditor.node_move_requested = self.window.cursor_delta
-            else:
-                NodeEditor.camera_move_requested = self.window.cursor_delta
-
+        imgui_want_mouse = imgui.get_io().want_capture_mouse
+        if self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT) and imgui_want_mouse:
+            NodeEditor.node_move_requested = self.window.cursor_delta
+        elif self.window.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE) and not imgui_want_mouse:
+            NodeEditor.camera_move_requested = self.window.cursor_delta
 
 
 
@@ -114,6 +127,7 @@ class NodeEditor:
         self._gui_main()
         imgui.render()
         self.imgui_implementation.render(imgui.get_draw_data())
+
 
     def end_frame(self):
         self.window.end_frame()
@@ -135,6 +149,8 @@ class NodeEditor:
                 self.context_menu_can_close = False
         else:
             self._context_menu()
+
+        self._menu_bar()
 
         ## Error message
         if NodeEditor.error_msg is not None:
@@ -168,9 +184,9 @@ class NodeEditor:
         ## Open/close logic & start window
         imgui.set_next_window_position(self.context_menu_position[0] - 3, self.context_menu_position[1] - 3)
         imgui.set_next_window_size(*NodeEditor.CONTEXT_MENU_SIZE)
-        imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *NodeEditor.COLOUR_CM_WINDOW_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *NodeEditor.COLOUR_MENU_WINDOW_BACKGROUND)
         imgui.push_style_color(imgui.COLOR_TEXT, *NodeEditor.COLOUR_CM_WINDOW_TEXT)
-        imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *NodeEditor.COLOUR_CM_WINDOW_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *NodeEditor.COLOUR_MENU_WINDOW_BACKGROUND)
         imgui.begin("##necontextmenu", flags=imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE)
         # Close context menu when it is not hovered.
         context_menu_hovered = imgui.is_window_hovered(flags=imgui.HOVERED_ALLOW_WHEN_BLOCKED_BY_POPUP | imgui.HOVERED_CHILD_WINDOWS)
@@ -214,12 +230,61 @@ class NodeEditor:
         imgui.pop_style_color(3)
         imgui.end()
 
+    def _menu_bar(self):
+        imgui.push_style_color(imgui.COLOR_MENUBAR_BACKGROUND, *NodeEditor.COLOUR_MAIN_MENU_BAR)
+        imgui.push_style_color(imgui.COLOR_TEXT, *NodeEditor.COLOUR_MAIN_MENU_BAR_TEXT)
+        imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *NodeEditor.COLOUR_MAIN_MENU_BAR_HILIGHT)
+        imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *NodeEditor.COLOUR_MAIN_MENU_BAR_HILIGHT)
+        imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *NodeEditor.COLOUR_MENU_WINDOW_BACKGROUND)
+        if imgui.core.begin_main_menu_bar():
+            if imgui.begin_menu('File'):
+                load_setup, _ = imgui.menu_item("Load setup", 'Ctrl+O')
+                if load_setup:
+                    try:
+                        filename = filedialog.askopenfilename()
+                        if filename is not None:
+                            with open(filename+".nodes", 'rb') as pickle_file:
+                                NodeEditor.nodes = pickle.load(pickle_file)
+                    except Exception as e:
+                        NodeEditor.set_error(e, "Error loading node setup\nare you sure you selected a '.nodes' file?\nIf so, '.nodes' file could be incompatible due to version mismatch.\n"+str(e))
+                import_setup, _ = imgui.menu_item("Import setup", 'Ctrl+I')
+                if import_setup:
+                    try:
+                        filename = filedialog.askopenfilename()
+                        if filename is not None:
+                            with open(filename+".nodes", 'rb') as pickle_file:
+                                imported_nodes = pickle.load(pickle_file)
+                                for node in imported_nodes:
+                                    NodeEditor.nodes.append(node)
+                    except Exception as e:
+                        NodeEditor.set_error(e, "Error importing node setup\nare you sure you selected a '.nodes' file?\nIf so, '.nodes' file could be incompatible due to version mismatch.\n"+str(e))
+                save_setup, _ = imgui.menu_item("Save current setup", 'Ctrl+S')
+                if save_setup:
+                    filename = filedialog.asksaveasfilename()
+                    if filename is not None:
+                        with open(filename+".nodes", 'wb') as pickle_file:
+                            pickle.dump(NodeEditor.nodes, pickle_file)
+                imgui.end_menu()
+            imgui.end_main_menu_bar()
+        imgui.pop_style_color(5)
+
     @staticmethod
     def set_active_node(node):
+        """
+        :param node: Node type object or None.
+        :return: False if no change; i.e. when input node is already the active node. True otherwise.
+        """
+        if NodeEditor.active_node is not None:
+            if NodeEditor.active_node == node:
+                return False
         if node is None:
             NodeEditor.active_node = None
+            return True
         else:
             NodeEditor.next_active_node = node
+            if node.type == Node.TYPE_LOAD_DATA:
+                NodeEditor.current_dataset_pixel_size = node.pixel_size
+            return True
 
     @staticmethod
     def create_node_by_type(node_type):
@@ -306,8 +371,10 @@ class Node:
         COLOUR_WINDOW_BORDER_ACTIVE_NODE = (0.0, 0.0, 0.0, 1.0)
 
         COLOUR_TEXT = (0.0, 0.0, 0.0, 1.0)
+        COLOUR_TEXT_DISABLED = (0.2, 0.4, 0.2, 1.0)
         COLOUR_FRAME_BACKGROUND = (0.84, 0.84, 0.84, 1.0)
 
+        NO_OUTPUT_BUFFER_NODES = [TYPE_LOAD_DATA, TYPE_RECONSTRUCTOR]
 
         TITLE = dict()
         TITLE[TYPE_LOAD_DATA] = "Load data"
@@ -332,11 +399,12 @@ class Node:
         PLAY_BUTTON_ICON_SIZE = 5.0
         PLAY_BUTTON_ICON_LINEWIDTH = 12.0
         PLAY_BUTTON_ICON_COLOUR = (0.2, 0.8, 0.2, 1.0)
-
+        PLAY_BUTTON_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 1.0)
         PROGRESS_BAR_HEIGHT = 10
         PROGRESS_BAR_PADDING = 8
 
     def __init__(self, nodetype):
+        self.__module__ = 'mod'
         self.id = next(Node.id_generator)
         self.type = nodetype
         self.position = [0, 0]
@@ -353,6 +421,7 @@ class Node:
             NodeEditor.nodes.append(self)
 
         # bookkeeping
+        self.buffer_last_output = False
         self.last_index_requested = -1
         self.last_frame_returned = None
 
@@ -361,15 +430,22 @@ class Node:
             return self.id == other.id
         return False
 
-    def render_start(self):
+    def clear_flags(self):
+        for a in self.connectable_attributes:
+            a.clear_flags()
         self.any_change = False
+
+    def render_start(self):
         ## render the node window
         imgui.set_next_window_size(*self.size, imgui.ONCE)
         imgui.set_next_window_position(self.position[0], self.position[1], imgui.ALWAYS)
+        imgui.set_next_window_size_constraints((self.size[0], 50), (self.size[0], 1000))
         imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *Node.COLOUR[self.type])
         imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *Node.COLOUR[self.type])
         imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_COLLAPSED, *Node.COLOUR[self.type])
         imgui.push_style_color(imgui.COLOR_CHECK_MARK, *Node.COLOUR[self.type])
+        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *Node.COLOUR[self.type])
+        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *self.colour_brighten(Node.COLOUR[self.type]))
         imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *Node.COLOUR_WINDOW_BACKGROUND)
         if NodeEditor.active_node == self:
             imgui.push_style_color(imgui.COLOR_BORDER, *Node.COLOUR_WINDOW_BORDER_ACTIVE_NODE)
@@ -385,17 +461,21 @@ class Node:
         imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *self.colour_brighten(Node.COLOUR[self.type]))
         imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *self.colour_whiten(Node.COLOUR[self.type]))
         imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *Node.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_HEADER_HOVERED,  *self.colour_brighten(Node.COLOUR[self.type]))
+        imgui.push_style_color(imgui.COLOR_TAB_HOVERED, *self.colour_brighten(Node.COLOUR[self.type]))
         imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, Node.WINDOW_ROUNDING)
         imgui.push_style_var(imgui.STYLE_WINDOW_MIN_SIZE, (1, 1))
-        _, stay_open = imgui.begin(self.title + f"##{self.id}", True, imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_BRING_TO_FRONT_ON_FOCUS | imgui.WINDOW_NO_SAVED_SETTINGS | imgui.WINDOW_NO_MOVE)
+        _, stay_open = imgui.begin(self.title + f"##{self.id}", True, imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_BRING_TO_FRONT_ON_FOCUS | imgui.WINDOW_NO_SAVED_SETTINGS | imgui.WINDOW_NO_MOVE | imgui.WINDOW_ALWAYS_AUTO_RESIZE)
+        self.size[1] = imgui.get_window_size()[1]
         if imgui.is_window_focused() and not imgui.is_any_item_hovered():
-            NodeEditor.set_active_node(self)
+            if NodeEditor.set_active_node(self):
+                self.on_gain_focus()
             self.position[0] = self.position[0] + NodeEditor.node_move_requested[0]
             self.position[1] = self.position[1] + NodeEditor.node_move_requested[1]
         self.position[0] += NodeEditor.camera_move_requested[0]
         self.position[1] += NodeEditor.camera_move_requested[1]
         self.last_measured_window_position = imgui.get_window_position()
-        imgui.push_clip_rect(0, 0, 1920, 1080)
+        imgui.push_clip_rect(0, 0, NodeEditor.window_width, NodeEditor.window_height)
         imgui.push_id(str(self.id))
 
         if not stay_open:
@@ -409,7 +489,7 @@ class Node:
         pass # to be implemented per Node type.
 
     def render_end(self):
-        imgui.pop_style_color(15)
+        imgui.pop_style_color(19)
         imgui.pop_style_var(2)
         imgui.pop_id()
         imgui.pop_clip_rect()
@@ -423,7 +503,7 @@ class Node:
 
         imgui.set_next_window_position(*window_position)
         imgui.set_next_window_size(Node.PLAY_BUTTON_SIZE, Node.PLAY_BUTTON_SIZE)
-        imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *Node.COLOUR_WINDOW_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *Node.PLAY_BUTTON_WINDOW_BACKGROUND)
         imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 25.0)
         imgui.begin(f"##Node{self.id}playbtn", False,
                     imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE)
@@ -464,6 +544,23 @@ class Node:
 
         return any_change
 
+    def progress_bar(self, progress):
+        """
+        Renders a progress bar at the current imgui cursor position.
+        :param progress:float 0.0 to 1.0.
+        :return:
+        """
+        width = imgui.get_content_region_available_width()
+        origin = imgui.get_window_position()
+        y = imgui.get_cursor_screen_pos()[1]
+        drawlist = imgui.get_window_draw_list()
+        drawlist.add_rect_filled(Node.PROGRESS_BAR_PADDING + origin[0], y,
+                                 Node.PROGRESS_BAR_PADDING + origin[0] + width, y + Node.PROGRESS_BAR_HEIGHT,
+                                 imgui.get_color_u32_rgba(*Node.colour_whiten(Node.COLOUR[self.type])))
+        drawlist.add_rect_filled(Node.PROGRESS_BAR_PADDING + origin[0], y,
+                                 Node.PROGRESS_BAR_PADDING + origin[0] + width * min([1.0, progress]),
+                                 y + Node.PROGRESS_BAR_HEIGHT, imgui.get_color_u32_rgba(*Node.COLOUR[self.type]))
+
     def delete(self):
 
         if NodeEditor.active_node == self:
@@ -483,45 +580,54 @@ class Node:
     @staticmethod
     def get_source_load_data_node(node):
         """
-        This function is _static_ in order to ensure proper usage; it relies on a node having a dataset_in member variable of type ConnectableAttribute, which is ultimately linked to some LoadDataNode().
+        This function is _static_ in order to ensure proper usage; it relies on a node having a connectable_attribute with type INPUT that ultimately is linked to a LoadDataNode.
         :param node: the node for which you want to find the source LoadDataNode.
-        :return: node: node with TYPE_LOAD_DATA
+        :return: node: node with type TYPE_LOAD_DATA
         """
+        def get_any_incoming_node(_node):
+            for attribute in _node.connectable_attributes:
+                if attribute.direction == ConnectableAttribute.INPUT:
+                    return attribute.get_incoming_node()
+
         if node.type == Node.TYPE_LOAD_DATA:
             return node
         try:
-            source = node.dataset_in.get_incoming_node()
+            source = get_any_incoming_node(node)
             while not isinstance(source, NullNode):
                 load_data_node = source.type == Node.TYPE_LOAD_DATA
                 if load_data_node:
                     return source
-                source = source.dataset_in.get_incoming_node()
+                source = get_any_incoming_node(source)
             return source
         except Exception as e:
-            NodeEditor.set_error(e, "While searching through connection tree for source LoadDataNode, the following\nerror was encountered:\n"+str(e))
             return NullNode()
 
-    # 'Pure virtual' classes below - not sure how to actually make them virtual.
     def get_image(self, idx):
-        if self.type == Node.TYPE_LOAD_DATA:
+        """
+        :param idx:int, index of frame in dataset
+        :return: Frame object
+        """
+        try:
             return self.get_image_impl(idx)
-        else:
-            if idx is self.last_index_requested:
-                return self.last_frame_returned
-            else:
-                try:
-                    outframe = self.get_image_impl(idx)
-                    self.last_frame_returned = outframe
-                    self.last_index_requested = idx
-                    return outframe
-                except Exception as e:
-                    NodeEditor.set_error(e, f"{Node.TITLE[self.type]} error: "+str(e))
+        except Exception as e:
+            NodeEditor.set_error(e, f"{Node.TITLE[self.type]} error: "+str(e))
+            return None
 
     def get_image_impl(self, idx):
         return None
 
+    def get_particle_data(self):
+        return self.get_particle_data_impl()
+
+    def get_particle_data_impl(self):
+        return ParticleData()
+
     def on_update(self):
         return None
+
+    def on_gain_focus(self):
+        pass
+
 
 
 class NullNode(Node):
@@ -529,8 +635,10 @@ class NullNode(Node):
         super().__init__(Node.TYPE_NULL)
         self.dataset = Dataset()
         self.dataset_in = None
+        self.pixel_size = 100
 
-
+    def __bool__(self):
+        return False
 
 
 class ConnectableAttribute:
@@ -550,8 +658,8 @@ class ConnectableAttribute:
     COLOUR[TYPE_DATASET] = (54 / 255, 47 / 255, 192 / 255, 1.0)
     COLOUR[TYPE_IMAGE] = (255 / 255, 179 / 255, 35 / 255, 1.0)
     COLOUR[TYPE_RECONSTRUCTION] = (243 / 255, 9 / 255, 9 / 255, 1.0)
-    COLOUR[TYPE_COLOUR] = (7 / 255, 202 / 255, 16 / 255, 1.0)
-    COLOUR[TYPE_MULTI] = (54 / 255, 47 / 255, 192 / 255, 1.0)
+    COLOUR[TYPE_COLOUR] = (4 / 255, 4 / 255, 4 / 255, 1.0)
+    COLOUR[TYPE_MULTI] = (230 / 255, 230 / 255, 240 / 255, 1.0)
 
     COLOUR_BORDER = (0.0, 0.0, 0.0, 1.0)
 
@@ -566,7 +674,7 @@ class ConnectableAttribute:
     CONNECTOR_HORIZONTAL_OFFSET = -8
     CONNECTOR_VERTICAL_OFFSET = 7
     CONNECTOR_RADIUS = 5
-    CONNECTOR_WINDOW_PADDING = 9 # CONNECTOR_RADIUS + CONNECTOR_WINDOW_PADDING must be odd for ideal alignment of connector dot & drag/drop imgui window
+    CONNECTOR_WINDOW_PADDING = 9
     CONNECTOR_SEGMENTS = 16
     CONNECTION_LINE_COLOUR = (0.0, 0.0, 0.0, 1.0)
     CONNECTION_LINE_THICKNESS = 2
@@ -581,8 +689,10 @@ class ConnectableAttribute:
         self.draw_y = 0
         self.draw_x = 0
         self.connector_position = [0, 0]
+        ## flags
         self.newly_connected = False
         self.any_change = False
+        self.newly_disconnected = False
         self.parent = parent
         self.multi = self.type == ConnectableAttribute.TYPE_MULTI
         self.allowed_partner_types = [self.type]
@@ -599,13 +709,13 @@ class ConnectableAttribute:
     def __str__(self):
         return f"Attribute type {self.type} with id {self.id}"
 
-    def render_start(self):
-        self.newly_connected = False
+    def clear_flags(self):
         self.any_change = False
+
+    def render_start(self):
         imgui.push_id(f"Attribute{self.id}")
 
     def render_end(self, show_label=True):
-        any_change = False
         text_width = imgui.get_font_size() * len(self.title) / 2
         window_width = imgui.get_window_content_region_width()
         self.draw_x = imgui.get_cursor_screen_pos()[0] + (ConnectableAttribute.CONNECTOR_HORIZONTAL_OFFSET if self.direction else window_width - 1 - ConnectableAttribute.CONNECTOR_HORIZONTAL_OFFSET)
@@ -627,7 +737,10 @@ class ConnectableAttribute:
                                     ConnectableAttribute.CONNECTOR_RADIUS + 1, imgui.get_color_u32_rgba(0.0, 0.0, 0.0, 1.0),
                                     ConnectableAttribute.CONNECTOR_SEGMENTS)
         draw_list.add_circle_filled(self.connector_position[0], self.connector_position[1], ConnectableAttribute.CONNECTOR_RADIUS, imgui.get_color_u32_rgba(*self.colour), ConnectableAttribute.CONNECTOR_SEGMENTS)
-        any_change = any_change | self.connector_logic()
+
+        ## Connector user input
+        self.connector_logic()
+
         if self.direction == ConnectableAttribute.OUTPUT:
             for partner in self.linked_attributes:
                 draw_list = imgui.get_background_draw_list()
@@ -636,9 +749,8 @@ class ConnectableAttribute:
             if NodeEditor.active_connector_hover_pos is not None:
                 draw_list = imgui.get_background_draw_list()
                 draw_list.add_line(self.draw_x, self.draw_y, *NodeEditor.active_connector_hover_pos, imgui.get_color_u32_rgba(*ConnectableAttribute.CONNECTION_LINE_COLOUR), ConnectableAttribute.CONNECTION_LINE_THICKNESS)
-        if any_change:
+        if self.any_change:
             self.parent.any_change = True
-        return any_change
 
     def get_incoming_node(self):
         if self.direction == ConnectableAttribute.INPUT:
@@ -646,8 +758,13 @@ class ConnectableAttribute:
                 return self.linked_attributes[0].parent
         return NullNode()
 
+    def get_incoming_attribute_type(self):
+        if self.direction == ConnectableAttribute.INPUT:
+            if len(self.linked_attributes) == 1:
+                return self.linked_attributes[0].type
+        return None
+
     def connector_logic(self):
-        any_change = False
         ## 'render' the invisible node drag/drop sources]
         connector_window_size = (ConnectableAttribute.CONNECTOR_RADIUS + ConnectableAttribute.CONNECTOR_WINDOW_PADDING) * 2 + 1
         imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, 0.0, 0.0, 0.0, 0.0)
@@ -664,7 +781,7 @@ class ConnectableAttribute:
             if NodeEditor.connector_delete_requested:
                 NodeEditor.connector_delete_requested = False
                 self.disconnect_all()
-                any_change = True
+                self.any_change = True
 
         ## Allow draw source if currently no node being edited
         if NodeEditor.active_connector is self or NodeEditor.active_connector is None:
@@ -673,47 +790,42 @@ class ConnectableAttribute:
                 NodeEditor.set_active_node(self.parent)
                 imgui.set_drag_drop_payload('connector', b'1')  # Arbitrary payload value - manually keeping track of the payload elsewhere
                 imgui.end_drag_drop_source()
-        elif not NodeEditor.active_connector is None:
+        elif NodeEditor.active_connector is not None:
             imgui.begin_child(f"Attribute{self.id}drop_target")
             imgui.end_child()
             if imgui.begin_drag_drop_target():
                 if NodeEditor.connector_released:
-                    any_change = any_change | self.connect_attributes(NodeEditor.active_connector)
+                    self.connect_attributes(NodeEditor.active_connector)
                     NodeEditor.connector_released = False
                 imgui.end_drag_drop_target()
         imgui.end()
         imgui.pop_style_color(4)
-        return any_change
 
     def connect_attributes(self, partner):
-        any_change = False
         io_match = self.direction != partner.direction
         type_match = self.type == partner.type or partner.type in self.allowed_partner_types or self.type in partner.allowed_partner_types
-        novel_match = not partner in self.linked_attributes
+        novel_match = partner not in self.linked_attributes
         parent_match = self.parent != partner.parent
         if io_match and type_match and novel_match and parent_match:
-            any_change = True
-            self.parent.any_change = self.parent.any_change | True
-            if self.direction == ConnectableAttribute.INPUT:
-                self.disconnect_all()
-            else:
-                partner.disconnect_all()
+            self.any_change = True
+            self.parent.any_change = True
+            partner.any_change = True
+            partner.parent.any_change = True
             self.linked_attributes.append(partner)
             partner.linked_attributes.append(self)
             self.on_connect()
             partner.on_connect()
         NodeEditor.active_connector = None
-        return any_change
 
     def disconnect_all(self):
         for partner in self.linked_attributes:
             partner.linked_attributes.remove(self)
             partner.notify_disconnect()
+        self.notify_disconnect()
         self.linked_attributes = list()
         self.parent.any_change = True
         self.colour = ConnectableAttribute.COLOUR[self.type]
         self.title = ConnectableAttribute.TITLE[self.type]
-
 
     def is_connected(self):
         return len(self.linked_attributes) > 1
@@ -723,7 +835,14 @@ class ConnectableAttribute:
         NodeEditor.connectable_attributes.remove(self)
 
     def on_connect(self):
+        ## when on connect is called, a new ConnectabelAttribute has just been added to the linked_partners list
+        if self.direction == ConnectableAttribute.INPUT:
+            for idx in range(len(self.linked_attributes) - 1):
+                self.linked_attributes[idx].notify_disconnect()
+                self.linked_attributes[idx].linked_attributes.remove(self)
+                self.linked_attributes.remove(self.linked_attributes[idx])
         self.newly_connected = True
+        print("CONNECTION!!")
         self.parent.any_change = True
         if self.type == ConnectableAttribute.TYPE_MULTI:
             self.colour = self.linked_attributes[-1].colour
@@ -732,8 +851,22 @@ class ConnectableAttribute:
 
     def notify_disconnect(self):
         self.any_change = True
+        self.newly_disconnected = True
+        print("CONNECTION BROKEN!!")
         self.colour = ConnectableAttribute.COLOUR[self.type]
         self.title = ConnectableAttribute.TITLE[self.type]
+
+    def check_connect_event(self):
+        if self.newly_connected:
+            self.newly_connected = False
+            return True
+        return False
+
+    def check_disconnect_event(self):
+        if self.newly_disconnected:
+            self.newly_disconnected = False
+            return True
+        return False
 
 
 class LoadDataNode(Node):
@@ -802,12 +935,13 @@ class LoadDataNode(Node):
                                          y + Node.PROGRESS_BAR_HEIGHT,
                                          imgui.get_color_u32_rgba(*Node.colour_whiten(Node.COLOUR[self.type])))
                 drawlist.add_rect_filled(Node.PROGRESS_BAR_PADDING + origin[0], y, Node.PROGRESS_BAR_PADDING + origin[0] + width * min([(self.to_load_idx / self.n_to_load), 1.0]), y + Node.PROGRESS_BAR_HEIGHT, imgui.get_color_u32_rgba(*Node.COLOUR[self.type]))
-
+                imgui.spacing()
+                imgui.spacing()
+                imgui.spacing()
             super().render_end()
 
     def on_select_file(self):
-        self.dataset = Dataset(self.path)
-        self.dataset.pixel_size = self.pixel_size
+        self.dataset = Dataset(self.path, self.pixel_size)
         self.n_to_load = self.dataset.n_frames
         self.done_loading = False
         self.to_load_idx = 0
@@ -816,7 +950,7 @@ class LoadDataNode(Node):
 
     def get_image_impl(self, idx):
         if self.dataset.n_frames > 0:
-            retimg = self.dataset.get_indexed_image(idx)
+            retimg = copy.deepcopy(self.dataset.get_indexed_image(idx))
             retimg.clean()
             return retimg
         else:
@@ -867,8 +1001,10 @@ class RegisterNode(Node):
             imgui.spacing()
             _c, self.use_roi = imgui.checkbox("use ROI", self.use_roi)
             self.any_change = self.any_change or _c
+            imgui.push_item_width(140)
             _method_changed, self.register_method = imgui.combo("Method", self.register_method, RegisterNode.METHODS)
             _reference_changed, self.reference_method = imgui.combo("Reference", self.reference_method, RegisterNode.REFERENCES)
+            imgui.pop_item_width()
             _frame_changed = False
             if self.reference_method == 1:
                 imgui.push_item_width(50)
@@ -880,26 +1016,27 @@ class RegisterNode(Node):
                 self.image_in.render_end()
 
             self.any_change = self.any_change or _method_changed or _reference_changed or _frame_changed
-
+            if self.any_change:
+                self.reference_image = None
             super().render_end()
 
     def get_image_impl(self, idx=None):
         data_source = self.dataset_in.get_incoming_node()
         if data_source:
             input_img = data_source.get_image(idx)
-            reference_img = None
-            # Get reference frame according to specified pairing method
-            if self.reference_method == 2:
-                reference_img = data_source.get_image(idx - 1)
-            elif self.reference_method == 0:
-                reference_img = self.image_in.get_incoming_node().get_image(idx=None)
-            elif self.reference_method == 1:
-                reference_img = data_source.get_image(self.frame)
+            if self.reference_image is None:
+                # Get reference frame according to specified pairing method
+                if self.reference_method == 2:
+                    self.reference_image = data_source.get_image(idx - 1)
+                elif self.reference_method == 0:
+                    self.reference_image = self.image_in.get_incoming_node().get_image(idx=None)
+                elif self.reference_method == 1:
+                    self.reference_image = data_source.get_image(self.frame)
 
             # Perform registration according to specified registration method
             if self.register_method == 0:
-                if reference_img is not None:
-                    template = reference_img.load()
+                if self.reference_image is not None:
+                    template = self.reference_image.load()
                     image = input_img.load()
                     if self.use_roi:
                         template = template[self.roi[1]:self.roi[3], self.roi[0]:self.roi[2]]
@@ -909,6 +1046,8 @@ class RegisterNode(Node):
             else:
                 NodeEditor.set_error(Exception(), "RegisterNode: reference method not available (may not be implemented yet).")
 
+            if self.reference_method == 2:
+                self.reference_image = None
             input_img.bake_transform()
             return input_img
 
@@ -930,6 +1069,7 @@ class GetImageNode(Node):
         self.frame = 0
         self.image = None
         self.load_data_source = None
+        self.pixel_size = 1
 
     def render(self):
         if super().render_start():
@@ -965,9 +1105,12 @@ class GetImageNode(Node):
         if datasource:
             try:
                 if self.mode == 0:
-                    self.image = datasource.get_image(self.frame).load()
+                    image_in = datasource.get_image(self.frame)
+                    self.image = image_in.load()
+                    self.pixel_size = image_in.pixel_size
                 elif self.mode == 1:
                     load_data_node = Node.get_source_load_data_node(self)
+                    self.pixel_size = load_data_node.dataset.pixel_size
                     load_data_node.load_on_the_fly = False
                     self.load_data_source = load_data_node
             except Exception as e:
@@ -1003,9 +1146,10 @@ class GetImageNode(Node):
         if self.any_change:
             self.configure_settings()
         if self.image is not None:
-            virtual_frame = Frame("virtual_frame")
-            virtual_frame.data = self.image
-            return virtual_frame
+            out_frame = Frame("virtual_frame")
+            out_frame.data = self.image
+            out_frame.pixel_size = self.pixel_size
+            return out_frame
 
 
 class ImageCalculatorNode(Node):
@@ -1148,18 +1292,17 @@ class SpatialFilterNode(Node):
         data_source = self.dataset_in.get_incoming_node()
         if data_source:
             input_image = data_source.get_image(idx)
-            output_image = Frame("virtual_path")
             if self.filter == 0:
                 chosen_wavelet = SpatialFilterNode.WAVELETS[SpatialFilterNode.WAVELET_NAMES[self.wavelet]]
                 if chosen_wavelet is None:
                     chosen_wavelet = self.custom_wavelet
                 in_pxd = input_image.load()
-                output_image.data= pywt.swt2(in_pxd, wavelet=chosen_wavelet, level=self.level, norm=True, trim_approx=True)[0]
+                input_image.data= pywt.swt2(in_pxd, wavelet=chosen_wavelet, level=self.level, norm=True, trim_approx=True)[0]
             elif self.filter == 1:
-                output_image.data = gaussian_filter(input_image.load(), self.sigma)
+                input_image.data = gaussian_filter(input_image.load(), self.sigma)
             elif self.filter == 2:
-                output_image.data = medfilt(input_image.load(), self.kernel)
-            return output_image
+                input_image.data = medfilt(input_image.load(), self.kernel)
+            return input_image
         else:
             return None
 
@@ -1247,9 +1390,9 @@ class TemporalFilterNode(Node):
             elif self.negative_handling == 2:
                 pass
 
-            outframe = Frame("virtual_frame")
-            outframe.data = pxd
-            return outframe
+            out_image = data_source.get_image(idx)
+            out_image.data = pxd
+            return out_image
 
 
 class FrameShiftNode(Node):
@@ -1312,6 +1455,7 @@ class FrameSelectionNode(Node):
 
 class ReconstructionRendererNode(Node):
     COLOUR_MODE = ["RGB, LUT"]
+
     def __init__(self):
         super().__init__(Node.TYPE_RECONSTRUCTOR)  # Was: super(LoadDataNode, self).__init__()
         self.size = [250, 200]
@@ -1321,126 +1465,265 @@ class ReconstructionRendererNode(Node):
         self.connectable_attributes.append(self.reconstruction_in)
         self.connectable_attributes.append(self.image_out)
 
+        self.magnification = 10
+        self.default_sigma = 30.0
+        self.fix_sigma = False
+
         self.reconstructor = Reconstructor()
         self.latest_image = None
-        self.path = ""
-        self.particledata = None
-        self.pixel_size_in = 64
-        self.magnification = 10
+
+        self.original_pixel_size = 100.0
+        self.reconstruction_pixel_size = 10.0
+        self.reconstruction_image_size = [1, 1]
+        self.paint_particles = False
+        self.paint_currently_applied = False
+
+        paint_in = ConnectableAttribute(ConnectableAttribute.TYPE_COLOUR, ConnectableAttribute.INPUT, parent=self)
+        self.connectable_attributes.append(paint_in)
+        self.particle_painters = [paint_in]
 
     def render(self):
         if super().render_start():
-            any_change = False
             self.reconstruction_in.render_start()
             self.image_out.render_start()
-            any_change = self.reconstruction_in.render_end() | any_change
-            any_change = self.image_out.render_end()| any_change
+            self.reconstruction_in.render_end()
+            self.image_out.render_end()
 
             imgui.spacing()
             imgui.separator()
             imgui.spacing()
 
+            imgui.push_item_width(100)
+            _mag_changed, self.magnification = imgui.input_int("Magnification", self.magnification, 1, 1)
+            self.magnification = max([self.magnification, 1])
+            imgui.text(f"Final pixel size: {self.original_pixel_size / self.magnification:.1f}")
+            imgui.text(f"Final image size: {self.reconstruction_image_size[0]} x {self.reconstruction_image_size[1]} px")
 
-            if not self.reconstruction_in.is_connected():
-                imgui.text("Load reconstruction .csv")
-                imgui.push_item_width(150)
-                _field_changed, self.path = imgui.input_text("##incsv", self.path, 256)
-                any_change = any_change | _field_changed
+            _c, self.fix_sigma = imgui.checkbox("Force uncertainty", self.fix_sigma)
+
+
+            if self.fix_sigma:
+                imgui.same_line(spacing=10)
+                imgui.push_item_width(50)
+                _, self.default_sigma = imgui.input_float(" nm", self.default_sigma, 0, 0, format="%.1f")
                 imgui.pop_item_width()
-                imgui.same_line()
-                if imgui.button("...", 26, 19):
-                    selected_file = filedialog.askopenfilename()
-                    if selected_file is not None:
-                        if get_filetype(selected_file) == ".csv":
-                            self.path = selected_file
-                            self.reconstructor.set_particle_data(self.path)
-                            any_change = True
-                        else:
-                            NodeEditor.set_error(Exception(), "Reconstruction data file must be of type '.csv'")
-            imgui.push_item_width(70)
-            _pixel_in_changed, self.pixel_size_in = imgui.input_float("Raw pixel size (nm)", self.pixel_size_in, 0, 0, format = "%.1f")
-            _mag_changed, self.magnification = imgui.input_float("Magnification", self.magnification, 0, 0, format = "%.1f")
-            if _pixel_in_changed or _mag_changed:
-                self.play = False
-            imgui.pop_item_width()
-            if _mag_changed or _pixel_in_changed:
-                self.reconstructor.set_pixel_size(self.pixel_size_in / self.magnification)
+
+            # Colourize options
+            _c, self.paint_particles = imgui.checkbox("Paint particles", self.paint_particles)
+            if _c and not self.paint_particles:
+                for i in range(len(self.particle_painters) - 1):
+                    self.particle_painters[i].delete()
+
+            imgui.spacing()
+            if self.paint_particles:
+                for connector in self.particle_painters:
+                    # add / remove slots
+                    if connector.check_connect_event():
+                        new_slot = ConnectableAttribute(ConnectableAttribute.TYPE_COLOUR, ConnectableAttribute.INPUT, parent=self)
+                        self.particle_painters.append(new_slot)
+                        self.connectable_attributes.append(new_slot)
+                        print("New slot")
+                    elif connector.check_disconnect_event():
+                        self.particle_painters.remove(connector)
+                        self.connectable_attributes.remove(connector)
+                        print("Removing slot")
+
+                    # render blobs
+                    imgui.new_line()
+                    connector.render_start()
+                    connector.render_end()
+
+            if imgui.button("Render", 50, 20):
+                self.build_reconstruction()
+
+
+            if _mag_changed:
+                self.original_pixel_size = Node.get_source_load_data_node(self).dataset.pixel_size
+                roi = self.get_particle_data().reconstruction_roi
+                img_width = int((roi[2] - roi[0]) * self.magnification)
+                img_height = int((roi[3] - roi[1]) * self.magnification)
+                self.reconstruction_image_size = (img_width, img_height)
 
             super().render_end()
-            any_change = any_change | self.play_button()
-            if any_change and self.play:
-                try:
-                    self.latest_image = self.reconstructor.render()
+
+    def update_pixel_size(self):
+        image_width = int((self.get_particle_data().reconstruction_roi[2] - self.get_particle_data().reconstruction_roi[0]) * self.magnification)
+        image_height = int((self.get_particle_data().reconstruction_roi[3] - self.get_particle_data().reconstruction_roi[1]) * self.magnification)
+        self.reconstruction_image_size = (image_width, image_height)
+        new_pixel_size = self.original_pixel_size / self.magnification
+        if new_pixel_size != self.reconstruction_pixel_size:
+            self.reconstruction_pixel_size = new_pixel_size
+            self.reconstructor.set_pixel_size(self.reconstruction_pixel_size)
+
+    def build_reconstruction(self):
+        # TODO:  When showing the result in imageviewer, the quad VA size must be resized by a factor magnification**-1 s.t. it matches wdiefield data.
+        try:
+            self.original_pixel_size = Node.get_source_load_data_node(self).dataset.pixel_size
+            self.update_pixel_size()
+            self.reconstructor.set_pixel_size(self.original_pixel_size / self.magnification)
+            self.reconstructor.set_image_size(self.reconstruction_image_size)
+            datasource = self.reconstruction_in.get_incoming_node()
+            if datasource:
+                particle_data = datasource.get_particle_data()
+                self.reconstructor.set_particle_data(particle_data)
+                self.reconstructor.set_camera_origin([-particle_data.reconstruction_roi[0] * self.magnification, -particle_data.reconstruction_roi[1] * self.magnification])
+
+                ## Apply colours
+                if self.paint_particles:
+                    for particle in particle_data.particles:
+                        particle.colour = np.asarray([0.0, 0.0, 0.0])
+                    for i in range(0, len(self.particle_painters) - 1):
+                        self.particle_painters[i].get_incoming_node().apply_paint_to_particledata(particle_data)
+                    self.paint_currently_applied = True
+                else:
+                    if self.paint_currently_applied:
+                        for particle in particle_data.particles:
+                            particle.colour = np.asarray([1.0, 1.0, 1.0])
+                    self.paint_currently_applied = False
+
+                if self.reconstructor.particle_data.empty:
+                    return None
+                else:
+                    self.latest_image = self.reconstructor.render(fixed_uncertainty=(self.default_sigma if self.fix_sigma else None))
                     self.any_change = True
-                except Exception as e:
-                    NodeEditor.set_error(e, str(e))
+            else:
+                self.latest_image = None
+        except Exception as e:
+            NodeEditor.set_error(e, "Error building reconstruction.\n"+str(e))
 
     def get_image_impl(self, idx=None):
         if self.latest_image is not None:
-            img_wrapper = Frame("virtual_path")
+            img_wrapper = Frame("super-resolution reconstruction virtual frame")
             img_wrapper.data = self.latest_image
+            img_wrapper.pixel_size = self.reconstruction_pixel_size
             return img_wrapper
         else:
             return None
 
+    def get_particle_data_impl(self):
+        datasource = self.reconstruction_in.get_incoming_node()
+        if datasource:
+            return datasource.get_particle_data()
+        else:
+            return ParticleData()
+
 
 class ParticlePainterNode(Node):
-    PARAMETERS = ["Frame", "x Position", "y Position", "Sigma", "Offset", "Uncertainty", "Background std."]
-    PAINTS = ["Red", "Green", "Blue", "Yellow", "Cyan", "Magenta"]
-    PAINT_COLOURS = [
-        (1.0, 0.0, 0.0, 1.0),
-        (0.0, 1.0, 0.0, 1.0),
-        (0.0, 0.0, 1.0, 1.0),
-        (1.0, 1.0, 0.0, 1.0),
-        (0.0, 1.0, 1.0, 1.0),
-        (1.0, 0.0, 1.0, 1.0)
-    ]
 
     def __init__(self):
         super().__init__(Node.TYPE_PARTICLE_PAINTER)  # Was: super(LoadDataNode, self).__init__()
         self.size = [270, 240]
 
         self.reconstruction_in = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.INPUT, parent = self)
-        self.reconstruction_out = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.OUTPUT, parent = self)
+        self.colour_out = ConnectableAttribute(ConnectableAttribute.TYPE_COLOUR, ConnectableAttribute.OUTPUT, parent = self)
 
-        self.connectable_attributes.append(self.reconstruction_in)
-        self.connectable_attributes.append(self.reconstruction_out)
+        self.connectable_attributes.append(self.colour_out)
 
         self.parameter = 0
-        self.paint = 0
+        self.available_parameters = ["Fixed colour"]
+        self.colour_min = (0.0, 0.0, 0.0)
+        self.colour_max = (1.0, 1.0, 1.0)
         self.histogram_values = np.asarray([0, 0]).astype('float32')
         self.histogram_bins = np.asarray([0, 0]).astype('float32')
         self.min = 0
         self.max = 0
+        self.paint_dry = True # flag to notify whether settings were changed that would result in different particle colours.
 
     def render(self):
         if super().render_start():
             self.reconstruction_in.render_start()
-            self.reconstruction_out.render_start()
+            self.colour_out.render_start()
             self.reconstruction_in.render_end()
-            self.reconstruction_out.render_end()
+            self.colour_out.render_end()
+
+            if self.reconstruction_in.check_connect_event() or self.reconstruction_in.check_disconnect_event():
+                self.init_histogram_values()
 
             imgui.spacing()
             imgui.separator()
             imgui.spacing()
 
-            _, self.parameter = imgui.combo("Parameter", self.parameter, ParticlePainterNode.PARAMETERS)
-            _, self.paint = imgui.combo("Paint", self.paint, ParticlePainterNode.PAINTS)
-            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *ParticlePainterNode.PAINT_COLOURS[self.paint])
-            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *ParticlePainterNode.PAINT_COLOURS[self.paint])
-            imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *ParticlePainterNode.PAINT_COLOURS[self.paint])
-            imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM_HOVERED, *ParticlePainterNode.PAINT_COLOURS[self.paint])
-            content_width = imgui.get_content_region_available_width()
-            imgui.plot_histogram("##hist", self.histogram_values, graph_size = (content_width, 40))
-            imgui.text("{:.2f}".format(self.histogram_bins[0]))
-            imgui.same_line(position = content_width - imgui.get_font_size() * len(str(self.histogram_bins[-1])) / 2)
-            imgui.text("{:.2f}".format(self.histogram_bins[-1]))
-            imgui.push_item_width(content_width)
-            _, self.min = imgui.slider_float("##min", self.min, self.histogram_bins[0], self.histogram_bins[-1], format = "min: %1.2f")
-            _, self.max = imgui.slider_float("##max", self.max, self.histogram_bins[0], self.histogram_bins[-1], format="max: %1.2f")
-            imgui.pop_style_color(4)
+            imgui.push_item_width(120)
+            _c, self.parameter = imgui.combo("Parameter", self.parameter, self.available_parameters)
+            self.paint_dry = self.paint_dry or _c
+            if _c:
+                self.get_histogram_values()
+                self.min = self.histogram_bins[0]
+                self.max = self.histogram_bins[-1]
             imgui.pop_item_width()
+
+            if self.parameter == 0:
+                imgui.same_line()
+                _c, self.colour_min = imgui.color_edit3("##Colour_min", *self.colour_max, imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_PICKER_HUE_WHEEL)
+                self.colour_max = self.colour_max
+                self.paint_dry = self.paint_dry or _c
+            else:
+                _c, self.colour_min = imgui.color_edit3("##Colour_min", *self.colour_min, imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_PICKER_HUE_WHEEL)
+                self.paint_dry = self.paint_dry or _c
+                imgui.same_line(spacing = imgui.get_content_region_available_width() - 38)
+                _c, self.colour_max = imgui.color_edit3("##Colour_max", *self.colour_max, imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_PICKER_HUE_WHEEL | imgui.COLOR_EDIT_NO_SIDE_PREVIEW)
+                self.paint_dry = self.paint_dry or _c
+
+                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *self.colour_max)
+                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM_HOVERED, *self.colour_max)
+                content_width = imgui.get_content_region_available_width()
+                imgui.plot_histogram("##hist", self.histogram_values, graph_size = (content_width, 40))
+                imgui.text("{:.2f}".format(self.histogram_bins[0]))
+                imgui.same_line(position = content_width - imgui.get_font_size() * len(str(self.histogram_bins[-1])) / 2)
+                imgui.text("{:.2f}".format(self.histogram_bins[-1]))
+                imgui.push_item_width(content_width)
+                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *self.colour_min)
+                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *self.colour_min)
+                _c, self.min = imgui.slider_float("##min", self.min, self.histogram_bins[0], self.histogram_bins[-1], format = "min: %1.2f")
+                self.paint_dry = self.paint_dry or _c
+                imgui.pop_style_color(2)
+                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *self.colour_max)
+                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *self.colour_max)
+                _c, self.max = imgui.slider_float("##max", self.max, self.histogram_bins[0], self.histogram_bins[-1], format="max: %1.2f")
+                self.paint_dry = self.paint_dry or _c
+                imgui.pop_style_color(4)
+                imgui.pop_item_width()
+
             super().render_end()
+
+    def get_histogram_values(self):
+        datasource = self.reconstruction_in.get_incoming_node()
+        if datasource:
+            particledata = datasource.get_particle_data()
+            if self.available_parameters[self.parameter] in list(particledata.histogram_counts.keys()):
+                self.histogram_values = particledata.histogram_counts[self.available_parameters[self.parameter]]
+                self.histogram_bins = particledata.histogram_bins[self.available_parameters[self.parameter]]
+
+    def init_histogram_values(self):
+        datasource = self.reconstruction_in.get_incoming_node()
+
+        print("has data source")
+        if datasource:
+            particledata = datasource.get_particle_data()
+            print(particledata)
+            if particledata.baked:
+                print("particledata is baked")
+                self.available_parameters = ["Fixed colour"] + list(particledata.histogram_counts.keys())
+                self.parameter = min([1, len(self.available_parameters)])
+                self.histogram_values = particledata.histogram_counts[self.available_parameters[self.parameter]]
+                self.histogram_bins = particledata.histogram_bins[self.available_parameters[self.parameter]]
+                print(self.histogram_values)
+
+    def apply_paint_to_particledata(self, particledata):
+        if self.parameter == 0:
+            _colour = np.asarray(self.colour_max)
+            for particle in particledata.particles:
+                particle.colour += _colour
+        else:
+            i = 0
+            c_min = np.asarray(self.colour_min)
+            c_max = np.asarray(self.colour_max)
+            values = particledata.parameter[self.available_parameters[self.parameter]]
+            for particle in particledata.particles:
+                fac = min([max([(values[i] - self.min) / self.max, 0.0]), 1.0])
+                _colour = (1.0 - fac) * c_min + fac * c_max
+                particle.colour += _colour
+                i += 1
 
 
 class ParticleDetectionNode(Node):
@@ -1488,17 +1771,19 @@ class ParticleDetectionNode(Node):
                 _c, self.threshold = imgui.input_int("Threshold level", self.threshold, 0, 0)
                 self.any_change = self.any_change or _c
             elif self.thresholding == 1:
-                _c, self.sigmas = imgui.slider_float("Sigmas", self.sigmas, 0.1, 10.0, format = "%.1f")
+                _c, self.sigmas = imgui.slider_float("Sigmas", self.sigmas, 1.0, 5.0, format = "%.1f")
                 self.any_change = self.any_change or _c
             elif self.thresholding == 2:
                 _c, self.means = imgui.slider_float("Means", self.means, 0.1, 10.0, format = "%.1f")
                 self.any_change = self.any_change or _c
+            _c, self.n_max = imgui.slider_int("Max particles", self.n_max, 100, 2500)
+            self.any_change = self.any_change or _c
+
             imgui.pop_item_width()
-            imgui.push_item_width(70)
-            _c, self.n_max = imgui.input_int("Max. # of particles", self.n_max, 0, 0)
+            imgui.push_item_width(100)
+            _c, self.d_min = imgui.input_int("Minimum distance (px)", self.d_min, 1, 10)
             self.any_change = self.any_change or _c
-            _c, self.d_min = imgui.input_int("Minimum distance (px)", self.d_min, 0, 0)
-            self.any_change = self.any_change or _c
+            self.d_min = max([1, self.d_min])
             imgui.pop_item_width()
             super().render_end()
 
@@ -1515,9 +1800,14 @@ class ParticleDetectionNode(Node):
                 threshold = self.sigmas * np.std(image)
             if self.thresholding == 2:
                 threshold = self.means * np.mean(image)
-            # Perform requested detection method
-            coordinates = peak_local_max(image, threshold_abs = threshold, num_peaks = self.n_max, min_distance = self.d_min) + np.asarray([self.roi[1], self.roi[0]])
 
+            # Perform requested detection method
+            coordinates = peak_local_max(image, threshold_abs = threshold, num_peaks = self.n_max, min_distance = self.d_min)
+            if self.use_roi:
+                coordinates += np.asarray([self.roi[1], self.roi[0]])
+                Node.get_source_load_data_node(self).dataset.reconstruction_roi = self.roi
+            else:
+                Node.get_source_load_data_node(self).dataset.reconstruction_roi = [0, 0, image.shape[0], image.shape[1]] ## Maybe swap shape[0] <-> [1]
             image_obj.maxima = coordinates
             return image_obj
 
@@ -1528,16 +1818,15 @@ class ExportDataNode(Node):
         super().__init__(Node.TYPE_EXPORT_DATA)
         self.size = [210, 220]
 
-        self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT,
-                                               parent=self)
-        self.image_in = ConnectableAttribute(ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.INPUT, parent=self)
+        self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_MULTI, ConnectableAttribute.INPUT, self, [ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.TYPE_RECONSTRUCTION])
+        self.dataset_in.title = "Any"
         self.connectable_attributes.append(self.dataset_in)
-        self.connectable_attributes.append(self.image_in)
 
         self.path = "..."
         self.roi = [0, 0, 0, 0]
         self.include_discarded_frames = False
         self.saving = False
+
         self.export_type = 0  # 0 for dataset, 1 for image.
 
         self.frames_to_load = list()
@@ -1549,21 +1838,22 @@ class ExportDataNode(Node):
         if super().render_start():
             self.dataset_in.render_start()
             self.dataset_in.render_end()
-            imgui.new_line()
-            self.image_in.render_start()
-            self.image_in.render_end()
 
-            if self.image_in.newly_connected:
-                self.export_type = 1
-                self.dataset_in.disconnect_all()
-            elif self.dataset_in.newly_connected:
-                self.image_in.disconnect_all()
+            self.export_type = -1
+            if self.dataset_in.get_incoming_attribute_type() == ConnectableAttribute.TYPE_DATASET:
                 self.export_type = 0
-
+            elif self.dataset_in.get_incoming_attribute_type() == ConnectableAttribute.TYPE_IMAGE:
+                self.export_type = 1
+            elif self.dataset_in.get_incoming_attribute_type() == ConnectableAttribute.TYPE_RECONSTRUCTION:
+                self.export_type = 2
+            else:
+                self.dataset_in.title = "Any"
             imgui.spacing()
             imgui.separator()
             imgui.spacing()
-            _, self.use_roi = imgui.checkbox("use ROI", self.use_roi)
+
+            if self.export_type in [0, 1]:
+                _, self.use_roi = imgui.checkbox("use ROI", self.use_roi)
             imgui.text("Output path")
             imgui.push_item_width(150)
             _, self.path = imgui.input_text("##intxt", self.path, 256, imgui.INPUT_TEXT_ALWAYS_OVERWRITE)
@@ -1612,13 +1902,12 @@ class ExportDataNode(Node):
     def get_img_and_save(self, idx):
         img_pxd = self.get_image_impl(idx)
         if self.use_roi:
-            img_pxd = img_pxd[self.roi[1]:self.roi[3],self.roi[0]:self.roi[2]]
+            img_pxd = img_pxd[self.roi[1]:self.roi[3], self.roi[0]:self.roi[2]]
         Image.fromarray(img_pxd).save(self.path+"/0"+str(idx)+".tif")
 
     def init_save(self):
-        if self.export_type == 0:
+        if self.export_type == 0:  # Save stack
             self.saving = True
-
             if self.include_discarded_frames:
                 n_active_frames = Node.get_source_load_data_node(self).dataset.n_frames
                 self.frames_to_load = list(range(0, n_active_frames))
@@ -1630,19 +1919,23 @@ class ExportDataNode(Node):
             self.n_frames_saved = 0
             if not os.path.isdir(self.path):
                 os.mkdir(self.path)
-
             self.n_jobs = cfg.n_cpus
             if cfg.n_cpus == -1:
                 self.n_jobs = cpu_count()
-
-
-
-        elif self.export_type == 1:
-            img_pxd = self.get_image_impl(None).load()
+        elif self.export_type == 1:  # Save image
+            img = self.dataset_in.get_incoming_node().get_image(idx=None)
+            img_pxd = img.load()
+            if self.use_roi:
+                img_pxd = img_pxd[self.roi[1]:self.roi[3], self.roi[0]:self.roi[2]]
             try:
-                Image.fromarray(img_pxd).save(self.path+".tif")
+                util.save_tiff(img_pxd, self.path+".tif", pixel_size_nm=img.pixel_size)
             except Exception as e:
                 NodeEditor.set_error(e, "Error saving image: "+str(e))
+        elif self.export_type == 2: # Save particle data
+            try:
+                self.dataset_in.get_incoming_node().get_particle_data().save_as_csv(self.path+".csv")
+            except Exception as e:
+                NodeEditor.set_error(e, "Error saving .csv\n"+str(e))
 
     def on_update(self):
         if self.saving:
@@ -1664,7 +1957,6 @@ class ExportDataNode(Node):
         data_source = self.dataset_in.get_incoming_node()
         if data_source:
             incoming_img = data_source.get_image(idx)
-            print(incoming_img)
             img_pxd = incoming_img.load()
             incoming_img.clean()
             return img_pxd
@@ -1700,15 +1992,19 @@ class BinImageNode(Node):
 
 
             _c, self.mode = imgui.combo("Method", self.mode, BinImageNode.MODES)
+            self.any_change = _c or self.any_change
             imgui.push_item_width(60)
             _c, self.factor = imgui.input_int("Bin factor", self.factor, 0, 0)
+            self.any_change = _c or self.any_change
+            self.factor = max([self.factor, 1])
             imgui.pop_item_width()
             super().render_end()
 
     def get_image_impl(self, idx=None):
         data_source = self.dataset_in.get_incoming_node()
         if data_source:
-            pxd = data_source.get_image(idx).load()
+            image_in = data_source.get_image(idx)
+            pxd = image_in.load()
             width, height = pxd.shape
             pxd = pxd[:self.factor * (width // self.factor), :self.factor * (height // self.factor)]
             if self.mode == 0:
@@ -1721,9 +2017,8 @@ class BinImageNode(Node):
                 pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).max(2).max(0)
             elif self.mode == 4:
                 pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).sum(2).sum(0)
-            virtual_frame = Frame("_")
-            virtual_frame.data = pxd
-            return virtual_frame
+            image_in.data = pxd
+            return image_in
 
 
 class ParticleFittingNode(Node):
@@ -1736,11 +2031,11 @@ class ParticleFittingNode(Node):
 
         # Set up connectable attributes
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self)
-        self.reconstruction_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=self)
+        self.reconstruction_out = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.OUTPUT, parent=self)
         self.connectable_attributes.append(self.dataset_in)
         self.connectable_attributes.append(self.reconstruction_out)
 
-        self.size = [300, 260]
+        self.size = [300, 270]
         self.range_option = 1
         self.range_min = 0
         self.range_max = 1
@@ -1751,7 +2046,10 @@ class ParticleFittingNode(Node):
         self.n_to_fit = 1
         self.n_fitted = 0
         self.frames_to_fit = list()
-        self.particles = list()
+        self.particle_data = ParticleData()
+
+        self.time_start = 0
+        self.time_stop = 0
 
     def render(self):
         if super().render_start():
@@ -1771,7 +2069,6 @@ class ParticleFittingNode(Node):
                 _c, (self.range_min, self.range_max) = imgui.input_int2('(start, stop) index', self.range_min, self.range_max)
                 self.any_change = _c or self.any_change
                 imgui.pop_item_width()
-            imgui.spacing()
             _c, self.estimator = imgui.combo("Estimator", self.estimator, ParticleFittingNode.ESTIMATORS)
             self.any_change = _c or self.any_change
             imgui.push_item_width(80)
@@ -1784,22 +2081,29 @@ class ParticleFittingNode(Node):
 
             imgui.spacing()
             if self.fitting:
-                width = imgui.get_content_region_available_width()
-                origin = imgui.get_window_position()
-                y = imgui.get_cursor_screen_pos()[1]
-                drawlist = imgui.get_window_draw_list()
-                drawlist.add_rect_filled(Node.PROGRESS_BAR_PADDING + origin[0], y, Node.PROGRESS_BAR_PADDING + origin[0] + width, y + Node.PROGRESS_BAR_HEIGHT, imgui.get_color_u32_rgba(*Node.colour_whiten(Node.COLOUR[self.type])))
-                drawlist.add_rect_filled(Node.PROGRESS_BAR_PADDING + origin[0], y, Node.PROGRESS_BAR_PADDING + origin[0] + width * (self.n_fitted / self.n_to_fit), y + Node.PROGRESS_BAR_HEIGHT, imgui.get_color_u32_rgba(*Node.COLOUR[self.type]))
-
-            if imgui.button("Fit", 50, 30):
+                self.progress_bar(self.n_fitted / self.n_to_fit)
+                imgui.spacing()
+                imgui.spacing()
+                imgui.spacing()
+                imgui.spacing()
+            if self.play_button():
                 self.init_fit()
 
+
+            if not self.particle_data.empty:
+                imgui.text("Reconstruction info")
+                imgui.text(f"particles: {self.particle_data.n_particles}")
+                imgui.text(f"x range: {self.particle_data.x_min / 1000.0:.1f} to {self.particle_data.x_max / 1000.0:.1f} um")
+                imgui.text(f"y range: {self.particle_data.y_min / 1000.0:.1f} to {self.particle_data.y_max / 1000.0:.1f} um")
 
             super().render_end()
 
     def init_fit(self):
         try:
-            self.particles = list()
+            self.time_start = time.time()
+            dataset_source = Node.get_source_load_data_node(self)
+            self.particle_data = ParticleData(dataset_source.pixel_size)
+            self.particle_data.set_reconstruction_roi(dataset_source.dataset.reconstruction_roi)
             self.fitting = True
             self.frames_to_fit = list()
             if self.range_option == 0:
@@ -1814,25 +2118,31 @@ class ParticleFittingNode(Node):
             self.n_to_fit = len(self.frames_to_fit)
             self.n_fitted = 0
         except Exception as e:
+            self.fitting = False
             NodeEditor.set_error(e, "Error in init_fit: "+str(e))
-
 
     def on_update(self):
         if self.fitting:
             if len(self.frames_to_fit) == 0:
                 self.fitting = False
-                print(self.particles)
-                # TODO: make this node output self.particles, i.e. a reconstruction, in a format suitable for ReconstructionRendererNode
+                print(f"Time to process: {time.time() - self.time_start}")
+                self.particle_data.bake()
             else:
-                fitted_frame = self.get_image_impl(self.frames_to_fit[-1])
-                particles = fitted_frame.particles
-                self.frames_to_fit.pop()
-                self.particles += particles
+                fitted_frame = self.get_image(self.frames_to_fit[-1])
+                self.n_fitted += 1
+                if fitted_frame is not None:
+                    particles = fitted_frame.particles
+                    self.frames_to_fit.pop()
+                    if not fitted_frame.discard:
+                        self.particle_data += particles
 
     def get_image_impl(self, idx=None):
         data_source = self.dataset_in.get_incoming_node()
         if data_source:
             frame = data_source.get_image(idx)
+            if frame.discard:
+                frame.particles = None
+                return frame
             particles = list()
             if self.estimator in [0, 1]:
                 particles = pfit.frame_to_particles(frame, self.initial_sigma, self.estimator, self.crop_radius)
@@ -1847,6 +2157,8 @@ class ParticleFittingNode(Node):
             frame.particles = particles
             return frame
 
+    def get_particle_data_impl(self):
+        return self.particle_data
 
 
 

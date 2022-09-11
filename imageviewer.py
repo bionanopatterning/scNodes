@@ -10,13 +10,14 @@ from roi import *
 
 class ImageViewer:
     NO_IMAGE_NOTIFICATION_SIZE = (300, 20)
-    MARKER_SIZE = 6.0
+    MARKER_SIZE = 4.5
     MARKER_COLOUR = (230 / 255, 174 / 255, 13 / 255, 1.0)
 
     def __init__(self, window, shared_font_atlas=None):
         # glfw and imgui
         self.window = window
         self.window.make_current()
+
         if shared_font_atlas is not None:
             self.imgui_context = imgui.create_context(shared_font_atlas)
         else:
@@ -24,6 +25,7 @@ class ImageViewer:
             self.imgui_context = imgui.create_context()
         self.imgui_implementation = GlfwRenderer(self.window.glfw_window)
         self.window.set_callbacks()
+        self.window.set_window_callbacks()
         self.window.clear_color = cfg.iv_clear_clr
         # Rendering related objects and vars
         self.shader = Shader("shaders/textured_shader.glsl")
@@ -53,7 +55,7 @@ class ImageViewer:
         self.image_size_changed = False
         self.image_requires_update = False
         self.previous_active_node = None
-
+        self.new_image_requested = False
         # Image data
         self.original_image = None
         self.image = None
@@ -75,9 +77,9 @@ class ImageViewer:
 
         # GUI behaviour
         self.show_frame_select_window = True
-
         #
         self.current_dataset = Dataset()
+        self.frame_info = ""
 
     def set_mode(self, mode):
         if mode in ["R", "RGB"]:
@@ -90,6 +92,11 @@ class ImageViewer:
         imgui.set_current_context(self.imgui_context)
         self.window.make_current()
         self.window.set_full_viewport()
+        if self.window.focused:
+            self.imgui_implementation.process_inputs()
+        if self.window.window_gained_focus:
+            self.window.pop_any_mouse_event()
+
         self.window.on_update()
         self.imgui_implementation.refresh_font_texture()
         if self.window.window_size_changed:
@@ -112,9 +119,6 @@ class ImageViewer:
         self._edit_and_render_roi()
 
         # imgui
-        if self.window.focused:
-            self.imgui_implementation.process_inputs()
-
         imgui.new_frame()
         # Push overall imgui style vars
         imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.iv_clr_frame_background)
@@ -138,7 +142,7 @@ class ImageViewer:
         self.imgui_implementation.render(imgui.get_draw_data())
 
         if cfg.node_editor.active_node is not None:
-            if self.previous_active_node is not cfg.node_editor.active_node or cfg.node_editor.active_node.any_change:
+            if self.previous_active_node is not cfg.node_editor.active_node or cfg.node_editor.active_node.any_change or self.new_image_requested:
                 an = cfg.node_editor.active_node
                 self.current_dataset = an.get_source_load_data_node(an).dataset
                 if self.current_dataset.initialized:
@@ -161,53 +165,7 @@ class ImageViewer:
 
     def _gui_main(self):
         if self.show_frame_select_window and self.current_dataset.initialized:
-            imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 0.0)
-            imgui.set_next_window_position(0, self.window.height - cfg.iv_info_bar_height, imgui.ALWAYS)
-            imgui.set_next_window_size(self.window.width, cfg.iv_info_bar_height)
-
-
-            ## Info & control panel
-            imgui.begin("##frameselectwindow", flags=imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE)
-
-            # Frame slider and buttons
-            available_width = imgui.get_content_region_available_width()
-            _frame_idx_changed = False
-            if imgui.button("<", width = cfg.iv_frame_select_button_width, height = cfg.iv_frame_select_button_height):
-                self.current_dataset.current_frame -= 1
-                _frame_idx_changed = True
-            imgui.same_line(spacing = cfg.iv_frame_select_button_spacing)
-            imgui.push_item_width(available_width - 2 * cfg.iv_frame_select_button_width - 2 * cfg.iv_frame_select_button_spacing)
-
-            _slider_changed, self.current_dataset.current_frame = imgui.slider_int("##frame_select", self.current_dataset.current_frame, 0, self.current_dataset.n_frames - 1, f"Frame {self.current_dataset.current_frame}/{self.current_dataset.n_frames}")
-
-            _frame_idx_changed = _slider_changed or _frame_idx_changed
-            imgui.same_line(spacing = cfg.iv_frame_select_button_spacing)
-            if imgui.button(">", width = cfg.iv_frame_select_button_width, height = cfg.iv_frame_select_button_height):
-                self.current_dataset.current_frame += 1
-                _frame_idx_changed = True
-            if not self.window.get_key(glfw.KEY_LEFT_SHIFT):
-                if self.window.scroll_delta[1] != 0:
-                    _frame_idx_changed = True
-                    self.current_dataset.current_frame -= int(self.window.scroll_delta[1])
-            if self.window.get_key_event(glfw.KEY_LEFT, glfw.PRESS, mods = 0) or self.window.get_key_event(glfw.KEY_LEFT, glfw.REPEAT, mods = 0):
-                _frame_idx_changed = True
-                self.current_dataset.current_frame -= 1
-            if self.window.get_key_event(glfw.KEY_RIGHT, glfw.PRESS, mods = 0) or self.window.get_key_event(glfw.KEY_RIGHT, glfw.REPEAT, mods = 0):
-                _frame_idx_changed = True
-                self.current_dataset.current_frame += 1
-            if _frame_idx_changed:
-                self.current_dataset.current_frame = np.clip(self.current_dataset.current_frame, 0, self.current_dataset.n_frames - 1)
-                new_image = cfg.node_editor.active_node.get_image(idx=self.current_dataset.current_frame)
-                if new_image is not None:
-                    self.set_image(new_image)
-            imgui.pop_item_width()
-
-
-            # Image info
-            imgui.separator()
-            imgui.text("Current frame - " + str(self.current_dataset.get_active_image()))
-            imgui.pop_style_var(1)
-            imgui.end()
+            self._frame_info_window()
 
         # Context menu
         if not self.context_menu_open:
@@ -299,9 +257,67 @@ class ImageViewer:
             self.shader.unbind()
             self.va.unbind()
             glActiveTexture(GL_TEXTURE0)
+            self.marker.render_start(self.roi_shader, self.camera)
             for coordinate in self.image.maxima:
                 translation = [coordinate[1], coordinate[0]]
-                self.marker.render(self.roi_shader, self.camera, translation)
+                self.marker.render(self.roi_shader, translation)
+            self.marker.render_end(self.roi_shader)
+
+    def _frame_info_window(self):
+        imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 0.0)
+        #imgui.set_next_window_position(0, self.window.height - cfg.iv_info_bar_height + (cfg.node_editor.window.height - self.window.height), imgui.ALWAYS)
+        imgui.set_next_window_position(0, 0, imgui.ALWAYS)
+        imgui.set_next_window_size(self.window.width, cfg.iv_info_bar_height)
+        ## Info & control panel
+        imgui.begin("##frameselectwindow", flags=imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE)
+
+        # Frame slider and buttons
+        available_width = imgui.get_content_region_available_width()
+        _frame_idx_changed = False
+        if imgui.button("<", width=cfg.iv_frame_select_button_width, height=cfg.iv_frame_select_button_height):
+            self.current_dataset.current_frame -= 1
+            _frame_idx_changed = True
+        imgui.same_line(spacing=cfg.iv_frame_select_button_spacing)
+        imgui.push_item_width(
+            available_width - 2 * cfg.iv_frame_select_button_width - 2 * cfg.iv_frame_select_button_spacing)
+
+        _slider_changed, self.current_dataset.current_frame = imgui.slider_int("##frame_select",
+                                                                               self.current_dataset.current_frame, 0,
+                                                                               self.current_dataset.n_frames - 1,
+                                                                               f"Frame {self.current_dataset.current_frame}/{self.current_dataset.n_frames}")
+
+        _frame_idx_changed = _slider_changed or _frame_idx_changed
+        imgui.same_line(spacing=cfg.iv_frame_select_button_spacing)
+        if imgui.button(">", width=cfg.iv_frame_select_button_width, height=cfg.iv_frame_select_button_height):
+            self.current_dataset.current_frame += 1
+            _frame_idx_changed = True
+        if not self.window.get_key(glfw.KEY_LEFT_SHIFT):
+            if self.window.scroll_delta[1] != 0:
+                _frame_idx_changed = True
+                self.current_dataset.current_frame -= int(self.window.scroll_delta[1])
+        if self.window.get_key_event(glfw.KEY_LEFT, glfw.PRESS, mods=0) or self.window.get_key_event(glfw.KEY_LEFT,
+                                                                                                     glfw.REPEAT,
+                                                                                                     mods=0):
+            _frame_idx_changed = True
+            self.current_dataset.current_frame -= 1
+        if self.window.get_key_event(glfw.KEY_RIGHT, glfw.PRESS, mods=0) or self.window.get_key_event(glfw.KEY_RIGHT,
+                                                                                                      glfw.REPEAT,
+                                                                                                      mods=0):
+            _frame_idx_changed = True
+            self.current_dataset.current_frame += 1
+        self.new_image_requested = False
+        if _frame_idx_changed:
+            self.current_dataset.current_frame = np.clip(self.current_dataset.current_frame, 0,
+                                                         self.current_dataset.n_frames - 1)
+            self.new_image_requested = True
+
+        imgui.pop_item_width()
+
+        # Image info
+        imgui.separator()
+        imgui.text("Current frame - " + self.frame_info)
+        imgui.pop_style_var(1)
+        imgui.end()
 
     def _edit_and_render_roi(self):
         if not self.show_image:
@@ -318,7 +334,7 @@ class ImageViewer:
             self.roi.colour = cfg.node_editor.active_node.colour
             self.roi.render(self.roi_shader, self.camera)
             # edit roi
-            if not imgui.get_io().want_capture_mouse:
+            if not imgui.get_io().want_capture_mouse and not self.window.window_gained_focus:
                 if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
                     # get world position of mouse click.
                     px_coords = self.get_cursor_image_coordinates()
@@ -399,15 +415,18 @@ class ImageViewer:
             imgui.end_menu()
         imgui.end()
 
-    def set_image(self, image):
+    def set_image( self, image):
+        print("set image")
         self.image_requires_update = True
         if type(image) == np.ndarray:
             self.image = Frame("virtual_path")
             self.image.data = image
         else:
             self.image = image
+        self.frame_info = str(self.image)
 
     def update_image(self):
+        print("update image")
         self.image_pxd = self.image.load()
         width = np.shape(self.image_pxd)[1]
         height = np.shape(self.image_pxd)[0]

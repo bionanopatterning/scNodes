@@ -2,8 +2,8 @@ import glfw
 from opengl_classes import *
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
 import config as cfg
+from dataset import *
 from util import *
 
 
@@ -37,17 +37,23 @@ class Reconstructor:
         self.camera = StaticCamera(Reconstructor.default_tile_size)
 
         self.mode = "ui16"
+        self.camera_origin = [0.0, 0.0]
 
     def set_mode(self, mode="float"):
         """
-        :param mode: either "float" or "ui16." Save as 32 bit float for best quality, or as 16 but unsigned int when
-        using the render result in ImageViewer.
+        :param mode: either "float" or "ui16." Save as 32 bit float for best quality, or as 16 bit unsigned int when
+        using the render result in ImageViewer (rgb32f reconstructions quickly exceed GPU memory).
         """
         if self.mode in ["float", "ui16"]:
             self.mode = mode
 
     def set_pixel_size(self, pixel_size):
+        """
+        :param pixel_size: float, pixel size in nm for the final reconstruction.
+        """
         self.pixel_size = pixel_size
+
+        # Reset the default-gaussian-quad to use the new pixel size.
         default_sigma = self.default_uncertainty / self.pixel_size
         _g_img_axes = np.linspace(-(Reconstructor.kernel_size - 1) / 2., (Reconstructor.kernel_size - 1) / 2.,
                                   Reconstructor.kernel_size)
@@ -57,16 +63,24 @@ class Reconstructor:
         self.texture.update(default_gaussian)
 
     def set_image_size(self, image_size):
-        self.image_size = image_size
-        self.fbo = FrameBuffer(*self.image_size)
+        self.image_size = [image_size[0] // 2 * 2, image_size[1] // 2 * 2]
 
-    def set_particle_data(self, path):
-        self.particle_data = ParticleData(path)
+    def set_particle_data(self, particle_data):
+        """
+        :param particle_data: object of type ParticleData. Sets the particle dataset for the reconstructor to render.
+        :return:
+        """
+        self.particle_data = particle_data
 
-        self.image_size = (int(self.particle_data.x_max / self.pixel_size) // 2 * 2, int(self.particle_data.y_max / self.pixel_size) // 2 * 2) # (at least one of the) img dims must be even, otherwise opengl complains when uploading texture.
+    def update_particle_data(self):
         self.create_instance_buffers()
+        self.particle_data.baked_by_renderer = True
 
     def recompile_shader(self):
+        """
+        Useful during debugging of the shaders. To be deleted in release.
+        :return:
+        """
         try:
             shader = Shader("shaders/reconstructor_shader.glsl")
             self.shader = shader
@@ -74,7 +88,16 @@ class Reconstructor:
             raise e
 
 
-    def render(self):
+    def render(self, fixed_uncertainty=None):
+        """
+        Render the particles in the currently st ParticleData obj. (see set_particle_data()), at the current pixel size (see set_pixel_size()).
+        :return: a 3D [width, height, 3] numpy array of type float (when in mode 'float') or uint16 (mode 'ui16'). See set_mode()
+        """
+        if not self.particle_data.baked_by_renderer:
+            self.update_particle_data()  # refresh the instance buffers
+        if fixed_uncertainty is not None:
+            self.set_fixed_uncertainty_value(fixed_uncertainty)
+
         self.update_particle_colours()
         glEnable(GL_BLEND)
         glBlendEquation(GL_FUNC_ADD)
@@ -92,7 +115,9 @@ class Reconstructor:
         w = self.tile_size[0]
         H = self.image_size[1]
         h = self.tile_size[1]
+
         sr_image = np.zeros((H, W, 3), dtype=np.float32)
+        print("sr image shape", sr_image.shape)
         tiles_x = int(np.ceil(W / w))
         tiles_y = int(np.ceil(H / h))
         for i in range(tiles_x):
@@ -104,6 +129,9 @@ class Reconstructor:
         self.shader.unbind()
         self.vao.unbind()
         self.fbo.unbind()
+        if fixed_uncertainty is not None:
+            self.undo_fixed_uncertainty_value()
+
         if self.mode == "float":
             return sr_image
         elif self.mode == "ui16":
@@ -116,19 +144,26 @@ class Reconstructor:
             sr_image_ui16[:, :, 2] = b.astype(np.uint16)
             return sr_image_ui16
 
+    def set_camera_origin(self, camera_origin):
+        """
+        :param camera_origin: origin position in world coordinates for the camera.
+        :return:
+        """
+        self.camera_origin = camera_origin
+        print("CAMERA ORIGIN", self.camera_origin)
 
     def create_instance_buffers(self):
         self.vao.bind()
 
-        self.instance_vbos["x"] = VertexBuffer(self.particle_data.x)
+        self.instance_vbos["x"] = VertexBuffer(self.particle_data.parameter['x'])
         self.instance_vbos["x"].set_location_and_stride(2, 1)
         self.instance_vbos["x"].set_divisor_to_per_instance()
 
-        self.instance_vbos["y"] = VertexBuffer(self.particle_data.y)
+        self.instance_vbos["y"] = VertexBuffer(self.particle_data.parameter['y'])
         self.instance_vbos["y"].set_location_and_stride(3, 1)
         self.instance_vbos["y"].set_divisor_to_per_instance()
 
-        self.instance_vbos["uncertainty"] = VertexBuffer(self.particle_data.uncertainty)
+        self.instance_vbos["uncertainty"] = VertexBuffer(self.particle_data.parameter['uncertainty'])
         self.instance_vbos["uncertainty"].set_location_and_stride(4, 1)
         self.instance_vbos["uncertainty"].set_divisor_to_per_instance()
 
@@ -143,13 +178,20 @@ class Reconstructor:
 
         self.update_particle_colours()
 
+    def set_fixed_uncertainty_value(self, value):
+        self.vao.bind()
+        self.instance_vbos["uncertainty"].update(np.ones((self.particle_data.n_particles, 1)) * value)
+        self.vao.unbind()
+
+    def undo_fixed_uncertainty_value(self):
+        self.vao.bind()
+        self.instance_vbos["uncertainty"].update(self.particle_data.parameter['uncertainty'])
+        self.vao.unbind()
+
     def update_particle_colours(self):
         self.vao.bind()
         _colours = list()
         for particle in self.particle_data.particles:
-            particle.colour[0] = 1.0
-            particle.colour[1] = 1.0
-            particle.colour[2] = 1.0
             _colours.append(particle.colour)
         self.instance_vbos["colour"].update(np.asarray(_colours).flatten(order = "C"))
         self.vao.unbind()
@@ -159,7 +201,10 @@ class Reconstructor:
         self.fbo.bind()
         camera_x = -(tile_idx[0] + 0.5) * self.tile_size[0]
         camera_y = -(tile_idx[1] + 0.5) * self.tile_size[1]
-        self.camera.position = [camera_x, camera_y, 0.0]
+
+        print("Tile size is ", self.tile_size)
+        self.camera.position = [camera_x + self.camera_origin[0], camera_y + self.camera_origin[1], 0.0]
+        print("Camera position x, y is: ", self.camera.position[0], self.camera.position[1])
         self.camera.update_matrix()
         self.shader.uniformmat4("cameraMatrix", self.camera.view_projection_matrix)
         glDrawElementsInstanced(GL_TRIANGLES, self.vao.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None,
@@ -167,52 +212,6 @@ class Reconstructor:
         tile = glReadPixels(0, 0, self.default_tile_size[0], self.default_tile_size[1], GL_RGB, GL_FLOAT)
         return tile
 
-
-class ParticleData:
-    def __init__(self, path=None):
-        """Path: path to a .csv file with ThunderStorm format super-resolution reconstruction particle data"""
-        if path:
-            self.path = path
-            df = pd.read_csv(path)
-            dfnp = df.to_numpy()
-            self.n_particles = df.shape[0]
-            self.particles = list()
-            self.x = dfnp[:, 1]
-            self.y = dfnp[:, 2]
-            self.x_max = np.amax(self.x)
-            self.y_max = np.amax(self.x)
-            self.uncertainty = dfnp[:, 7]
-            self.n_frames = np.amax(dfnp[:, 0])
-            for i in range(self.n_particles):
-                if (i % 10000) == 0:
-                    printProgressBar(i, self.n_particles, prefix = "Loading particles: ")
-                _data = df.iloc[i]
-                self.particles.append(Particle(
-                    _data[0],
-                    _data[1],
-                    _data[2],
-                    _data[3],
-                    _data[4],
-                    _data[5],
-                    _data[6],
-                    _data[7],
-                    [1.0, 1.0, 1.0],
-                    1
-                ))
-
-
-class Particle:
-    def __init__(self, frame, x, y, sigma, intensity, offset=0, bkgstd=-1, uncertainty=-1, colour=(1.0, 1.0, 1.0), state=1):
-        self.frame = frame
-        self.x = x
-        self.y = y
-        self.sigma = sigma
-        self.intensity = intensity
-        self.offset = offset
-        self.bkgstd = bkgstd
-        self.uncertainty = uncertainty
-        self.colour = colour
-        self.state = state
 
 
 class StaticCamera:

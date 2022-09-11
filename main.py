@@ -12,7 +12,7 @@ if __name__ == "__main__":
         raise Exception("Could not initialize GLFW library")
 
 
-    ne_window = Window(cfg.ne_window_width, cfg.ne_window_height, cfg.ne_window_title, main_window = True)
+    ne_window = Window(cfg.ne_window_width, cfg.ne_window_height, cfg.ne_window_title)
     node_editor = NodeEditor(ne_window)
     cfg.node_editor = node_editor
 
@@ -20,14 +20,19 @@ if __name__ == "__main__":
     image_viewer = ImageViewer(iv_window, node_editor.get_font_atlas_ptr())
     cfg.image_viewer = image_viewer
 
+    #ne_window.bring_to_front()
+
     while not glfw.window_should_close(ne_window.glfw_window):
         if not (ne_window.focused or iv_window.focused):
             glfw.poll_events()
+
+
+        image_viewer.on_update()
+        image_viewer.end_frame() # imageviewer was AFTER nodeedotir
+
         node_editor.on_update()
         node_editor.end_frame()
 
-        image_viewer.on_update()
-        image_viewer.end_frame()
 
 
 

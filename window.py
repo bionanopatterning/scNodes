@@ -1,17 +1,17 @@
 import glfw
+import imgui
 from OpenGL.GL import *
 import config as cfg
 
 
 class Window:
-    def __init__(self, width, height, title, main_window = False):
+    def __init__(self, width, height, title):
         self.width = width
         self.height = height
         self.title = title
         self.clear_color = (0.0, 0.0, 0.0, 1.0)
         self.glfw_window = glfw.create_window(self.width, self.height, self.title, None, None)
         self.focused = True
-        self.main_window = main_window
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
         glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
@@ -34,12 +34,12 @@ class Window:
 
         # Change flags
         self.window_size_changed = False
-
+        self.window_gained_focus = False
+        self.window_gained_focus_buffer = False
         # default callbacks
         glfw.set_window_focus_callback(self.glfw_window, self.window_focus_callback)
 
     def set_callbacks(self):
-        glfw.set_window_size_callback(self.glfw_window, self.size_changed_callback)
         glfw.set_key_callback(self.glfw_window, self.key_callback)
         glfw.set_mouse_button_callback(self.glfw_window, self.mouse_button_callback)
         glfw.set_scroll_callback(self.glfw_window, self.scroll_callback)
@@ -48,18 +48,28 @@ class Window:
         glfw.set_mouse_button_callback(self.glfw_window, self.mouse_button_callback)
         glfw.set_scroll_callback(self.glfw_window, self.scroll_callback)
 
+    def set_window_callbacks(self):
+        glfw.set_window_size_callback(self.glfw_window, self.size_changed_callback)
+
     def on_update(self):
+        self.window_gained_focus = self.window_gained_focus_buffer
+        self.window_gained_focus_buffer = False
         self.scroll_delta = [0.0, 0.0]
         glClearColor(*self.clear_color)
         glClear(GL_COLOR_BUFFER_BIT)
         _current_cursor_pos = list(glfw.get_cursor_pos(self.glfw_window))
         self.cursor_delta = [_current_cursor_pos[0] - self.cursor_pos[0], _current_cursor_pos[1] - self.cursor_pos[1]]
         self.cursor_pos = _current_cursor_pos
+
         if self.focused:
             glfw.poll_events()
 
+
     def make_current(self):
         glfw.make_context_current(self.glfw_window)
+
+    def bring_to_front(self):
+        glfw.focus_window(self.glfw_window)
 
     def set_full_viewport(self):
         glViewport(0, 0, self.width, self.height)
@@ -71,7 +81,7 @@ class Window:
         self.width = max([width, 1])
         self.height = max([height, 1])
 
-        glViewport(0, 0, self.width, self.height)
+        #glViewport(0, 0, self.width, self.height)
         self.window_size_changed = True
 
     def scroll_callback(self, _, dx, dy):
@@ -86,6 +96,7 @@ class Window:
     def window_focus_callback(self, window, focused):
         if focused:
             self.focused = True
+            self.window_gained_focus_buffer = True
         else:
             self.focused = False
 
@@ -111,6 +122,8 @@ class Window:
                 return True
         return False
 
+    def pop_any_mouse_event(self):
+        self.mouse_event = None
 
 class KeyEvent:
     def __init__(self, key, action, mods):
@@ -135,7 +148,6 @@ class MouseButtonEvent:
         self.mods = mods
 
     def check(self, requested_button, requested_action, requested_mods):
-        #print(self.button, requested_button, self.action, requested_action, self.mods, requested_mods)
         if self.button == requested_button:
             if self.action == requested_action:
                 if self.mods == requested_mods:

@@ -88,12 +88,16 @@ class Marker:
         self.indices = indices
         self.va.update(VertexBuffer(self.vertices), IndexBuffer(self.indices))
 
-    def render(self, shader, camera, translation):
+    def render_start(self, shader, camera):
         self.va.bind()
         shader.bind()
         shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
         shader.uniform3f("lineColour", self.colour)
+
+    def render(self, shader, translation):
         shader.uniform3f("translation", [translation[0], translation[1], 0.0])
         glDrawElements(GL_LINES, self.va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+
+    def render_end(self, shader):
         shader.unbind()
         self.va.unbind()

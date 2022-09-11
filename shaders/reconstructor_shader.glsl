@@ -17,6 +17,7 @@ out vec2 fuv;
 uniform float quad_pixel_size; // gaussian image quad size in pixels
 uniform float quad_uncertainty; // gaussian image uncertainty in nm
 uniform float pixel_size; // pixel size in nm
+uniform float fixed_sigma;
 
 void main()
 {

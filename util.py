@@ -24,6 +24,7 @@ def printProgressBar(iteration, total, prefix = '', suffix = '', decimals = 1, l
     bar = fill * filledLength + '-' * (length - filledLength)
     print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=printEnd)
 
+
 def save_tiff(array, path, pixel_size_nm = 100, axes = "ZXY"):
     if not (path[-5:] == ".tiff" or path[-4:] == ".tif"):
         path += ".tif"
@@ -32,14 +33,14 @@ def save_tiff(array, path, pixel_size_nm = 100, axes = "ZXY"):
         root = path[:root]
         if not os.path.exists(root):
             os.makedirs(root)
-    metadata = {'axes': axes}
-    tifffile.imwrite(path, array, metadata=metadata, resolution = (1/(1e-3 * pixel_size_nm), 1/(1e-3 *pixel_size_nm), 'MICROMETER'))
+    tifffile.imwrite(path, array, resolution=(1./(1e-7 * pixel_size_nm), 1./(1e-7 * pixel_size_nm), 'CENTIMETER'))
 
 def plot_histogram(data, bins = 'auto', title = None):
     plt.hist(data, bins = bins)
     if title:
         plt.title(title)
     plt.show()
+
 
 def get_filetype(path):
     return path[path.rfind("."):]

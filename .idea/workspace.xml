@@ -4,16 +4,20 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="added roi to exportdatanode">
-      <change beforePath="$PROJECT_DIR$/.idea/220729_ImageViewer.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/220729_ImageViewer.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="gpu smlm fitting works now + particle fitting node started.">
+      <change afterPath="$PROJECT_DIR$/particlefitting.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pyGpufit-1.2.0-py2.py3-none-any.whl" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/imageviewer.py" beforeDir="false" afterPath="$PROJECT_DIR$/imageviewer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/reconstruction.py" beforeDir="false" afterPath="$PROJECT_DIR$/reconstruction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/roi.py" beforeDir="false" afterPath="$PROJECT_DIR$/roi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/shaders/reconstructor_shader.glsl" beforeDir="false" afterPath="$PROJECT_DIR$/shaders/reconstructor_shader.glsl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/util.py" beforeDir="false" afterPath="$PROJECT_DIR$/util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/window.py" beforeDir="false" afterPath="$PROJECT_DIR$/window.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -176,7 +180,14 @@
       <option name="project" value="LOCAL" />
       <updated>1662492852173</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="gpu smlm fitting works now + particle fitting node started.">
+      <created>1662668019820</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1662668019820</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -209,6 +220,7 @@
     <MESSAGE value="initial commit" />
     <MESSAGE value="export data node work started" />
     <MESSAGE value="added roi to exportdatanode" />
-    <option name="LAST_COMMIT_MESSAGE" value="added roi to exportdatanode" />
+    <MESSAGE value="gpu smlm fitting works now + particle fitting node started." />
+    <option name="LAST_COMMIT_MESSAGE" value="gpu smlm fitting works now + particle fitting node started." />
   </component>
 </project>
