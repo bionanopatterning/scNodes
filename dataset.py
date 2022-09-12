@@ -22,8 +22,8 @@ class Dataset:
         self.initialized = False
         self.reconstruction_roi = [0, 0, 0, 0]
         if self.path is not None:
-            self.load_data()
             self.directory = self.path[:self.path.rfind("/") + 1]
+            self.load_data()
             self.img_width, self.img_height = self.get_indexed_image(0).load().shape
             self.initialized = True
         else:
@@ -48,12 +48,10 @@ class Dataset:
 
         # folder
         else:
-            i = 0
             files = sorted(glob.glob(self.directory + "*.tif*"), key=numerical_sort)
             for file in files:
                 self.n_frames += 1
-                self.frames.append(Frame(file, i))
-                i += 1
+                self.frames.append(Frame(file, 0))
 
         self.set_pixel_size(self.pixel_size)
 

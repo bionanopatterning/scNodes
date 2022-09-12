@@ -1990,9 +1990,10 @@ class BinImageNode(Node):
             imgui.separator()
             imgui.spacing()
 
-
+            imgui.push_item_width(100)
             _c, self.mode = imgui.combo("Method", self.mode, BinImageNode.MODES)
             self.any_change = _c or self.any_change
+            imgui.pop_item_width()
             imgui.push_item_width(60)
             _c, self.factor = imgui.input_int("Bin factor", self.factor, 0, 0)
             self.any_change = _c or self.any_change
@@ -2010,7 +2011,7 @@ class BinImageNode(Node):
             if self.mode == 0:
                 pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).mean(2).mean(0)
             elif self.mode == 1:
-                pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).mode(2).mode(0)
+                pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).median(2).median(0)
             elif self.mode == 2:
                 pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).min(2).min(0)
             elif self.mode == 3:
