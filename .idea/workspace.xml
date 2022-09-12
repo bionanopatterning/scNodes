@@ -4,17 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="gpu smlm fitting works now + particle fitting node started.">
-      <change afterPath="$PROJECT_DIR$/.idea/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/install.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/req.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/default_dataset/default_img_00.tif" beforeDir="false" afterPath="$PROJECT_DIR$/default_dataset/default_img_00.tif" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/default_dataset/default_img_01.tif" beforeDir="false" afterPath="$PROJECT_DIR$/default_dataset/default_img_01.tif" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/default_dataset/default_img_02.tif" beforeDir="false" afterPath="$PROJECT_DIR$/default_dataset/default_img_02.tif" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/default_dataset/default_img_03.tif" beforeDir="false" afterPath="$PROJECT_DIR$/default_dataset/default_img_03.tif" afterDir="false" />
-    </list>
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="added install.py" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -207,7 +197,14 @@
       <option name="project" value="LOCAL" />
       <updated>1662668019820</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="added install.py">
+      <created>1662994013287</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1662994013287</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -241,6 +238,7 @@
     <MESSAGE value="export data node work started" />
     <MESSAGE value="added roi to exportdatanode" />
     <MESSAGE value="gpu smlm fitting works now + particle fitting node started." />
-    <option name="LAST_COMMIT_MESSAGE" value="gpu smlm fitting works now + particle fitting node started." />
+    <MESSAGE value="added install.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="added install.py" />
   </component>
 </project>
