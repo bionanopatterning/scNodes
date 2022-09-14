@@ -1697,7 +1697,6 @@ class ParticlePainterNode(Node):
     def init_histogram_values(self):
         datasource = self.reconstruction_in.get_incoming_node()
 
-        print("has data source")
         if datasource:
             particledata = datasource.get_particle_data()
             print(particledata)
@@ -1725,11 +1724,14 @@ class ParticlePainterNode(Node):
                 particle.colour += _colour
                 i += 1
 
+    def on_gain_focus(self):
+        self.init_histogram_values()
+
 
 class ParticleDetectionNode(Node):
     METHODS = ["Local maximum"]
     THRESHOLD_OPTIONS = ["Value", "St. Dev.", "Mean"]
-
+    # TODO: make node output either Dataset or Localizations only
     def __init__(self):
         super().__init__(Node.TYPE_PARTICLE_DETECTION)
         self.size = [290, 205]
@@ -1946,7 +1948,7 @@ class ExportDataNode(Node):
                     indices.append(self.frames_to_load[-1])
                     self.frames_to_load.pop()
 
-                Parallel(n_jobs=self.n_jobs, verbose = 10)(delayed(self.get_img_and_save)(index) for index in indices)
+                Parallel(n_jobs=self.n_jobs)(delayed(self.get_img_and_save)(index) for index in indices)
                 if len(self.frames_to_load) == 0:
                     self.saving = False
             except Exception as e:

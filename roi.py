@@ -2,6 +2,8 @@ from opengl_classes import *
 
 
 class ROI:
+    MIN_SIZE = 50
+
     def __init__(self, box=[0, 0, 1, 1], colour=(1.0, 1.0, 1.0, 1.0)):
         """
 
@@ -65,6 +67,12 @@ class ROI:
             self.update_va()
 
     def limit(self, width, height):
+        if np.abs(self.box[2] - self.box[0]) < ROI.MIN_SIZE:
+            self.box[2] += ROI.MIN_SIZE // 2
+            self.box[0] -= ROI.MIN_SIZE // 2
+        if np.abs(self.box[3] - self.box[1]) < ROI.MIN_SIZE:
+            self.box[3] += ROI.MIN_SIZE // 2
+            self.box[1] -= ROI.MIN_SIZE // 2
         self.box[0] = min([width, max([0, self.box[0]])])
         self.box[1] = min([height, max([0, self.box[1]])])
         self.box[2] = min([width, max([0, self.box[2]])])

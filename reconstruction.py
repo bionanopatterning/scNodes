@@ -131,7 +131,6 @@ class Reconstructor:
         self.fbo.unbind()
         if fixed_uncertainty is not None:
             self.undo_fixed_uncertainty_value()
-
         if self.mode == "float":
             return sr_image
         elif self.mode == "ui16":

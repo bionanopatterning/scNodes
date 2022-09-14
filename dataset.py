@@ -94,15 +94,16 @@ class Frame:
         self.pixel_size = 1
 
     def load(self):
+        #print(self.data is None, self.raw_data is None, "data is None", "raw_data is None")
         if self.data is not None:
-            print(f"Returning preloaded copy of frame {self.id}")
+            #print("frame has .data, returning it.")
             return self.data
         elif self.raw_data is not None:
-            print(f"Returning raw data of frame {self.id} and reasserting frame.data")
+            #print("copying raw_data into data and returning self.data")
             self.data = self.raw_data.copy()
             return self.data
         else:
-            print(f"Loading frame {self.id} from disk")
+            #print(f"Loading frame {self.id} from disk")
             img = Image.open(self.path)
             if self.index is not None:
                 img.seek(self.index)
@@ -180,15 +181,18 @@ class ParticleData:
         uncertainty = list()
         bkgstd = list()
 
+        k1 = self.pixel_size**2 / 12
+        k2 = 8 * np.pi / self.pixel_size**2
         self.n_particles = 0
         for p in self.particles:
             self.n_particles += 1
             frame.append(p.frame)
             x.append(p.x)
             y.append(p.y)
-            sigma.append(p.sigma)
+            sigma.append(p.sigma * self.pixel_size)
             intensity.append(p.intensity)
             offset.append(p.offset)
+            p.uncertainty = np.sqrt(((p.sigma*self.pixel_size)**2 + k1) / p.intensity + k2 * (p.sigma*self.pixel_size)**4 * p.bkgstd**2 / p.intensity**2)
             uncertainty.append(p.uncertainty)
             bkgstd.append(p.bkgstd)
 
@@ -272,4 +276,4 @@ class Particle:
         self.state = state
 
     def __str__(self):
-        return f"{self.frame}, {self.x}, {self.y}, {self.sigma}, {self.intensity}"
+        return f"f={self.frame}, x={self.x}, y={self.y}, sigma={self.sigma}, i={self.intensity}, offset={self.offset}, bkgstd={self.bkgstd}"
