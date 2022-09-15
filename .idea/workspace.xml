@@ -4,15 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="added install.py">
-      <change afterPath="$PROJECT_DIR$/sandbox.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="uncertainty &amp; bgkstd now part of particle fit">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/imageviewer.py" beforeDir="false" afterPath="$PROJECT_DIR$/imageviewer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/install.py" beforeDir="false" afterPath="$PROJECT_DIR$/install.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/particlefitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/particlefitting.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/reconstruction.py" beforeDir="false" afterPath="$PROJECT_DIR$/reconstruction.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/roi.py" beforeDir="false" afterPath="$PROJECT_DIR$/roi.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -51,6 +49,7 @@
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+    <property name="restartRequiresConfirmation" value="false" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
@@ -243,7 +242,14 @@
       <option name="project" value="LOCAL" />
       <updated>1662994033615</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="uncertainty &amp; bgkstd now part of particle fit">
+      <created>1663183084862</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1663183084862</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -278,6 +284,7 @@
     <MESSAGE value="added roi to exportdatanode" />
     <MESSAGE value="gpu smlm fitting works now + particle fitting node started." />
     <MESSAGE value="added install.py" />
-    <option name="LAST_COMMIT_MESSAGE" value="added install.py" />
+    <MESSAGE value="uncertainty &amp; bgkstd now part of particle fit" />
+    <option name="LAST_COMMIT_MESSAGE" value="uncertainty &amp; bgkstd now part of particle fit" />
   </component>
 </project>

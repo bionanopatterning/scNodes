@@ -142,19 +142,21 @@ class ImageViewer:
         self.imgui_implementation.render(imgui.get_draw_data())
 
         if cfg.node_editor.active_node is not None:
+            ImageViewer.MARKER_COLOUR = cfg.node_editor.active_node.colour
             if self.previous_active_node is not cfg.node_editor.active_node or cfg.node_editor.active_node.any_change or self.new_image_requested:
-                an = cfg.node_editor.active_node
-                self.current_dataset = an.get_source_load_data_node(an).dataset
-                if self.current_dataset.initialized:
-                    self.current_dataset.current_frame = np.clip(self.current_dataset.current_frame, 0, self.current_dataset.n_frames - 1)
-                    new_image = cfg.node_editor.active_node.get_image(self.current_dataset.current_frame)
-                    if new_image is not None:
-                        self.show_image = True
-                        self.set_image(new_image)
+                if cfg.node_editor.active_node.returns_image:
+                    an = cfg.node_editor.active_node
+                    self.current_dataset = an.get_source_load_data_node(an).dataset
+                    if self.current_dataset.initialized:
+                        self.current_dataset.current_frame = np.clip(self.current_dataset.current_frame, 0, self.current_dataset.n_frames - 1)
+                        new_image = cfg.node_editor.active_node.get_image(self.current_dataset.current_frame)
+                        if new_image is not None:
+                            self.show_image = True
+                            self.set_image(new_image)
+                        else:
+                            self.show_image = False
                     else:
                         self.show_image = False
-                else:
-                    self.show_image = False
             self.previous_active_node = cfg.node_editor.active_node
 
     def end_frame(self):
@@ -257,7 +259,7 @@ class ImageViewer:
             self.shader.unbind()
             self.va.unbind()
             glActiveTexture(GL_TEXTURE0)
-            self.marker.render_start(self.roi_shader, self.camera)
+            self.marker.render_start(self.roi_shader, self.camera, ImageViewer.MARKER_COLOUR)
             for coordinate in self.image.maxima:
                 translation = [coordinate[1], coordinate[0]]
                 self.marker.render(self.roi_shader, translation)

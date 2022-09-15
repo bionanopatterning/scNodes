@@ -16,9 +16,11 @@ def frame_to_particles(frame, initial_sigma=2.0, method = 0, crop_radius = 4):
         background = flat_roi - gauss
         return np.std(background)
 
+    if len(frame.maxima) == 0:
+        return list()
     pxd = frame.load()
     width, height = pxd.shape
-
+    print(frame)
     # Filter maxima and convert to floored int.
     xy = list()
     n_particles = 0
@@ -72,9 +74,9 @@ def frame_to_particles(frame, initial_sigma=2.0, method = 0, crop_radius = 4):
     converged = states == 0
     for i in range(n_particles):
         if converged[i]:
-            particles.append(Particle(frame=frame.index, x=parameters[i, 2], y=parameters[i, 1], sigma=parameters[i, 3], intensity=parameters[i, 0], offset=parameters[i, 4], bkgstd=background_stdev[i]))
+            particles.append(Particle(frame=frame.index, x=parameters[i, 1], y=parameters[i, 2], sigma=parameters[i, 3], intensity=parameters[i, 0], offset=parameters[i, 4], bkgstd=background_stdev[i]))
 
-    return particles
+    return particles # TODO: return fit states as well and show overview of results in particlefitnode.
 
 
 

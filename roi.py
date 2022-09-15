@@ -96,7 +96,8 @@ class Marker:
         self.indices = indices
         self.va.update(VertexBuffer(self.vertices), IndexBuffer(self.indices))
 
-    def render_start(self, shader, camera):
+    def render_start(self, shader, camera, colour):
+        self.colour = colour
         self.va.bind()
         shader.bind()
         shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
