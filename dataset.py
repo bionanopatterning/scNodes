@@ -196,7 +196,7 @@ class ParticleData:
             uncertainty.append(p.uncertainty)
             bkgstd.append(p.bkgstd)
 
-        self.parameter['frame'] = np.asarray(frame)
+        self.parameter['frame'] = np.asarray(frame).astype(float)
         self.parameter['x'] = np.asarray(x) * self.pixel_size
         self.parameter['y'] = np.asarray(y) * self.pixel_size
         self.parameter['sigma'] = np.asarray(sigma)
@@ -252,12 +252,7 @@ class ParticleData:
     def save_as_csv(self, path):
         if not self.baked:
             self.bake()
-        for key in self.parameter:
-            print(self.parameter[key])
-        for key in self.parameter:
-            print(key)
-            print(self.parameter[key].shape)
-        print(self.particles[0])
+
         pd.DataFrame.from_dict(self.parameter).to_csv(path)
 
 

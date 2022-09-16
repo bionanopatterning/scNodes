@@ -422,7 +422,6 @@ class Node:
             NodeEditor.any_change = True
         self.any_change = False
 
-
     def render_start(self):
         ## render the node window
         imgui.set_next_window_size(*self.size, imgui.ONCE)
@@ -435,7 +434,7 @@ class Node:
         imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *Node.COLOUR[self.type])
         imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *self.colour_brighten(Node.COLOUR[self.type]))
         if NodeEditor.focused_node == self:
-            imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *Node.COLOUR_FOCUSED_NODE_WINDOW_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *self.colour_whiten(Node.COLOUR[self.type]))
             imgui.push_style_var(imgui.STYLE_WINDOW_BORDERSIZE, Node.FOCUSED_NODE_BORDER_THICKNESS)
             imgui.push_style_color(imgui.COLOR_BORDER, *Node.COLOUR_WINDOW_BORDER_FOCUSED_NODE)
             imgui.push_style_color(imgui.COLOR_BORDER_SHADOW, *Node.COLOUR_WINDOW_BORDER_FOCUSED_NODE)
@@ -621,7 +620,7 @@ class Node:
 
     @staticmethod
     def colour_whiten(c):
-        return (c[0] * 1.8, c[1] * 1.8, c[2] * 1.8, 1.0)
+        return (c[0] * 0.3 + 0.7, c[1] * 0.3 + 0.7, c[2] * 0.3 + 0.7, 1.0)
 
     @staticmethod
     def get_source_load_data_node(node):
@@ -971,13 +970,11 @@ class LoadDataNode(Node):
             imgui.new_line()
             imgui.same_line(spacing=3)
             imgui.text(f"{self.dataset.img_width}x{self.dataset.img_height}")
-            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *Node.COLOUR_WINDOW_BACKGROUND)
-            imgui.push_item_width(35)
+            imgui.push_item_width(45)
             _, self.pixel_size = imgui.input_float("##nm", self.pixel_size, 0.0, 0.0, format = "%.1f")
             imgui.pop_item_width()
             imgui.same_line()
             imgui.text("nm")
-            imgui.pop_style_color(1)
             imgui.columns(1)
 
             _, self.load_on_the_fly = imgui.checkbox("Load on the fly", self.load_on_the_fly)
@@ -2175,8 +2172,9 @@ class ParticleFittingNode(Node):
             if not self.particle_data.empty:
                 imgui.text("Reconstruction info")
                 imgui.text(f"particles: {len(self.particle_data.particles)}")
-                imgui.text(f"x range: {self.particle_data.x_min / 1000.0:.1f} to {self.particle_data.x_max / 1000.0:.1f} um")
-                imgui.text(f"y range: {self.particle_data.y_min / 1000.0:.1f} to {self.particle_data.y_max / 1000.0:.1f} um")
+                if not self.fitting:
+                    imgui.text(f"x range: {self.particle_data.x_min / 1000.0:.1f} to {self.particle_data.x_max / 1000.0:.1f} um")
+                    imgui.text(f"y range: {self.particle_data.y_min / 1000.0:.1f} to {self.particle_data.y_max / 1000.0:.1f} um")
 
             super().render_end()
 

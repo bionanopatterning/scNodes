@@ -42,10 +42,11 @@ def frame_to_particles(frame, initial_sigma=2.0, method = 0, crop_radius = 4):
         params[i, :] = [initial_intensity, crop_radius, crop_radius, initial_sigma, initial_offset]
 
     estimator = gf.EstimatorID.LSE if method == 0 else gf.EstimatorID.MLE
-    constraint_type = np.asarray([gf.ConstraintType.LOWER, gf.ConstraintType.FREE, gf.ConstraintType.FREE, gf.ConstraintType.LOWER, gf.ConstraintType.LOWER], dtype=np.int32) # intensity, pos, pos, sigma, offset
+    constraint_type = np.asarray([gf.ConstraintType.LOWER, gf.ConstraintType.FREE, gf.ConstraintType.FREE, gf.ConstraintType.LOWER_UPPER, gf.ConstraintType.LOWER], dtype=np.int32) # intensity, pos, pos, sigma, offset
     constraint_vals = np.zeros((n_particles, 10), dtype=np.float32)
     constraint_vals[:, 0] = 1.0
     constraint_vals[:, 6] = 1.0
+    constraint_vals[:, 7] = 10.0
     parameters, states, chi_squares, number_iterations, execution_time = gf.fit_constrained(data, None, gf.ModelID.GAUSS_2D, params, estimator_id=estimator, max_number_iterations=100, constraint_types=constraint_type, constraints=constraint_vals)
 
     xy = np.asarray(xy)

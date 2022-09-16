@@ -418,7 +418,6 @@ class ImageViewer:
         imgui.end()
 
     def set_image( self, image):
-        print("set image")
         self.image_requires_update = True
         if type(image) == np.ndarray:
             self.image = Frame("virtual_path")
@@ -428,7 +427,6 @@ class ImageViewer:
         self.frame_info = str(self.image)
 
     def update_image(self):
-        print("update image")
         self.image_pxd = self.image.load()
         width = np.shape(self.image_pxd)[1]
         height = np.shape(self.image_pxd)[0]
