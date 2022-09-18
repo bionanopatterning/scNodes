@@ -3,7 +3,7 @@ import colorcet as cc
 
 ## Dependencies list:
 # numpy, colorcet, pyglfw, pandas, PyWavelets, PyOpenGL, pystackreg, matplotlib,
-# joblib, scikit-image, glfw, pyimgui-wheels, pyGpufit (can't be installed via pip)
+# joblib, scikit-image, glfw, pyimgui-wheels, and pyGpufit (can't be installed via pip)
 n_cpus = 1
 
 # TODO: limit load dataset and reconstruction renderer nodes to 1 instance
@@ -30,7 +30,7 @@ iv_info_bar_height = 100
 iv_frame_select_button_width = 20
 iv_frame_select_button_height = 19
 iv_frame_select_button_spacing = 4
-iv_cm_size = [200, 100] # context menu
+iv_cm_size = [200, 100]  # context menu
 iv_contrast_window_size = [200, 240]
 iv_clr_frame_background = (0.24, 0.24, 0.24)
 iv_clr_main = (0.3 / 1.3, 0.3 / 1.3, 0.3 / 1.3)

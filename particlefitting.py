@@ -2,7 +2,7 @@ import numpy as np
 import pygpufit.gpufit as gf
 from reconstruction import Particle
 
-def frame_to_particles(frame, initial_sigma=2.0, method = 0, crop_radius = 4):
+def frame_to_particles(frame, initial_sigma=2.0, method = 0, crop_radius = 4, constraints=[-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]):
     def get_background_stdev(flat_roi, fitted_params):
         gauss = np.empty_like(flat_roi)
         k = int(np.sqrt(gauss.shape[0])) // 2
@@ -42,44 +42,60 @@ def frame_to_particles(frame, initial_sigma=2.0, method = 0, crop_radius = 4):
         params[i, :] = [initial_intensity, crop_radius, crop_radius, initial_sigma, initial_offset]
 
     estimator = gf.EstimatorID.LSE if method == 0 else gf.EstimatorID.MLE
-    constraint_type = np.asarray([gf.ConstraintType.LOWER, gf.ConstraintType.FREE, gf.ConstraintType.FREE, gf.ConstraintType.LOWER_UPPER, gf.ConstraintType.LOWER], dtype=np.int32) # intensity, pos, pos, sigma, offset
-    constraint_vals = np.zeros((n_particles, 10), dtype=np.float32)
-    constraint_vals[:, 0] = 1.0
-    constraint_vals[:, 6] = 1.0
-    constraint_vals[:, 7] = 10.0
-    parameters, states, chi_squares, number_iterations, execution_time = gf.fit_constrained(data, None, gf.ModelID.GAUSS_2D, params, estimator_id=estimator, max_number_iterations=100, constraint_types=constraint_type, constraints=constraint_vals)
+
+    ## Set up constraints
+    constraint_type, constraint_values = parse_constraints(constraints, n_particles)
+    parameters, states, chi_squares, number_iterations, execution_time = gf.fit_constrained(data, None,
+                                                                                            gf.ModelID.GAUSS_2D, params,
+                                                                                            estimator_id=estimator,
+                                                                                            max_number_iterations=100,
+                                                                                            constraint_types=constraint_type,
+                                                                                            constraints=constraint_values)
 
     xy = np.asarray(xy)
     parameters[:, 0] *= 2 * np.pi * parameters[:, 3]**2  # scaling from (maximum value of gaussian) to (number of photons)
     parameters[:, 1:3] -= crop_radius
-
-
-    print('ratio converged         {:6.2f} %'.format(np.sum(states == 0) / n_particles * 100))
-    print('ratio max it. exceeded  {:6.2f} %'.format(np.sum(states == 1) / n_particles * 100))
-    print('ratio singular hessian  {:6.2f} %'.format(np.sum(states == 2) / n_particles * 100))
-    print('ratio neg curvature MLE {:6.2f} %'.format(np.sum(states == 3) / n_particles * 100))
-    print('ratio gpu not read      {:6.2f} %'.format(np.sum(states == 4) / n_particles * 100))
+    #
+    #
+    # print('ratio converged         {:6.2f} %'.format(np.sum(states == 0) / n_particles * 100))
+    # print('ratio max it. exceeded  {:6.2f} %'.format(np.sum(states == 1) / n_particles * 100))
+    # print('ratio singular hessian  {:6.2f} %'.format(np.sum(states == 2) / n_particles * 100))
+    # print('ratio neg curvature MLE {:6.2f} %'.format(np.sum(states == 3) / n_particles * 100))
+    # print('ratio gpu not read      {:6.2f} %'.format(np.sum(states == 4) / n_particles * 100))
 
     background_stdev = np.empty(n_particles)
     for i in range(n_particles):
         background_stdev[i] = get_background_stdev(data[i, :], parameters[i, :])
 
-    parameters[:, 1] += xy[:, 1]  # offsetting back into image coordinates rather than crop coordinates
-    parameters[:, 2] += xy[:, 0]  # offsetting back into image coordinates rather than crop coordinates
-    print("Intensity range", np.amin(parameters[:, 0]), np.amax(parameters[:, 0]))
-    print("X range", np.amin(parameters[:, 1]), np.amax(parameters[:, 1]))
-    print("Y range", np.amin(parameters[:, 2]), np.amax(parameters[:, 2]))
-    print("Sigma range", np.amin(parameters[:, 3]), np.amax(parameters[:, 3]))
-    print("Offset range", np.amin(parameters[:, 4]), np.amax(parameters[:, 4]))
+    parameters[:, 1] += xy[:, 1]  # offsetting back into image coordinates (rather than crop coordinates)
+    parameters[:, 2] += xy[:, 0]  # offsetting back into image coordinates
     particles = list()
     converged = states == 0
     for i in range(n_particles):
-        if converged[i]:
+        if converged[i] and parameters[i, 3] != constraint_values[0, 7]:
             particles.append(Particle(frame=frame.index, x=parameters[i, 1], y=parameters[i, 2], sigma=parameters[i, 3], intensity=parameters[i, 0], offset=parameters[i, 4], bkgstd=background_stdev[i]))
+
 
     return particles # TODO: return fit states as well and show overview of results in particlefitnode.
 
 
+constraint_type_dict = dict()
+constraint_type_dict[(True, True)] = gf.ConstraintType.FREE
+constraint_type_dict[(False, True)] = gf.ConstraintType.LOWER
+constraint_type_dict[(True, False)] = gf.ConstraintType.UPPER
+constraint_type_dict[(False, False)] = gf.ConstraintType.LOWER_UPPER
+
+def parse_constraints(constraints, n_particles):
+    c_type_intensity = constraint_type_dict[(constraints[0] == -1.0, constraints[1] == -1.0)]
+    c_type_sigma = constraint_type_dict[(constraints[6] == -1.0, constraints[7] == -1.0)]
+    c_type_offset = constraint_type_dict[(constraints[8] == -1.0, constraints[9] == -1.0)]
+
+    constraint_types = np.asarray([c_type_intensity, gf.ConstraintType.FREE, gf.ConstraintType.FREE, c_type_sigma, c_type_offset], dtype=np.int32)
+    constraint_values = np.zeros((n_particles, 10), dtype=np.float32)
+    constraint_values[:, :] = constraints
+    print(constraint_values[0, :], "constraint vals")
+    print(constraint_types, "constraint_Types")
+    return constraint_types, constraint_values
 
 
 

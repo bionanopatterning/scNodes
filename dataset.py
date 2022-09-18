@@ -15,7 +15,7 @@ class Dataset:
         self.id = next(Dataset.idgen)
         """Path must be a path to an image in a folder containing 16-bit tif files - OR a tiffstack. All the imgs in the folder are part of the dataset"""
         self.path = path
-        self.frames = [[]]
+        self.frames = list()
         self.n_frames = 0
         self.current_frame = 0
         self.pixel_size = pixel_size
@@ -53,24 +53,56 @@ class Dataset:
                 self.n_frames += 1
                 self.frames.append(Frame(file, 0))
 
-        self.set_pixel_size(self.pixel_size)
 
     def get_indexed_image(self, index):
         if 0 <= index < self.n_frames:
+            self.frames[index].pixel_size = self.pixel_size
             return self.frames[index]
         else:
             if index <= 0:
+                self.frames[0].pixel_size = self.pixel_size
                 return self.frames[0]
             else:
+                self.frames[-1].pixel_size = self.pixel_size
                 return self.frames[-1]
 
     def get_active_image(self):
+        self.frames[self.current_frame].pixel_size = self.pixel_size
         return self.frames[self.current_frame]
 
-    def set_pixel_size(self, pixel_size):
-        self.pixel_size = pixel_size
+    def filter_frames_by_title(self, positive_filter_string, negative_filter_string):
+        """
+        :param positive_filter_string: string, all frames not containing any of the semicolon separated expressions in this string are dicarded
+        :param negative_filter_string: string, all frames containing any of the semicolon separated expresions in this string are discarded.
+        Note that when positive and negative tags contradict, preference is given to the positive filter. I.e., the frame is not discarded.
+        :return: Nothing, dataset object itself is affected
+        """
+        print("Filtering")
+        discard = [False] * len(self.frames)
+        neg_tags = negative_filter_string.split(';')
+        pos_tags = positive_filter_string.split(';')
+        while '' in neg_tags:
+            neg_tags.remove('')
+        while '' in pos_tags:
+            pos_tags.remove('')
+        i = 0
+        print(neg_tags)
+        print(pos_tags)
         for frame in self.frames:
-            frame.pixel_size = self.pixel_size
+            for tag in neg_tags:
+                if tag in frame.path:
+                    discard[i] = True
+                    print(f"discarding {i}")
+            for tag in pos_tags:
+                if tag in frame.path:
+                    discard[i] = False
+                    print(f"retaining {i}")
+            i += 1
+        for i in range(len(self.frames) - 1, -1, -1):
+            if discard[i]:
+
+                self.frames.pop(i)
+        self.n_frames = len(self.frames)
 
     def __str__(self):
         return "Dataset object with source at: "+self.path+f"\nn_frames = {self.n_frames}"
@@ -127,8 +159,8 @@ class Frame:
 
     def __str__(self):
         selfstr = "Frame at path: "+self.path + "\n" \
-            + ("Discarded frame" if self.discard else "Frame in use") \
-            + f"\nShift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
+            + ("Discarded frame. " if self.discard else "Frame in use. ") \
+            + f"Shift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
         if self.maxima is not []:
             selfstr += f"\n{len(self.maxima)} particles found."
         return selfstr
@@ -169,7 +201,11 @@ class ParticleData:
         r = self.reconstruction_roi
         return f"ParticleData obj. with {self.n_particles} particles.\nx range = ({self.x_min}, {self.x_max}), y range = ({self.y_min}, {self.y_max})\nCorresponding ROI in input source image: x {r[0]} to {r[2]}, y {r[1]} to {r[3]}."
 
-    def bake(self):
+    def clean(self):
+        for particle in self.particles:
+            particle.visible = True
+
+    def bake(self, discard_filtered_particles=False):
         self.baked = True
         self.baked_by_renderer = False
         frame = list()
@@ -185,36 +221,51 @@ class ParticleData:
         k2 = 8 * np.pi / self.pixel_size**2
         self.n_particles = 0
         for p in self.particles:
-            self.n_particles += 1
-            frame.append(p.frame)
-            x.append(p.x)
-            y.append(p.y)
-            sigma.append(p.sigma * self.pixel_size)
-            intensity.append(p.intensity)
-            offset.append(p.offset)
-            p.uncertainty = np.sqrt(((p.sigma*self.pixel_size)**2 + k1) / p.intensity + k2 * (p.sigma*self.pixel_size)**4 * p.bkgstd**2 / p.intensity**2)
-            uncertainty.append(p.uncertainty)
-            bkgstd.append(p.bkgstd)
+            if p.visible or not discard_filtered_particles:
+                self.n_particles += 1
+                frame.append(p.frame)
+                x.append(p.x)
+                y.append(p.y)
+                sigma.append(p.sigma * self.pixel_size)
+                intensity.append(p.intensity)
+                offset.append(p.offset)
+                p.uncertainty = np.sqrt(((p.sigma*self.pixel_size)**2 + k1) / p.intensity + k2 * (p.sigma*self.pixel_size)**4 * p.bkgstd**2 / p.intensity**2)
+                uncertainty.append(p.uncertainty)
+                bkgstd.append(p.bkgstd)
 
-        self.parameter['frame'] = np.asarray(frame).astype(float)
-        self.parameter['x'] = np.asarray(x) * self.pixel_size
-        self.parameter['y'] = np.asarray(y) * self.pixel_size
-        self.parameter['sigma'] = np.asarray(sigma)
-        self.parameter['intensity'] = np.asarray(intensity)
-        self.parameter['offset'] = np.asarray(offset)
-        self.parameter['uncertainty'] = np.asarray(uncertainty)
-        self.parameter['bkgstd'] = np.asarray(bkgstd)
 
+        self.parameter['uncertainty (nm)'] = np.asarray(uncertainty)
+        self.parameter['intensity (counts)'] = np.asarray(intensity)
+        self.parameter['offset (counts)'] = np.asarray(offset)
+        self.parameter['x (nm)'] = np.asarray(x) * self.pixel_size
+        self.parameter['y (nm)'] = np.asarray(y) * self.pixel_size
+        self.parameter['sigma (nm)'] = np.asarray(sigma)
+        self.parameter['bkgstd (counts)'] = np.asarray(bkgstd)
+        self.parameter['frame'] = np.asarray(frame).astype(np.float32)
         for key in self.parameter:
+            print(key)
             self.histogram_counts[key], self.histogram_bins[key] = np.histogram(self.parameter[key], bins=ParticleData.HISTOGRAM_BINS)
             self.histogram_counts[key] = self.histogram_counts[key].astype(np.float32)
             self.histogram_counts[key] = np.delete(self.histogram_counts[key], 0)
             self.histogram_bins[key] = (self.histogram_bins[key][1], self.histogram_bins[key][-1])
 
-        self.x_min = np.min(self.parameter['x'])
-        self.y_min = np.min(self.parameter['y'])
-        self.x_max = np.max(self.parameter['x'])
-        self.y_max = np.max(self.parameter['y'])
+        self.x_min = np.min(self.parameter['x (nm)'])
+        self.y_min = np.min(self.parameter['y (nm)'])
+        self.x_max = np.max(self.parameter['x (nm)'])
+        self.y_max = np.max(self.parameter['y (nm)'])
+
+    def apply_filter(self, parameter_key, min_val, max_val, logic_not = False):
+        vals = self.parameter[parameter_key]
+        if logic_not:
+            for p, v in zip(self.particles, vals):
+                if min_val < v < max_val:
+                    p.visible = False
+        else:
+            for p, v in zip(self.particles, vals):
+                if v < min_val or v > max_val:
+                    p.visible = False
+
+
 
     def set_reconstruction_roi(self, roi):
         """
@@ -230,7 +281,6 @@ class ParticleData:
         :return: a ParticleData object.
         """
         df = pd.read_csv(path)
-        dfnp = df.to_numpy()
         particles = list()
         for i in range(df.shape[0]):
             _data = df.iloc[i]
@@ -250,15 +300,12 @@ class ParticleData:
         return particle_data_obj
 
     def save_as_csv(self, path):
-        if not self.baked:
-            self.bake()
-
-        pd.DataFrame.from_dict(self.parameter).to_csv(path)
+        pd.DataFrame.from_dict(self.parameter).to_csv(path, index=False)
 
 
 class Particle:
 
-    def __init__(self, frame, x, y, sigma, intensity, offset=0, bkgstd=-1, uncertainty=-1, colour=np.asarray([1.0, 1.0, 1.0]), state=1):
+    def __init__(self, frame, x, y, sigma, intensity, offset=0, bkgstd=-1, uncertainty=-1, colour=np.asarray([1.0, 1.0, 1.0])):
         self.frame = frame
         self.x = x
         self.y = y
@@ -268,7 +315,7 @@ class Particle:
         self.bkgstd = bkgstd
         self.uncertainty = uncertainty
         self.colour = colour
-        self.state = state
+        self.visible = True
 
     def __str__(self):
         return f"f={self.frame}, x={self.x}, y={self.y}, sigma={self.sigma}, i={self.intensity}, offset={self.offset}, bkgstd={self.bkgstd}"

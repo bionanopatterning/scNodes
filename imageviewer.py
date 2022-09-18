@@ -317,7 +317,7 @@ class ImageViewer:
 
         # Image info
         imgui.separator()
-        imgui.text("Current frame - " + self.frame_info)
+        imgui.text(self.frame_info)
         imgui.pop_style_var(1)
         imgui.end()
 
@@ -527,7 +527,6 @@ class Camera:
             [0.0, 0.0, 0.0, 1.0],
         ])
         self.view_projection_matrix = np.matmul(self.projection_matrix, self.view_matrix)
-
 
 
 

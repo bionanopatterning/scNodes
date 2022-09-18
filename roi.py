@@ -2,7 +2,7 @@ from opengl_classes import *
 
 
 class ROI:
-    MIN_SIZE = 50
+    MIN_SIZE = 5
 
     def __init__(self, box=[0, 0, 1, 1], colour=(1.0, 1.0, 1.0, 1.0)):
         """

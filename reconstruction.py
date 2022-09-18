@@ -87,7 +87,6 @@ class Reconstructor:
         except Exception as e:
             raise e
 
-
     def render(self, fixed_uncertainty=None):
         """
         Render the particles in the currently st ParticleData obj. (see set_particle_data()), at the current pixel size (see set_pixel_size()).
@@ -99,6 +98,7 @@ class Reconstructor:
             self.set_fixed_uncertainty_value(fixed_uncertainty)
 
         self.update_particle_colours()
+        self.update_particle_states()
         glEnable(GL_BLEND)
         glBlendEquation(GL_FUNC_ADD)
         glBlendFunc(GL_ONE, GL_ONE)
@@ -154,15 +154,15 @@ class Reconstructor:
     def create_instance_buffers(self):
         self.vao.bind()
 
-        self.instance_vbos["x"] = VertexBuffer(self.particle_data.parameter['x'])
+        self.instance_vbos["x"] = VertexBuffer(self.particle_data.parameter['x (nm)'])
         self.instance_vbos["x"].set_location_and_stride(2, 1)
         self.instance_vbos["x"].set_divisor_to_per_instance()
 
-        self.instance_vbos["y"] = VertexBuffer(self.particle_data.parameter['y'])
+        self.instance_vbos["y"] = VertexBuffer(self.particle_data.parameter['y (nm)'])
         self.instance_vbos["y"].set_location_and_stride(3, 1)
         self.instance_vbos["y"].set_divisor_to_per_instance()
 
-        self.instance_vbos["uncertainty"] = VertexBuffer(self.particle_data.parameter['uncertainty'])
+        self.instance_vbos["uncertainty"] = VertexBuffer(self.particle_data.parameter['uncertainty (nm)'])
         self.instance_vbos["uncertainty"].set_location_and_stride(4, 1)
         self.instance_vbos["uncertainty"].set_divisor_to_per_instance()
 
@@ -193,6 +193,14 @@ class Reconstructor:
         for particle in self.particle_data.particles:
             _colours.append(particle.colour)
         self.instance_vbos["colour"].update(np.asarray(_colours).flatten(order = "C"))
+        self.vao.unbind()
+
+    def update_particle_states(self):
+        self.vao.bind()
+        _states = list()
+        for particle in self.particle_data.particles:
+            _states.append(particle.visible * 1.0)
+        self.instance_vbos["state"].update(np.asarray(_states).flatten(order = "C"))
         self.vao.unbind()
 
     def render_tile(self, tile_idx=(0, 0)):
