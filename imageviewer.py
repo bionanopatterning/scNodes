@@ -149,7 +149,9 @@ class ImageViewer:
                     self.current_dataset = an.get_source_load_data_node(an).dataset
                     if self.current_dataset.initialized:
                         self.current_dataset.current_frame = np.clip(self.current_dataset.current_frame, 0, self.current_dataset.n_frames - 1)
+                        cfg.node_editor.active_node.frame_requested_by_image_viewer = True
                         new_image = cfg.node_editor.active_node.get_image(self.current_dataset.current_frame)
+                        cfg.node_editor.active_node.frame_requested_by_image_viewer = False
                         if new_image is not None:
                             self.show_image = True
                             self.set_image(new_image)

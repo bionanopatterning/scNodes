@@ -12,8 +12,11 @@ class Dataset:
     idgen = count(1)
 
     def __init__(self, path=None, pixel_size=100):
+        """
+        :param path: None or string, path to either i) a multi-page .tif file with ordering XYF, F the number of frames, or ii) a single-page .tif file, in which case a Dataset is generated comprising all the .tif files in that folder. If 'None', a Dataset() object is generated that has no frame data.
+        :param pixel_size:
+        """
         self.id = next(Dataset.idgen)
-        """Path must be a path to an image in a folder containing 16-bit tif files - OR a tiffstack. All the imgs in the folder are part of the dataset"""
         self.path = path
         self.frames = list()
         self.n_frames = 0
@@ -52,7 +55,6 @@ class Dataset:
             for file in files:
                 self.n_frames += 1
                 self.frames.append(Frame(file, 0))
-
 
     def get_indexed_image(self, index):
         if 0 <= index < self.n_frames:
@@ -104,6 +106,17 @@ class Dataset:
                 self.frames.pop(i)
         self.n_frames = len(self.frames)
 
+    def append_frame(self, frame):
+        """
+        Add a frame to the end of the list of frames in the dataset.
+        :param frame: Frame object (see below).
+        """
+        if not self.initialized:
+            self.img_width, self.img_height = frame.load().shape
+            self.initialized = True
+        self.frames.append(frame)
+        self.n_frames += 1
+
     def __str__(self):
         return "Dataset object with source at: "+self.path+f"\nn_frames = {self.n_frames}"
 
@@ -124,6 +137,7 @@ class Frame:
         self.maxima = list()
         self.particles = list()
         self.pixel_size = 1
+        self.index_in_dataset = index
 
     def load(self):
         #print(self.data is None, self.raw_data is None, "data is None", "raw_data is None")

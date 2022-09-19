@@ -2,6 +2,7 @@ import numpy as np
 import pygpufit.gpufit as gf
 from reconstruction import Particle
 
+
 def frame_to_particles(frame, initial_sigma=2.0, method = 0, crop_radius = 4, constraints=[-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]):
     def get_background_stdev(flat_roi, fitted_params):
         gauss = np.empty_like(flat_roi)
@@ -20,7 +21,6 @@ def frame_to_particles(frame, initial_sigma=2.0, method = 0, crop_radius = 4, co
         return list()
     pxd = frame.load()
     width, height = pxd.shape
-    print(frame)
     # Filter maxima and convert to floored int.
     xy = list()
     n_particles = 0
@@ -93,8 +93,6 @@ def parse_constraints(constraints, n_particles):
     constraint_types = np.asarray([c_type_intensity, gf.ConstraintType.FREE, gf.ConstraintType.FREE, c_type_sigma, c_type_offset], dtype=np.int32)
     constraint_values = np.zeros((n_particles, 10), dtype=np.float32)
     constraint_values[:, :] = constraints
-    print(constraint_values[0, :], "constraint vals")
-    print(constraint_types, "constraint_Types")
     return constraint_types, constraint_values
 
 

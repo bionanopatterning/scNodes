@@ -72,6 +72,9 @@ class NodeEditor:
     pickle_temp = None
 
 
+    n_cpus_max = cpu_count()
+    n_cpus = n_cpus_max
+    batch_size = n_cpus_max
     def __init__(self, window, shared_font_atlas=None):
         self.window = window
         self.window.clear_color = NodeEditor.COLOUR_WINDOW_BACKGROUND
@@ -133,8 +136,6 @@ class NodeEditor:
             NodeEditor.node_move_requested = self.window.cursor_delta
         elif self.window.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE) and not imgui_want_mouse:
             NodeEditor.camera_move_requested = self.window.cursor_delta
-
-
 
         imgui.new_frame()
         self._gui_main()
@@ -300,11 +301,24 @@ class NodeEditor:
             if imgui.begin_menu('Settings'):
                 if imgui.begin_menu('Profiling'):
                     _c, NodeEditor.profiling = imgui.checkbox("Track node processing times", NodeEditor.profiling)
+                    Node.tooltip("Keep track of the time that every node in the pipeline takes to process and output a frame.\n")
                     clear_times, _ = imgui.menu_item("   Reset timers")
                     if clear_times:
                         for node in NodeEditor.nodes:
                             node.profiler_time = 0.0
+                            node.profiler_count = 0
                     imgui.end_menu()
+                imgui.set_next_item_width(30)
+                _c, NodeEditor.n_cpus = imgui.input_int("Parallel batch size", NodeEditor.n_cpus, 0, 0)
+                if _c:
+                    NodeEditor.n_cpus = max([NodeEditor.n_cpus, 1])
+                    NodeEditor.batch_size = NodeEditor.n_cpus
+
+                Node.tooltip("Number of frames to process within one parallel processing batch. Values higher than the amount\n" 
+                             "of CPUs on the PC are allowed and will result in multiple tasks being dispatched to individual\n" 
+                             "CPUs per batch. This can increase processing speed, but reduces GUI responsiveness. For optimal\n" 
+                             "efficiency, set the batch size to an integer multiple of the amount of CPUs on the machine. \n"
+                             f"This PC has: {NodeEditor.n_cpus_max} CPUs.")
                 imgui.end_menu()
             imgui.end_main_menu_bar()
         imgui.pop_style_color(5)
@@ -364,6 +378,7 @@ class NodeEditor:
             ca_b = _find_attribute_by_id(pair[1])
             ca_a.connect_attributes(ca_b)
 
+
 class Node:
     if True:
         id_generator = count(0)
@@ -385,6 +400,7 @@ class Node:
         TYPE_IMAGE_CALCULATOR = 13
         TYPE_FRAME_SHIFT = 14
         TYPE_BIN_IMAGE = 15
+        TYPE_BAKE_STACK = 16
 
         COLOUR = dict()
         COLOUR[TYPE_LOAD_DATA] = (54 / 255, 47 / 255, 192 / 255, 1.0)
@@ -403,6 +419,7 @@ class Node:
         COLOUR[TYPE_FRAME_SHIFT] = (50 / 255, 223 / 255, 80 / 255, 1.0)
         COLOUR[TYPE_BIN_IMAGE] = (143 / 255, 123 / 255, 103 / 255, 1.0)
         COLOUR[TYPE_NULL] = (1.0, 0.0, 1.0, 1.0)
+        COLOUR[TYPE_BAKE_STACK] = (143 / 255, 123 / 255, 103 / 255, 1.0)
 
         COLOUR_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 0.96)
         COLOUR_FOCUSED_NODE_WINDOW_BACKGROUND = (0.99, 0.93, 0.93, 0.96)
@@ -433,6 +450,8 @@ class Node:
         TITLE[TYPE_FRAME_SHIFT] = "Frame shift"
         TITLE[TYPE_BIN_IMAGE] = "Bin image"
         TITLE[TYPE_NULL] = "null"
+        TITLE[TYPE_BAKE_STACK] = "Bake stack"
+
         WINDOW_ROUNDING = 5.0
         FRAME_ROUNDING = 2.0
         PLAY_BUTTON_SIZE = 40
@@ -474,8 +493,11 @@ class Node:
         self.keep_active = False
         # flags
         self.returns_image = True
-        self.does_profiling = True
+        self.does_profiling_time = True
+        self.does_profiling_count = True
         self.profiler_time = 0.0
+        self.profiler_count = 0
+        self.frame_requested_by_image_viewer = False
 
     def __eq__(self, other):
         if isinstance(other, Node):
@@ -581,10 +603,10 @@ class Node:
                 new_node.position = self.position
                 self.delete()
             imgui.end_popup()
-        if NodeEditor.profiling and self.does_profiling:
-            imgui.text(f"Time processing: {self.profiler_time:.2f}")
+        if NodeEditor.profiling and self.does_profiling_time:
             imgui.separator()
-            imgui.spacing()
+            imgui.text(f"Time processing: {self.profiler_time:.2f}")
+            imgui.text(f"Frames requested: {self.profiler_count}")
         imgui.pop_style_color(23)
         imgui.pop_style_var(5)
         imgui.pop_id()
@@ -592,6 +614,10 @@ class Node:
         imgui.end()
 
     def play_button(self):
+        """
+        Render a 'play / pause' button for the node, with play/pause state toggled by a single left mouse button click.
+        :return: tuple (bool clicked, bool play). bool play is True is current state is 'play', False is 'pause'
+        """
         clicked = False
         ## Start/stop button
         imgui.push_id(f"Startstop{self.id}")
@@ -712,6 +738,8 @@ class Node:
             return ParticleFittingNode()
         elif node_type == Node.TYPE_PARTICLE_FILTER:
             return ParticleFilterNode()
+        elif node_type == Node.TYPE_BAKE_STACK:
+            return BakeStackNode()
         else:
             return False
 
@@ -756,6 +784,7 @@ class Node:
         retval = None
         if NodeEditor.profiling:
             start_time = time.time()
+            self.profiler_count += 1
         try:
             if self.buffer_last_output:
                 if idx is self.last_index_requested:
@@ -1169,6 +1198,7 @@ class LoadDataNode(Node):
         if not self.load_on_the_fly and not self.done_loading:
             if NodeEditor.profiling:
                 time_start = time.time()
+                self.profiler_count += 1
             if self.to_load_idx < self.dataset.n_frames:
                 self.dataset.get_indexed_image(self.to_load_idx).load()
                 self.to_load_idx += 1
@@ -1331,6 +1361,8 @@ class GetImageNode(Node):
         datasource = self.dataset_in.get_incoming_node()
         if datasource:
             try:
+                if NodeEditor.profiling:
+                    self.profiler_count += 1
                 if self.mode == 0:
                     image_in = datasource.get_image(self.frame)
                     self.image = image_in.load()
@@ -1370,6 +1402,8 @@ class GetImageNode(Node):
         self.any_change = True
 
     def get_image_impl(self, idx=None):
+        if NodeEditor.profiling:
+            self.profiler_count -= 1
         if self.any_change:
             self.configure_settings()
         if self.image is not None:
@@ -1709,7 +1743,8 @@ class ReconstructionRendererNode(Node):
         paint_in = ConnectableAttribute(ConnectableAttribute.TYPE_COLOUR, ConnectableAttribute.INPUT, parent=self)
         self.connectable_attributes.append(paint_in)
         self.particle_painters = [paint_in]
-        self.does_profiling = False
+        self.does_profiling_time = False
+        self.does_profiling_count = False
 
     def render(self):
         if super().render_start():
@@ -1872,6 +1907,7 @@ class ParticlePainterNode(Node):
         self.max = 0
         self.paint_dry = True  # flag to notify whether settings were changed that would result in different particle colours.
         self.returns_image = False
+        self.does_profiling_count = False
 
     def render(self):
         if super().render_start():
@@ -2044,7 +2080,8 @@ class ParticleDetectionNode(Node):
 
     def get_image_impl(self, idx=None):
         source = self.dataset_in.get_incoming_node()
-
+        if NodeEditor.profiling and self.frame_requested_by_image_viewer:
+            self.profiler_count += 1
         if source is not None:
             # Find threshold value
             image_obj = source.get_image(idx)
@@ -2072,6 +2109,7 @@ class ParticleDetectionNode(Node):
         try:
             if NodeEditor.profiling:
                 time_start = time.time()
+                self.profiler_count += 1
             retval = self.get_image_impl(idx).maxima
             if NodeEditor.profiling:
                 self.profiler_time += time.time() - time_start
@@ -2098,11 +2136,11 @@ class ExportDataNode(Node):
         self.export_type = 0  # 0 for dataset, 1 for image.
 
         self.frames_to_load = list()
-        self.n_jobs = 1
         self.n_frames_to_save = 1
         self.n_frames_saved = 0
 
         self.returns_image = False
+        self.does_profiling_count = False
 
     def render(self):
         if super().render_start():
@@ -2188,9 +2226,6 @@ class ExportDataNode(Node):
             self.n_frames_saved = 0
             if not os.path.isdir(self.path):
                 os.mkdir(self.path)
-            self.n_jobs = cfg.n_cpus
-            if cfg.n_cpus == -1:
-                self.n_jobs = cpu_count()
         elif self.export_type == 1:  # Save image
             img = self.dataset_in.get_incoming_node().get_image(idx=None)
             img_pxd = img.load()
@@ -2212,12 +2247,11 @@ class ExportDataNode(Node):
         if self.saving:
             try:
                 indices = list()
-                for i in range(min([self.n_jobs, len(self.frames_to_load)])):
+                for i in range(min([NodeEditor.batch_size, len(self.frames_to_load)])):
                     self.n_frames_saved += 1
                     indices.append(self.frames_to_load[-1])
                     self.frames_to_load.pop()
-
-                Parallel(n_jobs=self.n_jobs)(delayed(self.get_img_and_save)(index) for index in indices)
+                Parallel(n_jobs=NodeEditor.batch_size)(delayed(self.get_img_and_save)(index) for index in indices)
                 if len(self.frames_to_load) == 0:
                     self.saving = False
             except Exception as e:
@@ -2332,6 +2366,9 @@ class ParticleFittingNode(Node):
         self.offset_min = 0.0
         self.offset_max = -1.0
 
+        self.parallel = False
+        self.custom_bounds = False
+
     def render(self):
         if super().render_start():
             self.dataset_in.render_start()
@@ -2362,7 +2399,7 @@ class ParticleFittingNode(Node):
             self.any_change = _c or self.any_change
             if self.range_option == 2:
                 imgui.push_item_width(80)
-                _c, (self.range_min, self.range_max) = imgui.input_int2('(start, stop) index', self.range_min,
+                _c, (self.range_min, self.range_max) = imgui.input_int2('[start, stop) index', self.range_min,
                                                                         self.range_max)
                 self.any_change = _c or self.any_change
                 imgui.pop_item_width()
@@ -2397,33 +2434,39 @@ class ParticleFittingNode(Node):
             super().render_end()
 
     def render_advanced(self):
-        imgui.text("Optional: set bounds for fitting.")
-        imgui.push_item_width(45)
-        _c, self.sigma_min = imgui.input_float("min##sigma", self.sigma_min, 0, 0, "%.1f")
-        Node.tooltip("Enter value to limit particle sigma to a minimum value, or '-1.0' to leave unbounded.")
-        imgui.same_line()
-        _c, self.sigma_max = imgui.input_float("max##sigma", self.sigma_max, 0, 0, "%.1f")
-        Node.tooltip("Enter value to limit particle sigma to a maximum value, or '-1.0' to leave unbounded.")
-        imgui.same_line()
-        imgui.text("sigma (px)")
+        _c, self.parallel = imgui.checkbox("Do parallel processing", self.parallel)
+        Node.tooltip("Parallel processing can speed up reconstruction, but is currently\n"
+                     "blocking, meaning the GUI freezes during generation of the final\n"
+                     "stack.")
+        _c, self.custom_bounds = imgui.checkbox("Use custom parameter bounds", self.custom_bounds)
+        Node.tooltip("Edit the bounds for particle parameters intensity, sigma, and offset.")
+        if self.custom_bounds:
+            imgui.push_item_width(45)
+            _c, self.sigma_min = imgui.input_float("min##sigma", self.sigma_min, 0, 0, "%.1f")
+            Node.tooltip("Enter value to limit particle sigma to a minimum value, or '-1.0' to leave unbounded.")
+            imgui.same_line()
+            _c, self.sigma_max = imgui.input_float("max##sigma", self.sigma_max, 0, 0, "%.1f")
+            Node.tooltip("Enter value to limit particle sigma to a maximum value, or '-1.0' to leave unbounded.")
+            imgui.same_line()
+            imgui.text("sigma (px)")
 
-        _c, self.intensity_min = imgui.input_float("min##int", self.intensity_min, 0, 0, "%.1f")
-        Node.tooltip("Enter value to limit particle intensity to a minimum value, or '-1.0' to leave unbounded.")
-        imgui.same_line()
-        _c, self.intensity_max = imgui.input_float("max##int", self.intensity_max, 0, 0, "%.1f")
-        Node.tooltip("Enter value to limit particle intensity to a maximum value, or '-1.0' to leave unbounded.")
-        imgui.same_line()
-        imgui.text("intensity (counts)")
+            _c, self.intensity_min = imgui.input_float("min##int", self.intensity_min, 0, 0, "%.1f")
+            Node.tooltip("Enter value to limit particle intensity to a minimum value, or '-1.0' to leave unbounded.")
+            imgui.same_line()
+            _c, self.intensity_max = imgui.input_float("max##int", self.intensity_max, 0, 0, "%.1f")
+            Node.tooltip("Enter value to limit particle intensity to a maximum value, or '-1.0' to leave unbounded.")
+            imgui.same_line()
+            imgui.text("intensity (counts)")
 
-        _c, self.offset_min = imgui.input_float("min##offset", self.offset_min, 0, 0, "%.1f")
-        Node.tooltip("Enter value to limit particle offset to a minimum value, or '-1.0' to leave unbounded.")
-        imgui.same_line()
-        _c, self.offset_max = imgui.input_float("max##offset", self.offset_max, 0, 0, "%.1f")
-        Node.tooltip("Enter value to limit particle offset to a maximum value, or '-1.0' to leave unbounded.")
-        imgui.same_line()
-        imgui.text("offset (counts)")
+            _c, self.offset_min = imgui.input_float("min##offset", self.offset_min, 0, 0, "%.1f")
+            Node.tooltip("Enter value to limit particle offset to a minimum value, or '-1.0' to leave unbounded.")
+            imgui.same_line()
+            _c, self.offset_max = imgui.input_float("max##offset", self.offset_max, 0, 0, "%.1f")
+            Node.tooltip("Enter value to limit particle offset to a maximum value, or '-1.0' to leave unbounded.")
+            imgui.same_line()
+            imgui.text("offset (counts)")
 
-        imgui.pop_item_width()
+            imgui.pop_item_width()
 
     def init_fit(self):
         try:
@@ -2434,13 +2477,13 @@ class ParticleFittingNode(Node):
             self.fitting = True
             self.frames_to_fit = list()
             if self.range_option == 0:
-                dataset = self.get_source_load_data_node(self).dataset
+                dataset = dataset_source.dataset
                 n_frames = dataset.n_frames
                 self.frames_to_fit = list(range(0, n_frames))
             elif self.range_option == 2:
                 self.frames_to_fit = list(range(self.range_min, self.range_max))
             elif self.range_option == 1:
-                dataset = self.get_source_load_data_node(self).dataset
+                dataset = dataset_source.dataset
                 self.frames_to_fit = [dataset.current_frame]
             self.n_to_fit = len(self.frames_to_fit)
             self.n_fitted = 0
@@ -2450,7 +2493,7 @@ class ParticleFittingNode(Node):
 
     def on_update(self):
         try:
-            if self.fitting:
+            if self.fitting and not self.parallel:
                 if len(self.frames_to_fit) == 0:
                     self.fitting = False
                     self.play = False
@@ -2464,17 +2507,31 @@ class ParticleFittingNode(Node):
                         self.frames_to_fit.pop()
                         if not fitted_frame.discard:
                             self.particle_data += particles
+            elif self.fitting and self.parallel:
+                indices = list()
+                for i in range(min([NodeEditor.batch_size, len(self.frames_to_fit)])):
+                    self.n_fitted += 1
+                    indices.append(self.frames_to_fit[-1])
+                    self.frames_to_fit.pop()
+                    print("Batch:", indices)
+                particle_lists = Parallel(n_jobs=NodeEditor.batch_size)(delayed(self.get_and_fit_image_parallel_impl)(index) for index in indices)
+                for p in particle_lists:
+                    self.particle_data += p
+                if len(self.frames_to_fit) == 0:
+                    self.fitting = False
+                    self.play = False
         except Exception as e:
+            self.fitting = False
+            self.play = False
             NodeEditor.set_error(e, "Error in ParticleFitNode.on_update(self): "+str(e))
 
     def get_image_impl(self, idx=None):
         data_source = self.dataset_in.get_incoming_node()
         coord_source = self.localizations_in.get_incoming_node()
-        if data_source:
+        if data_source and coord_source:
             frame = data_source.get_image(idx)
-            if coord_source:
-                coordinates = coord_source.get_coordinates(idx)
-                frame.maxima = coordinates
+            coordinates = coord_source.get_coordinates(idx)
+            frame.maxima = coordinates
             if frame.discard:
                 frame.particles = None
                 return frame
@@ -2495,6 +2552,26 @@ class ParticleFittingNode(Node):
                 new_maxima.append([particle.y, particle.x])
             frame.maxima = new_maxima
             return frame
+
+    def get_and_fit_image_parallel_impl(self, idx=None):
+        data_source = self.dataset_in.get_incoming_node()
+        coord_source = self.localizations_in.get_incoming_node()
+        if data_source and coord_source:
+            frame = data_source.get_image(idx)
+            coordinates = coord_source.get_coordinates(idx)
+            frame.maxima = coordinates
+            particles = list()
+            if self.estimator in [0, 1]:
+                particles = pfit.frame_to_particles(frame, self.initial_sigma, self.estimator, self.crop_radius, constraints = [self.intensity_min, self.intensity_max, -1, -1, -1, -1, self.sigma_min, self.sigma_max, self.offset_min, self.offset_max])
+            elif self.estimator == 2:
+                particles = list()
+                pxd = frame.load()
+                for i in range(len(frame.maxima)):
+                    intensity = pxd[frame.maxima[i, 0], frame.maxima[i, 1]]
+                    x = frame.maxima[i, 0]
+                    y = frame.maxima[i, 1]
+                    particles.append(Particle(idx, x, y, 1.0, intensity))
+            return particles
 
     def get_particle_data_impl(self):
         self.particle_data.clean()
@@ -2523,6 +2600,7 @@ class ParticleFilterNode(Node):
         self.filters = list()
 
         self.returns_image = False
+        self.does_profiling_count = False
 
     def render(self):
         if super().render_start():
@@ -2641,3 +2719,90 @@ class ParticleFilterNode(Node):
             particle_data_object.apply_filter(self.parameter_key, self.min, self.max, logic_not=self.invert)
             if NodeEditor.profiling:
                 self.parent.profiler_time += time.time() - time_start
+
+
+class BakeStackNode(Node):
+    RANGE_OPTIONS = ["All frames", "Custom range"]
+
+    def __init__(self):
+        super().__init__(Node.TYPE_BAKE_STACK)# make it take dataset AND coordinates.
+        self.size = [200, 100]
+
+        self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, self)
+        self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, self)
+
+        self.connectable_attributes.append(self.dataset_in)
+        self.connectable_attributes.append(self.dataset_out)
+
+        self.parallel = True
+        self.baking = False
+        self.n_to_bake = 1
+        self.n_baked = 0
+
+
+        self.range_option = 0
+        self.custom_range_min = 0
+        self.custom_range_max = 1
+
+        self.has_dataset = False
+        self.dataset = Dataset()
+        self.frames_to_bake = list()
+
+    def render(self):
+        if super().render_start():
+            self.dataset_in.render_start()
+            self.dataset_in.render_end()
+            if self.has_dataset:
+                self.dataset_out.render_start()
+                self.dataset_out.render_end()
+
+            imgui.spacing()
+            imgui.separator()
+            imgui.spacing()
+
+            _c, self.range_option = imgui.combo("Range to bake", self.range_option, BakeStackNode.RANGE_OPTIONS)
+            if self.range_option == 1:
+                imgui.push_item_width(80)
+                _c, (self.custom_range_min, self.custom_range_max) = imgui.input_int2('[start, top) index', self.custom_range_min, self.custom_range_max)
+                imgui.pop_item_width()
+            _c, self.parallel = imgui.checkbox("Parallel processing", self.parallel)
+
+            clicked, self.baking = self.play_button()
+
+            if self.baking:
+                imgui.text("Baking process:")
+                self.progress_bar(self.n_baked / self.n_to_bake)
+
+    def get_image_impl(self, idx=None):
+        datasource = self.dataset_in.get_incoming_node()
+        if datasource:
+            return datasource.get_image(idx)
+
+    def init_bake(self):
+        self.has_dataset = False
+        if self.range_option == 0:
+            dataset_source = Node.get_source_load_data_node(self)
+            self.frames_to_bake = list(range(0, dataset_source.dataset))
+        elif self.range_option == 1:
+            self.frames_to_bake = list(range(self.custom_range_min, self.custom_range_max))
+        ## TODO: make BakeStackNode count as a primary data source node.
+
+    def on_update(self):
+        if self.baking:
+            try:
+                indices = list()
+                for i in range(min([NodeEditor.batch_size, len(self.frames_to_bake)])):
+                    self.n_baked += 1
+                    indices.append(self.frames_to_bake[-1])
+                    self.frames_to_bake.pop()
+                frames = Parallel(n_jobs=NodeEditor.batch_size)(delayed(self.get_image_impl)(index) for index in indices)
+                for frame in frames:
+                    self.dataset.append_frame(frame)
+                if len(self.frames_to_bake) == 0:
+                    self.baking = False
+                    self.play = False
+            except Exception as e:
+                self.baking = False
+                self.play = False
+                NodeEditor.set_error(e, "Error baking stack: \n"+str(e))
+
