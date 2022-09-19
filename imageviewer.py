@@ -267,8 +267,7 @@ class ImageViewer:
 
     def _frame_info_window(self):
         imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 0.0)
-        #imgui.set_next_window_position(0, self.window.height - cfg.iv_info_bar_height + (cfg.node_editor.window.height - self.window.height), imgui.ALWAYS)
-        imgui.set_next_window_position(0, 0, imgui.ALWAYS)
+        imgui.set_next_window_position(0, self.window.height - cfg.iv_info_bar_height + (cfg.node_editor.window.height - self.window.height), imgui.ALWAYS)
         imgui.set_next_window_size(self.window.width, cfg.iv_info_bar_height)
         ## Info & control panel
         imgui.begin("##frameselectwindow", flags=imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE)

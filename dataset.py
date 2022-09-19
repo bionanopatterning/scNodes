@@ -92,11 +92,11 @@ class Dataset:
             for tag in neg_tags:
                 if tag in frame.path:
                     discard[i] = True
-                    print(f"discarding {i}")
             for tag in pos_tags:
                 if tag in frame.path:
                     discard[i] = False
-                    print(f"retaining {i}")
+                else:
+                    discard[i] = True
             i += 1
         for i in range(len(self.frames) - 1, -1, -1):
             if discard[i]:

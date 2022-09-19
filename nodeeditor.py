@@ -4,7 +4,7 @@ from imgui.integrations.glfw import GlfwRenderer
 import config as cfg
 import glfw
 import time
-
+import datetime
 import util
 from opengl_classes import *
 import tkinter as tk
@@ -19,10 +19,13 @@ from pystackreg import StackReg
 import pywt
 from joblib import Parallel, delayed, cpu_count
 import particlefitting as pfit
-import _pickle as pickle
+import dill as pickle
 import copy
+
 tkroot = tk.Tk()
 tkroot.withdraw()
+
+_srnversion = "1.0.0"
 
 
 class NodeEditor:
@@ -64,6 +67,11 @@ class NodeEditor:
 
     current_dataset_pixel_size = 100
     any_change = False
+
+    profiling = False
+    pickle_temp = None
+
+
     def __init__(self, window, shared_font_atlas=None):
         self.window = window
         self.window.clear_color = NodeEditor.COLOUR_WINDOW_BACKGROUND
@@ -244,34 +252,59 @@ class NodeEditor:
         imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *NodeEditor.COLOUR_MAIN_MENU_BAR_HILIGHT)
         imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *NodeEditor.COLOUR_MAIN_MENU_BAR_HILIGHT)
         imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *NodeEditor.COLOUR_MENU_WINDOW_BACKGROUND)
+        ## Save node setup.
         if imgui.core.begin_main_menu_bar():
             if imgui.begin_menu('File'):
-                load_setup, _ = imgui.menu_item("Load setup", 'Ctrl+O')
+                load_setup, _ = imgui.menu_item("Load node setup")
                 if load_setup:
                     try:
-                        filename = filedialog.askopenfilename()
-                        if filename is not None:
-                            with open(filename+".nodes", 'rb') as pickle_file:
-                                NodeEditor.nodes = pickle.load(pickle_file)
+                        filename = filedialog.askopenfilename(filetypes=[("srNodes setup", ".srn")])
+                        if filename != '':
+                            with open(filename, 'rb') as pickle_file:
+                                imported_nodes = pickle.load(pickle_file)
+                                NodeEditor.nodes = imported_nodes
+                                NodeEditor.relink_after_load()
                     except Exception as e:
-                        NodeEditor.set_error(e, "Error loading node setup\nare you sure you selected a '.nodes' file?\nIf so, '.nodes' file could be incompatible due to version mismatch.\n"+str(e))
-                import_setup, _ = imgui.menu_item("Import setup", 'Ctrl+I')
+                        NodeEditor.set_error(e, f"Error loading node setup - are you sure you selected a '.srn' file?\n"+str(e))
+                import_setup, _ = imgui.menu_item("Append node setup")
                 if import_setup:
                     try:
-                        filename = filedialog.askopenfilename()
-                        if filename is not None:
-                            with open(filename+".nodes", 'rb') as pickle_file:
+                        filename = filedialog.askopenfilename(filetypes=[("srNodes setup", ".srn")])
+                        if filename != '':
+                            with open(filename, 'rb') as pickle_file:
                                 imported_nodes = pickle.load(pickle_file)
                                 for node in imported_nodes:
                                     NodeEditor.nodes.append(node)
+                                NodeEditor.relink_after_load()
                     except Exception as e:
-                        NodeEditor.set_error(e, "Error importing node setup\nare you sure you selected a '.nodes' file?\nIf so, '.nodes' file could be incompatible due to version mismatch.\n"+str(e))
-                save_setup, _ = imgui.menu_item("Save current setup", 'Ctrl+S')
+                        NodeEditor.set_error(e, "Error importing node setup - are you sure you selected a '.srn' file?\n"+str(e))
+                save_setup, _ = imgui.menu_item("Save current setup")
                 if save_setup:
-                    filename = filedialog.asksaveasfilename()
-                    if filename is not None:
-                        with open(filename+".nodes", 'wb') as pickle_file:
-                            pickle.dump(NodeEditor.nodes, pickle_file)
+                    filename = filedialog.asksaveasfilename(filetypes=[("srNodes setup", ".srn")])
+                    if filename != '':
+                        if filename[-4:] == ".srn":
+                            filename = filename[:-4]
+                        with open(filename+".srn", 'wb') as pickle_file:
+                            node_copies = list()
+                            for node in NodeEditor.nodes:
+                                node.pre_save()
+                                node_copies.append(copy.deepcopy(node))
+                                node.post_save()
+                            pickle.dump(node_copies, pickle_file)
+                clear_setup, _ = imgui.menu_item("Clear current setup")
+                if clear_setup:
+                    for i in range(len(NodeEditor.nodes)):
+                        NodeEditor.nodes[0].delete()
+                    NodeEditor.nodes = list()
+                imgui.end_menu()
+            if imgui.begin_menu('Settings'):
+                if imgui.begin_menu('Profiling'):
+                    _c, NodeEditor.profiling = imgui.checkbox("Track node processing times", NodeEditor.profiling)
+                    clear_times, _ = imgui.menu_item("   Reset timers")
+                    if clear_times:
+                        for node in NodeEditor.nodes:
+                            node.profiler_time = 0.0
+                    imgui.end_menu()
                 imgui.end_menu()
             imgui.end_main_menu_bar()
         imgui.pop_style_color(5)
@@ -308,6 +341,28 @@ class NodeEditor:
         NodeEditor.error_obj = error_obj
         NodeEditor.error_new = True
 
+    @staticmethod
+    def relink_after_load():
+        nodes = NodeEditor.nodes
+        attributes = list()
+        ids_to_link = list()
+        for node in nodes:
+            for attribute in node.connectable_attributes:
+                attributes.append(attribute)
+                if attribute.direction == ConnectableAttribute.INPUT:
+                    for partner in attribute.linked_attributes:
+                        ids_to_link.append((attribute.id, partner.id))
+                attribute.disconnect_all()
+
+        def _find_attribute_by_id(target_id):
+            for a in attributes:
+                if a.id == target_id:
+                    return a
+
+        for pair in ids_to_link:
+            ca_a = _find_attribute_by_id(pair[0])
+            ca_b = _find_attribute_by_id(pair[1])
+            ca_a.connect_attributes(ca_b)
 
 class Node:
     if True:
@@ -393,7 +448,8 @@ class Node:
         TOOLTIP_HOVERED_START_TIME = 0.0
 
     def __init__(self, nodetype):
-        self.id = next(Node.id_generator)
+        self.version = _srnversion
+        self.id = int(datetime.datetime.utcnow().timestamp()) + next(Node.id_generator)
         self.type = nodetype
         self.position = [0, 0]
         self.last_measured_window_position = [0, 0]
@@ -418,9 +474,11 @@ class Node:
         self.keep_active = False
         # flags
         self.returns_image = True
+        self.does_profiling = True
+        self.profiler_time = 0.0
 
     def __eq__(self, other):
-        if type(self) is type(other):
+        if isinstance(other, Node):
             return self.id == other.id
         return False
 
@@ -498,13 +556,8 @@ class Node:
         pass
 
     def render_end(self):
+        ## Node context_menu:
         if imgui.begin_popup_context_window():
-            _duplicate, _ = imgui.menu_item("Duplicate node")
-            if _duplicate:
-                print("Duplicating node")
-                duplicate_node = Node.create_node_by_type(self.type)
-                duplicate_node.position = [self.position[0] + 10, self.position[1] + 10]
-                NodeEditor.set_active_node(duplicate_node)
             self.keep_active = NodeEditor.focused_node == self
             _changed, self.keep_active = imgui.checkbox("Focus node", self.keep_active)
             if _changed:
@@ -514,7 +567,24 @@ class Node:
                     NodeEditor.set_active_node(None, True)
                     NodeEditor.set_active_node(self, False)
                 imgui.close_current_popup()
+            _duplicate, _ = imgui.menu_item("Duplicate node")
+            if _duplicate:
+                duplicate_node = Node.create_node_by_type(self.type)
+                duplicate_node.position = [self.position[0] + 10, self.position[1] + 10]
+                NodeEditor.set_active_node(duplicate_node)
+            _delete, _ = imgui.menu_item("Delete node")
+            if _delete:
+                self.delete()
+            _reset, _ = imgui.menu_item("Reset node")
+            if _reset:
+                new_node = Node.create_node_by_type(self.type)
+                new_node.position = self.position
+                self.delete()
             imgui.end_popup()
+        if NodeEditor.profiling and self.does_profiling:
+            imgui.text(f"Time processing: {self.profiler_time:.2f}")
+            imgui.separator()
+            imgui.spacing()
         imgui.pop_style_color(23)
         imgui.pop_style_var(5)
         imgui.pop_id()
@@ -683,18 +753,23 @@ class Node:
         :param idx:int, index of frame in dataset
         :return: Frame object
         """
+        retval = None
+        if NodeEditor.profiling:
+            start_time = time.time()
         try:
             if self.buffer_last_output:
                 if idx is self.last_index_requested:
-                    return copy.deepcopy(self.last_frame_returned)
+                    retval = copy.deepcopy(self.last_frame_returned)
                 else:
                     self.last_frame_returned = self.get_image_impl(idx)
                     self.last_index_requested = idx
-                    return copy.deepcopy(self.last_frame_returned)
-            return self.get_image_impl(idx)
+                    retval = copy.deepcopy(self.last_frame_returned)
+            retval = self.get_image_impl(idx)
         except Exception as e:
             NodeEditor.set_error(e, f"{Node.TITLE[self.type]} error: "+str(e))
-            return None
+        if NodeEditor.profiling:
+            self.profiler_time += (time.time() - start_time)
+        return retval
 
     def get_image_impl(self, idx):
         return None
@@ -712,6 +787,30 @@ class Node:
         return None
 
     def on_gain_focus(self):
+        # some debug stuff here, remove later TODO
+        print(f"Node with ID = {self.id} gained focus.")
+        for a in self.connectable_attributes:
+            print(f"\tAttribute with ID = {a.id}, parent = {a.parent} linked to:")
+            for b in a.linked_attributes:
+                print(f"\t\tAttribute with ID = {b.id}, parent = {b.parent}.")
+        pass
+
+    def pre_save(self):
+        NodeEditor.pickle_temp = dict()
+        self.last_index_requested = -1
+        self.last_frame_returned = None
+        NodeEditor.pickle_temp["profiler_time"] = self.profiler_time
+        self.pre_save_impl()
+
+    def pre_save_impl(self):
+        pass
+
+    def post_save(self):
+        self.profiler_time = NodeEditor.pickle_temp["profiler_time"]
+        self.post_save_impl()
+        NodeEditor.pickle_temp = dict()
+
+    def post_save_impl(self):
         pass
 
 
@@ -746,7 +845,7 @@ class ConnectableAttribute:
     COLOUR[TYPE_RECONSTRUCTION] = (243 / 255, 9 / 255, 9 / 255, 1.0)
     COLOUR[TYPE_COLOUR] = (4 / 255, 4 / 255, 4 / 255, 1.0)
     COLOUR[TYPE_MULTI] = (230 / 255, 230 / 255, 240 / 255, 1.0)
-    COLOUR[TYPE_COORDINATES] =  (230 / 255, 174 / 255, 13 / 255, 1.0)
+    COLOUR[TYPE_COORDINATES] = (230 / 255, 174 / 255, 13 / 255, 1.0)
     COLOUR_BORDER = (0.0, 0.0, 0.0, 1.0)
 
     TITLE = dict()
@@ -766,9 +865,9 @@ class ConnectableAttribute:
     CONNECTION_LINE_COLOUR = (0.0, 0.0, 0.0, 1.0)
     CONNECTION_LINE_THICKNESS = 2
 
-    def __init__(self, type, direction, parent, allowed_partner_types=None):
-        self.id = next(ConnectableAttribute.id_generator)
-        self.type = type
+    def __init__(self, attributetype, direction, parent, allowed_partner_types=None):
+        self.id = int(datetime.datetime.utcnow().timestamp()) + next(ConnectableAttribute.id_generator)
+        self.type = attributetype
         self.title = ConnectableAttribute.TITLE[self.type]
         self.colour = ConnectableAttribute.COLOUR[self.type]
         self.direction = direction
@@ -776,7 +875,6 @@ class ConnectableAttribute:
         self.draw_y = 0
         self.draw_x = 0
         self.connector_position = [0, 0]
-        ## flags
         self.newly_connected = False
         self.any_change = False
         self.newly_disconnected = False
@@ -786,7 +884,6 @@ class ConnectableAttribute:
         self.current_type = self.type
         if allowed_partner_types is not None:
             self.allowed_partner_types = allowed_partner_types
-        NodeEditor.connectable_attributes.append(self)
 
     def __eq__(self, other):
         if type(self) is type(other):
@@ -919,10 +1016,9 @@ class ConnectableAttribute:
 
     def delete(self):
         self.disconnect_all()
-        NodeEditor.connectable_attributes.remove(self)
 
     def on_connect(self):
-        ## when on connect is called, a new ConnectabelAttribute has just been added to the linked_partners list
+        ## when on connect is called, a new ConnectableAttribute has just been added to the linked_partners list
         if self.direction == ConnectableAttribute.INPUT:
             for idx in range(len(self.linked_attributes) - 1):
                 self.linked_attributes[idx].notify_disconnect()
@@ -961,7 +1057,7 @@ class LoadDataNode(Node):
         self.size = [200, 200]
 
         # Set up connectable attributes
-        self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent = self)
+        self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=self)
         self.connectable_attributes.append(self.dataset_out)
         # Set up node-specific vars
         self.dataset = Dataset()
@@ -1071,11 +1167,22 @@ class LoadDataNode(Node):
 
     def on_update(self):
         if not self.load_on_the_fly and not self.done_loading:
+            if NodeEditor.profiling:
+                time_start = time.time()
             if self.to_load_idx < self.dataset.n_frames:
                 self.dataset.get_indexed_image(self.to_load_idx).load()
                 self.to_load_idx += 1
             else:
                 self.done_loading = True
+            if NodeEditor.profiling:
+                self.profiler_time += time.time() - time_start
+
+    def pre_save_impl(self):
+        NodeEditor.pickle_temp["dataset"] = self.dataset
+        self.dataset = Dataset()
+
+    def post_save_impl(self):
+        self.dataset = NodeEditor.pickle_temp["dataset"]
 
 
 class RegisterNode(Node):
@@ -1167,6 +1274,9 @@ class RegisterNode(Node):
                 self.reference_image = None
             input_img.bake_transform()
             return input_img
+
+    def pre_save_impl(self):
+        self.reference_image = None
 
 
 class GetImageNode(Node):
@@ -1579,6 +1689,7 @@ class ReconstructionRendererNode(Node):
 
         self.reconstruction_in = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.INPUT, parent = self)
         self.image_out = ConnectableAttribute(ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.OUTPUT, parent = self)
+
         self.connectable_attributes.append(self.reconstruction_in)
         self.connectable_attributes.append(self.image_out)
 
@@ -1598,6 +1709,7 @@ class ReconstructionRendererNode(Node):
         paint_in = ConnectableAttribute(ConnectableAttribute.TYPE_COLOUR, ConnectableAttribute.INPUT, parent=self)
         self.connectable_attributes.append(paint_in)
         self.particle_painters = [paint_in]
+        self.does_profiling = False
 
     def render(self):
         if super().render_start():
@@ -1684,8 +1796,9 @@ class ReconstructionRendererNode(Node):
 
                 ## Apply colours
                 if self.paint_particles:
-                    for particle in particle_data.particles:
-                        particle.colour = np.asarray([0.0, 0.0, 0.0])
+                    if len(self.particle_painters) > 0:
+                        for particle in particle_data.particles:
+                            particle.colour = np.asarray([0.0, 0.0, 0.0])
                     for i in range(0, len(self.particle_painters) - 1):
                         self.particle_painters[i].get_incoming_node().apply_paint_to_particledata(particle_data)
                     self.paint_currently_applied = True
@@ -1728,6 +1841,13 @@ class ReconstructionRendererNode(Node):
         img_height = int((roi[3] - roi[1]) * self.magnification)
         self.reconstruction_image_size = (img_width, img_height)
 
+    def pre_save_impl(self):
+        NodeEditor.pickle_temp["latest_image"] = self.latest_image
+        self.latest_image = None
+
+    def post_save_impl(self):
+        self.latest_image = NodeEditor.pickle_temp["latest_image"]
+
 
 class ParticlePainterNode(Node):
 
@@ -1738,6 +1858,7 @@ class ParticlePainterNode(Node):
         self.reconstruction_in = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.INPUT, parent = self)
         self.colour_out = ConnectableAttribute(ConnectableAttribute.TYPE_COLOUR, ConnectableAttribute.OUTPUT, parent = self)
 
+        self.connectable_attributes.append(self.reconstruction_in)
         self.connectable_attributes.append(self.colour_out)
 
         self.parameter = 0
@@ -1777,12 +1898,16 @@ class ParticlePainterNode(Node):
 
             if self.parameter == 0:
                 imgui.same_line()
-                _c, self.colour_min = imgui.color_edit3("##Colour_min", *self.colour_max, imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL)
+                _c, self.colour_min = imgui.color_edit3("##Colour_min", *self.colour_min, imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL)
                 self.colour_max = self.colour_max
                 self.paint_dry = self.paint_dry or _c
             else:
                 _c, self.colour_min = imgui.color_edit3("##Colour_min", *self.colour_min, imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL)
                 self.paint_dry = self.paint_dry or _c
+                imgui.same_line(spacing = 20)
+                imgui.text("min")
+                imgui.same_line(spacing=imgui.get_content_region_available_width() - 38 - imgui.get_font_size() * len("max") * 4) # TODO check whether alignment is correct here.
+                imgui.text("max")
                 imgui.same_line(spacing = imgui.get_content_region_available_width() - 38)
                 _c, self.colour_max = imgui.color_edit3("##Colour_max", *self.colour_max, imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_SIDE_PREVIEW)
                 self.paint_dry = self.paint_dry or _c
@@ -1832,6 +1957,8 @@ class ParticlePainterNode(Node):
                 self.max = self.histogram_bins[-1]
 
     def apply_paint_to_particledata(self, particledata):
+        if NodeEditor.profiling:
+            time_start = time.time()
         if self.parameter == 0:
             _colour = np.asarray(self.colour_max)
             for particle in particledata.particles:
@@ -1846,6 +1973,8 @@ class ParticlePainterNode(Node):
                 _colour = (1.0 - fac) * c_min + fac * c_max
                 particle.colour += _colour
                 i += 1
+        if NodeEditor.profiling:
+            self.profiler_time += time.time() - time_start
 
     def on_gain_focus(self):
         if self.histogram_initiated:
@@ -1916,7 +2045,6 @@ class ParticleDetectionNode(Node):
     def get_image_impl(self, idx=None):
         source = self.dataset_in.get_incoming_node()
 
-        print(self.roi)
         if source is not None:
             # Find threshold value
             image_obj = source.get_image(idx)
@@ -1937,12 +2065,17 @@ class ParticleDetectionNode(Node):
             else:
                 Node.get_source_load_data_node(self).dataset.reconstruction_roi = [0, 0, image.shape[0], image.shape[1]]
             image_obj.maxima = coordinates
-            print(self.roi)
+
             return image_obj
 
     def get_coordinates(self, idx=None):
         try:
-            return self.get_image_impl(idx).maxima
+            if NodeEditor.profiling:
+                time_start = time.time()
+            retval = self.get_image_impl(idx).maxima
+            if NodeEditor.profiling:
+                self.profiler_time += time.time() - time_start
+            return retval
         except Exception as e:
             NodeEditor.set_error(e, "Error returning coordinates "+str(e))
 
@@ -2007,8 +2140,6 @@ class ExportDataNode(Node):
             save_button_width = 100
             save_button_height = 40
 
-            if self.export_type == 0:
-                _c, self.include_discarded_frames = imgui.checkbox("Include discarded frames", self.include_discarded_frames)
 
             if self.saving:
                 width = imgui.get_content_region_available_width()
@@ -2030,7 +2161,7 @@ class ExportDataNode(Node):
             imgui.same_line(position=(content_width - save_button_width) // 2)
             if not self.saving:
                 if imgui.button("Save", save_button_width, save_button_height):
-                    self.init_save()
+                    self.do_save()
             else:
                 if imgui.button("Cancel", save_button_width, save_button_height):
                     self.saving = False
@@ -2042,16 +2173,17 @@ class ExportDataNode(Node):
             img_pxd = img_pxd[self.roi[1]:self.roi[3], self.roi[0]:self.roi[2]]
         Image.fromarray(img_pxd).save(self.path+"/0"+str(idx)+".tif")
 
-    def init_save(self):
+    def do_save(self):
+        if NodeEditor.profiling:
+            time_start = time.time()
         if self.export_type == 0:  # Save stack
             self.saving = True
-            if self.include_discarded_frames:
-                n_active_frames = Node.get_source_load_data_node(self).dataset.n_frames
-                self.frames_to_load = list(range(0, n_active_frames))
-            else:
-                self.frames_to_load = list()
-                for i in range(Node.get_source_load_data_node(self).dataset.n_frames):
-                    self.frames_to_load.append(i)
+            #if self.include_discarded_frames:
+                #n_active_frames = Node.get_source_load_data_node(self).dataset.n_frames
+                #self.frames_to_load = list(range(0, n_active_frames))
+            self.frames_to_load = list()
+            for i in range(Node.get_source_load_data_node(self).dataset.n_frames):
+                self.frames_to_load.append(i)
             self.n_frames_to_save = len(self.frames_to_load)
             self.n_frames_saved = 0
             if not os.path.isdir(self.path):
@@ -2073,6 +2205,8 @@ class ExportDataNode(Node):
                 self.dataset_in.get_incoming_node().get_particle_data().save_as_csv(self.path+".csv")
             except Exception as e:
                 NodeEditor.set_error(e, "Error saving .csv\n"+str(e))
+        if NodeEditor.profiling:
+            self.profiler_time += time.time() - time_start
 
     def on_update(self):
         if self.saving:
@@ -2366,6 +2500,13 @@ class ParticleFittingNode(Node):
         self.particle_data.clean()
         return self.particle_data
 
+    def pre_save_impl(self):
+        NodeEditor.pickle_temp["particle_data"] = self.particle_data
+        self.particle_data = ParticleData()
+
+    def post_save_impl(self):
+        self.particle_data = NodeEditor.pickle_temp["particle_data"]
+
 
 class ParticleFilterNode(Node):
     def __init__(self):
@@ -2413,9 +2554,9 @@ class ParticleFilterNode(Node):
                     pf.set_data(*self.get_histogram_vals(self.available_parameters[pf.parameter]), self.available_parameters[pf.parameter])
                 imgui.same_line(spacing = 10)
                 _c, pf.invert = imgui.checkbox("NOT", pf.invert)
-                Node.tooltip("If NOT is selected, the filter logic is inverted. Default\n "
+                Node.tooltip("If NOT is selected, the filter logic is inverted. Default\n"
                              "behaviour is: particle retained if min < parameter < max.\n"
-                             "With NOT on, a particle is retained if max < parameter OR min > parameter")
+                             "With NOT on, a particle is retained if max < parameter OR\nmin > parameter")
 
                 pf.render()
                 imgui.pop_id()
@@ -2424,7 +2565,7 @@ class ParticleFilterNode(Node):
             imgui.new_line()
             imgui.same_line(content_width / 2 - 50)
             if imgui.button("Add filter", width = 100, height = 20):
-                new_filter = ParticleFilterNode.Filter()
+                new_filter = ParticleFilterNode.Filter(self)
                 new_filter.set_data(*self.get_histogram_vals(self.available_parameters[0]), self.available_parameters[0])
                 self.filters.append(new_filter)
             imgui.pop_style_color(2)
@@ -2448,17 +2589,23 @@ class ParticleFilterNode(Node):
             self.available_parameters = list(particledata.histogram_counts.keys())
 
     def get_particle_data_impl(self):
+        if NodeEditor.profiling:
+            time_start = time.time()
         datasource = self.reconstruction_in.get_incoming_node()
         if datasource:
             pdata = datasource.get_particle_data()
             for pf in self.filters:
                 pf.apply(pdata)
+            if NodeEditor.profiling:
+                self.profiler_time += time.time() - time_start
             return pdata
         else:
+            if NodeEditor.profiling:
+                self.profiler_time += time.time() - time_start
             return ParticleData()
 
     class Filter:
-        def __init__(self):
+        def __init__(self, parent):
             self.parameter_key = ""
             self.vals = [0, 0]
             self.bins = [0, 0]
@@ -2466,6 +2613,7 @@ class ParticleFilterNode(Node):
             self.max = 1
             self.parameter = 0
             self.invert = False
+            self.parent = parent
 
         def set_data(self, vals, bins, prm_key):
             self.vals = vals
@@ -2488,4 +2636,8 @@ class ParticleFilterNode(Node):
             imgui.spacing()
 
         def apply(self, particle_data_object):
+            if NodeEditor.profiling:
+                time_start = time.time()
             particle_data_object.apply_filter(self.parameter_key, self.min, self.max, logic_not=self.invert)
+            if NodeEditor.profiling:
+                self.parent.profiler_time += time.time() - time_start

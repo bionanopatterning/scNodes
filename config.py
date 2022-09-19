@@ -4,9 +4,8 @@ import colorcet as cc
 ## Dependencies list:
 # numpy, colorcet, pyglfw, pandas, PyWavelets, PyOpenGL, pystackreg, matplotlib,
 # joblib, scikit-image, glfw, pyimgui-wheels, and pyGpufit (can't be installed via pip)
-n_cpus = 1
+n_cpus = -1
 
-# TODO: limit load dataset and reconstruction renderer nodes to 1 instance
 
 ## Node editor GUI config
 
@@ -24,7 +23,7 @@ iv_camera_pan_speed = 1.0
 iv_camera_zoom_step = 0.1
 iv_camera_zoom_max = 40
 iv_hist_bins = 50
-iv_autocontrast_subsample = 5
+iv_autocontrast_subsample = 2
 iv_autocontrast_saturate = 0.3  # percentage of over/under saturated pixels after performing autocontrast
 iv_info_bar_height = 100
 iv_frame_select_button_width = 20
@@ -52,7 +51,6 @@ luts["Heatmap"] = cc.rainbow_bgyr_10_90_c83
 luts["Neon"] = cc.linear_worb_100_25_c53
 lut_names = list(luts.keys())
 
-
-
 ## Overall config
 def_img_size = (2048, 2048)
+

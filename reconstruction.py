@@ -184,7 +184,7 @@ class Reconstructor:
 
     def undo_fixed_uncertainty_value(self):
         self.vao.bind()
-        self.instance_vbos["uncertainty"].update(self.particle_data.parameter['uncertainty'])
+        self.instance_vbos["uncertainty"].update(self.particle_data.parameter['uncertainty (nm)'])
         self.vao.unbind()
 
     def update_particle_colours(self):
