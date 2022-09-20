@@ -3,7 +3,8 @@ import pygpufit.gpufit as gf
 from reconstruction import Particle
 
 
-def frame_to_particles(frame, initial_sigma=2.0, method = 0, crop_radius = 4, constraints=[-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]):
+
+def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constraints=(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1)):
     def get_background_stdev(flat_roi, fitted_params):
         gauss = np.empty_like(flat_roi)
         k = int(np.sqrt(gauss.shape[0])) // 2
@@ -43,7 +44,7 @@ def frame_to_particles(frame, initial_sigma=2.0, method = 0, crop_radius = 4, co
 
     estimator = gf.EstimatorID.LSE if method == 0 else gf.EstimatorID.MLE
 
-    ## Set up constraints
+    # Set up constraints
     constraint_type, constraint_values = parse_constraints(constraints, n_particles)
     parameters, states, chi_squares, number_iterations, execution_time = gf.fit_constrained(data, None,
                                                                                             gf.ModelID.GAUSS_2D, params,
@@ -73,10 +74,9 @@ def frame_to_particles(frame, initial_sigma=2.0, method = 0, crop_radius = 4, co
     converged = states == 0
     for i in range(n_particles):
         if converged[i] and parameters[i, 3] != constraint_values[0, 7]:
-            particles.append(Particle(frame=frame.index, x=parameters[i, 1], y=parameters[i, 2], sigma=parameters[i, 3], intensity=parameters[i, 0], offset=parameters[i, 4], bkgstd=background_stdev[i]))
+            particles.append(Particle(frame=frame.framenr, x=parameters[i, 1], y=parameters[i, 2], sigma=parameters[i, 3], intensity=parameters[i, 0], offset=parameters[i, 4], bkgstd=background_stdev[i]))
 
-
-    return particles # TODO: return fit states as well and show overview of results in particlefitnode.
+    return particles
 
 
 constraint_type_dict = dict()
@@ -84,6 +84,7 @@ constraint_type_dict[(True, True)] = gf.ConstraintType.FREE
 constraint_type_dict[(False, True)] = gf.ConstraintType.LOWER
 constraint_type_dict[(True, False)] = gf.ConstraintType.UPPER
 constraint_type_dict[(False, False)] = gf.ConstraintType.LOWER_UPPER
+
 
 def parse_constraints(constraints, n_particles):
     c_type_intensity = constraint_type_dict[(constraints[0] == -1.0, constraints[1] == -1.0)]
@@ -94,15 +95,3 @@ def parse_constraints(constraints, n_particles):
     constraint_values = np.zeros((n_particles, 10), dtype=np.float32)
     constraint_values[:, :] = constraints
     return constraint_types, constraint_values
-
-
-
-
-
-
-
-
-
-
-
-

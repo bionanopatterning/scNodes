@@ -33,7 +33,7 @@ if __name__ == "__main__":
         node_editor.on_update()
         node_editor.end_frame()
 
-
+    node_editor.delete_temporary_files()
 
 
 

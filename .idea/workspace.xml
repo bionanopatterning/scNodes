@@ -7,7 +7,12 @@
     <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="focus node &amp; duplicate node added, particledetection returns list of coordinates now instead of image. particlefitting takes dataset + coordinate list.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/imageviewer.py" beforeDir="false" afterPath="$PROJECT_DIR$/imageviewer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/default_dataset/default_img_00.tif" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/default_dataset/default_img_01.tif" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/default_dataset/default_img_02.tif" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/default_dataset/default_img_03.tif" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/particlefitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/particlefitting.py" afterDir="false" />
     </list>

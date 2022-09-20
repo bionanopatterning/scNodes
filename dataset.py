@@ -47,14 +47,14 @@ class Dataset:
         if img.n_frames > 1:
             for i in range(img.n_frames):
                 self.n_frames += 1
-                self.frames.append(Frame(self.path, i))
+                self.frames.append(Frame(self.path, i, framenr=i))
 
         # folder
         else:
             files = sorted(glob.glob(self.directory + "*.tif*"), key=numerical_sort)
             for file in files:
                 self.n_frames += 1
-                self.frames.append(Frame(file, 0))
+                self.frames.append(Frame(file, 0, framenr=self.n_frames - 1))
 
     def get_indexed_image(self, index):
         if 0 <= index < self.n_frames:
@@ -124,9 +124,10 @@ class Dataset:
 class Frame:
     id_gen = count(1)
 
-    def __init__(self, path, index=None):
+    def __init__(self, path, index=None, framenr=0):
         self.id = next(Frame.id_gen)
         self.index = index
+        self.framenr = framenr
         self.path = path
         self.data = None
         self.raw_data = None
@@ -137,19 +138,17 @@ class Frame:
         self.maxima = list()
         self.particles = list()
         self.pixel_size = 1
-        self.index_in_dataset = index
+        self.gpu_data_buffer = None
+        self.gpu_params_buffer = None
+        self.gpu_crop_xy_buffer = None
 
     def load(self):
-        #print(self.data is None, self.raw_data is None, "data is None", "raw_data is None")
         if self.data is not None:
-            #print("frame has .data, returning it.")
             return self.data
         elif self.raw_data is not None:
-            #print("copying raw_data into data and returning self.data")
             self.data = self.raw_data.copy()
             return self.data
         else:
-            #print(f"Loading frame {self.id} from disk")
             img = Image.open(self.path)
             if self.index is not None:
                 img.seek(self.index)
@@ -161,7 +160,7 @@ class Frame:
     def clean(self):
         self.translation = [0.0, 0.0]
         self.discard = False
-        self.data = None
+        self.data = None ## TODO: check whether app is faster and output still correct when this line is removed.
         self.maxima = list()
 
     def clone(self):
@@ -172,7 +171,7 @@ class Frame:
         self.data = transform.warp(self.data, tmat)
 
     def __str__(self):
-        selfstr = "Frame at path: "+self.path + "\n" \
+        selfstr = f"Frame at path: {self.path}\n" \
             + ("Discarded frame. " if self.discard else "Frame in use. ") \
             + f"Shift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
         if self.maxima is not []:
@@ -182,7 +181,6 @@ class Frame:
 
 class ParticleData:
     # TODO: make compatible with different kinds of particle datasets, e.g. (x, y, sigma only) or (x, y, z, etc.) - in particular in ParticleData.from_csv
-
     HISTOGRAM_BINS = 50
 
     def __init__(self, pixel_size=100):
@@ -257,7 +255,6 @@ class ParticleData:
         self.parameter['bkgstd (counts)'] = np.asarray(bkgstd)
         self.parameter['frame'] = np.asarray(frame).astype(np.float32)
         for key in self.parameter:
-            print(key)
             self.histogram_counts[key], self.histogram_bins[key] = np.histogram(self.parameter[key], bins=ParticleData.HISTOGRAM_BINS)
             self.histogram_counts[key] = self.histogram_counts[key].astype(np.float32)
             self.histogram_counts[key] = np.delete(self.histogram_counts[key], 0)
