@@ -4,17 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="focus node &amp; duplicate node added, particledetection returns list of coordinates now instead of image. particlefitting takes dataset + coordinate list.">
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="parallel processing for bake stack node works for dataset (not yet for coordinates)">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/default_dataset/default_img_00.tif" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/default_dataset/default_img_01.tif" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/default_dataset/default_img_02.tif" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/default_dataset/default_img_03.tif" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/particlefitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/particlefitting.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -52,6 +47,7 @@
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+    <property name="TODO_SCOPE" value="All Places" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
@@ -258,7 +254,14 @@
       <option name="project" value="LOCAL" />
       <updated>1663251912274</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="parallel processing for bake stack node works for dataset (not yet for coordinates)">
+      <created>1663686129952</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1663686129952</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -295,6 +298,7 @@
     <MESSAGE value="added install.py" />
     <MESSAGE value="uncertainty &amp; bgkstd now part of particle fit" />
     <MESSAGE value="focus node &amp; duplicate node added, particledetection returns list of coordinates now instead of image. particlefitting takes dataset + coordinate list." />
-    <option name="LAST_COMMIT_MESSAGE" value="focus node &amp; duplicate node added, particledetection returns list of coordinates now instead of image. particlefitting takes dataset + coordinate list." />
+    <MESSAGE value="parallel processing for bake stack node works for dataset (not yet for coordinates)" />
+    <option name="LAST_COMMIT_MESSAGE" value="parallel processing for bake stack node works for dataset (not yet for coordinates)" />
   </component>
 </project>

@@ -160,7 +160,7 @@ class Frame:
     def clean(self):
         self.translation = [0.0, 0.0]
         self.discard = False
-        self.data = None ## TODO: check whether app is faster and output still correct when this line is removed.
+        self.data = None
         self.maxima = list()
 
     def clone(self):

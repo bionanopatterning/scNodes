@@ -32,7 +32,7 @@ _srnversion = "1.0.0"
 class NodeEditor:
     if True:
         COLOUR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 1.0)
-        CONTEXT_MENU_SIZE = (200, 100)
+        CONTEXT_MENU_SIZE = (200, 98)
         COLOUR_ERROR_WINDOW_BACKGROUND = (0.84, 0.84, 0.84, 1.0)
         COLOUR_ERROR_WINDOW_HEADER = (0.6, 0.3, 0.3, 1.0)
         COLOUR_ERROR_WINDOW_HEADER_NEW = (0.8, 0.35, 0.35, 1.0)
@@ -221,7 +221,7 @@ class NodeEditor:
                     new_node = Node.create_node_by_type(key)
             imgui.end_menu()
         if imgui.begin_menu("Image processing"):
-            for key in [Node.TYPE_REGISTER, Node.TYPE_SPATIAL_FILTER, Node.TYPE_TEMPORAL_FILTER, Node.TYPE_FRAME_SELECTION, Node.TYPE_FRAME_SHIFT, Node.TYPE_BIN_IMAGE, Node.TYPE_IMAGE_CALCULATOR, Node.TYPE_GET_IMAGE, Node.TYPE_BAKE_STACK]:
+            for key in [Node.TYPE_REGISTER, Node.TYPE_SPATIAL_FILTER, Node.TYPE_TEMPORAL_FILTER, Node.TYPE_FRAME_SELECTION, Node.TYPE_FRAME_SHIFT, Node.TYPE_BIN_IMAGE, Node.TYPE_IMAGE_CALCULATOR, Node.TYPE_GET_IMAGE, Node.TYPE_BAKE_STACK, Node.TYPE_CROP_IMAGE]:
                 item_selected, _ = imgui.menu_item(Node.TITLE[key])
                 if item_selected:
                     new_node = Node.create_node_by_type(key)
@@ -232,7 +232,14 @@ class NodeEditor:
                 if item_selected:
                     new_node = Node.create_node_by_type(key)
             imgui.end_menu()
-
+        if imgui.begin_menu("All nodes"):
+            for key in Node.TITLE.keys():
+                if key == Node.TYPE_NULL:
+                    continue
+                item_selected, _ = imgui.menu_item(Node.TITLE[key])
+                if item_selected:
+                    new_node = Node.create_node_by_type(key)
+            imgui.end_menu()
         if new_node is not None:
             try:
                 new_node.position = self.context_menu_position
@@ -241,7 +248,7 @@ class NodeEditor:
             except Exception as e:
                 NodeEditor.set_error(e, "Error upon requesting new node (probably not implemented yet.)\nError:"+str(e))
 
-        clear_active_node, _ = imgui.menu_item("Clear active node")
+        clear_active_node, _ = imgui.menu_item("Release focused node")
         if clear_active_node:
             NodeEditor.set_active_node(None, True)
         # End
@@ -408,6 +415,7 @@ class Node:
         TYPE_FRAME_SHIFT = 14
         TYPE_BIN_IMAGE = 15
         TYPE_BAKE_STACK = 16
+        TYPE_CROP_IMAGE = 17
 
         COLOUR = dict()
         COLOUR[TYPE_LOAD_DATA] = (54 / 255, 47 / 255, 192 / 255, 1.0)
@@ -427,6 +435,7 @@ class Node:
         COLOUR[TYPE_BIN_IMAGE] = (143 / 255, 123 / 255, 103 / 255, 1.0)
         COLOUR[TYPE_NULL] = (1.0, 0.0, 1.0, 1.0)
         COLOUR[TYPE_BAKE_STACK] = (143 / 255, 123 / 255, 103 / 255, 1.0)
+        COLOUR[TYPE_CROP_IMAGE] = (143 / 255, 123 / 255, 103 / 255, 1.0)
 
         COLOUR_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 0.96)
         COLOUR_FOCUSED_NODE_WINDOW_BACKGROUND = (0.99, 0.93, 0.93, 0.96)
@@ -458,7 +467,7 @@ class Node:
         TITLE[TYPE_BIN_IMAGE] = "Bin image"
         TITLE[TYPE_NULL] = "null"
         TITLE[TYPE_BAKE_STACK] = "Bake stack"
-
+        TITLE[TYPE_CROP_IMAGE] = "Crop image"
         WINDOW_ROUNDING = 5.0
         FRAME_ROUNDING = 2.0
         PLAY_BUTTON_SIZE = 40
@@ -692,13 +701,18 @@ class Node:
                                  y + Node.PROGRESS_BAR_HEIGHT, imgui.get_color_u32_rgba(*Node.COLOUR[self.type]))
 
     def delete(self):
-        if NodeEditor.focused_node == self:
-            NodeEditor.set_active_node(None, True)
-        if NodeEditor.active_node == self:
-            NodeEditor.set_active_node(None)
-        NodeEditor.nodes.remove(self)
-        for attribute in self.connectable_attributes:
-            attribute.delete()
+        print(NodeEditor.nodes)
+        try:
+            if NodeEditor.focused_node == self:
+                NodeEditor.set_active_node(None, True)
+            if NodeEditor.active_node == self:
+                NodeEditor.set_active_node(None)
+            NodeEditor.nodes.remove(self)
+            for attribute in self.connectable_attributes:
+                attribute.delete()
+        except Exception as e:
+            NodeEditor.set_error(e, "Problem deleting node\n"+str(e))
+        print(NodeEditor.nodes)
 
     @staticmethod
     def tooltip(text):
@@ -747,6 +761,8 @@ class Node:
             return ParticleFilterNode()
         elif node_type == Node.TYPE_BAKE_STACK:
             return BakeStackNode()
+        elif node_type == Node.TYPE_CROP_IMAGE:
+            return CropImageNode()
         else:
             return False
 
@@ -1945,7 +1961,7 @@ class ParticlePainterNode(Node):
                 self.paint_dry = self.paint_dry or _c
                 imgui.same_line(spacing = 20)
                 imgui.text("min")
-                imgui.same_line(spacing=imgui.get_content_region_available_width() - 38 - imgui.get_font_size() * len("max") * 4)
+                imgui.same_line(spacing=imgui.get_content_region_available_width() - 35 - imgui.get_font_size() * len("max") * 2)
                 imgui.text("max")
                 imgui.same_line(spacing = 20)
                 _c, self.colour_max = imgui.color_edit3("##Colour_max", *self.colour_max, imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_SIDE_PREVIEW)
@@ -2695,9 +2711,13 @@ class BakeStackNode(Node):
 
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, self)
         self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, self)
-        ## TODO: make it also bake coordinates.
+        self.coordinates_in = ConnectableAttribute(ConnectableAttribute.TYPE_COORDINATES, ConnectableAttribute.INPUT, self)
+        self.coordinates_out = ConnectableAttribute(ConnectableAttribute.TYPE_COORDINATES, ConnectableAttribute.OUTPUT, self)
+
         self.connectable_attributes.append(self.dataset_in)
         self.connectable_attributes.append(self.dataset_out)
+        self.connectable_attributes.append(self.coordinates_in)
+        self.connectable_attributes.append(self.coordinates_out)
 
         self.parallel = True
         self.baking = False
@@ -2709,8 +2729,11 @@ class BakeStackNode(Node):
         self.has_dataset = False
         self.dataset = Dataset()
         self.frames_to_bake = list()
-        self.temp_dir_do_not_edit = "srnodes_temp"+str(self.id)
+        self.temp_dir_do_not_edit = "_srnodes_temp"+str(self.id)
         self.baked_at = 0
+        self.has_coordinates = False
+        self.coordinates = list()
+        self.bake_coordinates = False
 
     def render(self):
         if super().render_start():
@@ -2719,24 +2742,35 @@ class BakeStackNode(Node):
             if self.has_dataset:
                 self.dataset_out.render_start()
                 self.dataset_out.render_end()
+            if self.bake_coordinates:
+                imgui.spacing()
+                self.coordinates_in.render_start()
+                self.coordinates_in.render_end()
+                if self.has_coordinates:
+                    self.coordinates_out.render_start()
+                    self.coordinates_out.render_end()
 
             imgui.spacing()
             imgui.separator()
             imgui.spacing()
 
+            _c, self.bake_coordinates = imgui.checkbox("Also bake coordinates", self.bake_coordinates)
+            if _c and not self.bake_coordinates:
+                self.coordinates_in.disconnect_all()
 
-            _c, self.use_roi = imgui.checkbox("use ROI", self.use_roi)
-            imgui.set_next_item_width(100)
-            _c, self.range_option = imgui.combo("Range to bake", self.range_option, BakeStackNode.RANGE_OPTIONS)
             if self.range_option == 1:
                 imgui.push_item_width(80)
                 _c, (self.custom_range_min, self.custom_range_max) = imgui.input_int2('[start, top) index', self.custom_range_min, self.custom_range_max)
                 imgui.pop_item_width()
             _c, self.parallel = imgui.checkbox("Parallel processing", self.parallel)
-
+            imgui.set_next_item_width(100)
+            _c, self.range_option = imgui.combo("Range to bake", self.range_option, BakeStackNode.RANGE_OPTIONS)
             clicked, self.baking = self.play_button()
             if clicked and self.baking:
                 self.init_bake()
+                imgui.spacing()
+                imgui.spacing()
+                imgui.spacing()
 
             if self.baking:
                 imgui.text("Baking process:")
@@ -2751,26 +2785,40 @@ class BakeStackNode(Node):
     def get_image_and_save(self, idx=None):
         datasource = self.dataset_in.get_incoming_node()
         if datasource:
-            image_in = datasource.get_image(idx)
             pxd = datasource.get_image(idx).load()
             Image.fromarray(pxd).save(self.temp_dir_do_not_edit + "/0" + str(idx) + ".tif")
+            if self.bake_coordinates:
+                coordsource = self.coordinates_in.get_incoming_node()
+                coordinates = coordsource.get_coordinates(idx)
+                return coordinates
+            return None
+        return None
 
     def get_image_impl(self, idx=None):
         if self.has_dataset and idx in range(0, self.dataset.n_frames):
             retimg = copy.deepcopy(self.dataset.get_indexed_image(idx))
             retimg.clean()
+            if self.has_coordinates:
+                retimg.maxima = self.coordinates[idx]
             return retimg
         else:
             datasource = self.dataset_in.get_incoming_node()
             if datasource:
                 return datasource.get_image(idx)
 
+    def get_coordinates(self, idx=None):
+        if self.has_coordinates and idx in range(0, self.dataset.n_frames):
+            return self.coordinates[idx]
+
     def init_bake(self):
+
         self.baked_at = datetime.datetime.now().strftime("%H:%M")
         if os.path.isdir(self.temp_dir_do_not_edit):
             shutil.rmtree(self.temp_dir_do_not_edit)
         os.mkdir(self.temp_dir_do_not_edit)
         self.has_dataset = False
+        self.has_coordinates = False
+        self.coordinates = list()
         if self.range_option == 0:
             dataset_source = Node.get_source_load_data_node(self)
             self.frames_to_bake = list(range(0, dataset_source.dataset.n_frames))
@@ -2788,7 +2836,9 @@ class BakeStackNode(Node):
                     self.n_baked += 1
                     indices.append(self.frames_to_bake[-1])
                     self.frames_to_bake.pop()
-                Parallel(n_jobs=NodeEditor.batch_size)(delayed(self.get_image_and_save)(index) for index in indices)
+                coordinates = Parallel(n_jobs=NodeEditor.batch_size)(delayed(self.get_image_and_save)(index) for index in indices)
+                if self.bake_coordinates:
+                    self.coordinates += coordinates
                 if NodeEditor.profiling:
                     self.profiler_time += time.time() - time_start
                     self.profiler_count += len(indices)
@@ -2800,12 +2850,47 @@ class BakeStackNode(Node):
                     for frame in self.dataset.frames:
                         frame.load()
                     print("Done loading")
-                    shutil.rmtree(self.temp_dir_do_not_edit)
+                    self.any_change = True
                     self.baking = False
                     self.play = False
                     self.has_dataset = True
+                    if self.bake_coordinates:
+                        self.coordinates.reverse()
+                        self.has_coordinates = True
             except Exception as e:
                 self.baking = False
                 self.play = False
                 NodeEditor.set_error(e, "Error baking stack: \n"+str(e))
 
+
+class CropImageNode(Node):
+    def __init__(self):
+        super().__init__(Node.TYPE_CROP_IMAGE)
+        self.size = [140, 100]
+        self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self)
+        self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT,parent=self)
+        self.connectable_attributes.append(self.dataset_in)
+        self.connectable_attributes.append(self.dataset_out)
+
+        self.roi = [0, 0, 0, 0]
+        self.use_roi = True
+
+    def render(self):
+        if super().render_start():
+            self.dataset_out.render_start()
+            self.dataset_in.render_start()
+            self.dataset_out.render_end()
+            self.dataset_in.render_end()
+            super().render_end()
+
+    def get_image_impl(self, idx=None):
+        data_source = self.dataset_in.get_incoming_node()
+        if data_source:
+            if self.frame_requested_by_image_viewer:
+                return data_source.get_image(idx)
+            else:
+                out_frame = data_source.get_image(idx).clone()
+                pxd = out_frame.load()[self.roi[1]:self.roi[3], self.roi[0]:self.roi[2]]
+                out_frame.data = pxd
+                out_frame.width, out_frame.height = out_frame.data.shape
+                return out_frame

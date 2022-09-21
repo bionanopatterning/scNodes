@@ -15,6 +15,7 @@ if __name__ == "__main__":
     ne_window = Window(cfg.ne_window_width, cfg.ne_window_height, cfg.ne_window_title)
     node_editor = NodeEditor(ne_window)
     cfg.node_editor = node_editor
+    node_editor.delete_temporary_files()
 
     iv_window = Window(cfg.iv_window_width, cfg.iv_window_height, cfg.iv_window_title)
     image_viewer = ImageViewer(iv_window, node_editor.get_font_atlas_ptr())
