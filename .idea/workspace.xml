@@ -4,12 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="parallel processing for bake stack node works for dataset (not yet for coordinates)">
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="thunderstorm comparison">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/req.txt" beforeDir="false" afterPath="$PROJECT_DIR$/req.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -261,7 +258,14 @@
       <option name="project" value="LOCAL" />
       <updated>1663686129952</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="thunderstorm comparison">
+      <created>1663771655593</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1663771655593</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -299,6 +303,7 @@
     <MESSAGE value="uncertainty &amp; bgkstd now part of particle fit" />
     <MESSAGE value="focus node &amp; duplicate node added, particledetection returns list of coordinates now instead of image. particlefitting takes dataset + coordinate list." />
     <MESSAGE value="parallel processing for bake stack node works for dataset (not yet for coordinates)" />
-    <option name="LAST_COMMIT_MESSAGE" value="parallel processing for bake stack node works for dataset (not yet for coordinates)" />
+    <MESSAGE value="thunderstorm comparison" />
+    <option name="LAST_COMMIT_MESSAGE" value="thunderstorm comparison" />
   </component>
 </project>
