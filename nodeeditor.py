@@ -22,6 +22,7 @@ from joblib import Parallel, delayed, cpu_count
 import particlefitting as pfit
 import dill as pickle
 import copy
+import psutil
 
 tkroot = tk.Tk()
 tkroot.withdraw()
@@ -319,14 +320,15 @@ class NodeEditor:
                 imgui.set_next_item_width(30)
                 _c, NodeEditor.n_cpus = imgui.input_int("Parallel batch size", NodeEditor.n_cpus, 0, 0)
                 if _c:
-                    NodeEditor.n_cpus = max([NodeEditor.n_cpus, 1])
+                    NodeEditor.n_cpus = NodeEditor.n_cpus
                     NodeEditor.batch_size = NodeEditor.n_cpus
 
                 Node.tooltip("Number of frames to process within one parallel processing batch. Values higher than the amount\n" 
                              "of CPUs on the PC are allowed and will result in multiple tasks being dispatched to individual\n" 
                              "CPUs per batch. This can increase processing speed, but reduces GUI responsiveness. For optimal\n" 
                              "efficiency, set the batch size to an integer multiple of the amount of CPUs on the machine. \n"
-                             f"This PC has: {NodeEditor.n_cpus_max} CPUs.")
+                             f"This PC has: {NodeEditor.n_cpus_max} CPUs.\n"
+                             f"Set to '-1' to force use of all CPUs.")
                 imgui.end_menu()
             imgui.end_main_menu_bar()
         imgui.pop_style_color(5)
@@ -514,6 +516,8 @@ class Node:
         self.profiler_time = 0.0
         self.profiler_count = 0
         self.frame_requested_by_image_viewer = False
+
+        self.pid_children = set()
 
     def __eq__(self, other):
         if isinstance(other, Node):
@@ -858,6 +862,8 @@ class Node:
 
     def post_save_impl(self):
         pass
+
+
 
 
 class NullNode(Node):
@@ -1814,7 +1820,10 @@ class ReconstructionRendererNode(Node):
                     connector.render_start()
                     connector.render_end()
 
-            if imgui.button("Render", 50, 20):
+            _cw = imgui.get_content_region_available_width()
+            imgui.new_line()
+            imgui.same_line(spacing = _cw / 2 - 50 / 2)
+            if imgui.button("Render", 50, 30):
                 self.build_reconstruction()
 
 
@@ -1961,7 +1970,7 @@ class ParticlePainterNode(Node):
                 self.paint_dry = self.paint_dry or _c
                 imgui.same_line(spacing = 20)
                 imgui.text("min")
-                imgui.same_line(spacing=imgui.get_content_region_available_width() - 35 - imgui.get_font_size() * len("max") * 2)
+                imgui.same_line(spacing=imgui.get_content_region_available_width() - 5 - imgui.get_font_size() * len("max") * 2)
                 imgui.text("max")
                 imgui.same_line(spacing = 20)
                 _c, self.colour_max = imgui.color_edit3("##Colour_max", *self.colour_max, imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_SIDE_PREVIEW)
@@ -2730,6 +2739,7 @@ class BakeStackNode(Node):
         self.dataset = Dataset()
         self.frames_to_bake = list()
         self.temp_dir_do_not_edit = "_srnodes_temp"+str(self.id)
+        self.joblib_dir_counter = 0
         self.baked_at = 0
         self.has_coordinates = False
         self.coordinates = list()
@@ -2768,9 +2778,6 @@ class BakeStackNode(Node):
             clicked, self.baking = self.play_button()
             if clicked and self.baking:
                 self.init_bake()
-                imgui.spacing()
-                imgui.spacing()
-                imgui.spacing()
 
             if self.baking:
                 imgui.text("Baking process:")
@@ -2778,6 +2785,7 @@ class BakeStackNode(Node):
                 imgui.spacing()
                 imgui.spacing()
                 imgui.spacing()
+
             if self.has_dataset:
                 imgui.text(f"Output data was baked at: {self.baked_at}")
             super().render_end()
@@ -2791,8 +2799,8 @@ class BakeStackNode(Node):
                 coordsource = self.coordinates_in.get_incoming_node()
                 coordinates = coordsource.get_coordinates(idx)
                 return coordinates
-            return None
-        return None
+            return False
+        return False
 
     def get_image_impl(self, idx=None):
         if self.has_dataset and idx in range(0, self.dataset.n_frames):
@@ -2811,11 +2819,12 @@ class BakeStackNode(Node):
             return self.coordinates[idx]
 
     def init_bake(self):
-
-        self.baked_at = datetime.datetime.now().strftime("%H:%M")
+        self.dataset = None
         if os.path.isdir(self.temp_dir_do_not_edit):
-            shutil.rmtree(self.temp_dir_do_not_edit)
-        os.mkdir(self.temp_dir_do_not_edit)
+            for f in glob.glob(self.temp_dir_do_not_edit+"/*"):
+                os.remove(f)
+        else:
+            os.mkdir(self.temp_dir_do_not_edit)
         self.has_dataset = False
         self.has_coordinates = False
         self.coordinates = list()
@@ -2824,6 +2833,8 @@ class BakeStackNode(Node):
             self.frames_to_bake = list(range(0, dataset_source.dataset.n_frames))
         elif self.range_option == 1:
             self.frames_to_bake = list(range(self.custom_range_min, self.custom_range_max))
+        self.n_baked = 0
+        self.baked_at = datetime.datetime.now().strftime("%H:%M")
         self.n_to_bake = max([1, len(self.frames_to_bake)])
 
     def on_update(self):
@@ -2831,12 +2842,17 @@ class BakeStackNode(Node):
             if NodeEditor.profiling:
                 time_start = time.time()
             try:
-                indices = list()
-                for i in range(min([NodeEditor.batch_size, len(self.frames_to_bake)])):
-                    self.n_baked += 1
-                    indices.append(self.frames_to_bake[-1])
+                if self.parallel:
+                    indices = list()
+                    for i in range(min([NodeEditor.batch_size, len(self.frames_to_bake)])):
+                        self.n_baked += 1
+                        indices.append(self.frames_to_bake[-1])
+                        self.frames_to_bake.pop()
+                    coordinates = Parallel(n_jobs=NodeEditor.batch_size)(delayed(self.get_image_and_save)(index) for index in indices)
+                else:
+                    index = self.frames_to_bake[-1]
                     self.frames_to_bake.pop()
-                coordinates = Parallel(n_jobs=NodeEditor.batch_size)(delayed(self.get_image_and_save)(index) for index in indices)
+                    coordinates = self.get_image_and_save(index)
                 if self.bake_coordinates:
                     self.coordinates += coordinates
                 if NodeEditor.profiling:

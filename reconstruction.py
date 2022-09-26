@@ -154,15 +154,15 @@ class Reconstructor:
     def create_instance_buffers(self):
         self.vao.bind()
 
-        self.instance_vbos["x"] = VertexBuffer(self.particle_data.parameter['x (nm)'])
+        self.instance_vbos["x"] = VertexBuffer(self.particle_data.parameter['x [nm]'])
         self.instance_vbos["x"].set_location_and_stride(2, 1)
         self.instance_vbos["x"].set_divisor_to_per_instance()
 
-        self.instance_vbos["y"] = VertexBuffer(self.particle_data.parameter['y (nm)'])
+        self.instance_vbos["y"] = VertexBuffer(self.particle_data.parameter['y [nm]'])
         self.instance_vbos["y"].set_location_and_stride(3, 1)
         self.instance_vbos["y"].set_divisor_to_per_instance()
 
-        self.instance_vbos["uncertainty"] = VertexBuffer(self.particle_data.parameter['uncertainty (nm)'])
+        self.instance_vbos["uncertainty"] = VertexBuffer(self.particle_data.parameter['uncertainty [nm]'])
         self.instance_vbos["uncertainty"].set_location_and_stride(4, 1)
         self.instance_vbos["uncertainty"].set_divisor_to_per_instance()
 
@@ -184,7 +184,7 @@ class Reconstructor:
 
     def undo_fixed_uncertainty_value(self):
         self.vao.bind()
-        self.instance_vbos["uncertainty"].update(self.particle_data.parameter['uncertainty (nm)'])
+        self.instance_vbos["uncertainty"].update(self.particle_data.parameter['uncertainty [nm]'])
         self.vao.unbind()
 
     def update_particle_colours(self):

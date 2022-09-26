@@ -22,19 +22,19 @@ if __name__ == "__main__":
     cfg.image_viewer = image_viewer
 
     #ne_window.bring_to_front()
+    try:
+        while not glfw.window_should_close(ne_window.glfw_window):
+            if not (ne_window.focused or iv_window.focused):
+                glfw.poll_events()
 
-    while not glfw.window_should_close(ne_window.glfw_window):
-        if not (ne_window.focused or iv_window.focused):
-            glfw.poll_events()
 
+            image_viewer.on_update()
+            image_viewer.end_frame() # imageviewer was AFTER nodeedotir
 
-        image_viewer.on_update()
-        image_viewer.end_frame() # imageviewer was AFTER nodeedotir
-
-        node_editor.on_update()
-        node_editor.end_frame()
-
-    node_editor.delete_temporary_files()
+            node_editor.on_update()
+            node_editor.end_frame()
+    finally:
+        node_editor.delete_temporary_files()
 
 
 

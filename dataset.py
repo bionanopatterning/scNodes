@@ -160,7 +160,7 @@ class Frame:
     def clean(self):
         self.translation = [0.0, 0.0]
         self.discard = False
-        self.data = None
+        self.data = None ## TODO: check whether app is faster and output still correct when this line is removed.
         self.maxima = list()
 
     def clone(self):
@@ -171,12 +171,12 @@ class Frame:
         self.data = transform.warp(self.data, tmat)
 
     def __str__(self):
-        selfstr = f"Frame at path: {self.path}\n" \
+        sstr = f"Frame at path: {self.path}\n" \
             + ("Discarded frame. " if self.discard else "Frame in use. ") \
             + f"Shift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
         if self.maxima is not []:
-            selfstr += f"\n{len(self.maxima)} particles found."
-        return selfstr
+            sstr += f"\n{len(self.maxima)} particles found."
+        return sstr
 
 
 class ParticleData:
@@ -216,6 +216,7 @@ class ParticleData:
     def clean(self):
         for particle in self.particles:
             particle.visible = True
+        self.baked_by_renderer = False
 
     def bake(self, discard_filtered_particles=False):
         self.baked = True
@@ -246,24 +247,25 @@ class ParticleData:
                 bkgstd.append(p.bkgstd)
 
 
-        self.parameter['uncertainty (nm)'] = np.asarray(uncertainty)
-        self.parameter['intensity (counts)'] = np.asarray(intensity)
-        self.parameter['offset (counts)'] = np.asarray(offset)
-        self.parameter['x (nm)'] = np.asarray(x) * self.pixel_size
-        self.parameter['y (nm)'] = np.asarray(y) * self.pixel_size
-        self.parameter['sigma (nm)'] = np.asarray(sigma)
-        self.parameter['bkgstd (counts)'] = np.asarray(bkgstd)
+        self.parameter['uncertainty [nm]'] = np.asarray(uncertainty)
+        self.parameter['intensity [counts]'] = np.asarray(intensity)
+        self.parameter['offset [counts]'] = np.asarray(offset)
+        self.parameter['x [nm]'] = np.asarray(x) * self.pixel_size
+        self.parameter['y [nm]'] = np.asarray(y) * self.pixel_size
+        self.parameter['sigma [nm]'] = np.asarray(sigma)
+        self.parameter['bkgstd [counts]'] = np.asarray(bkgstd)
         self.parameter['frame'] = np.asarray(frame).astype(np.float32)
+
         for key in self.parameter:
             self.histogram_counts[key], self.histogram_bins[key] = np.histogram(self.parameter[key], bins=ParticleData.HISTOGRAM_BINS)
             self.histogram_counts[key] = self.histogram_counts[key].astype(np.float32)
             self.histogram_counts[key] = np.delete(self.histogram_counts[key], 0)
             self.histogram_bins[key] = (self.histogram_bins[key][1], self.histogram_bins[key][-1])
 
-        self.x_min = np.min(self.parameter['x (nm)'])
-        self.y_min = np.min(self.parameter['y (nm)'])
-        self.x_max = np.max(self.parameter['x (nm)'])
-        self.y_max = np.max(self.parameter['y (nm)'])
+        self.x_min = np.min(self.parameter['x [nm]'])
+        self.y_min = np.min(self.parameter['y [nm]'])
+        self.x_max = np.max(self.parameter['x [nm]'])
+        self.y_max = np.max(self.parameter['y [nm]'])
 
     def apply_filter(self, parameter_key, min_val, max_val, logic_not = False):
         vals = self.parameter[parameter_key]
