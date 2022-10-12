@@ -166,9 +166,9 @@ class Frame:
     def clone(self):
         return copy.deepcopy(self)
 
-    def bake_transform(self):
+    def bake_transform(self, interpolation = 1, edges = 'constant', preserve_range=False):
         tmat = transform.AffineTransform(np.matrix([[1.0, 0.0, self.translation[0]], [0.0, 1.0, self.translation[1]], [0.0, 0.0, 1.0]]))
-        self.data = transform.warp(self.data, tmat)
+        self.data = transform.warp(self.data, tmat, order=interpolation, mode=edges, preserve_range=preserve_range)
 
     def __str__(self):
         sstr = f"Frame at path: {self.path}\n" \
