@@ -2,7 +2,6 @@ import glfw
 from opengl_classes import *
 import numpy as np
 import matplotlib.pyplot as plt
-import config as cfg
 from dataset import *
 from util import *
 

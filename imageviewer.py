@@ -2,8 +2,8 @@ import glfw
 import imgui
 from imgui.integrations.glfw import GlfwRenderer
 from opengl_classes import *
+import settings
 import config as cfg
-import matplotlib.pyplot as plt
 from dataset import *
 from roi import *
 
@@ -12,6 +12,30 @@ class ImageViewer:
     NO_IMAGE_NOTIFICATION_SIZE = (300, 20)
     MARKER_SIZE = 4.5
     MARKER_COLOUR = (230 / 255, 174 / 255, 13 / 255, 1.0)
+
+    COLOUR_FRAME_BACKGROUND = (0.24, 0.24, 0.24)
+    COLOUR_MAIN = (0.3 / 1.3, 0.3 / 1.3, 0.3 / 1.3)
+    COLOUR_THEME_ACTIVE = (0.59, 1.0, 0.86)
+    COLOUR_THEME = (0.729, 1.0, 0.95)
+    COLOUR_MAIN_BRIGHT = (0.3 / 1, 0.3 / 1, 0.3 / 1)
+    COLOUR_MAIN_DARK = (0.3 / 1.5, 0.3 / 1.5, 0.3 / 1.5)
+    COLOUR_WINDOW_BACKGROUND = (0.14, 0.14, 0.14, 0.8)
+    COLOUR_CLEAR = (0.94, 0.94, 0.94, 1.0)
+
+    CONTRAST_WINDOW_SIZE = [200, 240]
+    CONTEXT_MENU_SIZE = [200, 100]
+    INFO_BAR_HEIGHT = 100
+
+    CAMERA_PAN_SPEED = 1.0
+    CAMERA_ZOOM_MAX = 50
+    CAMERA_ZOOM_STEP = 0.1
+
+    HISTOGRAM_BINS = 50
+    AUTOCONTRAST_SUBSAMPLE = 2
+    AUTOCONTRAST_SATURATE = 0.3
+
+    FRAME_SELECT_BUTTON_SIZE = [20, 19]
+    FRAME_SELECT_BUTTON_SPACING = 4
 
     def __init__(self, window, shared_font_atlas=None):
         # glfw and imgui
@@ -26,12 +50,12 @@ class ImageViewer:
         self.imgui_implementation = GlfwRenderer(self.window.glfw_window)
         self.window.set_callbacks()
         self.window.set_window_callbacks()
-        self.window.clear_color = cfg.iv_clear_clr
+        self.window.clear_color = ImageViewer.COLOUR_CLEAR
         # Rendering related objects and vars
         self.shader = Shader("shaders/textured_shader.glsl")
         self.roi_shader = Shader("shaders/line_shader.glsl")
         self.texture = Texture(format="rgb32f")
-        self.fbo = FrameBuffer(*cfg.def_img_size)
+        self.fbo = FrameBuffer(*settings.def_img_size)
         self.va = VertexArray()
         self.lut_texture = Texture(format="rgb32f")
         self.current_lut = 0
@@ -100,8 +124,8 @@ class ImageViewer:
         self.window.on_update()
         self.imgui_implementation.refresh_font_texture()
         if self.window.window_size_changed:
-            cfg.iv_window_height = self.window.height
-            cfg.iv_window_width = self.window.width
+            settings.iv_window_height = self.window.height
+            settings.iv_window_width = self.window.width
             self.camera.set_projection_matrix(self.window.width, self.window.height)
             self.window.window_size_changed = False
 
@@ -121,18 +145,18 @@ class ImageViewer:
         # imgui
         imgui.new_frame()
         # Push overall imgui style vars
-        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.iv_clr_frame_background)
-        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.iv_clr_frame_background)
-        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *cfg.iv_clr_frame_background)
-        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *cfg.iv_clr_main_dark)
-        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *cfg.iv_clr_main_bright)
-        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.iv_clr_theme)
-        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.iv_clr_theme_active)
-        imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.iv_clr_main)
-        imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *cfg.iv_clr_theme_active)
-        imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *cfg.iv_clr_main)
-        imgui.push_style_color(imgui.COLOR_CHECK_MARK, *cfg.iv_clr_theme)
-        imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *cfg.iv_clr_window_background)
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *ImageViewer.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *ImageViewer.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *ImageViewer.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *ImageViewer.COLOUR_MAIN_DARK)
+        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *ImageViewer.COLOUR_MAIN_BRIGHT)
+        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *ImageViewer.COLOUR_THEME)
+        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *ImageViewer.COLOUR_THEME_ACTIVE)
+        imgui.push_style_color(imgui.COLOR_BUTTON, *ImageViewer.COLOUR_MAIN)
+        imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *ImageViewer.COLOUR_THEME_ACTIVE)
+        imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *ImageViewer.COLOUR_MAIN)
+        imgui.push_style_color(imgui.COLOR_CHECK_MARK, *ImageViewer.COLOUR_THEME)
+        imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *ImageViewer.COLOUR_WINDOW_BACKGROUND)
 
         self._shortcuts()
         self._gui_main()
@@ -141,17 +165,17 @@ class ImageViewer:
         imgui.render()
         self.imgui_implementation.render(imgui.get_draw_data())
 
-        if cfg.node_editor.active_node is not None:
-            ImageViewer.MARKER_COLOUR = cfg.node_editor.active_node.colour
-            if self.previous_active_node is not cfg.node_editor.active_node or cfg.node_editor.active_node.any_change or self.new_image_requested:
-                if cfg.node_editor.active_node.returns_image:
-                    an = cfg.node_editor.active_node
+        if cfg.active_node is not None:
+            ImageViewer.MARKER_COLOUR = cfg.active_node.colour
+            if self.previous_active_node is not cfg.active_node or cfg.active_node.any_change or self.new_image_requested:
+                if cfg.active_node.returns_image:
+                    an = cfg.active_node
                     self.current_dataset = an.get_source_load_data_node(an).dataset
                     if self.current_dataset.initialized:
                         self.current_dataset.current_frame = np.clip(self.current_dataset.current_frame, 0, self.current_dataset.n_frames - 1)
-                        cfg.node_editor.active_node.frame_requested_by_image_viewer = True
-                        new_image = cfg.node_editor.active_node.get_image(self.current_dataset.current_frame)
-                        cfg.node_editor.active_node.frame_requested_by_image_viewer = False
+                        cfg.active_node.frame_requested_by_image_viewer = True
+                        new_image = cfg.active_node.get_image(self.current_dataset.current_frame)
+                        cfg.active_node.frame_requested_by_image_viewer = False
                         if new_image is not None:
                             self.show_image = True
                             self.set_image(new_image)
@@ -159,7 +183,7 @@ class ImageViewer:
                             self.show_image = False
                     else:
                         self.show_image = False
-            self.previous_active_node = cfg.node_editor.active_node
+            self.previous_active_node = cfg.active_node
 
     def end_frame(self):
         self.window.end_frame()
@@ -182,7 +206,7 @@ class ImageViewer:
 
         # Brightness/contrast window
         if self.contrast_window_open:
-            imgui.set_next_window_size(cfg.iv_contrast_window_size[0], cfg.iv_contrast_window_size[1])
+            imgui.set_next_window_size(ImageViewer.CONTRAST_WINDOW_SIZE[0], ImageViewer.CONTRAST_WINDOW_SIZE[1])
             imgui.set_next_window_position(self.contrast_window_position[0], self.contrast_window_position[1], condition = imgui.APPEARING)
 
             _, self.contrast_window_open = imgui.begin("Adjust contrast", closable = True, flags = imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_RESIZE)
@@ -222,9 +246,9 @@ class ImageViewer:
             if _min_changed or _max_changed:
                 self.autocontrast[self.contrast_window_channel] = False
             imgui.pop_item_width()
-            if imgui.button("Auto once", width = 80, height = cfg.iv_frame_select_button_height):
+            if imgui.button("Auto once", width = 80, height = ImageViewer.FRAME_SELECT_BUTTON_SIZE[1]):
                 self._compute_auto_contrast(channel = self.contrast_window_channel)
-            imgui.same_line(spacing = cfg.iv_frame_select_button_spacing)
+            imgui.same_line(spacing = ImageViewer.FRAME_SELECT_BUTTON_SPACING)
             _always_auto_changed, self.autocontrast[self.contrast_window_channel] = imgui.checkbox("always auto", self.autocontrast[self.contrast_window_channel])
             if _always_auto_changed and self.autocontrast[self.contrast_window_channel]:
                 self._compute_auto_contrast()
@@ -238,8 +262,8 @@ class ImageViewer:
         if self.show_image is False:
             imgui.set_next_window_position(self.window.width // 2 - ImageViewer.NO_IMAGE_NOTIFICATION_SIZE[0] // 2, self.window.height // 2 - ImageViewer.NO_IMAGE_NOTIFICATION_SIZE[1] // 2)
             imgui.set_next_window_size(*ImageViewer.NO_IMAGE_NOTIFICATION_SIZE)
-            imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *cfg.iv_clear_clr)
-            imgui.push_style_color(imgui.COLOR_BORDER, *cfg.iv_clear_clr)
+            imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *ImageViewer.COLOUR_CLEAR)
+            imgui.push_style_color(imgui.COLOR_BORDER, *ImageViewer.COLOUR_CLEAR)
             imgui.push_style_color(imgui.COLOR_TEXT, *(0.0, 0.0, 0.0, 1.0))
             imgui.begin("##", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE)
             imgui.text("   Active node does not output an image.")
@@ -269,20 +293,20 @@ class ImageViewer:
 
     def _frame_info_window(self):
         imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 0.0)
-        imgui.set_next_window_position(0, self.window.height - cfg.iv_info_bar_height + (cfg.node_editor.window.height - self.window.height), imgui.ALWAYS)
-        imgui.set_next_window_size(self.window.width, cfg.iv_info_bar_height)
+        imgui.set_next_window_position(0, self.window.height - ImageViewer.INFO_BAR_HEIGHT + (cfg.window_height - self.window.height), imgui.ALWAYS)
+        imgui.set_next_window_size(self.window.width, ImageViewer.INFO_BAR_HEIGHT)
         ## Info & control panel
         imgui.begin("##frameselectwindow", flags=imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE)
 
         # Frame slider and buttons
         available_width = imgui.get_content_region_available_width()
         _frame_idx_changed = False
-        if imgui.button("<", width=cfg.iv_frame_select_button_width, height=cfg.iv_frame_select_button_height):
+        if imgui.button("<", width=ImageViewer.FRAME_SELECT_BUTTON_SIZE[0], height=ImageViewer.FRAME_SELECT_BUTTON_SIZE[1]):
             self.current_dataset.current_frame -= 1
             _frame_idx_changed = True
-        imgui.same_line(spacing=cfg.iv_frame_select_button_spacing)
+        imgui.same_line(spacing=ImageViewer.FRAME_SELECT_BUTTON_SPACING)
         imgui.push_item_width(
-            available_width - 2 * cfg.iv_frame_select_button_width - 2 * cfg.iv_frame_select_button_spacing)
+            available_width - 2 * ImageViewer.FRAME_SELECT_BUTTON_SIZE[0] - 2 * ImageViewer.FRAME_SELECT_BUTTON_SPACING)
 
         _slider_changed, self.current_dataset.current_frame = imgui.slider_int("##frame_select",
                                                                                self.current_dataset.current_frame, 0,
@@ -290,8 +314,8 @@ class ImageViewer:
                                                                                f"Frame {self.current_dataset.current_frame}/{self.current_dataset.n_frames}")
 
         _frame_idx_changed = _slider_changed or _frame_idx_changed
-        imgui.same_line(spacing=cfg.iv_frame_select_button_spacing)
-        if imgui.button(">", width=cfg.iv_frame_select_button_width, height=cfg.iv_frame_select_button_height):
+        imgui.same_line(spacing=ImageViewer.FRAME_SELECT_BUTTON_SPACING)
+        if imgui.button(">", width=ImageViewer.FRAME_SELECT_BUTTON_SIZE[0], height=ImageViewer.FRAME_SELECT_BUTTON_SIZE[1]):
             self.current_dataset.current_frame += 1
             _frame_idx_changed = True
         if not self.window.get_key(glfw.KEY_LEFT_SHIFT):
@@ -325,16 +349,16 @@ class ImageViewer:
     def _edit_and_render_roi(self):
         if not self.show_image:
             return None
-        if cfg.node_editor.active_node is None:
+        if cfg.active_node is None:
             return None
-        if not cfg.node_editor.active_node.use_roi:
+        if not cfg.active_node.use_roi:
             return None
         # if past the above, active node has and used a roi.
-        if cfg.node_editor.active_node.roi == [0, 0, 0, 0]:
-            cfg.node_editor.active_node.roi = [self.image_width // 4, self.image_height // 4, self.image_width * 3 // 4, self.image_height * 3 // 4]
+        if cfg.active_node.roi == [0, 0, 0, 0]:
+            cfg.active_node.roi = [self.image_width // 4, self.image_height // 4, self.image_width * 3 // 4, self.image_height * 3 // 4]
         else:
-            self.roi.set_box(cfg.node_editor.active_node.roi)
-            self.roi.colour = cfg.node_editor.active_node.colour
+            self.roi.set_box(cfg.active_node.roi)
+            self.roi.colour = cfg.active_node.colour
             self.roi.render(self.roi_shader, self.camera)
             # edit roi
             if not imgui.get_io().want_capture_mouse and not self.window.window_gained_focus:
@@ -351,7 +375,7 @@ class ImageViewer:
                     if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.RELEASE):
                         self.moving_roi = False
                         self.roi.limit(self.image_width, self.image_height)
-                        cfg.node_editor.active_node.any_change = True
+                        cfg.active_node.any_change = True
                     else:
                         self.roi.translate(self.cursor_delta_as_world_delta())
 
@@ -361,25 +385,25 @@ class ImageViewer:
                         self.drawing_roi = False
                         self.roi.correct_order()
                         self.roi.limit(self.image_width, self.image_height)
-                        cfg.node_editor.active_node.any_change = True
+                        cfg.active_node.any_change = True
                     else:
                         new_box = [self.roi.box[0], self.roi.box[1], px_coords[0], px_coords[1]]
                         self.roi.set_box(new_box)
 
-            cfg.node_editor.active_node.roi = self.roi.box
+            cfg.active_node.roi = self.roi.box
 
     def _camera_control(self):
         if not imgui.get_io().want_capture_mouse:
             if self.window.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE):
-                self.camera.position[0] += self.window.cursor_delta[0] * cfg.iv_camera_pan_speed
-                self.camera.position[1] -= self.window.cursor_delta[1] * cfg.iv_camera_pan_speed
+                self.camera.position[0] += self.window.cursor_delta[0] * ImageViewer.CAMERA_PAN_SPEED
+                self.camera.position[1] -= self.window.cursor_delta[1] * ImageViewer.CAMERA_PAN_SPEED
             if self.window.get_key(glfw.KEY_LEFT_SHIFT):
                 if self.window.scroll_delta[1] != 0:
-                    camera_updated_zoom = self.camera.zoom * (1.0 + self.window.scroll_delta[1] * cfg.iv_camera_zoom_step)
-                    if camera_updated_zoom < cfg.iv_camera_zoom_max:
-                        self.camera.zoom *= (1.0 + self.window.scroll_delta[1] * cfg.iv_camera_zoom_step)
-                        self.camera.position[0] *= (1.0 + self.window.scroll_delta[1] * cfg.iv_camera_zoom_step)
-                        self.camera.position[1] *= (1.0 + self.window.scroll_delta[1] * cfg.iv_camera_zoom_step)
+                    camera_updated_zoom = self.camera.zoom * (1.0 + self.window.scroll_delta[1] * ImageViewer.CAMERA_ZOOM_STEP)
+                    if camera_updated_zoom < ImageViewer.CAMERA_ZOOM_MAX:
+                        self.camera.zoom *= (1.0 + self.window.scroll_delta[1] * ImageViewer.CAMERA_ZOOM_STEP)
+                        self.camera.position[0] *= (1.0 + self.window.scroll_delta[1] * ImageViewer.CAMERA_ZOOM_STEP)
+                        self.camera.position[1] *= (1.0 + self.window.scroll_delta[1] * ImageViewer.CAMERA_ZOOM_STEP)
 
     def _shortcuts(self):
         if self.window.get_key_event(glfw.KEY_C, glfw.PRESS, glfw.MOD_SHIFT | glfw.MOD_CONTROL):
@@ -392,7 +416,7 @@ class ImageViewer:
 
     def _context_menu(self):
         imgui.set_next_window_position(self.context_menu_position[0] - 3, self.context_menu_position[1] - 3)
-        imgui.set_next_window_size(cfg.iv_cm_size[0], cfg.iv_cm_size[1])
+        imgui.set_next_window_size(ImageViewer.CONTEXT_MENU_SIZE[0], ImageViewer.CONTEXT_MENU_SIZE[1])
         imgui.begin("##ivcontextmenu", flags=imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE)
         # Close context menu when it is not hovered.
         context_menu_hovered = imgui.is_window_hovered(flags=imgui.HOVERED_ALLOW_WHEN_BLOCKED_BY_POPUP | imgui.HOVERED_CHILD_WINDOWS)
@@ -411,10 +435,10 @@ class ImageViewer:
             self.center_camera()
             self.context_menu_open = False
         if imgui.begin_menu("Change LUT"):
-            for key in cfg.lut_names:
+            for key in settings.lut_names:
                 key_clicked, _ = imgui.menu_item(key)
                 if key_clicked:
-                    self.set_lut(cfg.lut_names.index(key))
+                    self.set_lut(settings.lut_names.index(key))
             imgui.end_menu()
         imgui.end()
 
@@ -456,29 +480,29 @@ class ImageViewer:
             self.va.update(VertexBuffer(vertex_attributes), IndexBuffer(indices))
         self.texture.update(self.image_pxd.astype(np.float))
 
-        self.hist_counts[0], self.hist_bins[0] = np.histogram(self.image_pxd[:, :, 0], bins=cfg.iv_hist_bins)
+        self.hist_counts[0], self.hist_bins[0] = np.histogram(self.image_pxd[:, :, 0], bins=ImageViewer.HISTOGRAM_BINS)
         self.hist_counts[0] = self.hist_counts[0].astype('float32')
         self.hist_counts[0] = np.delete(self.hist_counts[0], 0)
         self.hist_bins[0] = np.delete(self.hist_bins[0], 0)
         if self.mode == "RGB":
-            self.hist_counts[1], self.hist_bins[1] = np.histogram(self.image_pxd[:, :, 1], bins=cfg.iv_hist_bins)
+            self.hist_counts[1], self.hist_bins[1] = np.histogram(self.image_pxd[:, :, 1], bins=ImageViewer.HISTOGRAM_BINS)
             self.hist_counts[1] = self.hist_counts[1].astype('float32')
             self.hist_counts[1] = np.delete(self.hist_counts[1], 0)
             self.hist_bins[1] = np.delete(self.hist_bins[1], 0)
 
-            self.hist_counts[2], self.hist_bins[2] = np.histogram(self.image_pxd[:, :, 2], bins=cfg.iv_hist_bins)
+            self.hist_counts[2], self.hist_bins[2] = np.histogram(self.image_pxd[:, :, 2], bins=ImageViewer.HISTOGRAM_BINS)
             self.hist_counts[2] = self.hist_counts[2].astype('float32')
             self.hist_counts[2] = np.delete(self.hist_counts[2], 0)
             self.hist_bins[2] = np.delete(self.hist_bins[2], 0)
 
     def _compute_auto_contrast(self, channel = None):
-        img_subsample = self.image_pxd[::cfg.iv_autocontrast_subsample, ::cfg.iv_autocontrast_subsample, :]
+        img_subsample = self.image_pxd[::ImageViewer.AUTOCONTRAST_SUBSAMPLE, ::ImageViewer.AUTOCONTRAST_SUBSAMPLE, :]
         N = img_subsample.shape[0] * img_subsample.shape[1]
         for i in range(3):
             if self.autocontrast[i] or channel == i:
                 img_sorted = np.sort(img_subsample[:, :, i].flatten())
-                self.contrast_min[i] = img_sorted[int(cfg.iv_autocontrast_saturate / 100.0 * N)]
-                self.contrast_max[i] = img_sorted[int((1.0 - cfg.iv_autocontrast_saturate / 100.0) * N)]
+                self.contrast_min[i] = img_sorted[int(ImageViewer.AUTOCONTRAST_SATURATE / 100.0 * N)]
+                self.contrast_max[i] = img_sorted[int((1.0 - ImageViewer.AUTOCONTRAST_SATURATE / 100.0) * N)]
 
     def center_camera(self):
         self.camera.zoom = 1
@@ -486,7 +510,7 @@ class ImageViewer:
 
     def set_lut(self, lut_index):
         self.current_lut = lut_index
-        self.lut_array = np.asarray(cfg.luts[cfg.lut_names[self.current_lut]])
+        self.lut_array = np.asarray(settings.luts[settings.lut_names[self.current_lut]])
         if self.lut_array.shape[1] == 3:
             lut_array = np.reshape(self.lut_array, (self.lut_array.shape[0], 1, self.lut_array.shape[1]))
         self.lut_texture.update(lut_array)
@@ -510,7 +534,7 @@ class Camera:
         self.view_matrix = np.identity(4)
         self.projection_matrix = np.identity(4)
         self.view_projection_matrix = np.identity(4)
-        self.set_projection_matrix(cfg.iv_window_width, cfg.iv_window_height)
+        self.set_projection_matrix(settings.iv_window_width, settings.iv_window_height)
 
     def set_projection_matrix(self, window_width, window_height):
         self.projection_matrix = np.matrix([

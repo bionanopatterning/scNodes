@@ -1,7 +1,6 @@
 import glfw
 import imgui
 from OpenGL.GL import *
-import config as cfg
 
 
 class Window:

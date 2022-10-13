@@ -1,56 +1,67 @@
-from dataset import *
-import colorcet as cc
+from joblib import cpu_count
 
-## Dependencies list:
-# numpy, colorcet, pyglfw, pandas, PyWavelets, PyOpenGL, pystackreg, matplotlib,
-# joblib, scikit-image, glfw, pyimgui-wheels, and pyGpufit (can't be installed via pip)
-n_cpus = -1
+# This file defines variables that can be accessed globally.
+# Before re-structuring the code, the Node class would directly access and change NodeEditor class static variables.
+# That messed up inheritance. Instead, all of the variables that were accessed in this way are now defined in this file.
+
+nodes = list()
+active_node = None
+focused_node = None
+any_change = False  # top-level change flag
+next_active_node = None
+
+node_move_requested = [0, 0]
+camera_move_requested = [0, 0]
+
+window_width = 1920
+window_height = 1080
+
+profiling = False
+
+error_msg = None
+error_new = True
+error_obj = None
+
+active_connector = None
+active_connector_parent_node = None
+active_connector_hover_pos = [0, 0]
+connector_released = False
+connector_delete_requested = False
+
+n_cpus_max = cpu_count()
+n_cpus = n_cpus_max
+batch_size = n_cpus_max
+
+pickle_temp = dict()
 
 
-## Node editor GUI config
+def set_active_node(node, keep_active=False):
+    global focused_node, active_node, next_active_node
+    """
+    :param node: Node type object or None.
+    :param keep_active: bool. If True, the node is not just set as active_node, but also as the focused_node - this means that the node is kept in focus until it is manually unfocused by the user (in node right click context menu).
+    :return: False if no change; i.e. when input node is already the active node. True otherwise.
+    """
+    if keep_active:
+        focused_node = node
+        next_active_node = node
+        return True
+    elif focused_node is None:
+        if active_node is not None:
+            if active_node == node:
+                return False
+        if node is None:
+            active_node = None
+            return True
+        else:
+            next_active_node = node
+            return True
+    else:
+        return False
 
-node_editor = None
-ne_window_width = 1100
-ne_window_height = 700
-ne_window_title = "srNodes editor"
 
-## Image Viewer GUI config
-image_viewer = None
-iv_window_width = 600
-iv_window_height = 700
-iv_window_title = "srNodes image viewer"
-iv_camera_pan_speed = 1.0
-iv_camera_zoom_step = 0.1
-iv_camera_zoom_max = 40
-iv_hist_bins = 50
-iv_autocontrast_subsample = 2
-iv_autocontrast_saturate = 0.3  # percentage of over/under saturated pixels after performing autocontrast
-iv_info_bar_height = 100
-iv_frame_select_button_width = 20
-iv_frame_select_button_height = 19
-iv_frame_select_button_spacing = 4
-iv_cm_size = [200, 100]  # context menu
-iv_contrast_window_size = [200, 240]
-iv_clr_frame_background = (0.24, 0.24, 0.24)
-iv_clr_main = (0.3 / 1.3, 0.3 / 1.3, 0.3 / 1.3)
-iv_clr_theme_active = (0.59, 1.0, 0.86)
-iv_clr_theme = (0.729, 1.0, 0.95)
-iv_clr_main_bright = (0.3 / 1, 0.3 / 1, 0.3 / 1)
-iv_clr_main_dark = (0.3 / 1.5, 0.3 / 1.5, 0.3 / 1.5)
-iv_clr_window_background = (0.14, 0.14, 0.14, 0.8)
-iv_clear_clr = (0.94, 0.94, 0.94, 1.0)
-
-luts = dict()
-luts["Gray"] = cc.linear_grey_0_100_c0
-luts["Red"] = cc.linear_ternary_red_0_50_c52
-luts["Green"] = cc.linear_kgy_5_95_c69
-luts["Blue"] = cc.linear_kbc_5_95_c73
-luts["Fire"] = cc.linear_kryw_0_100_c71
-luts["Parula"] = cc.linear_bgyw_20_98_c66
-luts["Heatmap"] = cc.rainbow_bgyr_10_90_c83
-luts["Neon"] = cc.linear_worb_100_25_c53
-lut_names = list(luts.keys())
-
-## Overall config
-def_img_size = (2048, 2048)
-
+def set_error(error_object, error_message):
+    global error_msg, error_obj, error_new
+    error_msg = error_message
+    error_obj = error_object
+    error_new = True
