@@ -253,6 +253,9 @@ class NodeEditor:
                     cfg.nodes = list()
                 imgui.end_menu()
             if imgui.begin_menu('Settings'):
+                install_node, _ = imgui.menu_item("Install a node")
+                if install_node:
+                    NodeEditor.install_node()
                 if imgui.begin_menu('Profiling'):
                     _c, cfg.profiling = imgui.checkbox("Track node processing times", cfg.profiling)
                     NodeEditor.tooltip("Keep track of the time that every node in the pipeline takes to process and output a frame.\n")
@@ -262,7 +265,7 @@ class NodeEditor:
                             node.profiler_time = 0.0
                             node.profiler_count = 0
                     imgui.end_menu()
-                imgui.set_next_item_width(30)
+                imgui.set_next_item_width(26)
                 _c, cfg.n_cpus = imgui.input_int("Parallel batch size", cfg.n_cpus, 0, 0)
                 if _c:
                     cfg.n_cpus = cfg.n_cpus
@@ -279,10 +282,24 @@ class NodeEditor:
         imgui.pop_style_color(5)
 
     @staticmethod
+    def install_node():
+        try:
+            filename = filedialog.askopenfilename(filetypes=[("Python file", ".py")])
+            if filename != '':
+                node_dir = __file__[:__file__.rfind("\\")]+"/nodes/"
+                node_dir = node_dir.replace('\\', '/')
+                node_name = filename[filename.rfind("/")+1:]
+                shutil.copyfile(filename, node_dir+node_name)
+            cfg.set_error(Exception(), "Node installed - restart required for it to become available")
+        except Exception as e:
+            cfg.set_error(e, "Error upon installing node. Are you sure you selected the right file?")
+
+    @staticmethod
     def init_node_factory():
         node_source_files = glob.glob("nodes/*.py")
         i = 0
         for nodesrc in node_source_files:
+            i+=1
             if "custom_node_template" in nodesrc:
                 continue
             # give the module a unique name
@@ -312,7 +329,7 @@ class NodeEditor:
 
             except Exception as e:
                 print(f"NodeEditor - init node factory didn't work for source file\n{nodesrc}")
-                raise e
+                cfg.set_error(e, f"No well-defined Node type found in {nodesrc}. ")
         NodeEditor.node_group_all = list(NodeEditor.NODE_FACTORY.keys())
 
     @staticmethod

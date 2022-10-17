@@ -9,12 +9,14 @@ class Window:
         self.height = height
         self.title = title
         self.clear_color = (0.0, 0.0, 0.0, 1.0)
-        self.glfw_window = glfw.create_window(self.width, self.height, self.title, None, None)
-        self.focused = True
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
         glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
         glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, OpenGL.GL.GL_TRUE)
+        glfw.window_hint(glfw.RESIZABLE, glfw.FALSE)
+
+        self.glfw_window = glfw.create_window(self.width, self.height, self.title, None, None)
+        self.focused = True
         glfw.make_context_current(self.glfw_window)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glEnable(GL_BLEND)
@@ -62,7 +64,6 @@ class Window:
 
         if self.focused:
             glfw.poll_events()
-
 
     def make_current(self):
         glfw.make_context_current(self.glfw_window)
@@ -124,6 +125,7 @@ class Window:
     def pop_any_mouse_event(self):
         self.mouse_event = None
 
+
 class KeyEvent:
     def __init__(self, key, action, mods):
         self.key = key
@@ -139,6 +141,7 @@ class KeyEvent:
 
     def __str__(self):
         return f"key {self.key} action {self.action} with modifiers {self.mods}"
+
 
 class MouseButtonEvent:
     def __init__(self, button, action, mods):

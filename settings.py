@@ -23,4 +23,3 @@ luts["Neon"] = cc.linear_worb_100_25_c53
 lut_names = list(luts.keys())
 
 def_img_size = (2048, 2048)
-

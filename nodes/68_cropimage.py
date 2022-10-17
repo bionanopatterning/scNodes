@@ -8,15 +8,13 @@ def create():
 class CropImageNode(Node):
     title = "Crop image"
     group = "Image processing"
-    colour = (143 / 255, 123 / 255, 103 / 255, 1.0)
+    colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
 
     def __init__(self):
-        super().__init__(Node.TYPE_CROP_IMAGE)
-        self.size = [140, 100]
+        super().__init__()
+        self.size = 140
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self)
         self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=self)
-        self.connectable_attributes.append(self.dataset_in)
-        self.connectable_attributes.append(self.dataset_out)
 
         self.roi = [0, 0, 0, 0]
         self.use_roi = True
@@ -32,7 +30,7 @@ class CropImageNode(Node):
     def get_image_impl(self, idx=None):
         data_source = self.dataset_in.get_incoming_node()
         if data_source:
-            if self.frame_requested_by_image_viewer:
+            if self.FRAME_REQUESTED_BY_IMAGE_VIEWER:
                 return data_source.get_image(idx)
             else:
                 out_frame = data_source.get_image(idx).clone()

@@ -1657,7 +1657,7 @@ class ParticleFilterNode(Node):
                              "behaviour is: particle retained if min < parameter < max.\n"
                              "With NOT on, a particle is retained if max < parameter OR\nmin > parameter")
 
-                pf.render()
+                pf.render_start()
                 imgui.pop_id()
                 i += 1
             content_width = imgui.get_window_content_region_width()

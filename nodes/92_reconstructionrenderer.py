@@ -14,14 +14,11 @@ class ReconstructionRendererNode(Node):
     COLOUR_MODE = ["RGB, LUT"]
 
     def __init__(self):
-        super().__init__(Node.TYPE_RECONSTRUCTOR)  # Was: super(LoadDataNode, self).__init__()
-        self.size = [250, 200]
+        super().__init__()  # Was: super(LoadDataNode, self).__init__()
+        self.size = 250
 
         self.reconstruction_in = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.INPUT, parent = self)
         self.image_out = ConnectableAttribute(ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.OUTPUT, parent = self)
-
-        self.connectable_attributes.append(self.reconstruction_in)
-        self.connectable_attributes.append(self.image_out)
 
         self.magnification = 10
         self.default_sigma = 30.0
@@ -42,6 +39,8 @@ class ReconstructionRendererNode(Node):
         self.does_profiling_time = False
         self.does_profiling_count = False
 
+        self.auto_render = False
+
     def render(self):
         if super().render_start():
             self.reconstruction_in.render_start()
@@ -60,7 +59,6 @@ class ReconstructionRendererNode(Node):
             imgui.text(f"Final image size: {self.reconstruction_image_size[0]} x {self.reconstruction_image_size[1]} px")
 
             _c, self.fix_sigma = imgui.checkbox("Force uncertainty", self.fix_sigma)
-
 
             if self.fix_sigma:
                 imgui.same_line(spacing=10)
@@ -91,11 +89,15 @@ class ReconstructionRendererNode(Node):
                     connector.render_start()
                     connector.render_end()
 
-            _cw = imgui.get_content_region_available_width()
-            imgui.new_line()
-            imgui.same_line(spacing = _cw / 2 - 50 / 2)
-            if imgui.button("Render", 50, 30):
-                self.build_reconstruction()
+            if self.auto_render:
+                if self.any_change:
+                    self.build_reconstruction()
+            else:
+                _cw = imgui.get_content_region_available_width()
+                imgui.new_line()
+                imgui.same_line(spacing = _cw / 2 - 70 / 2)
+                if imgui.button("Render", 70, 30):
+                    self.build_reconstruction()
 
 
             if _mag_changed:
@@ -105,7 +107,17 @@ class ReconstructionRendererNode(Node):
                 img_height = int((roi[3] - roi[1]) * self.magnification)
                 self.reconstruction_image_size = (img_width, img_height)
 
+            header_expanded, _ = imgui.collapsing_header("Advanced", None)
+            if header_expanded:
+                self.render_advanced()
+
             super().render_end()
+
+    def render_advanced(self):
+        _c, self.auto_render = imgui.checkbox("Auto render", self.auto_render)
+        self.tooltip("When checked, instead of displaying a 'render' button,\n"
+                     "the node will always render the reconstruction upon any\n"
+                     "change to the settings.")
 
     def update_pixel_size(self):
         image_width = int((self.get_particle_data().reconstruction_roi[2] - self.get_particle_data().reconstruction_roi[0]) * self.magnification)

@@ -10,23 +10,18 @@ def create():
 class BakeStackNode(Node):
     title = "Bake stack"
     group = "Image processing"
-    colour = (143 / 255, 123 / 255, 103 / 255, 1.0)
+    colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
 
     RANGE_OPTIONS = ["All frames", "Custom range"]
 
     def __init__(self):
-        super().__init__(Node.TYPE_BAKE_STACK)# make it take dataset AND coordinates.
-        self.size = [230, 100]
+        super().__init__()
+        self.size = 230
 
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, self)
         self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, self)
         self.coordinates_in = ConnectableAttribute(ConnectableAttribute.TYPE_COORDINATES, ConnectableAttribute.INPUT, self)
         self.coordinates_out = ConnectableAttribute(ConnectableAttribute.TYPE_COORDINATES, ConnectableAttribute.OUTPUT, self)
-
-        self.connectable_attributes.append(self.dataset_in)
-        self.connectable_attributes.append(self.dataset_out)
-        self.connectable_attributes.append(self.coordinates_in)
-        self.connectable_attributes.append(self.coordinates_out)
 
         self.parallel = True
         self.baking = False

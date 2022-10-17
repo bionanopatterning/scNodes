@@ -8,21 +8,18 @@ def create():
 class ImageCalculatorNode(Node):
     title = "Image calculator"
     group = "Image processing"
-    colour = (143 / 255, 123 / 255, 103 / 255, 1.0)
-    ## Note: the output dataset has all the metadata of dataset_in_a
+    colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
+
+    # Note: the output dataset has all the metadata of dataset_in_a
     OPERATIONS = ["Add", "Subtract", "Divide", "Multiply"]
 
     def __init__(self):
-        super().__init__(Node.TYPE_IMAGE_CALCULATOR)
-        self.size = [230, 105]
+        super().__init__()
+        self.size = 230
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_MULTI, ConnectableAttribute.INPUT, parent=self, allowed_partner_types=[ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.TYPE_IMAGE])
         self.input_b = ConnectableAttribute(ConnectableAttribute.TYPE_MULTI, ConnectableAttribute.INPUT, parent=self, allowed_partner_types=[ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.TYPE_IMAGE])
         self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=self)
         self.image_out = ConnectableAttribute(ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.OUTPUT, parent=self)
-        self.connectable_attributes.append(self.dataset_in)
-        self.connectable_attributes.append(self.input_b)
-        self.connectable_attributes.append(self.dataset_out)
-        self.connectable_attributes.append(self.image_out)
 
         self.operation = 1
 

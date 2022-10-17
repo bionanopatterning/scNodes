@@ -27,14 +27,13 @@ class SpatialFilterNode(Node):
     WAVELET_NAMES = list(WAVELETS.keys())
     WAVELET_OTHER_IDX = WAVELET_NAMES.index("Other...")
     def __init__(self):
-        super().__init__(Node.TYPE_SPATIAL_FILTER)  # Was: super(LoadDataNode, self).__init__()
-        self.size = [210, 130]
+        super().__init__()  # Was: super(LoadDataNode, self).__init__()
+        self.size = 210
 
         # Set up connectable attributes
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent = self)
         self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent = self)
-        self.connectable_attributes.append(self.dataset_in)
-        self.connectable_attributes.append(self.dataset_out)
+
         # Set up node-specific vars
         self.filter = 1
         self.level = 1

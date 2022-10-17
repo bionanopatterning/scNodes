@@ -14,12 +14,10 @@ class GetImageNode(Node):
     PROJECTIONS = ["Average", "Minimum", "Maximum", "St. dev."]
 
     def __init__(self):
-        super().__init__(Node.TYPE_GET_IMAGE)
-        self.size = [200, 120]
+        super().__init__()
+        self.size = 200
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT,parent=self)
         self.image_out = ConnectableAttribute(ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.OUTPUT, parent=self)
-        self.connectable_attributes.append(self.dataset_in)
-        self.connectable_attributes.append(self.image_out)
 
         self.mode = 0
         self.projection = 0

@@ -8,18 +8,15 @@ def create():
 class BinImageNode(Node):
     title = "Bin image"
     group = "Image processing"
-    colour = (143 / 255, 123 / 255, 103 / 255, 1.0)
+    colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
 
     MODES = ["Average", "Median", "Min", "Max", "Sum"]
 
     def __init__(self):
-        super().__init__(Node.TYPE_BIN_IMAGE)
-        self.size = [170, 120]
+        super().__init__()
+        self.size = 170
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_MULTI, ConnectableAttribute.INPUT, self, [ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.TYPE_DATASET])
         self.output = ConnectableAttribute(ConnectableAttribute.TYPE_MULTI, ConnectableAttribute.OUTPUT, self, [ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.TYPE_DATASET])
-        self.connectable_attributes.append(self.dataset_in)
-        self.connectable_attributes.append(self.output)
-
         self.factor = 2
         self.mode = 0
 

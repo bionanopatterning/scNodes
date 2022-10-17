@@ -10,14 +10,11 @@ class ParticlePainterNode(Node):
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
 
     def __init__(self):
-        super().__init__(Node.TYPE_PARTICLE_PAINTER)  # Was: super(LoadDataNode, self).__init__()
-        self.size = [270, 240]
+        super().__init__()  # Was: super(LoadDataNode, self).__init__()
+        self.size = 270
 
         self.reconstruction_in = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.INPUT, parent = self)
         self.colour_out = ConnectableAttribute(ConnectableAttribute.TYPE_COLOUR, ConnectableAttribute.OUTPUT, parent = self)
-
-        self.connectable_attributes.append(self.reconstruction_in)
-        self.connectable_attributes.append(self.colour_out)
 
         self.parameter = 0
         self.available_parameters = ["Fixed colour"]

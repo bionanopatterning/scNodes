@@ -11,12 +11,15 @@ class LoadDataNode(Node):
     colour = (54 / 255, 47 / 255, 192 / 255, 1.0)
 
     def __init__(self):
-        super().__init__(Node.TYPE_LOAD_DATA) #Was: super(LoadDataNode, self).__init__()
-        self.size = [200, 200]
+        super().__init__()
+        self.size = 200
 
         # Set up connectable attributes
         self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=self)
-        self.connectable_attributes.append(self.dataset_out)
+
+        # flags
+        self.NODE_IS_DATA_SOURCE = True
+
         # Set up node-specific vars
         self.dataset = Dataset()
         self.path = ""
@@ -107,17 +110,21 @@ class LoadDataNode(Node):
             self.any_change = True
 
     def on_select_file(self):
-        self.dataset = Dataset(self.path, self.pixel_size)
-        self.n_to_load = self.dataset.n_frames
-        self.done_loading = False
-        self.to_load_idx = 0
-        self.any_change = True
-        cfg.image_viewer.center_image_requested = True
-        cfg.set_active_node(self)
+        try:
+            self.dataset = Dataset(self.path, self.pixel_size)
+            self.n_to_load = self.dataset.n_frames
+            self.done_loading = False
+            self.to_load_idx = 0
+            self.any_change = True
+            cfg.image_viewer.center_image_requested = True
+            cfg.set_active_node(self)
+        except Exception as e:
+            cfg.set_error(e, f"Error importing '{self.path}' as tif stack. Are you sure the data is .tif and monochromatic?")
 
     def get_image_impl(self, idx):
         if self.dataset.n_frames > 0:
             retimg = copy.deepcopy(self.dataset.get_indexed_image(idx))
+            retimg.pixel_size = self.pixel_size
             retimg.clean()
             return retimg
         else:

@@ -7,115 +7,54 @@ import copy
 import numpy as np
 from dataset import *
 
+
 class Node:
     title = "NullNode"
     group = "Ungrouped"
     colour = (1.0, 1.0, 1.0, 1.0)
+    id_generator = count(0)
 
-    if True:
-        id_generator = count(0)
+    COLOUR_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 0.96)
+    COLOUR_FOCUSED_NODE_WINDOW_BACKGROUND = (0.99, 0.93, 0.93, 0.96)
+    COLOUR_WINDOW_BORDER = (0.45, 0.45, 0.45, 1.0)
+    COLOUR_WINDOW_BORDER_ACTIVE_NODE = (0.25, 0.25, 0.25, 1.0)
+    COLOUR_WINDOW_BORDER_FOCUSED_NODE = (0 / 255, 0 / 255, 0 / 255)
+    ACTIVE_NODE_BORDER_THICKNESS = 1.3
+    FOCUSED_NODE_BORDER_THICKNESS = 1.1
+    DEFAULT_NODE_BORDER_THICKNESS = 1.0
+    COLOUR_TEXT = (0.0, 0.0, 0.0, 1.0)
+    COLOUR_TEXT_DISABLED = (0.2, 0.4, 0.2, 1.0)
+    COLOUR_FRAME_BACKGROUND = (0.84, 0.84, 0.84, 1.0)
 
-        TYPE_NULL = -1
-        TYPE_NONE = 0
-        TYPE_LOAD_DATA = 1
-        TYPE_REGISTER = 2
-        TYPE_SPATIAL_FILTER = 3
-        TYPE_TEMPORAL_FILTER = 4
-        TYPE_FRAME_SELECTION = 5
-        TYPE_PARTICLE_DETECTION = 6
-        TYPE_PARTICLE_FITTING = 7
-        TYPE_PARTICLE_FILTER = 8
-        TYPE_RECONSTRUCTOR = 9
-        TYPE_PARTICLE_PAINTER = 10
-        TYPE_EXPORT_DATA = 11
-        TYPE_GET_IMAGE = 12
-        TYPE_IMAGE_CALCULATOR = 13
-        TYPE_FRAME_SHIFT = 14
-        TYPE_BIN_IMAGE = 15
-        TYPE_BAKE_STACK = 16
-        TYPE_CROP_IMAGE = 17
+    WINDOW_ROUNDING = 5.0
+    FRAME_ROUNDING = 2.0
+    PLAY_BUTTON_SIZE = 40
+    PLAY_BUTTON_ICON_SIZE = 5.0
+    PLAY_BUTTON_ICON_LINEWIDTH = 12.0
+    PLAY_BUTTON_ICON_COLOUR = (0.2, 0.8, 0.2, 1.0)
+    PLAY_BUTTON_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 1.0)
+    PROGRESS_BAR_HEIGHT = 10
+    PROGRESS_BAR_PADDING = 8
 
-        COLOUR = dict()
-        COLOUR[TYPE_LOAD_DATA] = (54 / 255, 47 / 255, 192 / 255, 1.0)
-        COLOUR[TYPE_REGISTER] = (68 / 255, 177 / 255, 209 / 255, 1.0)
-        COLOUR[TYPE_SPATIAL_FILTER] = (44 / 255, 217 / 255, 158 / 255, 1.0)
-        COLOUR[TYPE_TEMPORAL_FILTER] = (55 / 255, 236 / 255, 54 / 255, 1.0)
-        COLOUR[TYPE_FRAME_SELECTION] = (228 / 255, 231 / 255, 59 / 255, 1.0)
-        COLOUR[TYPE_PARTICLE_DETECTION] = (230 / 255, 174 / 255, 13 / 255, 1.0)
-        COLOUR[TYPE_PARTICLE_FITTING] = (230 / 255, 98 / 255, 13 / 255, 1.0)
-        COLOUR[TYPE_PARTICLE_FILTER] = (230 / 255, 13 / 255, 13 / 255, 1.0)
-        COLOUR[TYPE_RECONSTRUCTOR] = (243 / 255, 0 / 255, 80 / 255, 1.0)
-        COLOUR[TYPE_PARTICLE_PAINTER] = (143 / 255, 143 / 255, 143 / 255, 1.0)
-        COLOUR[TYPE_EXPORT_DATA] = (138 / 255, 8 / 255, 8 / 255, 1.0)
-        COLOUR[TYPE_GET_IMAGE] = (143 / 255, 143 / 255, 143 / 255, 1.0)
-        COLOUR[TYPE_IMAGE_CALCULATOR] = (143 / 255, 123 / 255, 103 / 255, 1.0)
-        COLOUR[TYPE_FRAME_SHIFT] = (50 / 255, 223 / 255, 80 / 255, 1.0)
-        COLOUR[TYPE_BIN_IMAGE] = (143 / 255, 123 / 255, 103 / 255, 1.0)
-        COLOUR[TYPE_NULL] = (1.0, 0.0, 1.0, 1.0)
-        COLOUR[TYPE_BAKE_STACK] = (143 / 255, 123 / 255, 103 / 255, 1.0)
-        COLOUR[TYPE_CROP_IMAGE] = (143 / 255, 123 / 255, 103 / 255, 1.0)
+    TOOLTIP_APPEAR_DELAY = 1.0  # seconds
+    TOOLTIP_HOVERED_TIMER = 0.0
+    TOOLTIP_HOVERED_START_TIME = 0.0
 
-        TITLE = dict()
-        TITLE[TYPE_LOAD_DATA] = "Load data"
-        TITLE[TYPE_REGISTER] = "Registration"
-        TITLE[TYPE_SPATIAL_FILTER] = "Spatial filter"
-        TITLE[TYPE_TEMPORAL_FILTER] = "Temporal filter"
-        TITLE[TYPE_FRAME_SELECTION] = "Frame filter"
-        TITLE[TYPE_PARTICLE_DETECTION] = "Particle detection"
-        TITLE[TYPE_PARTICLE_FITTING] = "Particle fitting"
-        TITLE[TYPE_PARTICLE_FILTER] = "Particle filter"
-        TITLE[TYPE_RECONSTRUCTOR] = "Reconstruction renderer"
-        TITLE[TYPE_PARTICLE_PAINTER] = "Particle painter"
-        TITLE[TYPE_EXPORT_DATA] = "Export data"
-        TITLE[TYPE_GET_IMAGE] = "Dataset to image"
-        TITLE[TYPE_IMAGE_CALCULATOR] = "Image calculator"
-        TITLE[TYPE_FRAME_SHIFT] = "Frame shift"
-        TITLE[TYPE_BIN_IMAGE] = "Bin image"
-        TITLE[TYPE_NULL] = "null"
-        TITLE[TYPE_BAKE_STACK] = "Bake stack"
-        TITLE[TYPE_CROP_IMAGE] = "Crop image"
-        COLOUR_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 0.96)
-        COLOUR_FOCUSED_NODE_WINDOW_BACKGROUND = (0.99, 0.93, 0.93, 0.96)
-        COLOUR_WINDOW_BORDER = (0.45, 0.45, 0.45, 1.0)
-        COLOUR_WINDOW_BORDER_ACTIVE_NODE = (0.25, 0.25, 0.25, 1.0)
-        COLOUR_WINDOW_BORDER_FOCUSED_NODE = (0 / 255, 0 / 255, 0 / 255)
-        ACTIVE_NODE_BORDER_THICKNESS = 1.3
-        FOCUSED_NODE_BORDER_THICKNESS = 1.1
-        DEFAULT_NODE_BORDER_THICKNESS = 1.0
-        COLOUR_TEXT = (0.0, 0.0, 0.0, 1.0)
-        COLOUR_TEXT_DISABLED = (0.2, 0.4, 0.2, 1.0)
-        COLOUR_FRAME_BACKGROUND = (0.84, 0.84, 0.84, 1.0)
-
-        WINDOW_ROUNDING = 5.0
-        FRAME_ROUNDING = 2.0
-        PLAY_BUTTON_SIZE = 40
-        PLAY_BUTTON_ICON_SIZE = 5.0
-        PLAY_BUTTON_ICON_LINEWIDTH = 12.0
-        PLAY_BUTTON_ICON_COLOUR = (0.2, 0.8, 0.2, 1.0)
-        PLAY_BUTTON_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 1.0)
-        PROGRESS_BAR_HEIGHT = 10
-        PROGRESS_BAR_PADDING = 8
-
-        TOOLTIP_APPEAR_DELAY = 1.0  # seconds
-        TOOLTIP_HOVERED_TIMER = 0.0
-        TOOLTIP_HOVERED_START_TIME = 0.0
-
-    def __init__(self, nodetype):
-        self.id = int(datetime.datetime.utcnow().timestamp()) + next(Node.id_generator)
-        self.type = nodetype
+    def __init__(self):
+        self.id = int(datetime.datetime.now().strftime("%Y%m%d")+"000") + next(Node.id_generator)
         self.position = [0, 0]
         self.last_measured_window_position = [0, 0]
-        self.size = [0, 0]
+        self.size = 200
+        self.node_height = 100
         self.connectable_attributes = list()
-        self.title = Node.TITLE[self.type]
         self.play = False
         self.any_change = False
         self.queued_actions = list()
         self.use_roi = False
-        if self.type is not Node.TYPE_NULL:
-            cfg.nodes.append(self)
+        self.roi = [0, 0, 0, 0]
+        cfg.nodes.append(self)
 
-        # bookkeeping
+        # some bookkeeping vars - ignore these
         self.buffer_last_output = False
         self.last_index_requested = -1
         self.last_frame_returned = None
@@ -123,15 +62,19 @@ class Node:
         self.context_menu_position = [0, 0]
         self.context_menu_can_close = False
         self.keep_active = False
-        # flags
-        self.returns_image = True
         self.does_profiling_time = True
         self.does_profiling_count = True
         self.profiler_time = 0.0
         self.profiler_count = 0
-        self.frame_requested_by_image_viewer = False
 
-        self.pid_children = set()
+        # flags
+        self.NODE_RETURNS_IMAGE = True
+        self.NODE_IS_DATA_SOURCE = False
+        self.ROI_MUST_BE_SQUARE = False
+        self.NODE_GAINED_FOCUS = False
+        self.FRAME_REQUESTED_BY_IMAGE_VIEWER = False  # bit of a misc one. when the image viewer is requesting a frame (rather than the processing pipeline asking for one), this flag is temporarily set to True. This is used in e.g. the CropImage node, where the output to the image viewer is different than the output to the next node.
+
+
 
     def __eq__(self, other):
         if isinstance(other, Node):
@@ -144,22 +87,24 @@ class Node:
         if self.any_change and not cfg.focused_node == self:
             cfg.any_change = True
         self.any_change = False
+        self.NODE_GAINED_FOCUS = False
 
     def render_start(self):
+        if self.use_roi == False:
+            self.roi = [0, 0, 0, 0]
         ## render the node window
-        imgui.set_next_window_size(*self.size, imgui.ONCE)
         imgui.set_next_window_position(self.position[0], self.position[1], imgui.ALWAYS)
-        imgui.set_next_window_size_constraints((self.size[0], 50), (self.size[0], 1000))
-        imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *Node.COLOUR[self.type])
-        imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM_HOVERED, *Node.COLOUR[self.type])
-        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *Node.COLOUR[self.type])
-        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *Node.COLOUR[self.type])
-        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_COLLAPSED, *Node.COLOUR[self.type])
-        imgui.push_style_color(imgui.COLOR_CHECK_MARK, *Node.COLOUR[self.type])
-        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *Node.COLOUR[self.type])
-        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *self.colour_brighten(Node.COLOUR[self.type]))
+        imgui.set_next_window_size_constraints((self.size, 50), (self.size, 1000))
+        imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *self.colour)
+        imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM_HOVERED, *self.colour)
+        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *self.colour)
+        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *self.colour)
+        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_COLLAPSED, *self.colour)
+        imgui.push_style_color(imgui.COLOR_CHECK_MARK, *self.colour)
+        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *self.colour)
+        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *self.colour_brighten(self.colour))
         if cfg.focused_node == self:
-            imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *self.colour_whiten(Node.COLOUR[self.type]))
+            imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *self.colour_whiten(self.colour))
             imgui.push_style_var(imgui.STYLE_WINDOW_BORDERSIZE, Node.FOCUSED_NODE_BORDER_THICKNESS)
             imgui.push_style_color(imgui.COLOR_BORDER, *Node.COLOUR_WINDOW_BORDER_FOCUSED_NODE)
             imgui.push_style_color(imgui.COLOR_BORDER_SHADOW, *Node.COLOUR_WINDOW_BORDER_FOCUSED_NODE)
@@ -174,15 +119,15 @@ class Node:
             imgui.push_style_color(imgui.COLOR_BORDER, *Node.COLOUR_WINDOW_BORDER)
             imgui.push_style_color(imgui.COLOR_BORDER_SHADOW, *Node.COLOUR_WINDOW_BORDER)
         imgui.push_style_color(imgui.COLOR_TEXT, *Node.COLOUR_TEXT)
-        imgui.push_style_color(imgui.COLOR_HEADER, *self.colour_whiten(Node.COLOUR[self.type]))
-        imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *self.colour_whiten(Node.COLOUR[self.type]))
-        imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *self.colour_whiten(Node.COLOUR[self.type]))
-        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *self.colour_whiten(Node.COLOUR[self.type]))
+        imgui.push_style_color(imgui.COLOR_HEADER, *self.colour_whiten(self.colour))
+        imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *self.colour_whiten(self.colour))
+        imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *self.colour_whiten(self.colour))
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *self.colour_whiten(self.colour))
         imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *Node.COLOUR_FRAME_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_BUTTON, *Node.COLOUR[self.type])
-        imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *self.colour_brighten(Node.COLOUR[self.type]))
-        imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *self.colour_whiten(Node.COLOUR[self.type]))
-        imgui.push_style_color(imgui.COLOR_TAB_HOVERED, *self.colour_brighten(Node.COLOUR[self.type]))
+        imgui.push_style_color(imgui.COLOR_BUTTON, *self.colour)
+        imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *self.colour_brighten(self.colour))
+        imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *self.colour_whiten(self.colour))
+        imgui.push_style_color(imgui.COLOR_TAB_HOVERED, *self.colour_brighten(self.colour))
         imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, Node.WINDOW_ROUNDING)
         imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, Node.WINDOW_ROUNDING)
         imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, Node.FRAME_ROUNDING)
@@ -190,7 +135,7 @@ class Node:
         imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *Node.COLOUR_FRAME_BACKGROUND)
         imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *Node.COLOUR_WINDOW_BACKGROUND)
         _, stay_open = imgui.begin(self.title + f"##{self.id}", True, imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_BRING_TO_FRONT_ON_FOCUS | imgui.WINDOW_NO_SAVED_SETTINGS | imgui.WINDOW_NO_MOVE | imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_COLLAPSE)
-        self.size[1] = imgui.get_window_size()[1]
+
         if imgui.is_window_focused() and not imgui.is_any_item_hovered():
             if cfg.set_active_node(self):
                 self.on_gain_focus()
@@ -199,6 +144,7 @@ class Node:
         self.position[0] += cfg.camera_move_requested[0]
         self.position[1] += cfg.camera_move_requested[1]
         self.last_measured_window_position = imgui.get_window_position()
+        self.node_height = imgui.get_window_size()[1]
         imgui.push_clip_rect(0, 0, cfg.window_width, cfg.window_height)
         imgui.push_id(str(self.id))
         if not stay_open:
@@ -209,7 +155,8 @@ class Node:
         return True
 
     def render(self):
-        pass
+        if self.render_start():
+            self.render_end()
 
     def render_end(self):
         ## Node context_menu:
@@ -255,7 +202,7 @@ class Node:
         clicked = False
         ## Start/stop button
         imgui.push_id(f"Startstop{self.id}")
-        window_position = (self.last_measured_window_position[0] + self.size[0] - Node.PLAY_BUTTON_SIZE / 2, self.last_measured_window_position[1] + self.size[1] / 2 - Node.PLAY_BUTTON_SIZE / 2)
+        window_position = (self.last_measured_window_position[0] + self.size - Node.PLAY_BUTTON_SIZE / 2, self.last_measured_window_position[1] + self.node_height / 2 - Node.PLAY_BUTTON_SIZE / 2)
 
         imgui.set_next_window_position(*window_position)
         imgui.set_next_window_size(Node.PLAY_BUTTON_SIZE, Node.PLAY_BUTTON_SIZE)
@@ -313,10 +260,10 @@ class Node:
         drawlist = imgui.get_window_draw_list()
         drawlist.add_rect_filled(Node.PROGRESS_BAR_PADDING + origin[0], y,
                                  Node.PROGRESS_BAR_PADDING + origin[0] + width, y + Node.PROGRESS_BAR_HEIGHT,
-                                 imgui.get_color_u32_rgba(*Node.colour_whiten(Node.COLOUR[self.type])))
+                                 imgui.get_color_u32_rgba(*Node.colour_whiten(self.colour)))
         drawlist.add_rect_filled(Node.PROGRESS_BAR_PADDING + origin[0], y,
                                  Node.PROGRESS_BAR_PADDING + origin[0] + width * min([1.0, progress]),
-                                 y + Node.PROGRESS_BAR_HEIGHT, imgui.get_color_u32_rgba(*Node.COLOUR[self.type]))
+                                 y + Node.PROGRESS_BAR_HEIGHT, imgui.get_color_u32_rgba(*self.colour))
 
     def delete(self):
         try:
@@ -363,13 +310,12 @@ class Node:
                 if attribute.direction == ConnectableAttribute.INPUT:
                     return attribute.get_incoming_node()
 
-        if node.type == Node.TYPE_LOAD_DATA:
+        if node.NODE_IS_DATA_SOURCE:
             return node
         try:
             source = get_any_incoming_node(node)
             while not isinstance(source, NullNode):
-                load_data_node = source.type == Node.TYPE_LOAD_DATA
-                if load_data_node:
+                if source.NODE_IS_DATA_SOURCE:
                     return source
                 source = get_any_incoming_node(source)
             return source
@@ -395,7 +341,7 @@ class Node:
                     retval = copy.deepcopy(self.last_frame_returned)
             retval = self.get_image_impl(idx)
         except Exception as e:
-            cfg.set_error(e, f"{Node.TITLE[self.type]} error: "+str(e))
+            cfg.set_error(e, f"{self} error: "+str(e))
         if cfg.profiling:
             self.profiler_time += (time.time() - start_time)
         return retval
@@ -416,7 +362,7 @@ class Node:
         return None
 
     def on_gain_focus(self):
-        pass
+        self.NODE_GAINED_FOCUS = True
 
     def pre_save(self):
         cfg.pickle_temp = dict()
@@ -439,10 +385,11 @@ class Node:
 
 class NullNode(Node):
     def __init__(self):
-        super().__init__(Node.TYPE_NULL)
+        super().__init__()
         self.dataset = Dataset()
         self.dataset_in = None
         self.pixel_size = 100
+        cfg.nodes.remove(self)
 
     def __bool__(self):
         return False
@@ -507,6 +454,8 @@ class ConnectableAttribute:
         self.current_type = self.type
         if allowed_partner_types is not None:
             self.allowed_partner_types = allowed_partner_types
+
+        parent.connectable_attributes.append(self)
 
     def __eq__(self, other):
         if type(self) is type(other):

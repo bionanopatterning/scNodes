@@ -170,6 +170,13 @@ class Frame:
         tmat = transform.AffineTransform(np.matrix([[1.0, 0.0, self.translation[0]], [0.0, 1.0, self.translation[1]], [0.0, 0.0, 1.0]]))
         self.data = transform.warp(self.data, tmat, order=interpolation, mode=edges, preserve_range=preserve_range)
 
+    def load_roi(self, roi=None):
+        print("load_roi")
+        if roi is None:
+            return self.load()
+        else:
+            return self.load()[roi[1]:roi[3], roi[0]:roi[2]]
+
     def __str__(self):
         sstr = f"Frame at path: {self.path}\n" \
             + ("Discarded frame. " if self.discard else "Frame in use. ") \

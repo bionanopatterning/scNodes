@@ -6,6 +6,8 @@ import settings
 import config as cfg
 from dataset import *
 from roi import *
+from tkinter import filedialog
+from util import save_tiff
 
 
 class ImageViewer:
@@ -70,7 +72,7 @@ class ImageViewer:
 
         self.contrast_window_open = False
         self.contrast_window_channel = 0
-        self.contrast_window_position = [0, 0]
+        self.contrast_window_position = [210, 240]
         self.context_menu_open = False
         self.context_menu_can_close = False
         self.context_menu_position = [0, 0]
@@ -81,12 +83,12 @@ class ImageViewer:
         self.previous_active_node = None
         self.new_image_requested = False
         # Image data
-        self.original_image = None
         self.image = None
         self.image_pxd = None
         self.image_width = None
         self.image_height = None
         self.image_amax = [0, 0, 0]
+        self.image_amin = [0, 0, 0]
         self.hist_counts = [list(), list(), list()]
         self.hist_bins = [list(), list(), list()]
         self.mode = "R"
@@ -108,7 +110,6 @@ class ImageViewer:
     def set_mode(self, mode):
         if mode in ["R", "RGB"]:
             self.mode = mode
-            self.show_frame_select_window = self.mode == "R"
         else:
             print(f"ImageViewer.set_mode with mode = {mode} is not a valid mode!")
 
@@ -168,19 +169,17 @@ class ImageViewer:
         if cfg.active_node is not None:
             ImageViewer.MARKER_COLOUR = cfg.active_node.colour
             if self.previous_active_node is not cfg.active_node or cfg.active_node.any_change or self.new_image_requested:
-                if cfg.active_node.returns_image:
+                if cfg.active_node.NODE_RETURNS_IMAGE:
                     an = cfg.active_node
                     self.current_dataset = an.get_source_load_data_node(an).dataset
-                    if self.current_dataset.initialized:
-                        self.current_dataset.current_frame = np.clip(self.current_dataset.current_frame, 0, self.current_dataset.n_frames - 1)
-                        cfg.active_node.frame_requested_by_image_viewer = True
-                        new_image = cfg.active_node.get_image(self.current_dataset.current_frame)
-                        cfg.active_node.frame_requested_by_image_viewer = False
-                        if new_image is not None:
-                            self.show_image = True
-                            self.set_image(new_image)
-                        else:
-                            self.show_image = False
+                    #if self.current_dataset.initialized: removed this if clause 221017 - final else was: self.show-iamge = False
+                    self.current_dataset.current_frame = np.clip(self.current_dataset.current_frame, 0, self.current_dataset.n_frames - 1)
+                    cfg.active_node.FRAME_REQUESTED_BY_IMAGE_VIEWER = True
+                    new_image = cfg.active_node.get_image(self.current_dataset.current_frame)
+                    cfg.active_node.FRAME_REQUESTED_BY_IMAGE_VIEWER = False
+                    if new_image is not None:
+                        self.show_image = True
+                        self.set_image(new_image)
                     else:
                         self.show_image = False
             self.previous_active_node = cfg.active_node
@@ -208,7 +207,6 @@ class ImageViewer:
         if self.contrast_window_open:
             imgui.set_next_window_size(ImageViewer.CONTRAST_WINDOW_SIZE[0], ImageViewer.CONTRAST_WINDOW_SIZE[1])
             imgui.set_next_window_position(self.contrast_window_position[0], self.contrast_window_position[1], condition = imgui.APPEARING)
-
             _, self.contrast_window_open = imgui.begin("Adjust contrast", closable = True, flags = imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_RESIZE)
             self.contrast_window_position = imgui.get_window_position()
             available_width = imgui.get_content_region_available_width()
@@ -241,8 +239,8 @@ class ImageViewer:
 
             imgui.plot_histogram("##contrast_hist", self.hist_counts[self.contrast_window_channel], graph_size = (available_width, 100))
             imgui.push_item_width(available_width)
-            _min_changed, self.contrast_min[self.contrast_window_channel] = imgui.slider_float("##min_contrast", self.contrast_min[self.contrast_window_channel], 0, self.image_amax[self.contrast_window_channel] + 1, format="min: %1.0f")
-            _max_changed, self.contrast_max[self.contrast_window_channel] = imgui.slider_float("##max_contrast", self.contrast_max[self.contrast_window_channel], 0, self.image_amax[self.contrast_window_channel] + 1, format="max: %1.0f")
+            _min_changed, self.contrast_min[self.contrast_window_channel] = imgui.slider_float("##min_contrast", self.contrast_min[self.contrast_window_channel], self.image_amin[self.contrast_window_channel], self.image_amax[self.contrast_window_channel] + 1, format="min: %1.0f")
+            _max_changed, self.contrast_max[self.contrast_window_channel] = imgui.slider_float("##max_contrast", self.contrast_max[self.contrast_window_channel], self.image_amin[self.contrast_window_channel], self.image_amax[self.contrast_window_channel] + 1, format="max: %1.0f")
             if _min_changed or _max_changed:
                 self.autocontrast[self.contrast_window_channel] = False
             imgui.pop_item_width()
@@ -388,6 +386,11 @@ class ImageViewer:
                         cfg.active_node.any_change = True
                     else:
                         new_box = [self.roi.box[0], self.roi.box[1], px_coords[0], px_coords[1]]
+                        if cfg.active_node.ROI_MUST_BE_SQUARE:
+                            box_width = np.abs(px_coords[0] - self.roi.box[0])
+                            box_height = np.abs(px_coords[1] - self.roi.box[1])
+                            box_size = min([box_width, box_height])
+                            new_box = [self.roi.box[0], self.roi.box[1], self.roi.box[0] + box_size, self.roi.box[1] + box_size]
                         self.roi.set_box(new_box)
 
             cfg.active_node.roi = self.roi.box
@@ -413,6 +416,9 @@ class ImageViewer:
         if self.contrast_window_open:
             if self.window.get_key_event(glfw.KEY_SPACE, glfw.PRESS):
                 self._compute_auto_contrast(self.contrast_window_channel)
+        if self.window.get_key_event(glfw.KEY_S, glfw.PRESS, glfw.MOD_CONTROL):
+            if self.image_pxd is not None:
+                self.save_current_image()
 
     def _context_menu(self):
         imgui.set_next_window_position(self.context_menu_position[0] - 3, self.context_menu_position[1] - 3)
@@ -461,6 +467,7 @@ class ImageViewer:
         else:
             self.set_mode("RGB")
         self.image_amax = np.amax(self.image_pxd, axis = (0, 1))
+        self.image_amin = np.amin(self.image_pxd, axis = (0, 1))
         if self.autocontrast[0]:
             self._compute_auto_contrast(0)
         if self.autocontrast[1]:
@@ -525,6 +532,18 @@ class ImageViewer:
 
     def cursor_delta_as_world_delta(self):
         return [self.window.cursor_delta[0] / self.camera.zoom, -self.window.cursor_delta[1] / self.camera.zoom]
+
+    def save_current_image(self):
+        print(np.shape(self.image_pxd))
+        try:
+            filename = filedialog.asksaveasfilename()
+            if filename != '':
+                if self.mode == "R":
+                    save_tiff(self.image_pxd[:, :, 0], filename, self.image.pixel_size)
+                else:
+                    save_tiff(self.image_pxd, filename, self.image.pixel_size)
+        except Exception as e:
+            cfg.set_error(e, f"Error saving file via ImageViewer.save_current_image():\n{str(e)}")
 
 
 class Camera:

@@ -44,3 +44,21 @@ def plot_histogram(data, bins = 'auto', title = None):
 
 def get_filetype(path):
     return path[path.rfind("."):]
+
+
+def apply_lut_to_float_image(image, lut, contrast_lims = None):
+    if len(image.shape) != 2:
+        print("Image input in apply_lut_to_float_image is not 2D.")
+        return False
+    if isinstance(lut, list):
+        _lut = np.asarray(lut)
+    L, n = np.shape(_lut)
+    if contrast_lims is None:
+        contrast_lims = (np.amin(image), np.amax(image))
+    image = (L-1) * (image - contrast_lims[0]) / (contrast_lims[1] - contrast_lims[0])
+    image = image.astype(int)
+    w, h = image.shape
+    out_img = np.zeros((w, h, n))
+    for x in range(w):
+        out_img[x, :, :] = _lut[image[x, :], :]
+    return out_img

@@ -14,14 +14,12 @@ class ParticleDetectionNode(Node):
     THRESHOLD_OPTIONS = ["Value", "St. Dev.", "Mean", "Max", "Min"]
 
     def __init__(self):
-        super().__init__(Node.TYPE_PARTICLE_DETECTION)
-        self.size = [290, 205]
+        super().__init__()
+        self.size = 290
 
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self)
         self.localizations_out = ConnectableAttribute(ConnectableAttribute.TYPE_COORDINATES, ConnectableAttribute.OUTPUT, parent=self)
 
-        self.connectable_attributes.append(self.dataset_in)
-        self.connectable_attributes.append(self.localizations_out)
 
         self.method = 0
         self.thresholding = 1
@@ -84,9 +82,9 @@ class ParticleDetectionNode(Node):
 
     def get_image_impl(self, idx=None):
         source = self.dataset_in.get_incoming_node()
-        if cfg.profiling and self.frame_requested_by_image_viewer:
+        if cfg.profiling and self.FRAME_REQUESTED_BY_IMAGE_VIEWER:
             self.profiler_count += 1
-        if source is not None:
+        if source:
             # Find threshold value
             image_obj = source.get_image(idx)
             image = image_obj.load()

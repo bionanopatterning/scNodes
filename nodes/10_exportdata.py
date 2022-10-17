@@ -14,12 +14,11 @@ class ExportDataNode(Node):
     colour = (138 / 255, 8 / 255, 8 / 255, 1.0)
 
     def __init__(self):
-        super().__init__(Node.TYPE_EXPORT_DATA)
-        self.size = [210, 220]
+        super().__init__()
+        self.size = 210
 
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_MULTI, ConnectableAttribute.INPUT, self, [ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.TYPE_RECONSTRUCTION])
         self.dataset_in.title = "Any"
-        self.connectable_attributes.append(self.dataset_in)
 
         self.path = "..."
         self.roi = [0, 0, 0, 0]
@@ -103,6 +102,7 @@ class ExportDataNode(Node):
             #if self.include_discarded_frames:
                 #n_active_frames = Node.get_source_load_data_node(self).dataset.n_frames
                 #self.frames_to_load = list(range(0, n_active_frames))
+
             self.frames_to_load = list()
             for i in range(Node.get_source_load_data_node(self).dataset.n_frames):
                 self.frames_to_load.append(i)
@@ -155,6 +155,3 @@ class ExportDataNode(Node):
             img_pxd = incoming_img.load()
             incoming_img.clean()
             return img_pxd
-        img_source = self.image_in.get_incoming_node()
-        if img_source:
-            return img_source.get_image(idx)

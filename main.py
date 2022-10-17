@@ -21,7 +21,6 @@ if __name__ == "__main__":
     image_viewer = ImageViewer(iv_window, node_editor.get_font_atlas_ptr())
     cfg.image_viewer = image_viewer
 
-    #ne_window.bring_to_front()
     try:
         while not glfw.window_should_close(ne_window.glfw_window):
             if not (ne_window.focused or iv_window.focused):

@@ -16,17 +16,14 @@ class ParticleFittingNode(Node):
     PSFS = ["Gaussian", "Elliptical Gaussian"]
 
     def __init__(self):
-        super().__init__(Node.TYPE_PARTICLE_FITTING)
+        super().__init__()
 
         # Set up connectable attributes
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self)
         self.localizations_in = ConnectableAttribute(ConnectableAttribute.TYPE_COORDINATES, ConnectableAttribute.INPUT, parent=self)
         self.reconstruction_out = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.OUTPUT, parent=self)
-        self.connectable_attributes.append(self.dataset_in)
-        self.connectable_attributes.append(self.reconstruction_out)
-        self.connectable_attributes.append(self.localizations_in)
 
-        self.size = [300, 270]
+        self.size = 300
         self.range_option = 1
         self.range_min = 0
         self.range_max = 1

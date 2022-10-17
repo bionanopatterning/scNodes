@@ -15,14 +15,12 @@ class TemporalFilterNode(Node):
     INCOMPLETE_GROUP_MODES = ["Discard"]
 
     def __init__(self):
-        super().__init__(Node.TYPE_TEMPORAL_FILTER)  # Was: super(LoadDataNode, self).__init__()
-        self.size = [250, 220]
+        super().__init__()  # Was: super(LoadDataNode, self).__init__()
+        self.size = 250
 
         # Set up connectable attributes
-        self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent = self)
-        self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent = self)
-        self.connectable_attributes.append(self.dataset_in)
-        self.connectable_attributes.append(self.dataset_out)
+        self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self)
+        self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=self)
 
         self.filter = 0
         self.negative_handling = 1

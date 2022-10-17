@@ -19,16 +19,13 @@ class RegisterNode(Node):
     edge_fill_options_scipy_argument = ['constant', 'edge', 'reflect']
 
     def __init__(self):
-        super().__init__(Node.TYPE_REGISTER)  # Was: super(LoadDataNode, self).__init__()
-        self.size = [230, 185]
+        super().__init__()  # Was: super(LoadDataNode, self).__init__()
+        self.size = 230
 
         # Set up connectable attributes
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent = self)
         self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent = self)
         self.image_in = ConnectableAttribute(ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.INPUT, parent = self)
-        self.connectable_attributes.append(self.dataset_in)
-        self.connectable_attributes.append(self.dataset_out)
-        self.connectable_attributes.append(self.image_in)
 
         # Set up node-specific vars
         self.buffer_last_output = True
