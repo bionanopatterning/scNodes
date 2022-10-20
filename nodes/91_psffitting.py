@@ -73,12 +73,10 @@ class ParticleFittingNode(Node):
             imgui.spacing()
             _c, self.range_option = imgui.combo("Range", self.range_option,
                                                 ParticleFittingNode.RANGE_OPTIONS)
-            self.any_change = _c or self.any_change
             if self.range_option == 2:
                 imgui.push_item_width(80)
                 _c, (self.range_min, self.range_max) = imgui.input_int2('[start, stop) index', self.range_min,
                                                                         self.range_max)
-                self.any_change = _c or self.any_change
                 imgui.pop_item_width()
             imgui.spacing()
             if self.fitting:
@@ -201,8 +199,8 @@ class ParticleFittingNode(Node):
                 pxd = frame.load()
                 for i in range(len(frame.maxima)):
                     intensity = pxd[frame.maxima[i, 0], frame.maxima[i, 1]]
-                    x = frame.maxima[i, 0]
-                    y = frame.maxima[i, 1]
+                    x = frame.maxima[i, 1]
+                    y = frame.maxima[i, 0]
                     particles.append(Particle(idx, x, y, 1.0, intensity))
             frame.particles = particles
             new_maxima = list()

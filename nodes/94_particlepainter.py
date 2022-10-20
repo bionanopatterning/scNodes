@@ -113,7 +113,7 @@ class ParticlePainterNode(Node):
                 self.max = self.histogram_bins[-1]
 
     def apply_paint_to_particledata(self, particledata):
-        if NodeEditor.profiling:
+        if cfg.profiling:
             time_start = time.time()
         if self.parameter == 0:
             _colour = np.asarray(self.colour_max)
@@ -129,7 +129,7 @@ class ParticlePainterNode(Node):
                 _colour = (1.0 - fac) * c_min + fac * c_max
                 particle.colour += _colour
                 i += 1
-        if NodeEditor.profiling:
+        if cfg.profiling:
             self.profiler_time += time.time() - time_start
 
     def on_gain_focus(self):
