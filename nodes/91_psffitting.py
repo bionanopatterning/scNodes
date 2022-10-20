@@ -10,7 +10,7 @@ class ParticleFittingNode(Node):
     title = "PSF fitting"
     group = "Reconstruction"
     colour = (230 / 255, 98 / 255, 13 / 255, 1.0)
-
+    size = 300
     RANGE_OPTIONS = ["All frames", "Current frame only", "Custom range"]
     ESTIMATORS = ["Least squares (GPU)", "Maximum likelihood (GPU)", "No estimator (CPU)"]
     PSFS = ["Gaussian", "Elliptical Gaussian"]
@@ -23,7 +23,6 @@ class ParticleFittingNode(Node):
         self.localizations_in = ConnectableAttribute(ConnectableAttribute.TYPE_COORDINATES, ConnectableAttribute.INPUT, parent=self)
         self.reconstruction_out = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.OUTPUT, parent=self)
 
-        self.size = 300
         self.range_option = 1
         self.range_min = 0
         self.range_max = 1

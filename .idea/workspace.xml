@@ -5,24 +5,24 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="started work on documentation">
-      <change afterPath="$PROJECT_DIR$/nodes/01_loadimage.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/nodes/datasettocomposite.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/nodes/importreconstruction.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/nodes/scaleimage.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nodes/68_01_scaleimage.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nodes/72_math.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nodes/fftnode.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/imageviewer.py" beforeDir="false" afterPath="$PROJECT_DIR$/imageviewer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/node.py" beforeDir="false" afterPath="$PROJECT_DIR$/node.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/10_exportdata.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/10_exportdata.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/40_register.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/40_register.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/70_bakestack.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/70_bakestack.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/71_getimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/71_getimage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/90_particledetection.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/90_particledetection.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/01_loadimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/01_loadimage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/30_spatialfilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/30_spatialfilter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/71_getimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/73_getimage.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodes/91_psffitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/91_psffitting.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodes/92_reconstructionrenderer.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/92_reconstructionrenderer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/particlefitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/particlefitting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/93_particlefilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/93_particlefilter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/998_invert_node.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/998_invert_node.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/datasettocomposite.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/99900_dataset_to_composite.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/importreconstruction.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/02_importreconstruction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/scaleimage.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -69,7 +69,6 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="TODO_SCOPE" value="All Places" />
-    <property name="restartRequiresConfirmation" value="false" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">

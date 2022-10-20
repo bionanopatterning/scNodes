@@ -8,7 +8,7 @@ def create():
 class InvertNode(Node):
     title = "Invert images"
     colour = (0.8, 0.5, 0.0, 1.0)
-    group = "Tutorial"
+    group = "Image processing"
 
     def __init__(self):
         super().__init__()

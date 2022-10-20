@@ -158,7 +158,8 @@ class Frame:
                 img.seek(self.index)
             self.raw_data = np.asarray(img).astype(np.float)
             self.data = self.raw_data.copy()
-            self.width, self.height = self.raw_data.shape
+            self.width = self.raw_data.shape[0]
+            self.height = self.raw_data.shape[1]
             return self.data
 
     def clean(self):

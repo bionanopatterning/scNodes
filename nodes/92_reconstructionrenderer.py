@@ -10,12 +10,11 @@ class ReconstructionRendererNode(Node):
     title = "Render reconstruction"
     group = "Reconstruction"
     colour = (243 / 255, 0 / 255, 80 / 255, 1.0)
-
+    size = 250
     COLOUR_MODE = ["RGB, LUT"]
 
     def __init__(self):
-        super().__init__()  # Was: super(LoadDataNode, self).__init__()
-        self.size = 250
+        super().__init__()
 
         self.reconstruction_in = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.INPUT, parent = self)
         self.image_out = ConnectableAttribute(ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.OUTPUT, parent = self)

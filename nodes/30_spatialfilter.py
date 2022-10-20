@@ -13,7 +13,7 @@ class SpatialFilterNode(Node):
     group = "Image processing"
     colour = (44 / 255, 217 / 255, 158 / 255, 1.0)
 
-    FILTERS = ["Wavelet", "Gaussian", "Median"]
+    FILTERS = ["Wavelet", "Gaussian", "Median", "Difference of Gaussians", "Derivative of Gaussian"]
     WAVELETS = dict()
     WAVELETS["Haar"] = 'haar'
     WAVELETS["Symlet 2"] = 'sym2'
@@ -26,6 +26,7 @@ class SpatialFilterNode(Node):
 
     WAVELET_NAMES = list(WAVELETS.keys())
     WAVELET_OTHER_IDX = WAVELET_NAMES.index("Other...")
+
     def __init__(self):
         super().__init__()  # Was: super(LoadDataNode, self).__init__()
         self.size = 210
@@ -41,6 +42,10 @@ class SpatialFilterNode(Node):
         self.kernel = 3
         self.wavelet = 0
         self.custom_wavelet = "bior6.8"
+        self.dog_s1 = 1.0
+        self.dog_s2 = 5.0
+        self.deriv_sigma = 2.0
+        self.deriv_order = 1
 
     def render(self):
         if super().render_start():
@@ -64,6 +69,8 @@ class SpatialFilterNode(Node):
                 if self.wavelet == SpatialFilterNode.WAVELET_OTHER_IDX:
                     _c, self.custom_wavelet = imgui.input_text("pywt name", self.custom_wavelet, 16)
                     self.any_change = self.any_change or _c
+                    Node.tooltip("Enter any of the pywavelets dicrete wavelet names.\n"
+                                 "See: http://wavelets.pybytes.com/ ")
                 _c, self.level = imgui.input_int("Level", self.level, 0, 0)
                 self.any_change = self.any_change or _c
             elif self.filter == 1:
@@ -74,6 +81,16 @@ class SpatialFilterNode(Node):
                 if self.kernel % 2 == 0:
                     self.kernel += 1
                 self.any_change = self.any_change or _c
+            elif self.filter == 3:
+                _c, self.dog_s1 = imgui.input_float("Sigma 1 (px)", self.dog_s1, 0.0, 0.0, format="%.1f")
+                self.any_change = self.any_change or _c
+                _c, self.dog_s2 = imgui.input_float("Sigma 2 (px)", self.dog_s2, 0.0, 0.0, format="%.1f")
+                self.any_change = self.any_change or _c
+            elif self.filter == 4:
+                _c, self.deriv_sigma = imgui.input_float("Sigma 1 (px)", self.deriv_sigma, 0.0, 0.0, format="%.1f")
+                self.any_change = self.any_change or _c
+                _c, self.deriv_order = imgui.input_int("Order", self.deriv_order, 0, 0)
+                self.any_change = self.any_change or _c
             imgui.pop_item_width()
             super().render_end()
 
@@ -81,16 +98,22 @@ class SpatialFilterNode(Node):
         data_source = self.dataset_in.get_incoming_node()
         if data_source:
             input_image = data_source.get_image(idx)
+            outframe = input_image.clone()
+            pxd = input_image.load()
             if self.filter == 0:
                 chosen_wavelet = SpatialFilterNode.WAVELETS[SpatialFilterNode.WAVELET_NAMES[self.wavelet]]
                 if chosen_wavelet is None:
                     chosen_wavelet = self.custom_wavelet
-                in_pxd = input_image.load()
-                input_image.data= pywt.swt2(in_pxd, wavelet=chosen_wavelet, level=self.level, norm=True, trim_approx=True)[0]
+                pxd = pywt.swt2(pxd, wavelet=chosen_wavelet, level=self.level, norm=True, trim_approx=True)[0]
             elif self.filter == 1:
-                input_image.data = gaussian_filter(input_image.load(), self.sigma)
+                pxd = gaussian_filter(pxd, self.sigma)
             elif self.filter == 2:
-                input_image.data = medfilt(input_image.load(), self.kernel)
-            return input_image
+                pxd = medfilt(pxd, self.kernel)
+            elif self.filter == 3:
+                pxd = gaussian_filter(pxd, self.dog_s1) - gaussian_filter(pxd, self.dog_s2)
+            elif self.filter == 4:
+                pxd = gaussian_filter(pxd, self.deriv_sigma, order=self.deriv_order)
+            outframe.data = pxd
+            return outframe
         else:
             return None

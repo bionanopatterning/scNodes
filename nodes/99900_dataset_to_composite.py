@@ -4,8 +4,8 @@ def create():
     return DeinterleaveNode()
 
 class DeinterleaveNode(Node):
-    title = "Deinterleave"
-    group = "Converters"
+    title = "Deinterleave & make composite"
+    group = "Miscellaneous"
     size = 200
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
 
@@ -13,8 +13,9 @@ class DeinterleaveNode(Node):
         super().__init__()
 
         self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self)
+        self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self)
 
-        self.channels = list()
+        self.channels = [DeinterleaveOutputChannel()]
 
         self.repeat_size = 10
 
@@ -42,24 +43,35 @@ class DeinterleaveNode(Node):
             content_width = imgui.get_window_content_region_width()
             imgui.same_line(position=(content_width - 40) / 2)
             if imgui.button("+", width=40, height=20):
-                self.channels.append(DeinterleaveOutputChannel(self))
+                self.channels.append(DeinterleaveOutputChannel())
 
             imgui.spacing()
             super().render_end()
 
     def get_image_impl(self, idx=None):
-        print("Deinterleave get image")
-        # Since this node outputs multiple datasets, we've got a new problem: reaching it via one of the dataset output's 'get_incoming_node' will return the node, but we won't know which dataset was addressed
-        # So I added a thing: every connectable attribute now has a .latest_request = datetime obj that is set whenever get_incoming_node is called.
-        active_channel = None
-        _latest_request = self.channels[0].dataset_out.latest_request
-        for channel in self.channels:
-            if channel.dataset_out.latest_request >= _latest_request:
-                active_channel = channel
-                _latest_request = channel.dataset_out.latest_request
-        print(active_channel.name)
+        datasource = self.dataset_in.get_incoming_node()
+        if datasource:
+            outframe = datasource.get_image(idx).clone()
+            input_img = outframe.load()
+            w = np.shape(input_img)[0]
+            h = np.shape(input_img)[1]
+            out_img = np.zeros((w, h, 3))
+            for channel in self.channels:
+                cidx = channel.index
+                clr = channel.colour
+                if idx % self.repeat_size in range(channel.index[0], channel.index[1]+1):
+                    pxd = input_img
+                else:
+                    for i in range(0, self.repeat_size):
+                        if i in range(channel.index[0], channel.index[1]+1):
+                            pxd = datasource.get_image((idx // self.repeat_size) * self.repeat_size + i).load()
+                for i in range(0, 3):
+                    if clr[i] != 0:
+                        out_img[:, :, i] += pxd * clr[i]
+            outframe.data = out_img
+            return outframe
 
-        return active_channel.get_channel_img(idx)
+
 
 
 
@@ -67,13 +79,12 @@ class DeinterleaveOutputChannel:
     """Helper class of the DeinterleaveNode"""
     idgen = count(1)
 
-    def __init__(self, parent):
+    def __init__(self):
         self.id = next(DeinterleaveOutputChannel.idgen)
-        self.parent = parent
-        self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=parent)
 
         self.index_str = "0"
         self.index = [0, 0]
+        self.colour = (1.0, 1.0, 1.0)
         self.name = f"Channel {self.id}"
 
     def __eq__(self, other):
@@ -86,57 +97,41 @@ class DeinterleaveOutputChannel:
         :return: (changed, delete) tuple of bools.
         """
         _any_change = False
+        content_width = imgui.get_window_content_region_width()
         imgui.push_id(f"deinterleavechannel{self.id}")
-        imgui.spacing()
-        imgui.separator()
         imgui.spacing()
 
         imgui.text(self.name)
-        self.dataset_out.render_start()
-        self.dataset_out.render_end()
 
+        imgui.same_line(position=content_width - 10)
+        _c, self.colour = imgui.color_edit3("##Colour_min", *self.colour, imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL)
+        _any_change = _c or _any_change
         imgui.push_item_width(40)
         _c, self.index_str, = imgui.input_text("index", self.index_str, 256)
         _any_change = _c or _any_change
         if _c and len(self.index_str)>0:
             try:
                 if "-" in self.index_str and self.index_str[-1]!='-':
+                    print("DASH")
+                    print(self.index_str)
                     vals = self.index_str.split("-")
-                    self.index[0] = int(vals[0])
+                    self.index[0] = int(vals[0].replace("-",""))
                     self.index[1] = int(vals[1])
                 else:
+                    print("NO DASH")
                     self.index[0] = int(self.index_str)
                     self.index[1] = int(self.index_str)
-            finally:
+            except Exception as e:
                 pass
         Node.tooltip("The index of the frame of interest within the group. Enter either\n"
                      "a single number, or a range in the format: '1-10'. First frame of\n"
                      "a group has index 0.")
 
-        content_width = imgui.get_window_content_region_width()
+
         imgui.same_line(position=content_width-10)
         if imgui.button("x", 20, 20):
             imgui.pop_id()
-            self.delete()
             return True, True
 
         imgui.pop_id()
         return _any_change, False
-
-    def delete(self):
-        self.dataset_out.disconnect_all()
-        self.dataset_out.delete()
-
-    def get_channel_img(self, idx):
-        datasource = self.parent.dataset_in.get_incoming_node()
-        if datasource:
-            n = self.parent.repeat_size
-            # either return the indexed frame if that frame is in this channel
-            if idx % n in range(self.index[0], self.index[1] + 1):
-                return datasource.get_image(idx)
-            else:
-                # ugly way of doing it but this is easy:
-                for i in range(0, n):
-                    if i in range(self.index[0], self.index[1] + 1):
-                        alt_idx = (idx // n) * n + i
-                        return datasource.get_image(alt_idx)

@@ -9,14 +9,13 @@ class ParticleFilterNode(Node):
     title = "Particle filter"
     group = "Reconstruction"
     colour = (230 / 255, 13 / 255, 13 / 255, 1.0)
-
+    size = 310
     def __init__(self):
         super().__init__()
 
         self.reconstruction_in = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.INPUT, parent=self)
         self.reconstruction_out = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.OUTPUT, parent=self)
 
-        self.size = 310
         self.available_parameters = ["No data available"]
         self.filters = list()
 
@@ -57,7 +56,7 @@ class ParticleFilterNode(Node):
                              "behaviour is: particle retained if min < parameter < max.\n"
                              "With NOT on, a particle is retained if max < parameter OR\nmin > parameter")
 
-                pf.render_start()
+                pf.render()
                 imgui.pop_id()
                 i += 1
             content_width = imgui.get_window_content_region_width()

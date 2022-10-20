@@ -15,6 +15,7 @@ class Node:
     group = "Ungrouped"
     colour = (1.0, 1.0, 1.0, 1.0)
     id_generator = count(0)
+    size = 200
 
     COLOUR_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 0.96)
     COLOUR_FOCUSED_NODE_WINDOW_BACKGROUND = (0.99, 0.93, 0.93, 0.96)
@@ -46,7 +47,6 @@ class Node:
         self.id = int(datetime.datetime.now().strftime("%Y%m%d")+"000") + next(Node.id_generator)
         self.position = [0, 0]
         self.last_measured_window_position = [0, 0]
-        self.size = 200
         self.node_height = 100
         self.connectable_attributes = list()
         self.play = False
@@ -454,7 +454,6 @@ class ConnectableAttribute:
         self.multi = self.type == ConnectableAttribute.TYPE_MULTI
         self.allowed_partner_types = [self.type]
         self.current_type = self.type
-        self.latest_request = datetime.datetime.now()
         if allowed_partner_types is not None:
             self.allowed_partner_types = allowed_partner_types
 
@@ -512,7 +511,6 @@ class ConnectableAttribute:
             self.parent.any_change = True
 
     def get_incoming_node(self):
-        self.latest_request = datetime.datetime.now()
         if self.direction == ConnectableAttribute.INPUT:
             if len(self.linked_attributes) == 1:
                 return self.linked_attributes[0].parent

@@ -419,6 +419,13 @@ class ImageViewer:
         if self.contrast_window_open:
             if self.window.get_key_event(glfw.KEY_SPACE, glfw.PRESS):
                 self._compute_auto_contrast(self.contrast_window_channel)
+            if self.window.get_key_event(glfw.KEY_SPACE, glfw.PRESS, glfw.MOD_CONTROL):
+                self.autocontrast = [True, True, True]
+                self._compute_auto_contrast(0)
+                self._compute_auto_contrast(1)
+                self._compute_auto_contrast(2)
+            if self.window.get_key_event(glfw.KEY_SPACE, glfw.PRESS, glfw.MOD_CONTROL | glfw.MOD_SHIFT):
+                self.autocontrast = [False, False, False]
         if self.window.get_key_event(glfw.KEY_S, glfw.PRESS, glfw.MOD_CONTROL):
             if self.image_pxd is not None:
                 self.save_current_image()
@@ -429,8 +436,7 @@ class ImageViewer:
 
     def _context_menu(self):
         imgui.set_next_window_position(self.context_menu_position[0] - 3, self.context_menu_position[1] - 3)
-        imgui.set_next_window_size(ImageViewer.CONTEXT_MENU_SIZE[0], ImageViewer.CONTEXT_MENU_SIZE[1])
-        imgui.begin("##ivcontextmenu", flags=imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE)
+        imgui.begin("##ivcontextmenu", flags=imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_ALWAYS_AUTO_RESIZE)
         # Close context menu when it is not hovered.
         context_menu_hovered = imgui.is_window_hovered(flags=imgui.HOVERED_ALLOW_WHEN_BLOCKED_BY_POPUP | imgui.HOVERED_CHILD_WINDOWS)
         if context_menu_hovered:
