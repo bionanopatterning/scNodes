@@ -110,11 +110,14 @@ class RegisterNode(Node):
     def render_advanced(self):
         imgui.push_item_width(110)
         _c, self.interpolation = imgui.combo("Interpolation", self.interpolation, RegisterNode.INTERPOLATION_OPTIONS)
+        self.any_change = self.any_change or _c
         _c, self.edge_fill = imgui.combo("Edges", self.edge_fill, RegisterNode.EDGE_FILL_OPTIONS)
+        self.any_change = self.any_change or _c
         imgui.pop_item_width()
         Node.tooltip("Set how to fill pixels falling outside of the original image. Edge: clamp the edge\n"
                      "values, Reflect: reflect the image along the boundaries of the original image.")
         _c, self.preserve_range = imgui.checkbox("Preserve range", self.preserve_range)
+        self.any_change = self.any_change or _c
         Node.tooltip("When checked, the intensity range of the output, registered image is fixed as the\n"
                      "same range as that of the original image.")
 

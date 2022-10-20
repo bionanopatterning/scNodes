@@ -12,7 +12,7 @@ class ParticleFittingNode(Node):
     colour = (230 / 255, 98 / 255, 13 / 255, 1.0)
 
     RANGE_OPTIONS = ["All frames", "Current frame only", "Custom range"]
-    ESTIMATORS = ["Least squares (GPU)", "Maximum likelihood (GPU)", "No estimator (CPU, no parallel)"]
+    ESTIMATORS = ["Least squares (GPU)", "Maximum likelihood (GPU)", "No estimator (CPU)"]
     PSFS = ["Gaussian", "Elliptical Gaussian"]
 
     def __init__(self):
@@ -94,6 +94,7 @@ class ParticleFittingNode(Node):
                 self.init_fit()
             elif _play_btn_clicked and self.fitting:
                 self.fitting = False
+                self.particle_data.bake()
 
             ## TODO: add camera offset and ADU per photon (to LOAD DATASET?)
             if not self.particle_data.empty:

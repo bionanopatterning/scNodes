@@ -7,7 +7,7 @@ def create():
 
 class GetImageNode(Node):
     title = "Dataset to image"
-    group = "Image processing"
+    group = "Converters"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
 
     IMAGE_MODES = ["By frame", "Time projection"]

@@ -49,20 +49,21 @@ class ParticleDetectionNode(Node):
             _c, self.method = imgui.combo("Detection method", self.method, ParticleDetectionNode.METHODS)
             self.any_change = self.any_change or _c
             _c, self.thresholding = imgui.combo("Threshold method", self.thresholding, ParticleDetectionNode.THRESHOLD_OPTIONS)
+            self.any_change = self.any_change or _c
             if self.thresholding == 0:
                 _c, self.threshold = imgui.input_int("Value", self.threshold, 0, 0)
                 self.any_change = self.any_change or _c
             elif self.thresholding == 1:
-                _c, self.sigmas = imgui.slider_float("x Sigma", self.sigmas, 1.0, 5.0, format = "%.1f")
+                _c, self.sigmas = imgui.slider_float("x Sigma", self.sigmas, 1.0, 5.0, format = "%.2f")
                 self.any_change = self.any_change or _c
             elif self.thresholding == 2:
-                _c, self.means = imgui.slider_float("x Mean", self.means, 0.1, 10.0, format = "%.1f")
+                _c, self.means = imgui.slider_float("x Mean", self.means, 0.1, 10.0, format = "%.2f")
                 self.any_change = self.any_change or _c
             elif self.thresholding == 3:
-                _c, self.max_fac = imgui.slider_float("x Max", self.max_fac, 0.0, 1.0, format="%.1f")
+                _c, self.max_fac = imgui.slider_float("x Max", self.max_fac, 0.0, 1.0, format="%.2f")
                 self.any_change = self.any_change or _c
             elif self.thresholding == 4:
-                _c, self.min_fac = imgui.slider_float("x Min", self.min_fac, 1.0, 10.0, format="%.1f")
+                _c, self.min_fac = imgui.slider_float("x Min", self.min_fac, 1.0, 10.0, format="%.2f")
                 self.any_change = self.any_change or _c
             Node.tooltip("The final threshold value is determined by this factor x the metric (sigma, mean, etc.)\n"
                          "chosen above. In case of Threshold method 'Value', the value entered here is the final \n"
@@ -99,6 +100,7 @@ class ParticleDetectionNode(Node):
                 threshold = self.max_fac * np.amax(image)
             elif self.thresholding == 4:
                 threshold = self.min_fac * np.amin(image)
+            print("Threshold:", threshold)
             # Perform requested detection method
             coordinates = peak_local_max(image, threshold_abs = threshold, num_peaks = self.n_max, min_distance = self.d_min)
             if self.use_roi:

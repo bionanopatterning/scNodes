@@ -117,6 +117,10 @@ class Dataset:
         self.frames.append(frame)
         self.n_frames += 1
 
+    def delete_by_index(self, idx):
+        del self.frames[idx]
+        self.n_frames = len(self.frames)
+
     def __str__(self):
         return "Dataset object with source at: "+self.path+f"\nn_frames = {self.n_frames}"
 

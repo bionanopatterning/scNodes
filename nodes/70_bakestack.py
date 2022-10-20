@@ -1,7 +1,5 @@
 from node import *
 import os
-from joblib import Parallel, delayed
-
 
 def create():
     return BakeStackNode()

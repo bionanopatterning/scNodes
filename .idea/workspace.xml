@@ -4,37 +4,25 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="big refactor: all nodes now in separate .py files, nodeeditor automatically finds these and sets up a node_factory on init (meaning: adding a node by placing a .py file in the /nodes subfolder will make that node available in the software). The base Node() and the inheriting implementation classes no longer call NodeEditor static variables.">
-      <change afterPath="$PROJECT_DIR$/nodes/998_invert_node.py" afterDir="false" />
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="started work on documentation">
+      <change afterPath="$PROJECT_DIR$/nodes/01_loadimage.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nodes/datasettocomposite.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nodes/importreconstruction.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nodes/scaleimage.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/imageviewer.py" beforeDir="false" afterPath="$PROJECT_DIR$/imageviewer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/node.py" beforeDir="false" afterPath="$PROJECT_DIR$/node.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/bakestack.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/70_bakestack.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/binimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/69_binimage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/cropimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/68_cropimage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/custom_node_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/999_custom_node_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/exportdata.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/10_exportdata.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/frameshift.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/51_frameshift.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/getimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/71_getimage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/imagecalculator.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/55_imagecalculator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/loaddata.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/00_loaddata.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/particledetection.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/90_particledetection.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/particlefilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/93_particlefilter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/particlefitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/91_psffitting.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/particlepainter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/94_particlepainter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/reconstructionrenderer.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/92_reconstructionrenderer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/register.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/40_register.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/spatialfilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/30_spatialfilter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/temporalfilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/50_temporalfilter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes_impls_old.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes_impls_old.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sandbox.py" beforeDir="false" afterPath="$PROJECT_DIR$/sandbox.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/util.py" beforeDir="false" afterPath="$PROJECT_DIR$/util.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/window.py" beforeDir="false" afterPath="$PROJECT_DIR$/window.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/10_exportdata.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/10_exportdata.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/40_register.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/40_register.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/70_bakestack.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/70_bakestack.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/71_getimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/71_getimage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/90_particledetection.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/90_particledetection.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/91_psffitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/91_psffitting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/92_reconstructionrenderer.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/92_reconstructionrenderer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/particlefitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/particlefitting.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -360,7 +348,14 @@
       <option name="project" value="LOCAL" />
       <updated>1665673428823</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="started work on documentation">
+      <created>1666028125893</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1666028125893</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -404,6 +399,7 @@
     <MESSAGE value="fixed reconstruction .csv compatibility with thunderstorm&#10;fixed joblib resource issue in bakestacknode" />
     <MESSAGE value="started implementing orb for registration" />
     <MESSAGE value="big refactor: all nodes now in separate .py files, nodeeditor automatically finds these and sets up a node_factory on init (meaning: adding a node by placing a .py file in the /nodes subfolder will make that node available in the software). The base Node() and the inheriting implementation classes no longer call NodeEditor static variables." />
-    <option name="LAST_COMMIT_MESSAGE" value="big refactor: all nodes now in separate .py files, nodeeditor automatically finds these and sets up a node_factory on init (meaning: adding a node by placing a .py file in the /nodes subfolder will make that node available in the software). The base Node() and the inheriting implementation classes no longer call NodeEditor static variables." />
+    <MESSAGE value="started work on documentation" />
+    <option name="LAST_COMMIT_MESSAGE" value="started work on documentation" />
   </component>
 </project>

@@ -130,6 +130,7 @@ class ImageViewer:
             self.camera.set_projection_matrix(self.window.width, self.window.height)
             self.window.window_size_changed = False
 
+        self.new_image_requested = False
         if self.image_requires_update:
             self.update_image()
             self.image_requires_update = False
@@ -330,7 +331,6 @@ class ImageViewer:
                                                                                                       mods=0):
             _frame_idx_changed = True
             self.current_dataset.current_frame += 1
-        self.new_image_requested = False
         if _frame_idx_changed:
             self.current_dataset.current_frame = np.clip(self.current_dataset.current_frame, 0,
                                                          self.current_dataset.n_frames - 1)
@@ -392,7 +392,10 @@ class ImageViewer:
                             box_size = min([box_width, box_height])
                             new_box = [self.roi.box[0], self.roi.box[1], self.roi.box[0] + box_size, self.roi.box[1] + box_size]
                         self.roi.set_box(new_box)
-
+            box = self.roi.box
+            if not self.drawing_roi:
+                if box[0] == box[2] and box[1] != box[3] or box[1] == box[3] and box[0] != box[2]:
+                    self.roi.set_box([self.image_width // 4, self.image_height // 4, self.image_width * 3 // 4, self.image_height * 3 // 4])
             cfg.active_node.roi = self.roi.box
 
     def _camera_control(self):
@@ -419,6 +422,10 @@ class ImageViewer:
         if self.window.get_key_event(glfw.KEY_S, glfw.PRESS, glfw.MOD_CONTROL):
             if self.image_pxd is not None:
                 self.save_current_image()
+        if self.window.get_key_event(glfw.KEY_DELETE, glfw.PRESS):
+            print("delete")
+            self.current_dataset.delete_by_index(self.current_dataset.current_frame)
+            self.new_image_requested = True
 
     def _context_menu(self):
         imgui.set_next_window_position(self.context_menu_position[0] - 3, self.context_menu_position[1] - 3)

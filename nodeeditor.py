@@ -11,6 +11,7 @@ import sys
 import config as cfg
 import tkinter as tk
 from tkinter import filedialog
+from node import *  # 221018
 tkroot = tk.Tk()
 tkroot.withdraw()
 
@@ -56,6 +57,7 @@ class NodeEditor:
         self.context_menu_can_close = False
 
         NodeEditor.init_node_factory()
+        print(sys.modules.keys())
 
     def get_font_atlas_ptr(self):
         return self.imgui_implementation.io.fonts
@@ -303,19 +305,20 @@ class NodeEditor:
             if "custom_node_template" in nodesrc:
                 continue
             # give the module a unique name
-            _name = f"dynamicnodemodule{i}"
+            _name = nodesrc[nodesrc.rfind("\\")+1:-3]
+            print(_name)
 
             try:
                 # get the module spec and import the module
                 spec = importlib.util.spec_from_file_location(_name, nodesrc)
                 temp = importlib.util.module_from_spec(spec)
-                sys.modules[_name] = temp
                 spec.loader.exec_module(temp)
+                sys.modules[_name] = temp
+
 
                 # add the module and its create method to the nodefactory
                 _node = temp.create()
                 NodeEditor.NODE_FACTORY[_node.title] = temp.create
-                print(_node.group)
                 if isinstance(_node.group, str):
                     if _node.group not in NodeEditor.NODE_GROUPS.keys():
                         NodeEditor.NODE_GROUPS[_node.group] = list()
@@ -340,7 +343,7 @@ class NodeEditor:
         for node in nodes:
             for attribute in node.connectable_attributes:
                 attributes.append(attribute)
-                if attribute.direction == True:  # TODO: replace == True with something verbose like == ConnectableAttribute.INPUT (which it was before)
+                if attribute.direction == ConnectableAttribute.INPUT:
                     for partner in attribute.linked_attributes:
                         ids_to_link.append((attribute.id, partner.id))
                 attribute.disconnect_all()

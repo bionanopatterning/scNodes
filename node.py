@@ -6,7 +6,9 @@ import datetime
 import copy
 import numpy as np
 from dataset import *
-
+from joblib import Parallel, delayed
+from joblib.externals.loky import set_loky_pickler
+set_loky_pickler("dill")
 
 class Node:
     title = "NullNode"
@@ -452,6 +454,7 @@ class ConnectableAttribute:
         self.multi = self.type == ConnectableAttribute.TYPE_MULTI
         self.allowed_partner_types = [self.type]
         self.current_type = self.type
+        self.latest_request = datetime.datetime.now()
         if allowed_partner_types is not None:
             self.allowed_partner_types = allowed_partner_types
 
@@ -509,6 +512,7 @@ class ConnectableAttribute:
             self.parent.any_change = True
 
     def get_incoming_node(self):
+        self.latest_request = datetime.datetime.now()
         if self.direction == ConnectableAttribute.INPUT:
             if len(self.linked_attributes) == 1:
                 return self.linked_attributes[0].parent

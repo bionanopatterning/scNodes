@@ -103,8 +103,8 @@ class ReconstructionRendererNode(Node):
             if _mag_changed:
                 self.original_pixel_size = Node.get_source_load_data_node(self).dataset.pixel_size
                 roi = self.get_particle_data().reconstruction_roi
-                img_width = int((roi[2] - roi[0]) * self.magnification)
-                img_height = int((roi[3] - roi[1]) * self.magnification)
+                img_width = int((roi[3] - roi[1]) * self.magnification)
+                img_height = int((roi[2] - roi[0]) * self.magnification)
                 self.reconstruction_image_size = (img_width, img_height)
 
             header_expanded, _ = imgui.collapsing_header("Advanced", None)

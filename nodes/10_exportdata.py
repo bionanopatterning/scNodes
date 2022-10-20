@@ -2,7 +2,6 @@ from node import *
 from tkinter import filedialog
 import util
 import os
-from joblib import Parallel, delayed
 
 def create():
     return ExportDataNode()
