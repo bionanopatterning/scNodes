@@ -183,7 +183,7 @@ class Frame:
             return self.load()[roi[1]:roi[3], roi[0]:roi[2]]
 
     def __str__(self):
-        sstr = f"Frame at path: {self.path}\n" \
+        sstr = f"Frame at path: \n{self.path}\n" \
             + ("Discarded frame. " if self.discard else "Frame in use. ") \
             + f"Shift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
         if self.maxima is not []:

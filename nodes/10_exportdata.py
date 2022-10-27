@@ -66,8 +66,8 @@ class ExportDataNode(Node):
             if self.export_type == 0:
                 _c, self.parallel = imgui.checkbox("Parallel", self.parallel)
             content_width = imgui.get_window_width()
-            save_button_width = 100
-            save_button_height = 40
+            save_button_width = 85
+            save_button_height = 25
 
             if self.saving:
                 imgui.spacing()

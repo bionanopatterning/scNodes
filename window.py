@@ -126,6 +126,7 @@ class Window:
         self.mouse_event = None
 
 
+
 class KeyEvent:
     def __init__(self, key, action, mods):
         self.key = key

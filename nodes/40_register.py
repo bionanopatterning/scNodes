@@ -52,6 +52,7 @@ class RegisterNode(Node):
         self.preserve_range = False
 
     def render(self):
+        ## TODO: refresh input image when input image was updated.
         if super().render_start():
             self.dataset_out.render_start()
             self.dataset_in.render_start()
@@ -64,6 +65,10 @@ class RegisterNode(Node):
 
             _c, self.use_roi = imgui.checkbox("use ROI", self.use_roi)
             self.any_change = self.any_change or _c
+            self.tooltip("When 'use ROI' is active, the translation required to register the image is determined based\n"
+                         "on the data in the ROI only. This can help speed up registration, as well as avoid errors\n"
+                         "such as occur when the registrator non-constant image features like blinking particles are\n"
+                         "present in the full image.")
             imgui.push_item_width(140)
             _method_changed, self.register_method = imgui.combo("Method", self.register_method, RegisterNode.METHODS)
             _reference_changed, self.reference_method = imgui.combo("Reference", self.reference_method, RegisterNode.REFERENCES)

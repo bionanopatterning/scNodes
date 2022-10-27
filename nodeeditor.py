@@ -11,7 +11,7 @@ import sys
 import config as cfg
 import tkinter as tk
 from tkinter import filedialog
-from node import *  # 221018
+from node import *
 tkroot = tk.Tk()
 tkroot.withdraw()
 
@@ -21,8 +21,8 @@ class NodeEditor:
     CONTEXT_MENU_SIZE = (200, 98)
     ERROR_WINDOW_HEIGHT = 80
     COLOUR_ERROR_WINDOW_BACKGROUND = (0.84, 0.84, 0.84, 1.0)
-    COLOUR_ERROR_WINDOW_HEADER = (0.6, 0.3, 0.3, 1.0)
-    COLOUR_ERROR_WINDOW_HEADER_NEW = (0.8, 0.35, 0.35, 1.0)
+    COLOUR_ERROR_WINDOW_HEADER = (0.1, 0.1, 0.1, 1.0)
+    COLOUR_ERROR_WINDOW_HEADER_NEW = (0.35, 0.35, 0.35, 1.0)
     COLOUR_ERROR_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
     COLOUR_MENU_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 1.0)
     COLOUR_CM_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
@@ -50,7 +50,6 @@ class NodeEditor:
         self.imgui_implementation = GlfwRenderer(self.window.glfw_window)
         self.window.set_mouse_callbacks()
         self.window.set_window_callbacks()
-
         # Context menu
         self.context_menu_position = [0, 0]
         self.context_menu_open = False
@@ -58,6 +57,7 @@ class NodeEditor:
 
         NodeEditor.init_node_factory()
         print(sys.modules.keys())
+
 
     def get_font_atlas_ptr(self):
         return self.imgui_implementation.io.fonts
@@ -114,8 +114,7 @@ class NodeEditor:
         self.window.end_frame()
 
     def _gui_main(self):
-
-        ## Render nodes  - render active_connector_parent_node first, to enable all other connectors' drop targets.
+        # Render nodes  - render active_connector_parent_node first, to enable all other connectors' drop targets.
         source_node_id = -1
         if cfg.active_connector_parent_node is not None:
             cfg.active_connector_parent_node.render()
@@ -303,6 +302,12 @@ class NodeEditor:
         for nodesrc in node_source_files:
             i+=1
             if "custom_node_template" in nodesrc:
+                continue
+            elif "__init__.py" in nodesrc:
+                spec = importlib.util.spec_from_file_location("nodes", nodesrc)
+                temp = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(temp)
+                sys.modules["nodes"] = temp
                 continue
             # give the module a unique name
             _name = nodesrc[nodesrc.rfind("\\")+1:-3]

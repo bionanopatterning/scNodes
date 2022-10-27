@@ -4,13 +4,13 @@ from util import get_filetype
 
 
 def create():
-    return LoadDataNode()
+    return LoadImageNode()
 
 
-class LoadDataNode(Node):
+class LoadImageNode(Node):
     title = "Import image"
     group = "Data IO"
-    colour = (64 / 255, 57 / 255, 202 / 255, 1.0)
+    colour = (84 / 255, 77 / 255, 222 / 255, 1.0)
 
     def __init__(self):
         super().__init__()
