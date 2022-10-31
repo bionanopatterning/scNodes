@@ -4,17 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="math node, scale node, fixed the somewhat weird deinterleave and make composite node">
-      <change afterPath="$PROJECT_DIR$/nodes/95_combine_reconstructions.py" afterDir="false" />
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="pre pickle fix attempt">
+      <change afterPath="$PROJECT_DIR$/nodes/000_pickle_test_node.py" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/nodes/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/01_loadimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/01_loadimage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node.py" beforeDir="false" afterPath="$PROJECT_DIR$/node.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodes/10_exportdata.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/10_exportdata.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/40_register.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/40_register.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/window.py" beforeDir="false" afterPath="$PROJECT_DIR$/window.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -353,7 +350,14 @@
       <option name="project" value="LOCAL" />
       <updated>1666295365427</updated>
     </task>
-    <option name="localTasksCounter" value="20" />
+    <task id="LOCAL-00020" summary="pre pickle fix attempt">
+      <created>1666858481296</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1666858481296</updated>
+    </task>
+    <option name="localTasksCounter" value="21" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -399,6 +403,7 @@
     <MESSAGE value="big refactor: all nodes now in separate .py files, nodeeditor automatically finds these and sets up a node_factory on init (meaning: adding a node by placing a .py file in the /nodes subfolder will make that node available in the software). The base Node() and the inheriting implementation classes no longer call NodeEditor static variables." />
     <MESSAGE value="started work on documentation" />
     <MESSAGE value="math node, scale node, fixed the somewhat weird deinterleave and make composite node" />
-    <option name="LAST_COMMIT_MESSAGE" value="math node, scale node, fixed the somewhat weird deinterleave and make composite node" />
+    <MESSAGE value="pre pickle fix attempt" />
+    <option name="LAST_COMMIT_MESSAGE" value="pre pickle fix attempt" />
   </component>
 </project>

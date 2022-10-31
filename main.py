@@ -6,6 +6,8 @@ from nodeeditor import *
 from imageviewer import *
 from reconstruction import *
 from util import *
+from joblib.externals.loky import set_loky_pickler
+set_loky_pickler("cloudpickle")
 
 if __name__ == "__main__":
     if not glfw.init():

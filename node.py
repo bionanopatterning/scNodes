@@ -6,9 +6,11 @@ import datetime
 import copy
 import numpy as np
 from dataset import *
-from joblib import Parallel, delayed
-from joblib.externals.loky import set_loky_pickler
-set_loky_pickler("dill")
+import dill as pickle
+#from joblib import Parallel, delayed
+#from joblib.externals.loky import set_loky_pickler
+
+#set_loky_pickler("dill")
 
 class Node:
     title = "NullNode"
