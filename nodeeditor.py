@@ -2,15 +2,11 @@ import importlib.util
 import shutil
 import imgui
 from imgui.integrations.glfw import GlfwRenderer
-import time
 import glfw
-import glob
-import dill as pickle
-import copy
 import sys
-import config as cfg
 import tkinter as tk
 from tkinter import filedialog
+from nodes import *
 from node import *
 tkroot = tk.Tk()
 tkroot.withdraw()
@@ -56,8 +52,6 @@ class NodeEditor:
         self.context_menu_can_close = False
 
         NodeEditor.init_node_factory()
-        print(sys.modules.keys())
-
 
     def get_font_atlas_ptr(self):
         return self.imgui_implementation.io.fonts
@@ -297,33 +291,23 @@ class NodeEditor:
 
     @staticmethod
     def init_node_factory():
+
+        ##
         node_source_files = glob.glob("nodes/*.py")
         i = 0
         for nodesrc in node_source_files:
             i+=1
-            if "custom_node_template" in nodesrc:
+            if "custom_node_template" in nodesrc or "__init__.py" in nodesrc:
                 continue
-            elif "__init__.py" in nodesrc:
-                spec = importlib.util.spec_from_file_location("nodes", nodesrc)
-                temp = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(temp)
-                sys.modules["nodes"] = temp
-                continue
-            # give the module a unique name
-            _name = nodesrc[nodesrc.rfind("\\")+1:-3]
-            print(_name)
 
+            module_name = nodesrc[nodesrc.rfind("\\")+1:-3]
             try:
                 # get the module spec and import the module
-                spec = importlib.util.spec_from_file_location(_name, nodesrc)
-                temp = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(temp)
-                sys.modules[_name] = temp
-
+                mod = importlib.import_module("nodes."+module_name)
 
                 # add the module and its create method to the nodefactory
-                _node = temp.create()
-                NodeEditor.NODE_FACTORY[_node.title] = temp.create
+                _node = mod.create()
+                NodeEditor.NODE_FACTORY[_node.title] = mod.create
                 if isinstance(_node.group, str):
                     if _node.group not in NodeEditor.NODE_GROUPS.keys():
                         NodeEditor.NODE_GROUPS[_node.group] = list()

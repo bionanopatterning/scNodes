@@ -7,10 +7,10 @@ import copy
 import numpy as np
 from dataset import *
 import dill as pickle
-#from joblib import Parallel, delayed
-#from joblib.externals.loky import set_loky_pickler
+from joblib import Parallel, delayed
+from joblib.externals.loky import set_loky_pickler
 
-#set_loky_pickler("dill")
+set_loky_pickler("pickle")
 
 class Node:
     title = "NullNode"

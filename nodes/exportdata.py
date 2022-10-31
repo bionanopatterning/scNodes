@@ -2,6 +2,9 @@ from node import *
 from tkinter import filedialog
 import util
 import os
+from joblib.externals.loky import set_loky_pickler
+import dill as pickle
+set_loky_pickler("pickle")
 
 
 def create():

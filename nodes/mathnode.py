@@ -1,5 +1,3 @@
-import imgui.internal
-
 from node import *
 
 
@@ -24,7 +22,7 @@ class MathNode(Node):
 
         self.operation = 0
 
-        ## operation specific vars
+        # operation specific vars
         self.power = 2.0
         self.threshold = 100
         self.threshold_keep_high = True
