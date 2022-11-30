@@ -4,38 +4,36 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="re: pre pickle fix attempt">
-      <change afterPath="$PROJECT_DIR$/nodes/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/nodes/combine_reconstructions.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/nodes/lskfjalrejkfhaerjgh.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/testtest.py" afterDir="false" />
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="changed dynamic import of nodes in a way that joblib loky works again">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/node.py" beforeDir="false" afterPath="$PROJECT_DIR$/node.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/00_loaddata.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/loaddata.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/01_loadimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/loadimage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/02_importreconstruction.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/importreconstruction.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/10_exportdata.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/exportdata.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/30_spatialfilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/spatialfilter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/40_register.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/register.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/50_temporalfilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/temporalfilter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/51_frameshift.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/frameshift.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/55_imagecalculator.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/imagecalculator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/67_scaleimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/scaleimage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/68_cropimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/cropimage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/69_binimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/binimage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/70_bakestack.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/bakestack.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/72_math.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/mathnode.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/73_getimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/getimage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/90_particledetection.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/particledetection.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/91_psffitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/psffitting.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/92_reconstructionrenderer.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/reconstructionrenderer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/93_particlefilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/particlefilter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/94_particlepainter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/particlepainter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/95_combine_reconstructions.py" beforeDir="false" afterPath="$PROJECT_DIR$/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/998_invert_node.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/invert_node.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/99900_dataset_to_composite.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/dataset_to_composite.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/999_custom_node_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/custom_node_template.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/bakestack.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/bakestack.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/binimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/binimage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/combine_reconstructions.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/cropimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/cropimage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/custom_node_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/custom_node_template.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/dataset_to_composite.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/dataset_to_composite.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/exportdata.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/exportdata.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/frameshift.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/frameshift.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/getimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/getimage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/imagecalculator.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/imagecalculator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/importreconstruction.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/importreconstruction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/invert_node.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/invert_node.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/loaddata.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/loaddata.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/loadimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/loadimage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/mathnode.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/mathnode.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/particledetection.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/particledetection.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/particlefilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/particlefilter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/particlepainter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/particlepainter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/psffitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/psffitting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/reconstructionrenderer.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/reconstructionrenderer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/register.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/register.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/scaleimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/scaleimage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/spatialfilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/spatialfilter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/temporalfilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/temporalfilter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/opengl_classes.py" beforeDir="false" afterPath="$PROJECT_DIR$/opengl_classes.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -389,7 +387,14 @@
       <option name="project" value="LOCAL" />
       <updated>1667221363097</updated>
     </task>
-    <option name="localTasksCounter" value="22" />
+    <task id="LOCAL-00022" summary="changed dynamic import of nodes in a way that joblib loky works again">
+      <created>1667232604759</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1667232604759</updated>
+    </task>
+    <option name="localTasksCounter" value="23" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -437,6 +442,7 @@
     <MESSAGE value="math node, scale node, fixed the somewhat weird deinterleave and make composite node" />
     <MESSAGE value="pre pickle fix attempt" />
     <MESSAGE value="re: pre pickle fix attempt" />
-    <option name="LAST_COMMIT_MESSAGE" value="re: pre pickle fix attempt" />
+    <MESSAGE value="changed dynamic import of nodes in a way that joblib loky works again" />
+    <option name="LAST_COMMIT_MESSAGE" value="changed dynamic import of nodes in a way that joblib loky works again" />
   </component>
 </project>

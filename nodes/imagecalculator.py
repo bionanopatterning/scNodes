@@ -9,7 +9,7 @@ class ImageCalculatorNode(Node):
     title = "Image calculator"
     group = "Image processing"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
-
+    sortid = 103
     # Note: the output dataset has all the metadata of dataset_in_a
     OPERATIONS = ["Add", "Subtract", "Divide", "Multiply"]
 

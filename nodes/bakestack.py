@@ -1,6 +1,7 @@
 from node import *
 import os
 
+
 def create():
     return BakeStackNode()
 
@@ -9,6 +10,7 @@ class BakeStackNode(Node):
     title = "Bake stack"
     group = "Image processing"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
+    sortid = 120
 
     RANGE_OPTIONS = ["All frames", "Custom range"]
 
@@ -146,8 +148,9 @@ class BakeStackNode(Node):
                     index = self.frames_to_bake[-1]
                     self.frames_to_bake.pop()
                     coordinates = self.get_image_and_save(index)
+                    self.n_baked += 1
                 if self.bake_coordinates:
-                    self.coordinates += coordinates
+                    self.coordinates += coordinates  # coordinates is a list of lists. in the end, self.coordinates will be a list of length [amount of frames], with a sublist of xy coords for every img.
                 if cfg.profiling:
                     self.profiler_time += time.time() - time_start
                     self.profiler_count += len(indices)

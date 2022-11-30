@@ -16,6 +16,7 @@ class CustomNode(Node):
     title = "Example node"  # The title is the name by which the node appears in the editor.
     group = ["Tutorial", "Custom nodes"]  # In the 'add node' right-click context menu, nodes are listed in groupes. A node can be in multiple groups as in this example. Any group name can be used here - also groups that are not in the default software.
     colour = (1.0, 0.0, 1.0, 1.0)  # this node will be magenta.
+    sortid = 0  # upon initializing software, nodes are loaded in order of increasing sortid value. This determines the order with which they are presented in the editor right click context menu.
 
     def __init__(self):
         super().__init__()  # In this line the init function of the Node parent class is called (can be found in node.py) - you can ignore it but it must be called.

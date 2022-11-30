@@ -9,7 +9,7 @@ class LoadReconstructionNode(Node):
     title = "Import reconstruction"
     group = "Data IO"
     colour = (213 / 255, 10 / 255, 70 / 255, 1.0)
-
+    sortid = 4
 
     def __init__(self):
         super().__init__()

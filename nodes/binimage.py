@@ -9,7 +9,7 @@ class BinImageNode(Node):
     title = "Bin image"
     group = "Image processing"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
-
+    sortid = 110
     MODES = ["Average", "Median", "Min", "Max", "Sum"]
 
     def __init__(self):

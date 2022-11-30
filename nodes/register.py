@@ -11,7 +11,7 @@ class RegisterNode(Node):
     title = "Registration"
     group = "Image processing"  # default groups: "Data IO", "Image processing", "Reconstruction", "Custom"
     colour = (68 / 255, 177 / 255, 209 / 255, 1.0)
-
+    sortid = 100
     METHODS = ["TurboReg", "ORB"]
     REFERENCES = ["Input image", "Template frame", "Consecutive pairing"]
     INTERPOLATION_OPTIONS = ["Nearest neighbour", "Bilinear", "Biquadratic", "Bicubic", "Biquartic", "Biquintic"]

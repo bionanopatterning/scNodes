@@ -11,6 +11,7 @@ class ParticleFittingNode(Node):
     group = "Reconstruction"
     colour = (230 / 255, 98 / 255, 13 / 255, 1.0)
     size = 300
+    sortid = 1001
     RANGE_OPTIONS = ["All frames", "Current frame only", "Custom range"]
     ESTIMATORS = ["Least squares (GPU)", "Maximum likelihood (GPU)", "No estimator (CPU)"]
     PSFS = ["Gaussian", "Elliptical Gaussian"]

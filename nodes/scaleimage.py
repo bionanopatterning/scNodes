@@ -10,7 +10,7 @@ class ScaleImageNode(Node):
     title = "Scale image"
     group = "Image processing"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
-
+    sortid = 110
     CV2_INTERPOLATION_METHODS = [cv2.INTER_NEAREST, cv2.INTER_LINEAR, cv2.INTER_AREA, cv2.INTER_CUBIC]
 
     def __init__(self):

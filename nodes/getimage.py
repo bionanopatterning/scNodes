@@ -9,7 +9,7 @@ class GetImageNode(Node):
     title = "Dataset to image"
     group = "Converters"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
-
+    sortid = 2001
     IMAGE_MODES = ["By frame", "Time projection"]
     PROJECTIONS = ["Average", "Minimum", "Maximum", "St. dev."]
 

@@ -12,6 +12,7 @@ class SpatialFilterNode(Node):
     title = "Spatial filter"
     group = "Image processing"
     colour = (44 / 255, 217 / 255, 158 / 255, 1.0)
+    sortid = 101
 
     FILTERS = ["Wavelet", "Gaussian", "Median", "Difference of Gaussians", "Derivative of Gaussian"]
     WAVELETS = dict()

@@ -12,12 +12,14 @@ from joblib.externals.loky import set_loky_pickler
 
 set_loky_pickler("pickle")
 
+
 class Node:
     title = "NullNode"
     group = "Ungrouped"
     colour = (1.0, 1.0, 1.0, 1.0)
     id_generator = count(0)
     size = 200
+    sortid = 9999
 
     COLOUR_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 0.96)
     COLOUR_FOCUSED_NODE_WINDOW_BACKGROUND = (0.99, 0.93, 0.93, 0.96)

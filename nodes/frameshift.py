@@ -9,6 +9,7 @@ class FrameShiftNode(Node):
     title = "Frame shift"
     group = "Image processing"
     colour = (235 / 255, 232 / 255, 80 / 255, 1.0)
+    sortid = 104
 
     def __init__(self):
         super().__init__()

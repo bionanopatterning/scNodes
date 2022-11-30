@@ -10,6 +10,7 @@ class ParticleFilterNode(Node):
     group = "Reconstruction"
     colour = (230 / 255, 13 / 255, 13 / 255, 1.0)
     size = 310
+    sortid = 1002
     def __init__(self):
         super().__init__()
 

@@ -12,7 +12,7 @@ class ReconstructionRendererNode(Node):
     colour = (243 / 255, 0 / 255, 80 / 255, 1.0)
     size = 250
     COLOUR_MODE = ["RGB, LUT"]
-
+    sortid = 1005
     def __init__(self):
         super().__init__()
 

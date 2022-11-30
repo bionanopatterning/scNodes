@@ -8,7 +8,7 @@ class DeinterleaveNode(Node):
     group = "Miscellaneous"
     size = 200
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
-
+    sortid = 999999
     def __init__(self):
         super().__init__()
 

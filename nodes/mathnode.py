@@ -9,6 +9,7 @@ class MathNode(Node):
     title = "Math"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
     group = "Converters"
+    sortid = 2000
 
     OPERATIONS = ["Power", "Log", "Invert", "Threshold", "Add constant", "Multiply"]
 

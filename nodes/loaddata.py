@@ -8,7 +8,10 @@ def create():
 class LoadDataNode(Node):
     title = "Load data"
     group = "Data IO"
+
     colour = (54 / 255, 47 / 255, 192 / 255, 1.0)
+
+    sortid = 0
 
     def __init__(self):
         super().__init__()
@@ -119,7 +122,7 @@ class LoadDataNode(Node):
             cfg.image_viewer.center_image_requested = True
             cfg.set_active_node(self)
         except Exception as e:
-            cfg.set_error(e, f"Error importing '{self.path}' as tif stack. Are you sure the data is .tif and monochromatic?")
+            cfg.set_error(e, f"Error importing '{self.path}' as tif stack. Are you sure the data is .tif and grayscale?")
 
     def get_image_impl(self, idx):
         if self.dataset.n_frames > 0:

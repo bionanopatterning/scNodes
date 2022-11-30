@@ -9,6 +9,7 @@ class TemporalFilterNode(Node):
     title = "Temporal filter"
     group = "Image processing"
     colour = (55 / 255, 236 / 255, 54 / 255, 1.0)
+    sortid = 102
 
     FILTERS = ["Forward difference", "Backward difference", "Central difference", "Grouped difference", "Windowed average"]
     NEGATIVE_MODES = ["Absolute", "Zero", "Retain"]

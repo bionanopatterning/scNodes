@@ -8,6 +8,7 @@ class ParticlePainterNode(Node):
     title = "Particle painter"
     group = "Reconstruction"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
+    sortid = 1003
 
     def __init__(self):
         super().__init__()  # Was: super(LoadDataNode, self).__init__()

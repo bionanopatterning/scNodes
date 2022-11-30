@@ -9,6 +9,7 @@ class CropImageNode(Node):
     title = "Crop image"
     group = "Image processing"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
+    sortid = 110
 
     def __init__(self):
         super().__init__()

@@ -218,7 +218,6 @@ class VertexArray:
             return
         else:
             self.vertexArrayObject = glGenVertexArrays(1)
-            print(f"Initialized VA with id {self.vertexArrayObject}")
             self.initialized = True
 
     def update(self, vertexBuffer, indexBuffer):
