@@ -6,11 +6,9 @@ import datetime
 import copy
 import numpy as np
 from dataset import *
+import settings
 import dill as pickle
 from joblib import Parallel, delayed
-from joblib.externals.loky import set_loky_pickler
-
-set_loky_pickler("pickle")
 
 
 class Node:
@@ -58,6 +56,7 @@ class Node:
         self.queued_actions = list()
         self.use_roi = False
         self.roi = [0, 0, 0, 0]
+        self.lut = "auto"
         cfg.nodes.append(self)
 
         # some bookkeeping vars - ignore these
@@ -189,6 +188,12 @@ class Node:
                 new_node = Node.create_node_by_type(self.type) ## FIX
                 new_node.position = self.position
                 self.delete()
+            if imgui.begin_menu("Set node-specific LUT"):
+                for lut in ["auto"] + settings.lut_names:
+                    _lut, _ = imgui.menu_item(lut)
+                    if _lut:
+                        self.lut = lut
+                imgui.end_menu()
             imgui.end_popup()
         if cfg.profiling and self.does_profiling_time:
             imgui.separator()

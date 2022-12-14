@@ -3,8 +3,7 @@ from tkinter import filedialog
 import util
 import os
 from joblib.externals.loky import set_loky_pickler
-import dill as pickle
-set_loky_pickler("pickle")
+set_loky_pickler("dill")
 
 
 def create():
@@ -16,6 +15,7 @@ class ExportDataNode(Node):
     group = "Data IO"
     colour = (138 / 255, 8 / 255, 8 / 255, 1.0)
     sortid = 1
+
     def __init__(self):
         super().__init__()
         self.size = 210

@@ -13,8 +13,6 @@ int:slot, to allow binding to any texture slot. When doing so, remember to set g
 whenever necessary.
 """
 
-import matplotlib.pyplot as plt
-
 class Texture:
     idGenerator = count()
     """Texture takes one of three (for now) possible formats: ru16 (default), r32f, rgb32f, or rgba32f"""

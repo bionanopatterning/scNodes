@@ -6,7 +6,7 @@ from PIL import Image
 from skimage import transform
 import pandas as pd
 import copy
-
+import tifffile
 
 class Dataset:
     idgen = count(1)
@@ -79,7 +79,6 @@ class Dataset:
         Note that when positive and negative tags contradict, preference is given to the positive filter. I.e., the frame is not discarded.
         :return: Nothing, dataset object itself is affected
         """
-        print("Filtering")
         discard = [False] * len(self.frames)
         neg_tags = negative_filter_string.split(';')
         pos_tags = positive_filter_string.split(';')
@@ -88,8 +87,6 @@ class Dataset:
         while '' in pos_tags:
             pos_tags.remove('')
         i = 0
-        print(neg_tags)
-        print(pos_tags)
         for frame in self.frames:
             for tag in neg_tags:
                 if tag in frame.path:
@@ -153,10 +150,11 @@ class Frame:
             self.data = self.raw_data.copy()
             return self.data
         else:
-            img = Image.open(self.path)
-            if self.index is not None:
-                img.seek(self.index)
-            self.raw_data = np.asarray(img).astype(np.float)
+            # 221202 Note: using tifffile instead of PIL now!
+            if self.index is None:
+                self.raw_data = tifffile.imread(self.path).astype(np.float)
+            else:
+                self.raw_data = tifffile.imread(self.path, key=self.index).astype(np.float)
             self.data = self.raw_data.copy()
             self.width = self.raw_data.shape[0]
             self.height = self.raw_data.shape[1]

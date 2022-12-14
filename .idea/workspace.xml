@@ -4,36 +4,34 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="changed dynamic import of nodes in a way that joblib loky works again">
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="temp branch for node sorting upon init">
+      <change afterPath="$PROJECT_DIR$/_srnodes_temp_dir_sofinode_20221214024/sofistack.tif" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nodes/pysofi/deconvsk.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nodes/pysofi/filtering.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nodes/pysofi/finterp.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nodes/pysofi/ldrc.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nodes/pysofi/masks.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nodes/pysofi/pysofi.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nodes/pysofi/reconstruction.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nodes/pysofi/switches.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nodes/sofinode.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/temp_img.tif" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/imageviewer.py" beforeDir="false" afterPath="$PROJECT_DIR$/imageviewer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/node.py" beforeDir="false" afterPath="$PROJECT_DIR$/node.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodes/bakestack.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/bakestack.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/binimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/binimage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/combine_reconstructions.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/cropimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/cropimage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/custom_node_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/custom_node_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/dataset_to_composite.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/dataset_to_composite.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodes/exportdata.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/exportdata.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/frameshift.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/frameshift.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/getimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/getimage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/imagecalculator.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/imagecalculator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/importreconstruction.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/importreconstruction.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/invert_node.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/invert_node.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/loaddata.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/loaddata.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/loadimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/loadimage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/mathnode.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/mathnode.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodes/particledetection.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/particledetection.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodes/particlefilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/particlefilter.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodes/particlepainter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/particlepainter.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodes/psffitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/psffitting.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodes/reconstructionrenderer.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/reconstructionrenderer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/register.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/register.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/scaleimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/scaleimage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/spatialfilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/spatialfilter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/temporalfilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/temporalfilter.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/opengl_classes.py" beforeDir="false" afterPath="$PROJECT_DIR$/opengl_classes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/testtest.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/pysofi/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/util.py" beforeDir="false" afterPath="$PROJECT_DIR$/util.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -50,7 +48,7 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="fixjoblib" />
+        <entry key="$PROJECT_DIR$" value="refactoring" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -80,22 +78,26 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="TODO_SCOPE" value="All Places" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/nodes/pysofi" />
     <property name="restartRequiresConfirmation" value="false" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\mgflast\PycharmProjects\srNodes\nodes\pysofi" />
       <recent name="C:\Users\mart_\PycharmProjects\srNodes" />
       <recent name="C:\Users\mgflast\PycharmProjects\220729_ImageViewer" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\mgflast\PycharmProjects\srNodes\nodes\pysofi" />
       <recent name="C:\Users\mgflast\PycharmProjects\srNodes" />
+      <recent name="C:\Users\mgflast\PycharmProjects\srNodes\nodes" />
       <recent name="C:\Users\mart_\PycharmProjects\srNodes" />
       <recent name="C:\Users\Mart\PycharmProjects\srNodes2" />
     </key>
   </component>
   <component name="RunManager" selected="Python.main">
-    <configuration name="install" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="delete" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="220729_ImageViewer" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -107,7 +109,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/install.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/delete.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -137,7 +139,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="nodeeditor" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="pysofi" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="220729_ImageViewer" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -145,11 +147,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/pysofi" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/nodeeditor.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/pysofi/pysofi.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -158,7 +160,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="sandbox" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="sofinode (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="220729_ImageViewer" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -166,11 +168,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/nodes" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/sandbox.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/nodes/sofinode.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -179,7 +181,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="settings" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="sofinode" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="220729_ImageViewer" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -187,11 +189,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/nodes" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/settings.py" />
+      <option name="SCRIPT_NAME" value="C:\Users\mgflast\PycharmProjects\srNodes\nodes\sofinode.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -200,7 +202,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="temp" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="test" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="220729_ImageViewer" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -208,11 +210,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/nodes/pysofi" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/temp.py" />
+      <option name="SCRIPT_NAME" value="C:\Users\mgflast\PycharmProjects\srNodes\nodes\pysofi\test.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -223,11 +225,11 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.temp" />
-        <item itemvalue="Python.settings" />
-        <item itemvalue="Python.sandbox" />
-        <item itemvalue="Python.nodeeditor" />
-        <item itemvalue="Python.install" />
+        <item itemvalue="Python.sofinode (1)" />
+        <item itemvalue="Python.delete" />
+        <item itemvalue="Python.sofinode" />
+        <item itemvalue="Python.test" />
+        <item itemvalue="Python.pysofi" />
       </list>
     </recent_temporary>
   </component>

@@ -8,11 +8,12 @@ def create():
 
 class ReconstructionRendererNode(Node):
     title = "Render reconstruction"
-    group = "Reconstruction"
+    group = "PSF-fitting reconstruction"
     colour = (243 / 255, 0 / 255, 80 / 255, 1.0)
     size = 250
     COLOUR_MODE = ["RGB, LUT"]
     sortid = 1005
+
     def __init__(self):
         super().__init__()
 
@@ -53,6 +54,7 @@ class ReconstructionRendererNode(Node):
 
             imgui.push_item_width(100)
             _mag_changed, self.magnification = imgui.input_int("Magnification", self.magnification, 1, 1)
+            self.any_change = _mag_changed or self.any_change
             self.magnification = max([self.magnification, 1])
             imgui.text(f"Final pixel size: {self.original_pixel_size / self.magnification:.1f}")
             imgui.text(f"Final image size: {self.reconstruction_image_size[0]} x {self.reconstruction_image_size[1]} px")
@@ -100,7 +102,9 @@ class ReconstructionRendererNode(Node):
 
 
             if _mag_changed:
-                self.original_pixel_size = Node.get_source_load_data_node(self).dataset.pixel_size
+                data_in = self.reconstruction_in.get_incoming_node()
+                if data_in:
+                    self.original_pixel_size = data_in.get_particle_data().pixel_size
                 roi = self.get_particle_data().reconstruction_roi
                 img_width = int((roi[3] - roi[1]) * self.magnification)
                 img_height = int((roi[2] - roi[0]) * self.magnification)

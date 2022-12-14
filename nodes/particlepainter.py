@@ -6,7 +6,7 @@ def create():
 
 class ParticlePainterNode(Node):
     title = "Particle painter"
-    group = "Reconstruction"
+    group = "PSF-fitting reconstruction"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
     sortid = 1003
 

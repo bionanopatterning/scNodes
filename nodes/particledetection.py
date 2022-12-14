@@ -7,7 +7,7 @@ def create():
 
 class ParticleDetectionNode(Node):
     title = "Particle detection"
-    group = "Reconstruction"
+    group = "PSF-fitting reconstruction"
     colour = (230 / 255, 174 / 255, 13 / 255, 1.0)
     sortid = 1000
 
@@ -101,7 +101,6 @@ class ParticleDetectionNode(Node):
                 threshold = self.max_fac * np.amax(image)
             elif self.thresholding == 4:
                 threshold = self.min_fac * np.abs(np.amin(image))
-            print("Threshold:", threshold)
             # Perform requested detection method
             coordinates = peak_local_max(image, threshold_abs = threshold, num_peaks = self.n_max, min_distance = self.d_min)
             if self.use_roi:

@@ -6,8 +6,8 @@ import glfw
 import sys
 import tkinter as tk
 from tkinter import filedialog
-from nodes import *
 from node import *
+import os
 tkroot = tk.Tk()
 tkroot.withdraw()
 
@@ -126,7 +126,7 @@ class NodeEditor:
         else:
             self._context_menu()
 
-        self._menu_bar()
+        NodeEditor._menu_bar()
 
         ## Error message
         if cfg.error_msg is not None:
@@ -196,7 +196,8 @@ class NodeEditor:
         imgui.pop_style_color(3)
         imgui.end()
 
-    def _menu_bar(self):
+    @staticmethod
+    def _menu_bar():
         imgui.push_style_color(imgui.COLOR_MENUBAR_BACKGROUND, *NodeEditor.COLOUR_MAIN_MENU_BAR)
         imgui.push_style_color(imgui.COLOR_TEXT, *NodeEditor.COLOUR_MAIN_MENU_BAR_TEXT)
         imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *NodeEditor.COLOUR_MAIN_MENU_BAR_HILIGHT)
@@ -291,42 +292,8 @@ class NodeEditor:
 
     @staticmethod
     def init_node_factory():
-
-        ##
-        node_source_files = glob.glob("nodes/*.py")
-        i = 0
-        for nodesrc in node_source_files:
-            i+=1
-            if "custom_node_template" in nodesrc or "__init__.py" in nodesrc:
-                continue
-
-            module_name = nodesrc[nodesrc.rfind("\\")+1:-3]
-            try:
-                # get the module spec and import the module
-                mod = importlib.import_module("nodes."+module_name)
-
-                # add the module and its create method to the nodefactory
-                _node = mod.create()
-                NodeEditor.NODE_FACTORY[_node.title] = mod.create
-                if isinstance(_node.group, str):
-                    if _node.group not in NodeEditor.NODE_GROUPS.keys():
-                        NodeEditor.NODE_GROUPS[_node.group] = list()
-                    NodeEditor.NODE_GROUPS[_node.group].append(_node.title)
-                elif isinstance(_node.group, list):
-                    for group in _node.group:
-                        if group not in NodeEditor.NODE_GROUPS.keys():
-                            NodeEditor.NODE_GROUPS[group] = list()
-                        NodeEditor.NODE_GROUPS[group].append(_node.title)
-                _node.delete()
-
-            except Exception as e:
-                print(f"NodeEditor - init node factory didn't work for source file\n{nodesrc}")
-                cfg.set_error(e, f"No well-defined Node type found in {nodesrc}. ")
-        NodeEditor.node_group_all = list(NodeEditor.NODE_FACTORY.keys())
-
-    @staticmethod
-    def init_node_factor_221130_test():
         nodeimpls = list()
+
         class NodeImpl:
             def __init__(self, node_create_fn):
                 self.create_fn = node_create_fn
@@ -337,7 +304,6 @@ class NodeEditor:
 
             def __del__(self):
                 self.node_obj.delete()
-                del self.node_obj
 
         node_source_files = glob.glob("nodes/*.py")  # load all .py files in the /nodes folder
         i = 0
@@ -350,33 +316,20 @@ class NodeEditor:
             try:
                 # get the module spec and import the module
                 mod = importlib.import_module("nodes."+module_name)
-
-
                 nodeimpls.append(NodeImpl(mod.create))
-                # # add the module and its create method to the nodefactory
-                # _node = mod.create()
-                # NodeEditor.NODE_FACTORY[_node.title] = mod.create
-                # if isinstance(_node.group, str):
-                #     if _node.group not in NodeEditor.NODE_GROUPS.keys():
-                #         NodeEditor.NODE_GROUPS[_node.group] = list()
-                #     NodeEditor.NODE_GROUPS[_node.group].append(_node.title)
-                # elif isinstance(_node.group, list):
-                #     for group in _node.group:
-                #         if group not in NodeEditor.NODE_GROUPS.keys():
-                #             NodeEditor.NODE_GROUPS[group] = list()
-                #         NodeEditor.NODE_GROUPS[group].append(_node.title)
-                # _node.delete()
 
             except Exception as e:
                 print(f"NodeEditor - init node factory didn't work for source file: {nodesrc}")
                 cfg.set_error(e, f"No well-defined Node type found in {nodesrc}. See manual for minimal code requirements.")
-
+                cfg.nodes = list()
         node_ids = list()
+
         for ni in nodeimpls:
             node_ids.append(ni.id)
         sorted_id_indices = np.argsort(node_ids)
-        for id in sorted_id_indices:
-            _node = nodeimpls[id]
+
+        for nid in sorted_id_indices:
+            _node = nodeimpls[nid]
             NodeEditor.NODE_FACTORY[_node.title] = _node.create_fn
             if isinstance(_node.group, str):
                 if _node.group not in NodeEditor.NODE_GROUPS.keys():
@@ -387,10 +340,6 @@ class NodeEditor:
                     if group not in NodeEditor.NODE_GROUPS.keys():
                         NodeEditor.NODE_GROUPS[group] = list()
                     NodeEditor.NODE_GROUPS[group].append(_node.title)
-        for ni in nodeimpls:
-            del ni
-
-
 
         NodeEditor.node_group_all = list(NodeEditor.NODE_FACTORY.keys())
 

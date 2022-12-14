@@ -8,7 +8,7 @@ def create():
 
 class ParticleFittingNode(Node):
     title = "PSF fitting"
-    group = "Reconstruction"
+    group = "PSF-fitting reconstruction"
     colour = (230 / 255, 98 / 255, 13 / 255, 1.0)
     size = 300
     sortid = 1001

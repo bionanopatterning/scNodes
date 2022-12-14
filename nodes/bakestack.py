@@ -1,5 +1,9 @@
 from node import *
 import os
+from tkinter import filedialog
+import shutil
+from joblib.externals.loky import set_loky_pickler
+set_loky_pickler("dill")
 
 
 def create():
@@ -33,7 +37,7 @@ class BakeStackNode(Node):
         self.has_dataset = False
         self.dataset = Dataset()
         self.frames_to_bake = list()
-        self.temp_dir_do_not_edit = "_srnodes_temp"+str(self.id)
+        self.temp_dir_do_not_edit = "_srnodes_temp_dir_bakestack_"+str(self.id)
         self.joblib_dir_counter = 0
         self.baked_at = 0
         self.has_coordinates = False
@@ -83,7 +87,27 @@ class BakeStackNode(Node):
 
             if self.has_dataset:
                 imgui.text(f"Output data was baked at: {self.baked_at}")
+                header_expanded, _ = imgui.collapsing_header("Advanced", None)
+                if header_expanded:
+                    self.render_advanced()
             super().render_end()
+
+
+    def render_advanced(self):
+        _cw = imgui.get_content_region_available_width()
+        imgui.new_line()
+        imgui.same_line(spacing = _cw / 2 - 80 / 2)
+        if imgui.button("Quick save", 80, 25):
+            fpath = filedialog.asksaveasfilename()
+            if fpath is not None:
+                if '.' in fpath[-5:]:
+                    fpath = fpath[:fpath.rfind(".")]
+            # now copy the files from the temp folder to the requested folder
+            if not os.path.isdir(fpath):
+                os.mkdir(fpath)
+            imglist = glob.glob(self.temp_dir_do_not_edit +"/*.tif*")
+            for img in imglist:
+                shutil.copy(img, fpath)
 
     def get_image_and_save(self, idx=None):
         datasource = self.dataset_in.get_incoming_node()

@@ -3,7 +3,7 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 import tifffile
-
+import glob
 
 def printProgressBar(iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
     # from: https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters?noredirect=1&lq=1
@@ -26,6 +26,7 @@ def printProgressBar(iteration, total, prefix = '', suffix = '', decimals = 1, l
 
 
 def save_tiff(array, path, pixel_size_nm = 100, axes = "ZXY"):
+    print(array.shape)
     if not (path[-5:] == ".tiff" or path[-4:] == ".tif"):
         path += ".tif"
     if "/" in path:
@@ -62,3 +63,58 @@ def apply_lut_to_float_image(image, lut, contrast_lims = None):
     for x in range(w):
         out_img[x, :, :] = _lut[image[x, :], :]
     return out_img
+
+def is_path_tiff(path):
+    if path[-4:] == ".tif" or path[-5:] == ".tiff":
+        return True
+    return False
+
+def load(path, tag=None):
+    if is_path_tiff(path):
+        return loadtiff(path)
+    else:
+        return loadfolder(path, tag)
+
+
+def loadfolder(path, tag=None):
+    if path[-1] != "/":
+        path += "/"
+    pre_paths = glob.glob(path + "*.tiff") + glob.glob(path + "*.tif")
+    paths = list()
+    if tag is not None:
+        for path in pre_paths:
+            if tag in path:
+                paths.append(path)
+    else:
+        paths = pre_paths
+    _data = Image.open(paths[0])
+    _frame = np.asarray(_data)
+
+    width = _frame.shape[0]
+    height = _frame.shape[1]
+    depth = len(paths)
+    data = np.zeros((depth, width, height), dtype=np.float32)
+    _n = len(paths)
+    for f in range(0, _n):
+        printProgressBar(f, _n, prefix="Loading tiff file\t", length=30, printEnd="\r")
+        _data = Image.open(paths[f])
+        data[f, :, :] = np.asarray(_data)
+    return data
+
+
+def loadtiff(path):
+    "Loads stack as 3d array with dimensions (frames, width, height)"
+    _data = Image.open(path)
+    _frame = np.asarray(_data)
+
+    width = _frame.shape[0]
+    height = _frame.shape[1]
+    depth = _data.n_frames
+    data = np.zeros((depth, width, height), dtype=np.int16)
+    for f in range(0, depth):
+        printProgressBar(f, depth - 1, prefix="Loading tiff file\t", length=30, printEnd="\r")
+        _data.seek(f)
+        data[f, :, :] = np.asarray(_data)
+    print()
+    data = np.squeeze(data)
+    return data

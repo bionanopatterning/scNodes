@@ -60,9 +60,11 @@ class ImageViewer:
         self.fbo = FrameBuffer(*settings.def_img_size)
         self.va = VertexArray()
         self.lut_texture = Texture(format="rgb32f")
-        self.current_lut = 0
+        self.current_lut = -1
+        self.base_lut = 0
+        self.node_specific_lut_in_use = False
         self.lut_array = None
-        self.set_lut(self.current_lut)
+        self.set_lut(0)
         self.camera = Camera()
 
         # GUI vars
@@ -183,6 +185,13 @@ class ImageViewer:
                         self.set_image(new_image)
                     else:
                         self.show_image = False
+            # set node-specific LUT
+            if cfg.active_node.lut != "auto":
+                self.node_specific_lut_in_use = True
+                self.set_lut(settings.lut_names.index(cfg.active_node.lut))
+            else:
+                self.node_specific_lut_in_use = False
+                self.set_lut(self.base_lut)
             self.previous_active_node = cfg.active_node
 
     def end_frame(self):
@@ -429,10 +438,10 @@ class ImageViewer:
         if self.window.get_key_event(glfw.KEY_S, glfw.PRESS, glfw.MOD_CONTROL):
             if self.image_pxd is not None:
                 self.save_current_image()
-        if self.window.get_key_event(glfw.KEY_DELETE, glfw.PRESS):
-            print("delete")
+        if self.window.get_key_event(glfw.KEY_DELETE, glfw.PRESS) or self.window.get_key_event(glfw.KEY_DELETE, glfw.REPEAT):
             self.current_dataset.delete_by_index(self.current_dataset.current_frame)
             self.new_image_requested = True
+
 
     def _context_menu(self):
         imgui.set_next_window_position(self.context_menu_position[0] - 3, self.context_menu_position[1] - 3)
@@ -529,11 +538,14 @@ class ImageViewer:
         self.camera.position = [-self.image_width / 2, -self.image_height / 2, 0.0]
 
     def set_lut(self, lut_index):
-        self.current_lut = lut_index
-        self.lut_array = np.asarray(settings.luts[settings.lut_names[self.current_lut]])
-        if self.lut_array.shape[1] == 3:
-            lut_array = np.reshape(self.lut_array, (self.lut_array.shape[0], 1, self.lut_array.shape[1]))
-        self.lut_texture.update(lut_array)
+        if not self.node_specific_lut_in_use:
+            self.base_lut = lut_index
+        if lut_index != self.current_lut:
+            self.current_lut = lut_index
+            self.lut_array = np.asarray(settings.luts[settings.lut_names[self.current_lut]])
+            if self.lut_array.shape[1] == 3:
+                lut_array = np.reshape(self.lut_array, (self.lut_array.shape[0], 1, self.lut_array.shape[1]))
+            self.lut_texture.update(lut_array)
 
     def get_cursor_image_coordinates(self):
         c_pos = self.window.cursor_pos  # cursor position
@@ -547,7 +559,6 @@ class ImageViewer:
         return [self.window.cursor_delta[0] / self.camera.zoom, -self.window.cursor_delta[1] / self.camera.zoom]
 
     def save_current_image(self):
-        print(np.shape(self.image_pxd))
         try:
             filename = filedialog.asksaveasfilename()
             if filename != '':
