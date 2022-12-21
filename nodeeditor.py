@@ -8,6 +8,8 @@ import tkinter as tk
 from tkinter import filedialog
 from node import *
 import os
+import pyperclip
+
 tkroot = tk.Tk()
 tkroot.withdraw()
 
@@ -17,7 +19,7 @@ class NodeEditor:
     CONTEXT_MENU_SIZE = (200, 98)
     ERROR_WINDOW_HEIGHT = 80
     COLOUR_ERROR_WINDOW_BACKGROUND = (0.84, 0.84, 0.84, 1.0)
-    COLOUR_ERROR_WINDOW_HEADER = (0.1, 0.1, 0.1, 1.0)
+    COLOUR_ERROR_WINDOW_HEADER = (0.7, 0.7, 0.7, 1.0)
     COLOUR_ERROR_WINDOW_HEADER_NEW = (0.35, 0.35, 0.35, 1.0)
     COLOUR_ERROR_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
     COLOUR_MENU_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 1.0)
@@ -50,6 +52,7 @@ class NodeEditor:
         self.context_menu_position = [0, 0]
         self.context_menu_open = False
         self.context_menu_can_close = False
+
 
         NodeEditor.init_node_factory()
 
@@ -88,7 +91,7 @@ class NodeEditor:
                 cfg.active_connector = None
             else:
                 cfg.connector_released = False
-        if self.window.get_mouse_event(glfw.MOUSE_BUTTON_RIGHT, glfw.PRESS, pop_event = False):
+        if self.window.get_mouse_event(glfw.MOUSE_BUTTON_RIGHT, glfw.PRESS, pop_event=False):
             cfg.connector_delete_requested = True
 
         cfg.node_move_requested = [0, 0]
@@ -127,7 +130,20 @@ class NodeEditor:
             self._context_menu()
 
         NodeEditor._menu_bar()
+        self._warning_window()
 
+    def _warning_window(self):
+        def ww_context_menu():
+            imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *NodeEditor.COLOUR_MENU_WINDOW_BACKGROUND)
+            if imgui.begin_popup_context_window():
+                raise_error, _ = imgui.menu_item("Raise error (debug)")
+                if raise_error:
+                    raise cfg.error_obj
+                copy_error, _ = imgui.menu_item("Copy to clipboard")
+                if copy_error:
+                    pyperclip.copy(cfg.error_msg)
+                imgui.end_popup()
+            imgui.pop_style_color(1)
         ## Error message
         if cfg.error_msg is not None:
             if cfg.error_new:
@@ -145,10 +161,9 @@ class NodeEditor:
             imgui.set_next_window_position(0, self.window.height - NodeEditor.ERROR_WINDOW_HEIGHT)
             _, stay_open = imgui.begin("Warning", True, imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE)
             imgui.text(cfg.error_msg)
-            if imgui.button("(debug): raise error", 180, 20):
-                raise cfg.error_obj
             if imgui.is_window_focused() and self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
                 cfg.error_new = False
+            ww_context_menu()
             imgui.end()
             if not stay_open:
                 cfg.error_msg = None
@@ -273,6 +288,12 @@ class NodeEditor:
                              "efficiency, set the batch size to an integer multiple of the amount of CPUs on the machine. \n"
                              f"This PC has: {cfg.n_cpus_max} CPUs.\n"
                              f"Set to '-1' to force use of all CPUs.")
+                imgui.end_menu()
+            if imgui.begin_menu('Editor'):
+                select_node_editor, _ = imgui.menu_item("Node Editor", None, selected=True)
+                select_correlation_editor, _ = imgui.menu_item("Correlation", None, selected=False)
+                if select_correlation_editor:
+                    cfg.active_editor = 1
                 imgui.end_menu()
             imgui.end_main_menu_bar()
         imgui.pop_style_color(5)

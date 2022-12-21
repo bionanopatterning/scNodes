@@ -63,9 +63,7 @@ class Node:
         self.buffer_last_output = False
         self.last_index_requested = -1
         self.last_frame_returned = None
-        self.context_menu_open = False
-        self.context_menu_position = [0, 0]
-        self.context_menu_can_close = False
+
         self.keep_active = False
         self.does_profiling_time = True
         self.does_profiling_count = True

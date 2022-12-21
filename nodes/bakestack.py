@@ -167,7 +167,7 @@ class BakeStackNode(Node):
                         self.n_baked += 1
                         indices.append(self.frames_to_bake[-1])
                         self.frames_to_bake.pop()
-                    coordinates = Parallel(n_jobs=cfg.batch_size)(delayed(self.get_image_and_save)(index) for index in indices)
+                    coordinates = Parallel(n_jobs=cfg.batch_size, mmap_mode=settings.joblib_mmmode)(delayed(self.get_image_and_save)(index) for index in indices)
                 else:
                     index = self.frames_to_bake[-1]
                     self.frames_to_bake.pop()

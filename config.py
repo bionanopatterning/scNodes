@@ -1,5 +1,5 @@
 from joblib import cpu_count
-
+import traceback
 # This file defines variables that can be accessed globally.
 # Before re-structuring the code, the Node class would directly access and change NodeEditor class static variables.
 # That messed up inheritance. Instead, all of the variables that were accessed in this way are now defined in this file.
@@ -34,6 +34,8 @@ batch_size = n_cpus_max
 
 pickle_temp = dict()
 
+## 221221 correlation editor vars & related
+active_editor = 0  # 0 for node editor, 1 for correlation
 
 def set_active_node(node, keep_active=False):
     global focused_node, active_node, next_active_node
@@ -62,6 +64,7 @@ def set_active_node(node, keep_active=False):
 
 def set_error(error_object, error_message):
     global error_msg, error_obj, error_new
-    error_msg = error_message
+    error_msg = error_message + "\n\n"
+    error_msg += "".join(traceback.TracebackException.from_exception(error_object).format())
     error_obj = error_object
     error_new = True

@@ -139,7 +139,7 @@ class ExportDataNode(Node):
                         self.n_frames_saved += 1
                         indices.append(self.frames_to_load[-1])
                         self.frames_to_load.pop()
-                    Parallel(n_jobs=cfg.batch_size)(delayed(self.get_img_and_save)(index) for index in indices)
+                    Parallel(n_jobs=cfg.batch_size, mmap_mode=settings.joblib_mmmode)(delayed(self.get_img_and_save)(index) for index in indices)
                 else:
                     self.n_frames_saved += 1
                     self.get_img_and_save(self.frames_to_load[-1])
