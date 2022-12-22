@@ -4,24 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="added a sofi node">
-      <change afterPath="$PROJECT_DIR$/correlation_editor.py" afterDir="false" />
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="started work on correlation editor + small qol improvements">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/_srnodes_temp_dir_sofinode_20221214024/sofistack.tif" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/imageviewer.py" beforeDir="false" afterPath="$PROJECT_DIR$/imageviewer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/install.py" beforeDir="false" afterPath="$PROJECT_DIR$/install.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node.py" beforeDir="false" afterPath="$PROJECT_DIR$/node.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/bakestack.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/bakestack.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/exportdata.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/exportdata.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyGpufit-1.2.0-py2.py3-none-any.whl" beforeDir="false" afterPath="$PROJECT_DIR$/wheels/pyGpufit-1.2.0-py2.py3-none-any.whl" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sandbox.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/temp_img.tif" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -393,7 +378,14 @@
       <option name="project" value="LOCAL" />
       <updated>1671032909265</updated>
     </task>
-    <option name="localTasksCounter" value="24" />
+    <task id="LOCAL-00024" summary="started work on correlation editor + small qol improvements">
+      <created>1671638692685</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1671638692685</updated>
+    </task>
+    <option name="localTasksCounter" value="25" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -443,6 +435,7 @@
     <MESSAGE value="re: pre pickle fix attempt" />
     <MESSAGE value="changed dynamic import of nodes in a way that joblib loky works again" />
     <MESSAGE value="added a sofi node" />
-    <option name="LAST_COMMIT_MESSAGE" value="added a sofi node" />
+    <MESSAGE value="started work on correlation editor + small qol improvements" />
+    <option name="LAST_COMMIT_MESSAGE" value="started work on correlation editor + small qol improvements" />
   </component>
 </project>
