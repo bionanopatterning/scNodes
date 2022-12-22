@@ -525,13 +525,13 @@ class ImageViewer:
             self.hist_bins[2] = np.delete(self.hist_bins[2], 0)
 
     def _compute_auto_contrast(self, channel = None):
-        img_subsample = self.image_pxd[::ImageViewer.AUTOCONTRAST_SUBSAMPLE, ::ImageViewer.AUTOCONTRAST_SUBSAMPLE, :]
-        N = img_subsample.shape[0] * img_subsample.shape[1]
+        img_subsample = self.image_pxd[::settings.autocontrast_subsample, ::settings.autocontrast_subsample, :]
+        n = img_subsample.shape[0] * img_subsample.shape[1]
         for i in range(3):
             if self.autocontrast[i] or channel == i:
                 img_sorted = np.sort(img_subsample[:, :, i].flatten())
-                self.contrast_min[i] = img_sorted[int(ImageViewer.AUTOCONTRAST_SATURATE / 100.0 * N)]
-                self.contrast_max[i] = img_sorted[int((1.0 - ImageViewer.AUTOCONTRAST_SATURATE / 100.0) * N)]
+                self.contrast_min[i] = img_sorted[int(settings.autocontrast_saturation / 100.0 * n)]
+                self.contrast_max[i] = img_sorted[int((1.0 - settings.autocontrast_saturation / 100.0) * n)]
 
     def center_camera(self):
         self.camera.zoom = 1
