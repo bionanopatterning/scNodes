@@ -66,5 +66,6 @@ def set_error(error_object, error_message):
     global error_msg, error_obj, error_new
     error_msg = error_message + "\n\n"
     error_msg += "".join(traceback.TracebackException.from_exception(error_object).format())
+    print(error_msg)
     error_obj = error_object
     error_new = True

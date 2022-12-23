@@ -8,7 +8,7 @@ uniform mat4 modelMatrix;
 
 void main()
 {
-    gl_Position = cameraMatrix * vec4(xy + translation.xy, 1.0, 1.0);
+    gl_Position = cameraMatrix * modelMatrix * vec4(xy, 1.0, 1.0);
 }
 
 #fragment

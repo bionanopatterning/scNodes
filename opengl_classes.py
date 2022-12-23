@@ -140,6 +140,10 @@ class Shader:
         uniformLocation = glGetUniformLocation(self.shaderProgram, uniformName)
         glUniform1i(uniformLocation, uniformIntValue)
 
+    def uniform2f(self, uniformName, uniformFloat2Value):
+        uniformLocation = glGetUniformLocation(self.shaderProgram, uniformName)
+        glUniform2f(uniformLocation, uniformFloat2Value[0], uniformFloat2Value[1])
+
     def uniform3f(self, uniformName, uniformFloat3Value):
         uniformLocation = glGetUniformLocation(self.shaderProgram, uniformName)
         glUniform3f(uniformLocation, uniformFloat3Value[0], uniformFloat3Value[1], uniformFloat3Value[2])
