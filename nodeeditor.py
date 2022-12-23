@@ -217,6 +217,7 @@ class NodeEditor:
         imgui.push_style_color(imgui.COLOR_TEXT, *NodeEditor.COLOUR_MAIN_MENU_BAR_TEXT)
         imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *NodeEditor.COLOUR_MAIN_MENU_BAR_HILIGHT)
         imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *NodeEditor.COLOUR_MAIN_MENU_BAR_HILIGHT)
+        imgui.push_style_color(imgui.COLOR_HEADER, *NodeEditor.COLOUR_MAIN_MENU_BAR_HILIGHT)
         imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *NodeEditor.COLOUR_MENU_WINDOW_BACKGROUND)
         ## Save node setup.
         if imgui.core.begin_main_menu_bar():
@@ -296,7 +297,7 @@ class NodeEditor:
                     cfg.active_editor = 1
                 imgui.end_menu()
             imgui.end_main_menu_bar()
-        imgui.pop_style_color(5)
+        imgui.pop_style_color(6)
 
     @staticmethod
     def install_node():

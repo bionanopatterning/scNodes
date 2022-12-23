@@ -157,3 +157,5 @@ class MouseButtonEvent:
                     return True
         return False
 
+    def __str__(self):
+        return f"button {self.button}, action {self.action}, mods {self.mods}"
