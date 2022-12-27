@@ -59,6 +59,9 @@ class CorrelationEditor:
     TOOLTIP_HOVERED_TIMER = 0.0
     TOOLTIP_HOVERED_START_TIME = 0.0
 
+    ALPHA_SLIDER_WIDTH = 550
+    BLEND_COMBO_WIDTH = 150
+    ALPHA_SLIDER_ROUNDING = 25.0
     # editing
     MOUSE_SHORT_PRESS_MAX_DURATION = 0.25  # seconds
     mouse_left_press_world_pos = [0, 0]
@@ -108,7 +111,7 @@ class CorrelationEditor:
         CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_refl.tif"))))
         CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
         self.active_frame = CorrelationEditor.frames[0]
-
+#
     def on_update(self):
         imgui.set_current_context(self.imgui_context)
         self.window.make_current()
@@ -190,7 +193,6 @@ class CorrelationEditor:
         imgui.pop_style_color(24)
         imgui.pop_style_var(1)
 
-
     def menu_bar(self):
         imgui.push_style_color(imgui.COLOR_MENUBAR_BACKGROUND, *CorrelationEditor.COLOUR_MAIN_MENU_BAR)
         imgui.push_style_color(imgui.COLOR_TEXT, *CorrelationEditor.COLOUR_MAIN_MENU_BAR_TEXT)
@@ -221,7 +223,7 @@ class CorrelationEditor:
         imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *CorrelationEditor.COLOUR_PANEL_BACKGROUND)
         imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *CorrelationEditor.COLOUR_PANEL_BACKGROUND)
         imgui.set_next_window_size_constraints((CorrelationEditor.INFO_PANEL_WIDTH, -1), (CorrelationEditor.INFO_PANEL_WIDTH, -1))
-        imgui.begin("Selected frame parameters", False, imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_COLLAPSE)
+        imgui.begin("Selected frame parameters", False, imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_TITLE_BAR)
         #  Transform info
         expanded, _ = imgui.collapsing_header("Transform", None)
         if expanded and af is not None:
@@ -269,12 +271,30 @@ class CorrelationEditor:
         imgui.pop_style_color(3)
 
     def objects_info_window(self):
-        pass # TODO
+        imgui.begin("Frames & hierarchy", False, imgui.WINDOW_NO_COLLAPSE)
+
+        imgui.end()
 
     def visuals_window(self):
-        pass # TODO
+        imgui.begin("##visualsw", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE)  # imgui.WINDOW_NO_BACKGROUND |
+        imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, CorrelationEditor.ALPHA_SLIDER_ROUNDING)
+        imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, CorrelationEditor.ALPHA_SLIDER_ROUNDING)
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *self.window.clear_color)
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *self.window.clear_color)
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *self.window.clear_color)
+        if self.active_frame is not None:
+            cw = imgui.get_content_region_available_width()
+            imgui.same_line((cw - CorrelationEditor.ALPHA_SLIDER_WIDTH) / 2.0)
+            imgui.set_next_item_width(CorrelationEditor.ALPHA_SLIDER_WIDTH)
+            _c, self.active_frame.alpha = imgui.slider_float("##alpha", self.active_frame.alpha, 0.0, 1.0, format="alpha = %.2f")
+            imgui.  ## TODO: blend mode selections
+        imgui.pop_style_color(3)
+        imgui.pop_style_var(2)
+        imgui.end()
 
     def camera_control(self):
+        if imgui.get_io().want_capture_mouse:
+            return None
         if self.window.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE):
             delta_cursor = self.window.cursor_delta
             self.camera.position[0] += delta_cursor[0]
@@ -283,7 +303,6 @@ class CorrelationEditor:
             self.camera.zoom *= (1.0 + self.window.scroll_delta[1] * CorrelationEditor.CAMERA_ZOOM_STEP)
 
     def user_input(self):
-        print(self.get_object_under_cursor(self.window.cursor_pos))
         if imgui.get_io().want_capture_mouse:
             return None
         # If left mouse click, find which (if any) object was clicked and set it to active.
@@ -388,7 +407,11 @@ class Renderer:
     def render_frame_quad(self, camera, frame):
         pass  # set blend mode #TODO
         glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE)  ## TODO
+        blend_fn = CorrelationEditor.BLEND_MODES[frame.blend_mode]
+        if len(blend_fn) == 2:
+            glBlendFunc(blend_fn[0], blend_fn[1])
+        else:
+            glBlendEquation(blend_fn)
         if not frame.hide:
             self.quad_shader.bind()
             frame.quad_va.bind()
@@ -486,7 +509,7 @@ class CLEMFrame:
         self.blend_mode = CorrelationEditor.BLEND_MODES_LIST[0]
         self.lut = 1
         self.colour = (1.0, 1.0, 1.0, 1.0)
-        self.opacity = 1.0
+        self.alpha = 1.0
         self.contrast_lims = [0.0, 65535.0]
         self.compute_autocontrast()
         self.hist_bins = list()
