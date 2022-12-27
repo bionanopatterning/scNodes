@@ -32,6 +32,8 @@ n_cpus_max = cpu_count()
 n_cpus = n_cpus_max
 batch_size = n_cpus_max
 
+## CONFIG HAS NO ATTRIB IMG VIEWER 221223
+
 pickle_temp = dict()
 
 ## 221221 correlation editor vars & related

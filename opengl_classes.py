@@ -37,10 +37,18 @@ class Texture:
                 self.internalformat = GL_R32F
                 self.format = GL_RED
                 self.type = GL_FLOAT
-            elif format == "rgbu16":
+            elif format == "rgbu16":  ## should be rgb16u, but leaving it like this to avoid messing up old code
                 self.internalformat = GL_RGB16UI
                 self.format = GL_RGB_INTEGER
                 self.type = GL_UNSIGNED_SHORT
+            elif format == "rgb8u":
+                self.internalformat = GL_RGB8UI
+                self.format = GL_RGB_INTEGER
+                self.type = GL_UNSIGNED_INT
+            elif format == "rgba8u":
+                self.internalformat = GL_RGBA8UI
+                self.format = GL_RGBA_INTEGER
+                self.type = GL_UNSIGNED_INT
             glBindTexture(GL_TEXTURE_2D, self.renderer_id)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)

@@ -27,16 +27,22 @@ class Window:
 
         # input vars
         self.cursor_pos = [0, 0]
+        self.cursor_pos_previous_frame = [0, 0]
         self.cursor_delta = [0, 0]
         self.scroll_delta = [0, 0]
         self.mouse_event = MouseButtonEvent(None, None, None)
         self.key_event = KeyEvent(None, None, None)
-
+        self.mouse_press_duration = 0.0
 
         # Change flags
         self.window_size_changed = False
         self.window_gained_focus = False
         self.window_gained_focus_buffer = False
+        self.reset_event_timer = False
+        # Aux
+        self.glfw_time = 0.0
+        self.time = 0.0
+
         # default callbacks
         glfw.set_window_focus_callback(self.glfw_window, self.window_focus_callback)
 
@@ -53,14 +59,24 @@ class Window:
         glfw.set_window_size_callback(self.glfw_window, self.size_changed_callback)
 
     def on_update(self):
+        current_time = glfw.get_time()
+        self.delta_time = current_time - self.time
+        self.time = current_time
         self.window_gained_focus = self.window_gained_focus_buffer
         self.window_gained_focus_buffer = False
         self.scroll_delta = [0.0, 0.0]
         glClearColor(*self.clear_color)
         glClear(GL_COLOR_BUFFER_BIT)
-        _current_cursor_pos = list(glfw.get_cursor_pos(self.glfw_window))
-        self.cursor_delta = [_current_cursor_pos[0] - self.cursor_pos[0], _current_cursor_pos[1] - self.cursor_pos[1]]
-        self.cursor_pos = _current_cursor_pos
+        self.cursor_pos_previous_frame = self.cursor_pos
+        self.cursor_pos = list(glfw.get_cursor_pos(self.glfw_window))
+        self.cursor_delta = [-self.cursor_pos_previous_frame[0] + self.cursor_pos[0], -self.cursor_pos_previous_frame[1] + self.cursor_pos[1]]
+        if self.reset_event_timer:
+            self.mouse_press_duration = 0
+            self.reset_event_timer = False
+        if self.get_mouse_button(glfw.MOUSE_BUTTON_LEFT) or self.get_mouse_button(glfw.MOUSE_BUTTON_RIGHT) or self.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE):
+            self.mouse_press_duration += self.delta_time
+        else:
+            self.reset_event_timer = True
 
         if self.focused:
             glfw.poll_events()
@@ -88,6 +104,8 @@ class Window:
         self.scroll_delta = [dx, dy]
 
     def mouse_button_callback(self, _, button, action, mods):
+        if action == glfw.PRESS:
+            self.mouse_press_duration = 0.0
         self.mouse_event = MouseButtonEvent(button, action, mods)
 
     def key_callback(self, window, button, scancode, action, mods):
@@ -114,17 +132,18 @@ class Window:
     def get_key(self, key):
         return glfw.get_key(self.glfw_window, key)
 
-    def get_mouse_event(self, button, action, mods=0, pop_event=True):
+    def get_mouse_event(self, button, action, mods=0, max_duration=None, pop_event=True):
         if self.mouse_event:
             if self.mouse_event.check(button, action, mods):
                 if pop_event:
                     self.mouse_event = None
+                if max_duration is not None:  # note: event is popped regardless of max_duration
+                    return self.mouse_press_duration < max_duration
                 return True
         return False
 
     def pop_any_mouse_event(self):
         self.mouse_event = None
-
 
 
 class KeyEvent:

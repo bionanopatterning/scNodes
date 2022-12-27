@@ -22,5 +22,5 @@ uniform vec3 lineColour;
 
 void main()
 {
-    fragmentColour = vec4(lineColour, 1.0);  # TODO add an effect to make dashed lines
+    fragmentColour = vec4(lineColour, 1.0);  // TODO add an effect to make dashed lines
 }

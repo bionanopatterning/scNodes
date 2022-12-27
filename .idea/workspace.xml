@@ -5,10 +5,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="221222">
+      <change afterPath="$PROJECT_DIR$/ce_test_fluo.tif" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ce_test_refl.tif" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/icons/icon_pivot_256.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/icons/icon_rotate_256.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/icons/icon_scale_256.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/shaders/ce_gizmo_shader.glsl" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/correlation_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/correlation_editor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/opengl_classes.py" beforeDir="false" afterPath="$PROJECT_DIR$/opengl_classes.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/shaders/ce_border_shader.glsl" beforeDir="false" afterPath="$PROJECT_DIR$/shaders/ce_border_shader.glsl" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/window.py" beforeDir="false" afterPath="$PROJECT_DIR$/window.py" afterDir="false" />
     </list>
@@ -68,11 +75,11 @@
       <recent name="C:\Users\mgflast\PycharmProjects\220729_ImageViewer" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Mart\PycharmProjects\srNodes2" />
+      <recent name="C:\Users\Mart\PycharmProjects\srNodes2\icons" />
       <recent name="C:\Users\mgflast\PycharmProjects\srNodes\wheels" />
       <recent name="C:\Users\mgflast\PycharmProjects\srNodes\nodes\pysofi" />
       <recent name="C:\Users\mgflast\PycharmProjects\srNodes" />
-      <recent name="C:\Users\mgflast\PycharmProjects\srNodes\nodes" />
-      <recent name="C:\Users\mart_\PycharmProjects\srNodes" />
     </key>
   </component>
   <component name="RunManager" selected="Python.main">
@@ -420,7 +427,6 @@
         </entry>
       </map>
     </option>
-    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
