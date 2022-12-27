@@ -115,9 +115,12 @@ class CorrelationEditor:
         self.gizmos.append(EditorGizmo(EditorGizmo.TYPE_ROTATE, idx=2))
         self.gizmos.append(EditorGizmo(EditorGizmo.TYPE_ROTATE, idx=3))
         self.gizmos.append(EditorGizmo(EditorGizmo.TYPE_PIVOT))
-
+        # TODO: when frame can not be selected by left click it appears to be right after moving it. Suspect corner positions arent properly updated (i.e. hitbox pos).
         ## DEBUG
         CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_refl.tif"))))
+        CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
+        CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
+        CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
         CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
         self.active_frame = CorrelationEditor.frames[0]
 
@@ -829,5 +832,11 @@ class Transform:
     def __str__(self):
         return f"Transform with translation = {self.translation[0], self.translation[1]}, scale = {self.scale}, rotation = {self.rotation}"
 
+    def __sub__(self, other):
+        out = Transform()
+        out.translation = self.translation - other.translation
+        out.rotation = self.rotation - other.rotation
+        #  TODO: check that not affecting zoom in __sub__ works intuitively - also, see __add__
+        return out
 
 
