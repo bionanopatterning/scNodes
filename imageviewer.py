@@ -273,7 +273,7 @@ class ImageViewer:
             imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *ImageViewer.COLOUR_CLEAR)
             imgui.push_style_color(imgui.COLOR_BORDER, *ImageViewer.COLOUR_CLEAR)
             imgui.push_style_color(imgui.COLOR_TEXT, *(0.0, 0.0, 0.0, 1.0))
-            imgui.begin("##", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE)
+            imgui.begin("##", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_BACKGROUND)
             imgui.text("   Active node does not output an image.")
             imgui.end()
             imgui.pop_style_color(3)

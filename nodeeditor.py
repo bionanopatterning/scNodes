@@ -183,7 +183,6 @@ class NodeEditor:
         if context_menu_hovered:
             self.context_menu_can_close = True
         if not context_menu_hovered and self.context_menu_can_close:
-            self.context_menu_can_close = False
             self.context_menu_open = False
 
         # Context menu contents

@@ -39,9 +39,11 @@ class Window:
         self.window_gained_focus = False
         self.window_gained_focus_buffer = False
         self.reset_event_timer = False
+
         # Aux
         self.glfw_time = 0.0
         self.time = 0.0
+        self.force_alpha_zero = False
 
         # default callbacks
         glfw.set_window_focus_callback(self.glfw_window, self.window_focus_callback)
@@ -65,6 +67,8 @@ class Window:
         self.window_gained_focus = self.window_gained_focus_buffer
         self.window_gained_focus_buffer = False
         self.scroll_delta = [0.0, 0.0]
+        if self.force_alpha_zero:
+            self.clear_color = (*self.clear_color[0:3], 0.0)
         glClearColor(*self.clear_color)
         glClear(GL_COLOR_BUFFER_BIT)
         self.cursor_pos_previous_frame = self.cursor_pos
@@ -144,6 +148,9 @@ class Window:
 
     def pop_any_mouse_event(self):
         self.mouse_event = None
+
+    def set_force_alpha_zero(self, force=True):
+        self.force_alpha_zero = force
 
 
 class KeyEvent:

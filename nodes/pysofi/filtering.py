@@ -94,9 +94,9 @@ def noise_filter1d(dset, im_set, noise_filter=[],
         m_filtered_set[[*im_set][k]] = m_filtered[k, :, :]
 
     if return_option is True:
-        if return_type is 'ndarray':
+        if return_type == 'ndarray':
             return m_filtered
-        if return_type is 'dict':
+        if return_type == 'dict':
             return m_filtered_set
 
 

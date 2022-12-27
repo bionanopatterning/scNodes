@@ -24,5 +24,5 @@ in vec2 fUV;
 
 void main()
 {
-    fragmentColor = vec4(texture(image, fUV));
+    fragmentColor = vec4(texture(image, fUV).a);
 }
