@@ -33,6 +33,9 @@ n_cpus = n_cpus_max
 batch_size = n_cpus_max
 
 ## CONFIG HAS NO ATTRIB IMG VIEWER 221223
+image_viewer = None
+node_editor = None
+correlation_editor = None
 
 pickle_temp = dict()
 

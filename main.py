@@ -18,12 +18,13 @@ if __name__ == "__main__":
     main_window = Window(settings.ne_window_width, settings.ne_window_height, settings.ne_window_title)
     node_editor = NodeEditor(main_window)
     node_editor.delete_temporary_files()
-
+    cfg.node_editor = node_editor
     correlation_editor = CorrelationEditor(main_window, node_editor.get_font_atlas_ptr())
-
+    cfg.correlation_editor = correlation_editor
 
     image_viewer_window = Window(settings.iv_window_width, settings.iv_window_height, settings.iv_window_title)
     image_viewer = ImageViewer(image_viewer_window, node_editor.get_font_atlas_ptr())
+    cfg.image_viewer = image_viewer
 
     try:
         while not glfw.window_should_close(main_window.glfw_window):

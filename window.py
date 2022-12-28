@@ -14,13 +14,14 @@ class Window:
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
         glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, OpenGL.GL.GL_TRUE)
         glfw.window_hint(glfw.RESIZABLE, glfw.FALSE)
+        glfw.window_hint(glfw.SAMPLES, 4);
 
         self.glfw_window = glfw.create_window(self.width, self.height, self.title, None, None)
         self.focused = True
         glfw.make_context_current(self.glfw_window)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glEnable(GL_BLEND)
-
+        glEnable(GL_MULTISAMPLE)
         if not self.glfw_window:
             glfw.terminate()
             raise Exception("Could not initialize GLFW window.")
