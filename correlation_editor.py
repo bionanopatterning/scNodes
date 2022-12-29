@@ -126,9 +126,6 @@ class CorrelationEditor:
         # DEBUG
         CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_refl.tif"))))
         CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
-        CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
-        CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
-        CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
         CorrelationEditor.active_frame = CorrelationEditor.frames[0]
 
         # load icons
@@ -169,7 +166,6 @@ class CorrelationEditor:
             for gizmo in self.gizmos:
                 gizmo.hide = True
         CorrelationEditor.active_frame_timer += self.window.delta_time
-        print(self.get_object_under_cursor(self.window.cursor_pos))
         ## end content
         imgui.render()
         self.imgui_implementation.render(imgui.get_draw_data())
@@ -871,6 +867,7 @@ class CLEMFrame:
 class EditorGizmo:
     idgen = count(0)
     ICON_SIZE = 10.0
+    CORNER_OFFSET = 1000.0
     TYPE_SCALE = 0
     TYPE_ROTATE = 1
     TYPE_PIVOT = 2
@@ -880,6 +877,9 @@ class EditorGizmo:
     ICON_SIZES[TYPE_SCALE] = 1.0
     ICON_SIZES[TYPE_ROTATE] = 0.8
     ICON_SIZES[TYPE_PIVOT] = 0.66
+    ICON_OFFSETS = dict()
+    ICON_OFFSETS[TYPE_SCALE] = 1.0
+    ICON_OFFSETS[TYPE_ROTATE] = 0.1
 
     @staticmethod
     def init_textures():
@@ -930,6 +930,10 @@ class EditorGizmo:
             frame_corners = frame.corner_positions
             self.transform.translation = frame_corners[self.idx]
             self.transform.rotation = frame.transform.rotation + self.idx * 90.0
+            self.transform.translation[0] += EditorGizmo.CORNER_OFFSET * np.cos(
+                (1.5 + self.idx) * np.pi / 2.0 + frame.transform.rotation / 180 * np.pi) * EditorGizmo.ICON_OFFSETS[self.type]
+            self.transform.translation[1] += EditorGizmo.CORNER_OFFSET * np.sin(
+                (1.5 + self.idx) * np.pi / 2.0 + frame.transform.rotation / 180 * np.pi) * EditorGizmo.ICON_OFFSETS[self.type]
         self.transform.scale = 0.0 if self.camera_zoom == 0.0 else 1.0 / self.camera_zoom
         self.transform.compute_matrix()
 
@@ -941,6 +945,7 @@ class EditorGizmo:
 
     def set_zoom_compensation_factor(self, camera_zoom):
         self.camera_zoom = camera_zoom
+
 
 class Transform:
     def __init__(self):
