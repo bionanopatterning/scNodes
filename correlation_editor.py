@@ -13,32 +13,32 @@ from PIL import Image
 
 class CorrelationEditor:
     if True:
-        COLOUR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 1.0)
-        COLOUR_PANEL_BACKGROUND = (0.94, 0.94, 0.94, 1.0)
+        COLOUR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 0.94)
+        COLOUR_PANEL_BACKGROUND = (0.94, 0.94, 0.94, 0.94)
         COLOUR_TITLE_BACKGROUND = (0.87, 0.87, 0.83, 0.96)
         COLOUR_FRAME_BACKGROUND = (0.87, 0.87, 0.83, 0.96)
-        COLOUR_FRAME_ACTIVE = (0.91, 0.91, 0.86, 1.0)
-        COLOUR_FRAME_DARK = (0.83, 0.83, 0.76, 1.0)
-        COLOUR_FRAME_EXTRA_DARK = (0.76, 0.76, 0.71, 1.0)
-        COLOUR_MAIN_MENU_BAR = (0.882, 0.882, 0.882, 1.0)
-        COLOUR_MAIN_MENU_BAR_TEXT = (0.0, 0.0, 0.0, 1.0)
-        COLOUR_MAIN_MENU_BAR_HILIGHT = (0.96, 0.95, 0.92, 1.0)
-        COLOUR_MENU_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 1.0)
+        COLOUR_FRAME_ACTIVE = (0.91, 0.91, 0.86, 0.94)
+        COLOUR_FRAME_DARK = (0.83, 0.83, 0.76, 0.94)
+        COLOUR_FRAME_EXTRA_DARK = (0.76, 0.76, 0.71, 0.94)
+        COLOUR_MAIN_MENU_BAR = (0.882, 0.882, 0.882, 0.94)
+        COLOUR_MAIN_MENU_BAR_TEXT = (0.0, 0.0, 0.0, 0.94)
+        COLOUR_MAIN_MENU_BAR_HILIGHT = (0.96, 0.95, 0.92, 0.94)
+        COLOUR_MENU_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 0.94)
+
         COLOUR_HEADER = COLOUR_FRAME_DARK
         COLOUR_HEADER_ACTIVE = COLOUR_FRAME_ACTIVE
         COLOUR_HEADER_HOVERED = COLOUR_FRAME_EXTRA_DARK
         COLOUR_TEXT = (0.0, 0.0, 0.0, 1.0)
-        COLOUR_DROP_TARGET = (0.83, 0.83, 0.83, 1.0)
         WINDOW_ROUNDING = 5.0
 
-        COLOUR_IMAGE_BORDER = (1.0, 1.0, 1.0, 1.0)
+        COLOUR_IMAGE_BORDER = (1.0, 1.0, 1.0, 0.0)
         THICKNESS_IMAGE_BORDER = GLfloat(3.0)
 
         BLEND_MODES = dict()  # blend mode template: ((glBlendFunc, ARG1, ARG2), (glBlendEquation, ARG1))
-        BLEND_MODES[" Alpha blending"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_FUNC_ADD)
-        BLEND_MODES[" Sum frames"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_ADD)  ## or maybe GL_ONE instead of GL_DST_ALPHA
-        BLEND_MODES[" Subtract frames"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_SUBTRACT)
-        BLEND_MODES[" Subtract frames (inverted)"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_REVERSE_SUBTRACT)
+        BLEND_MODES[" Transparency"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_FUNC_ADD)
+        BLEND_MODES[" Sum"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_ADD)  ## or maybe GL_ONE instead of GL_DST_ALPHA
+        BLEND_MODES[" Subtract"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_REVERSE_SUBTRACT)
+        BLEND_MODES[" Subtract (inverted)"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_SUBTRACT)
         BLEND_MODES[" Retain minimum"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_MIN)
         BLEND_MODES[" Retain maximum"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_MAX)
         BLEND_MODES_LIST = list(BLEND_MODES.keys())
@@ -47,7 +47,8 @@ class CorrelationEditor:
         ROTATION_SPEED = 1.0
         SCALE_SPEED = 1.0
 
-        WORLD_PIXEL_SIZE = 100.0
+        DEFAULT_PIXEL_SIZE = 64.0
+        DEFAULT_HORIZONTAL_FOV_WIDTH = 50000  # upon init, camera zoom is such that from left to right of window = 50 micron.
         CAMERA_ZOOM_STEP = 0.1
 
         HISTOGRAM_BINS = 40
@@ -66,8 +67,11 @@ class CorrelationEditor:
         BLEND_COMBO_WIDTH = 150
         VISUALS_CTRL_ALPHA = 0.8
 
+        CAMERA_MAX_ZOOM = 0.7
+
     # editing
     MOUSE_SHORT_PRESS_MAX_DURATION = 0.25  # seconds
+    ARROW_KEY_TRANSLATION = 100.0  # nm
     mouse_left_press_world_pos = [0, 0]
     mouse_left_release_world_pos = [0, 0]
 
@@ -80,6 +84,7 @@ class CorrelationEditor:
     active_frame_original_translation = [0, 0]
     active_gizmo = None
     transform_buffer = None
+    snap_enabled = True
 
     frame_drag_payload = None
     context_menu_open = None
@@ -99,11 +104,14 @@ class CorrelationEditor:
         else:
             self.imgui_context = imgui.create_context()
         self.imgui_implementation = GlfwRenderer(self.window.glfw_window)
-        self.window.set_mouse_callbacks()
+        #self.window.set_mouse_callbacks()
+        self.window.set_callbacks()
         self.window.set_window_callbacks()
 
         self.renderer = Renderer()
-        self.camera = Camera()
+        self.camera = Camera()  # default camera 'zoom' value is 1.0, in which case the vertical field of view size is equal to window_height_in_pixels nanometer.
+        self.camera.zoom = settings.ne_window_height / CorrelationEditor.DEFAULT_HORIZONTAL_FOV_WIDTH  # now it is DEFAULT_HORIZONTAL_FOV_WIDTH
+
         EditorGizmo.init_textures()
         self.gizmos.append(EditorGizmo(EditorGizmo.TYPE_SCALE, idx=0))
         self.gizmos.append(EditorGizmo(EditorGizmo.TYPE_SCALE, idx=1))
@@ -114,14 +122,24 @@ class CorrelationEditor:
         self.gizmos.append(EditorGizmo(EditorGizmo.TYPE_ROTATE, idx=2))
         self.gizmos.append(EditorGizmo(EditorGizmo.TYPE_ROTATE, idx=3))
         self.gizmos.append(EditorGizmo(EditorGizmo.TYPE_PIVOT))
-        # TODO: when frame can not be selected by left click it appears to be right after moving it. Suspect corner positions arent properly updated (i.e. hitbox pos).
-        ## DEBUG
+
+        # DEBUG
         CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_refl.tif"))))
-        # CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
-        # CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
-        # CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
-        # CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
+        CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
+        CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
+        CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
+        CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
         CorrelationEditor.active_frame = CorrelationEditor.frames[0]
+
+        # load icons
+        self.icon_no_interp = Texture(format="rgba32f")
+        pxd_icon_no_interp = np.asarray(Image.open("icons/icon_ninterp_256.png")).astype(np.float32) / 255.0
+        self.icon_no_interp.update(pxd_icon_no_interp)
+        self.icon_no_interp.set_linear_interpolation()  # :)
+        self.icon_linterp = Texture(format="rgba32f")
+        pxd_icon_linterp = np.asarray(Image.open("icons/icon_linterp_256.png")).astype(np.float32) / 255.0
+        self.icon_linterp.update(pxd_icon_linterp)
+        self.icon_linterp.set_linear_interpolation()
 
     def on_update(self):
         imgui.set_current_context(self.imgui_context)
@@ -133,7 +151,7 @@ class CorrelationEditor:
         imgui.new_frame()
 
         ## content
-        self.user_input()
+        self.editor_control()
         self.camera_control()
         self.camera.on_update()
         self.gui_main()
@@ -142,23 +160,16 @@ class CorrelationEditor:
             frame.update_model_matrix()
 
         if CorrelationEditor.active_frame is not None:
-            frame_corner_coordinates = CorrelationEditor.active_frame.corner_positions_local
             visible_gizmo_types = [EditorGizmo.TYPE_SCALE] if CorrelationEditor.gizmo_mode_scale else [EditorGizmo.TYPE_ROTATE, EditorGizmo.TYPE_PIVOT]
             for gizmo in self.gizmos:
                 gizmo.hide = gizmo.type not in visible_gizmo_types
-                if gizmo.idx is not None:
-                    gizmo.transform.translation = copy(frame_corner_coordinates[gizmo.idx])
-                    # gizmo center is now moved to the corner of the active frame IN LOCAL COORDINATES.
-                elif gizmo.type == EditorGizmo.TYPE_PIVOT:
-                    gizmo.transform.translation = copy(CorrelationEditor.active_frame.pivot_point)
-                    # or in case of type pivot, it is moved to the frame's pivot position.
-                # next, update the full matrix:
-                gizmo.update_model_matrix(CorrelationEditor.active_frame.transform)
+                gizmo.set_parent_frame(CorrelationEditor.active_frame)
+                gizmo.set_zoom_compensation_factor(self.camera.zoom)
         else:
             for gizmo in self.gizmos:
                 gizmo.hide = True
         CorrelationEditor.active_frame_timer += self.window.delta_time
-
+        print(self.get_object_under_cursor(self.window.cursor_pos))
         ## end content
         imgui.render()
         self.imgui_implementation.render(imgui.get_draw_data())
@@ -195,7 +206,7 @@ class CorrelationEditor:
 
         first_frame = True
         for frame in reversed(CorrelationEditor.frames):
-            self.renderer.render_frame_quad(self.camera, frame, override_blending=first_frame)
+            self.renderer.render_frame_quad(self.camera, frame, override_blending=False)  # previously: override_blending = first_frame
             first_frame = False
         if CorrelationEditor.active_frame is not None:
             self.renderer.render_frame_border(self.camera, CorrelationEditor.active_frame)
@@ -225,7 +236,11 @@ class CorrelationEditor:
                 imgui.end_menu()
             if imgui.begin_menu("Settings"):
                 _c, self.window.clear_color = imgui.color_edit4("Background colour", *self.window.clear_color, flags=imgui.COLOR_EDIT_NO_INPUTS)
+                imgui.set_next_item_width(60)
+                _c, CorrelationEditor.ARROW_KEY_TRANSLATION = imgui.input_float("Arrow key step size (nm)", CorrelationEditor.ARROW_KEY_TRANSLATION, 0.0, 0.0, "%.1f")
+                _c, CorrelationEditor.snap_enabled = imgui.checkbox("Allow snapping", CorrelationEditor.snap_enabled)
                 imgui.end_menu()
+
             if imgui.begin_menu("Editor"):
                 select_node_editor, _ = imgui.menu_item("Node Editor", None, False)
                 select_correlation_editor, _ = imgui.menu_item("Correlation", None, True)
@@ -249,10 +264,10 @@ class CorrelationEditor:
             imgui.push_item_width(90)
             imgui.text("         X: ")
             imgui.same_line()
-            _, _t.translation[0] = imgui.drag_float("##X", _t.translation[0], CorrelationEditor.TRANSLATION_SPEED, 0.0, 0.0, f"{_t.translation[0]*CorrelationEditor.WORLD_PIXEL_SIZE:.1f} nm")
+            _, _t.translation[0] = imgui.drag_float("##X", _t.translation[0], CorrelationEditor.TRANSLATION_SPEED, 0.0, 0.0, f"{_t.translation[0]:.1f} nm")
             imgui.text("         Y: ")
             imgui.same_line()
-            _, _t.translation[1] = imgui.drag_float("##Y", _t.translation[1], CorrelationEditor.TRANSLATION_SPEED, 0.0, 0.0, f"{_t.translation[1]*CorrelationEditor.WORLD_PIXEL_SIZE:.1f} nm")
+            _, _t.translation[1] = imgui.drag_float("##Y", _t.translation[1], CorrelationEditor.TRANSLATION_SPEED, 0.0, 0.0, f"{_t.translation[1]:.1f} nm")
             imgui.text("     Angle: ")
             imgui.same_line()
             _, _t.rotation = imgui.drag_float("##Angle", _t.rotation, CorrelationEditor.ROTATION_SPEED, 0.0, 0.0, '%.2f°')
@@ -265,7 +280,7 @@ class CorrelationEditor:
         if expanded and af is not None:
             # LUT
             imgui.text("Look-up table")
-            imgui.set_next_item_width(129)
+            imgui.set_next_item_width(129 + (27 if af.lut != 0 else 0.0))
             _clut, af.lut = imgui.combo("##LUT", af.lut, ["Custom colour"] + settings.lut_names, len(settings.lut_names) + 1)
             if af.lut == 0:
                 imgui.same_line()
@@ -273,7 +288,7 @@ class CorrelationEditor:
                 _clut = _clut or _c
             if _clut:
                 af.update_lut()
-            imgui.same_line(spacing=-1 if (af.lut == 0) else 35)
+            imgui.same_line(spacing=-1)
             if imgui.button("A", 19, 19):
                 af.compute_autocontrast()
             CorrelationEditor.tooltip("Click to autocompute contrast limits.")
@@ -285,8 +300,11 @@ class CorrelationEditor:
             _h = af.hist_bins[-1]
             _max = af.contrast_lims[1]
             _min = af.contrast_lims[0]
-            _uv_left = 1.0 + (_l - _max) / (_max - _min)
-            _uv_right = 1.0 + (_h - _max) / (_max - _min)
+            _uv_left = 0.5
+            _uv_right = 0.5
+            if _max != _min:
+                _uv_left = 1.0 + (_l - _max) / (_max - _min)
+                _uv_right = 1.0 + (_h - _max) / (_max - _min)
             imgui.image(af.lut_texture.renderer_id, _cw, CorrelationEditor.INFO_LUT_PREVIEW_HEIGHT, (_uv_left, 0.5), (_uv_right, 0.5), border_color=CorrelationEditor.COLOUR_FRAME_BACKGROUND)
             imgui.push_item_width(_cw)
             _c, af.contrast_lims[0] = imgui.slider_float("min", af.contrast_lims[0], af.hist_bins[0], af.hist_bins[-1], format='min %.1f')
@@ -365,6 +383,16 @@ class CorrelationEditor:
         if CorrelationEditor.active_frame is not None:
             cw = imgui.get_content_region_available_width()
 
+            # interpolation mode
+            interp = CorrelationEditor.active_frame.interpolate
+            imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0.0, 0.0))
+            imgui.push_style_color(imgui.COLOR_BUTTON, *(1.0, 1.0, 1.0, 0.0))
+            if imgui.image_button(self.icon_linterp.renderer_id if interp else self.icon_no_interp.renderer_id, 19, 19):
+                CorrelationEditor.active_frame.toggle_interpolation()
+            imgui.pop_style_color(1)
+            imgui.pop_style_var(1)
+            imgui.same_line()
+
             imgui.set_next_item_width(CorrelationEditor.ALPHA_SLIDER_WIDTH)
             _, CorrelationEditor.active_frame.alpha = imgui.slider_float("##alpha", CorrelationEditor.active_frame.alpha, 0.0, 1.0, format="alpha = %.2f")
 
@@ -372,7 +400,6 @@ class CorrelationEditor:
             imgui.same_line()
             imgui.set_next_item_width(CorrelationEditor.BLEND_COMBO_WIDTH)
             _, CorrelationEditor.active_frame.blend_mode = imgui.combo("##blending", CorrelationEditor.active_frame.blend_mode, CorrelationEditor.BLEND_MODES_LIST)
-
 
         imgui.pop_style_color(5)
         imgui.pop_style_var(3)
@@ -387,12 +414,19 @@ class CorrelationEditor:
             self.camera.position[1] -= delta_cursor[1] / self.camera.zoom
         if self.window.get_key(glfw.KEY_LEFT_SHIFT):
             self.camera.zoom *= (1.0 + self.window.scroll_delta[1] * CorrelationEditor.CAMERA_ZOOM_STEP)
+            self.camera.zoom = min([self.camera.zoom, CorrelationEditor.CAMERA_MAX_ZOOM])
 
-    def user_input(self):
-        if imgui.get_io().want_capture_mouse or imgui.get_io().want_capture_keyboard:
+    def editor_control(self):
+        if imgui.get_io().want_capture_mouse:
+            self.window.mouse_event = None
+        if imgui.get_io().want_capture_keyboard:
             self.window.mouse_event = None
             self.window.key_event = None
-        # If left mouse click, find which (if any) object was clicked and set it to active.
+            return
+        if not self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT):
+            CorrelationEditor.active_gizmo = None
+
+        # Editor mouse input - selecting frames and changing frame gizmo mode
         if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
             # check which object should be active (if any)
             clicked_object = self.get_object_under_cursor(self.window.cursor_pos)
@@ -413,25 +447,64 @@ class CorrelationEditor:
             if CorrelationEditor.active_frame == clicked_object:
                 CorrelationEditor.gizmo_mode_scale = not CorrelationEditor.gizmo_mode_scale
 
+        # Editor mouse input - dragging frames and gizmo's
         if CorrelationEditor.active_gizmo is None and CorrelationEditor.active_frame is not None:
             if self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT):  # user is dragging the active frame
                 cursor_world_pos_now = self.camera.cursor_to_world_position(self.window.cursor_pos)
                 cursor_world_pos_prev = self.camera.cursor_to_world_position(self.window.cursor_pos_previous_frame)
                 delta_x = cursor_world_pos_now[0] - cursor_world_pos_prev[0]
                 delta_y = cursor_world_pos_now[1] - cursor_world_pos_prev[1]
-                CorrelationEditor.active_frame.transform.translation[0] += delta_x
-                CorrelationEditor.active_frame.transform.translation[1] += delta_y
+                for frame in CorrelationEditor.active_frame.list_all_children(include_self=True):
+                    frame.translate([delta_x, delta_y])
         elif CorrelationEditor.active_frame is not None:
-            # TODO - behaviour dependent on which gizmo is active.
+            cursor_world_pos_now = self.camera.cursor_to_world_position(self.window.cursor_pos)
+            cursor_world_pos_prev = self.camera.cursor_to_world_position(self.window.cursor_pos_previous_frame)
+            pivot = CorrelationEditor.active_frame.pivot_point
+            if self.window.get_key(glfw.KEY_LEFT_SHIFT):  # if LEFT_SHIFT pressed, rotate/scale is around center of image instead of around pivot.
+                pivot = CorrelationEditor.active_frame.transform.translation
             if CorrelationEditor.active_gizmo.type == EditorGizmo.TYPE_PIVOT:
-                pass # TODO
-        else:
-            pass  # No gizmo or frame active, so no mouse input (yet).
+                # Find the world position delta between prev and current frame and apply to pivot
+                delta_x = cursor_world_pos_now[0] - cursor_world_pos_prev[0]
+                delta_y = cursor_world_pos_now[1] - cursor_world_pos_prev[1]
+                CorrelationEditor.active_frame.pivot_point[0] += delta_x
+                CorrelationEditor.active_frame.pivot_point[1] += delta_y
+            elif CorrelationEditor.active_gizmo.type == EditorGizmo.TYPE_ROTATE:
+                # Find the angle moved by cursor between prev and current frame and apply a pivoted rotation
+                angle_i = np.arctan2(cursor_world_pos_prev[0] - pivot[0], cursor_world_pos_prev[1] - pivot[1])
+                angle_f = np.arctan2(cursor_world_pos_now[0] - pivot[0], cursor_world_pos_now[1] - pivot[1])
+                delta_angle = (angle_f - angle_i) / np.pi * 180.0
+                for frame in CorrelationEditor.active_frame.list_all_children(include_self=True):
+                    frame.pivoted_rotation(pivot, -delta_angle)
+            elif CorrelationEditor.active_gizmo.type == EditorGizmo.TYPE_SCALE:
+                # Find the scaling
+                offset_vec_i = [pivot[0] - cursor_world_pos_prev[0], pivot[1] - cursor_world_pos_prev[1]]
+                offset_vec_f = [pivot[0] - cursor_world_pos_now[0], pivot[1] - cursor_world_pos_now[1]]
+                scale_i = np.sqrt(offset_vec_i[0] ** 2 + offset_vec_i[1] ** 2)
+                scale_f = np.sqrt(offset_vec_f[0] ** 2 + offset_vec_f[1] ** 2)
+                relative_scale = 1.0
+                if scale_i != 0.0:
+                    relative_scale = scale_f / scale_i
+                for frame in CorrelationEditor.active_frame.list_all_children(include_self=True):
+                    frame.pivoted_scale(pivot, relative_scale)
 
+        # Editor mouse input - right-click options menu
         if self.window.get_mouse_event(glfw.MOUSE_BUTTON_RIGHT, glfw.PRESS):
             self.context_menu_obj = self.get_object_under_cursor(self.window.cursor_pos)
             self.context_menu_position = copy(self.window.cursor_pos)
             self.context_menu_open = True
+
+        # Editor key input
+        if self.window.get_key_event(glfw.KEY_LEFT, glfw.PRESS):  ## TODO: glfw.PRESS | glfw.REPEAT
+            CorrelationEditor.active_frame.transform.translation[0] -= CorrelationEditor.ARROW_KEY_TRANSLATION
+        elif self.window.get_key_event(glfw.KEY_RIGHT, glfw.PRESS):
+            CorrelationEditor.active_frame.transform.translation[0] += CorrelationEditor.ARROW_KEY_TRANSLATION
+        elif self.window.get_key_event(glfw.KEY_UP, glfw.PRESS):
+            CorrelationEditor.active_frame.transform.translation[1] += CorrelationEditor.ARROW_KEY_TRANSLATION
+        elif self.window.get_key_event(glfw.KEY_DOWN, glfw.PRESS):
+            CorrelationEditor.active_frame.transform.translation[1] -= CorrelationEditor.ARROW_KEY_TRANSLATION
+        elif self.window.get_key_event(glfw.KEY_DELETE, glfw.PRESS):
+            if CorrelationEditor.active_frame is not None:
+                CorrelationEditor.delete_frame(CorrelationEditor.active_frame)
 
     def context_menu(self):
         if self.context_menu_open:
@@ -460,28 +533,18 @@ class CorrelationEditor:
         self.window.end_frame()
 
     def get_object_under_cursor(self, cursor_position):
-        """In this function, the cursor position is first translated into the corresponding world position, and
+        """In this function, the cursor position is first translated into the corresponding world position and
         subsequently it is checked whether that world position lies within the quad of any of the existing CLEMFrame
-        objects. """
+        or EditorGizmo objects. Gizmos have priority."""
         def is_point_in_rectangle(point, corner_positions):
-            def triangle_area(a, b, c):
-                area = abs((b[0] * a[1] - a[0] * b[1]) +
-                           (c[0] * b[1] - b[0] * c[1]) +
-                           (a[0] * c[1] - c[0] * a[1])
-                           ) / 2
-                return area
-
             P = point
             A = corner_positions[0]
             B = corner_positions[1]
-            C = corner_positions[2]
             D = corner_positions[3]
-            point_edge_triangles_total_area = (triangle_area(P, A, D) +
-                                               triangle_area(P, D, C) +
-                                               triangle_area(P, C, B) +
-                                               triangle_area(P, B, A))
-            rectangle_area = np.sqrt((A[0] - B[0])**2 + (A[1] - B[1])**2) * np.sqrt((A[0] - D[0])**2 + (A[1] - D[1])**2)
-            return point_edge_triangles_total_area <= rectangle_area
+            ap = [P[0] - A[0], P[1] - A[1]]
+            ab = [B[0] - A[0], B[1] - A[1]]
+            ad = [D[0] - A[0], D[1] - A[1]]
+            return (0 < ap[0] * ab[0] + ap[1] * ab[1] < ab[0]**2 + ab[1]**2) and (0 < ap[0] * ad[0] + ap[1] * ad[1] < ad[0]**2 + ad[1]**2)
 
         cursor_world_position = self.camera.cursor_to_world_position(cursor_position)
         for gizmo in CorrelationEditor.gizmos:
@@ -573,8 +636,7 @@ class Renderer:
             gizmo.va.bind()
             gizmo.texture.bind(0)
             self.gizmo_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
-            self.gizmo_shader.uniformmat4("modelMatrix", gizmo.transform_full.matrix)
-            self.gizmo_shader.uniform1f("zoomCorrectionFactor", 1.0 / camera.zoom)
+            self.gizmo_shader.uniformmat4("modelMatrix", gizmo.transform.matrix)
             glDrawElements(GL_TRIANGLES, gizmo.va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
             self.gizmo_shader.unbind()
             gizmo.va.unbind()
@@ -629,7 +691,7 @@ class CLEMFrame:
         self.parent = None
         self.title = "Frame "+str(self.uid)
         # transform parameters
-        self.pixel_size = 100.0  # pixel size in nm
+        self.pixel_size = CorrelationEditor.DEFAULT_PIXEL_SIZE  # pixel size in nm
         self.pivot_point = np.zeros(2)  # pivot point for rotation and scaling of this particular image. can be moved by the user. In _local coordinates_, i.e. relative to where the frame itself is positioned.
         self.transform = Transform()
 
@@ -644,6 +706,7 @@ class CLEMFrame:
         self.hist_vals = list()
         self.compute_histogram()
         self.hide = False
+        self.interpolate = False  # False for pixelated, True for interpolated
 
         # aux
         self.corner_positions_local = [[0, 0], [0, 0], [0, 0], [0, 0]]
@@ -659,13 +722,39 @@ class CLEMFrame:
         self.update_lut()
         self.generate_va()
 
+    def translate(self, translation):
+        self.pivot_point[0] += translation[0]
+        self.pivot_point[1] += translation[1]
+        self.transform.translation[0] += translation[0]
+        self.transform.translation[1] += translation[1]
+
+    def pivoted_rotation(self, pivot, angle):
+        self.transform.rotation += angle
+        p = np.matrix([self.transform.translation[0] - pivot[0], self.transform.translation[1] - pivot[1]]).T
+        rotation_mat = np.identity(2)
+        _cos = np.cos(angle / 180.0 * np.pi)
+        _sin = np.sin(angle / 180.0 * np.pi)
+        rotation_mat[0, 0] = _cos
+        rotation_mat[1, 0] = _sin
+        rotation_mat[0, 1] = -_sin
+        rotation_mat[1, 1] = _cos
+        delta_translation = rotation_mat * p - p
+        delta_translation = [float(delta_translation[0]), float(delta_translation[1])]
+        self.transform.translation[0] += delta_translation[0]
+        self.transform.translation[1] += delta_translation[1]
+
+    def pivoted_scale(self, pivot, scale):
+        offset = [pivot[0] - self.transform.translation[0], pivot[1] - self.transform.translation[1]]
+        self.transform.translation[0] += offset[0] * (1.0 - scale)
+        self.transform.translation[1] += offset[1] * (1.0 - scale)
+        self.pixel_size *= scale
 
     def update_model_matrix(self):
+        self.transform.scale = self.pixel_size
         self.transform.compute_matrix()
         for i in range(4):
             vec = np.matrix([*self.corner_positions_local[i], 0.0, 1.0]).T
             self.corner_positions[i] = (self.transform.matrix * vec)[0:2]
-        # TODO TODO
 
     def unparent(self):
         if self.parent is not None:
@@ -674,7 +763,6 @@ class CLEMFrame:
 
     def parent_to(self, parent):
         if parent is None:
-            self.transform = deepcopy(self.transform_full)
             self.unparent()
             return
         # check that parent isn't any child of self
@@ -688,12 +776,30 @@ class CLEMFrame:
         if inheritance_loop:
             return
 
-        self.transform = self.transform_full - parent.transform_full
-
         # remove self from parent's children list, set parent, and edit parent's children
         self.unparent()
         self.parent = parent
         parent.children.append(self)
+
+    def list_all_children(self, include_self=False):
+        """returns a list with all of this frame's children, + children's children, + etc."""
+        def get_children(frame):
+            children = list()
+            for child in frame.children:
+                children.append(child)
+                children += get_children(child)
+            return children
+        all_children = get_children(self)
+        if include_self:
+            all_children = [self] + all_children
+        return all_children
+
+    def toggle_interpolation(self):
+        self.interpolate = not self.interpolate
+        if self.interpolate:
+            self.texture.set_linear_interpolation()
+        else:
+            self.texture.set_no_interpolation()
 
     def update_lut(self):
         if self.lut > 0:
@@ -764,12 +870,16 @@ class CLEMFrame:
 
 class EditorGizmo:
     idgen = count(0)
-    HITBOX_SIZE = 7
+    ICON_SIZE = 10.0
     TYPE_SCALE = 0
     TYPE_ROTATE = 1
     TYPE_PIVOT = 2
 
     ICON_TEXTURES = dict()
+    ICON_SIZES = dict()
+    ICON_SIZES[TYPE_SCALE] = 1.0
+    ICON_SIZES[TYPE_ROTATE] = 0.8
+    ICON_SIZES[TYPE_PIVOT] = 0.66
 
     @staticmethod
     def init_textures():
@@ -800,39 +910,37 @@ class EditorGizmo:
         self.generate_va()
         self.hide = False
         self.transform = Transform()
-        self.transform_full = Transform()
-        self.translation_offset = [0, 0]
-        if self.idx is not None:
-            _s = EditorGizmo.HITBOX_SIZE + (2.0 if self.type == EditorGizmo.TYPE_SCALE else 0.0)
-            self.translation_offset[0] = -_s * np.cos((self.idx - 0.5) * np.pi / 2.0)
-            self.translation_offset[1] = -_s * np.sin((self.idx - 0.5) * np.pi / 2.0)
-            self.transform.rotation = self.idx * 90.0
+        self.camera_zoom = 0.0
 
     def generate_va(self):
-        w, h = EditorGizmo.HITBOX_SIZE, EditorGizmo.HITBOX_SIZE
-        vertex_attributes = [-w, h, 1.0, 0.0, 1.0,
-                             -w, -h, 1.0, 0.0, 0.0,
-                             w, -h, 1.0, 1.0, 0.0,
-                             w, h, 1.0, 1.0, 1.0]
-        self.corner_positions_local = [[-w, h], [-w, -h], [w, -h], [w, h]]
+        w = EditorGizmo.ICON_SIZE * EditorGizmo.ICON_SIZES[self.type]
+        vertex_attributes = [-w, w, 1.0, 0.0, 1.0,
+                             -w, -w, 1.0, 0.0, 0.0,
+                             w, -w, 1.0, 1.0, 0.0,
+                             w, w, 1.0, 1.0, 1.0]
+        self.corner_positions_local = [[-w, w], [-w, -w], [w, -w], [w, w]]
         indices = [0, 1, 2, 2, 0, 3]
         self.va.update(VertexBuffer(vertex_attributes), IndexBuffer(indices))
 
-    def update_model_matrix(self, parent_transform):
-        self.transform.translation[0] += self.translation_offset[0]
-        self.transform.translation[1] += self.translation_offset[1]
-        self.transform_full = copy(self.transform) + parent_transform
+    def set_parent_frame(self, frame):
+        # set the gizmo's positions in accordance with the parent frame.
+        if self.type == EditorGizmo.TYPE_PIVOT:
+            self.transform.translation = copy(frame.pivot_point)
+        else:
+            frame_corners = frame.corner_positions
+            self.transform.translation = frame_corners[self.idx]
+            self.transform.rotation = frame.transform.rotation + self.idx * 90.0
+        self.transform.scale = 0.0 if self.camera_zoom == 0.0 else 1.0 / self.camera_zoom
         self.transform.compute_matrix()
-        self.transform_full.compute_matrix()
-        self.transform.translation[0] -= self.translation_offset[0]
-        self.transform.translation[1] -= self.translation_offset[1]
-        # update hitbox corner positions
+
         for i in range(4):
             local_corner_pos = tuple(self.corner_positions_local[i])
             vec = np.matrix([*local_corner_pos, 0.0, 1.0]).T
-            world_corner_pos = self.transform_full.matrix * vec
+            world_corner_pos = self.transform.matrix * vec
             self.corner_positions[i] = [float(world_corner_pos[0]), float(world_corner_pos[1])]
 
+    def set_zoom_compensation_factor(self, camera_zoom):
+        self.camera_zoom = camera_zoom
 
 class Transform:
     def __init__(self):

@@ -80,6 +80,10 @@ class Texture:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
+    def set_no_interpolation(self):
+        glBindTexture(GL_TEXTURE_2D, self.renderer_id)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
 
 class Shader:
     """Uniforms can only be uploaded when Shaders is first manually bound by user."""

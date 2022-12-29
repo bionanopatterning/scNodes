@@ -7,11 +7,10 @@ out vec2 fUV;
 
 uniform mat4 cameraMatrix;
 uniform mat4 modelMatrix;
-uniform float zoomCorrectionFactor;
 
 void main()
 {
-    gl_Position = cameraMatrix * modelMatrix * vec4(position.xy * zoomCorrectionFactor, position.z, 1.0);
+    gl_Position = cameraMatrix * modelMatrix * vec4(position, 1.0);
     fUV = UV;
 }
 
