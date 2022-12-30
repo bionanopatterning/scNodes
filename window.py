@@ -46,6 +46,7 @@ class Window:
         self.time = 0.0
         self.force_alpha_zero = False
 
+        self.dropped_files = list()
         # default callbacks
         glfw.set_window_focus_callback(self.glfw_window, self.window_focus_callback)
 
@@ -53,6 +54,7 @@ class Window:
         glfw.set_key_callback(self.glfw_window, self.key_callback)
         glfw.set_mouse_button_callback(self.glfw_window, self.mouse_button_callback)
         glfw.set_scroll_callback(self.glfw_window, self.scroll_callback)
+        glfw.set_drop_callback(self.glfw_window, self.drop_file_callback)
 
     def set_mouse_callbacks(self):
         glfw.set_mouse_button_callback(self.glfw_window, self.mouse_button_callback)
@@ -68,6 +70,7 @@ class Window:
         self.window_gained_focus = self.window_gained_focus_buffer
         self.window_gained_focus_buffer = False
         self.scroll_delta = [0.0, 0.0]
+        self.dropped_files = list()
         if self.force_alpha_zero:
             self.clear_color = (*self.clear_color[0:3], 0.0)
         glClearColor(*self.clear_color)
@@ -82,7 +85,6 @@ class Window:
             self.mouse_press_duration += self.delta_time
         else:
             self.reset_event_timer = True
-
         if self.focused:
             glfw.poll_events()
 
@@ -122,6 +124,9 @@ class Window:
             self.window_gained_focus_buffer = True
         else:
             self.focused = False
+
+    def drop_file_callback(self, window, paths):
+        self.dropped_files = paths
 
     def get_mouse_button(self, button):
         return glfw.get_mouse_button(self.glfw_window, button)

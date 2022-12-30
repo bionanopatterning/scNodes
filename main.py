@@ -39,7 +39,7 @@ if __name__ == "__main__":
                 correlation_editor.end_frame()
 
             image_viewer.on_update()
-            image_viewer.end_frame() # imageviewer was AFTER nodeeditor
+            image_viewer.end_frame()
 
     finally:
         node_editor.delete_temporary_files()

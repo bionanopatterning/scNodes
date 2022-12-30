@@ -462,6 +462,9 @@ class ImageViewer:
         if _reset_view:
             self.center_camera()
             self.context_menu_open = False
+        _add_to_correlation_editor, _ = imgui.menu_item("Add to Correlation Editor")
+        if _add_to_correlation_editor:
+            cfg.correlation_editor.add_frame(self.image.load())
         if imgui.begin_menu("Change LUT"):
             for key in settings.lut_names:
                 key_clicked, _ = imgui.menu_item(key)
