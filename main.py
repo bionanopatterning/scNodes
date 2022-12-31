@@ -12,18 +12,22 @@ set_loky_pickler("cloudpickle")
 
 if __name__ == "__main__":
     if not glfw.init():
-        raise Exception("Could not initialize GLFW library")
-
+        raise Exception("Could not initialize GLFW library!")
 
     main_window = Window(settings.ne_window_width, settings.ne_window_height, settings.ne_window_title)
-    node_editor = NodeEditor(main_window)
+
+    imgui_context = imgui.create_context()
+    imgui_impl = GlfwRenderer(main_window.glfw_window)
+
+    node_editor = NodeEditor(main_window, imgui_context)
     node_editor.delete_temporary_files()
     cfg.node_editor = node_editor
-    correlation_editor = CorrelationEditor(main_window, node_editor.get_font_atlas_ptr())
+
+    correlation_editor = CorrelationEditor(main_window, imgui_context)
     cfg.correlation_editor = correlation_editor
 
     image_viewer_window = Window(settings.iv_window_width, settings.iv_window_height, settings.iv_window_title)
-    image_viewer = ImageViewer(image_viewer_window, node_editor.get_font_atlas_ptr())
+    image_viewer = ImageViewer(image_viewer_window, imgui.create_context(imgui_impl.io.fonts))
     cfg.image_viewer = image_viewer
 
     try:

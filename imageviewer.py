@@ -39,19 +39,18 @@ class ImageViewer:
     FRAME_SELECT_BUTTON_SIZE = [20, 19]
     FRAME_SELECT_BUTTON_SPACING = 4
 
-    def __init__(self, window, shared_font_atlas=None):
+    def __init__(self, window, imgui_context, imgui_impl=None):
         # glfw and imgui
         self.window = window
         self.window.make_current()
 
-        if shared_font_atlas is not None:
-            self.imgui_context = imgui.create_context(shared_font_atlas)
+        self.imgui_context = imgui_context
+        if imgui_impl is None:
+            self.imgui_implementation = GlfwRenderer(self.window.glfw_window)
         else:
-            imgui.get_current_context()
-            self.imgui_context = imgui.create_context()
-        self.imgui_implementation = GlfwRenderer(self.window.glfw_window)
-        self.window.set_callbacks()
-        self.window.set_window_callbacks()
+            self.imgui_implementation = imgui_impl
+        #self.window.set_callbacks()
+        #self.window.set_window_callbacks()
         self.window.clear_color = ImageViewer.COLOUR_CLEAR
         # Rendering related objects and vars
         self.shader = Shader("shaders/textured_shader.glsl")

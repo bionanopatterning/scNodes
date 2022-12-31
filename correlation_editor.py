@@ -98,7 +98,7 @@ class CorrelationEditor:
 
     incoming_frame_buffer = list()
 
-    def __init__(self, window, shared_font_atlas=None):
+    def __init__(self, window, imgui_context, imgui_impl=None):
         # Note that CorrelationEditor and NodeEditor share a window. In either's on_update, end_frame,
         # __init__, etc. methods, bits of the same window-management related code are called.
 
@@ -106,14 +106,14 @@ class CorrelationEditor:
         self.window.clear_color = CorrelationEditor.COLOUR_WINDOW_BACKGROUND
         self.window.make_current()
 
-        if shared_font_atlas is not None:
-            self.imgui_context = imgui.create_context(shared_font_atlas)
+        self.imgui_context = imgui_context
+        if imgui_impl is None:
+            self.imgui_implementation = GlfwRenderer(self.window.glfw_window)
         else:
-            self.imgui_context = imgui.create_context()
-        self.imgui_implementation = GlfwRenderer(self.window.glfw_window)
+            self.imgui_implementation = imgui_impl
         #self.window.set_mouse_callbacks()
-        self.window.set_callbacks()
-        self.window.set_window_callbacks()
+        #self.window.set_callbacks()
+        #self.window.set_window_callbacks()
 
         self.renderer = Renderer()
         self.camera = Camera()  # default camera 'zoom' value is 1.0, in which case the vertical field of view size is equal to window_height_in_pixels nanometer.
@@ -201,7 +201,6 @@ class CorrelationEditor:
 
     def load_externally_dropped_files(self, paths):
         pass ## TODO
-        print(paths)
         for path in paths:
             filetype = path[path.rfind("."):]
             if filetype == ".tiff" or filetype == ".tif":
@@ -214,6 +213,7 @@ class CorrelationEditor:
         # if .tif/f, .mrc, .png: do something.
 
     def gui_main(self):
+        imgui.show_demo_window()
         imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *CorrelationEditor.COLOUR_PANEL_BACKGROUND)
         imgui.push_style_color(imgui.COLOR_TEXT, *CorrelationEditor.COLOUR_TEXT)
         imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *CorrelationEditor.COLOUR_TITLE_BACKGROUND)

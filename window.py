@@ -46,10 +46,11 @@ class Window:
         self.time = 0.0
         self.delta_time = 0.0
         self.force_alpha_zero = False
-
         self.dropped_files = list()
+
         # default callbacks
         glfw.set_window_focus_callback(self.glfw_window, self.window_focus_callback)
+        self.set_callbacks()
 
     def set_callbacks(self):
         glfw.set_key_callback(self.glfw_window, self.key_callback)
