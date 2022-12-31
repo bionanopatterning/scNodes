@@ -9,7 +9,7 @@ from itertools import count
 import config as cfg
 from copy import copy, deepcopy
 from PIL import Image
-
+import mrcfile
 
 class CorrelationEditor:
     if True:
@@ -38,11 +38,12 @@ class CorrelationEditor:
 
         BLEND_MODES = dict()  # blend mode template: ((glBlendFunc, ARG1, ARG2), (glBlendEquation, ARG1))
         BLEND_MODES[" Transparency"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_FUNC_ADD)
-        BLEND_MODES[" Sum"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_ADD)  ## or maybe GL_ONE instead of GL_DST_ALPHA
+        BLEND_MODES[" Sum"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_ADD)
         BLEND_MODES[" Subtract"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_REVERSE_SUBTRACT)
         BLEND_MODES[" Subtract (inverted)"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_SUBTRACT)
         BLEND_MODES[" Retain minimum"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_MIN)
         BLEND_MODES[" Retain maximum"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_MAX)
+        BLEND_MODES[" Multiply"] = (GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA, GL_FUNC_ADD)
         BLEND_MODES_LIST = list(BLEND_MODES.keys())
 
         TRANSLATION_SPEED = 1.0
@@ -76,8 +77,12 @@ class CorrelationEditor:
     # editing
     MOUSE_SHORT_PRESS_MAX_DURATION = 0.25  # seconds
     ARROW_KEY_TRANSLATION = 100.0  # nm
+    ARROW_KEY_TRANSLATION_FAST = 1000.0  # nm
+    ARROW_KEY_TRANSLATION_SLOW = 10.0
     mouse_left_press_world_pos = [0, 0]
     mouse_left_release_world_pos = [0, 0]
+
+    mrc_flip_on_load = False
 
     # data
     frames = list()  # order of frames in this list determines the rendering order. Index 0 = front, index -1 = back.
@@ -97,8 +102,9 @@ class CorrelationEditor:
     context_menu_obj = None
 
     incoming_frame_buffer = list()
+    frames_dropped = False
 
-    def __init__(self, window, imgui_context, imgui_impl=None):
+    def __init__(self, window, imgui_context, imgui_impl):
         # Note that CorrelationEditor and NodeEditor share a window. In either's on_update, end_frame,
         # __init__, etc. methods, bits of the same window-management related code are called.
 
@@ -107,13 +113,7 @@ class CorrelationEditor:
         self.window.make_current()
 
         self.imgui_context = imgui_context
-        if imgui_impl is None:
-            self.imgui_implementation = GlfwRenderer(self.window.glfw_window)
-        else:
-            self.imgui_implementation = imgui_impl
-        #self.window.set_mouse_callbacks()
-        #self.window.set_callbacks()
-        #self.window.set_window_callbacks()
+        self.imgui_implementation = imgui_impl
 
         self.renderer = Renderer()
         self.camera = Camera()  # default camera 'zoom' value is 1.0, in which case the vertical field of view size is equal to window_height_in_pixels nanometer.
@@ -132,25 +132,22 @@ class CorrelationEditor:
 
         # DEBUG
         CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_refl.tif"))))
-        CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
-        CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
-        CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
-        CorrelationEditor.frames.append(CLEMFrame(np.asarray(Image.open("ce_test_fluo.tif"))))
         CorrelationEditor.active_frame = CorrelationEditor.frames[0]
 
         # load icons
-        self.icon_no_interp = Texture(format="rgba32f")
-        pxd_icon_no_interp = np.asarray(Image.open("icons/icon_ninterp_256.png")).astype(np.float32) / 255.0
-        self.icon_no_interp.update(pxd_icon_no_interp)
-        self.icon_no_interp.set_linear_interpolation()  # :)
-        self.icon_linterp = Texture(format="rgba32f")
-        pxd_icon_linterp = np.asarray(Image.open("icons/icon_linterp_256.png")).astype(np.float32) / 255.0
-        self.icon_linterp.update(pxd_icon_linterp)
-        self.icon_linterp.set_linear_interpolation()
-        self.icon_close = Texture(format="rgba32f")
-        pxd_icon_close = np.asarray(Image.open("icons/icon_close_256.png")).astype(np.float32) / 255.0
-        self.icon_close.update(pxd_icon_close)
-        self.icon_close.set_linear_interpolation()
+        if True:
+            self.icon_no_interp = Texture(format="rgba32f")
+            pxd_icon_no_interp = np.asarray(Image.open("icons/icon_ninterp_256.png")).astype(np.float32) / 255.0
+            self.icon_no_interp.update(pxd_icon_no_interp)
+            self.icon_no_interp.set_linear_interpolation()  # :)
+            self.icon_linterp = Texture(format="rgba32f")
+            pxd_icon_linterp = np.asarray(Image.open("icons/icon_linterp_256.png")).astype(np.float32) / 255.0
+            self.icon_linterp.update(pxd_icon_linterp)
+            self.icon_linterp.set_linear_interpolation()
+            self.icon_close = Texture(format="rgba32f")
+            pxd_icon_close = np.asarray(Image.open("icons/icon_close_256.png")).astype(np.float32) / 255.0
+            self.icon_close.update(pxd_icon_close)
+            self.icon_close.set_linear_interpolation()
 
     def on_update(self):
         imgui.set_current_context(self.imgui_context)
@@ -161,6 +158,7 @@ class CorrelationEditor:
 
         incoming_files = deepcopy(self.window.dropped_files)
         self.window.on_update()
+        imgui.get_io().display_size = self.window.width, self.window.height
         imgui.new_frame()
 
         ## content
@@ -168,12 +166,6 @@ class CorrelationEditor:
         if incoming_files != list():
             self.load_externally_dropped_files(incoming_files)
 
-        # Handle frames sent to CE by srNodes
-        for obj in CorrelationEditor.incoming_frame_buffer:
-            new_frame = CLEMFrame(obj)
-            CorrelationEditor.frames.insert(0, new_frame)
-            CorrelationEditor.active_frame = new_frame
-        CorrelationEditor.incoming_frame_buffer = list()
 
         self.editor_control()
         self.camera_control()
@@ -194,26 +186,27 @@ class CorrelationEditor:
                 gizmo.hide = True
         CorrelationEditor.active_frame_timer += self.window.delta_time
 
-
+        # Handle incoming frames
+        CorrelationEditor.frames_dropped = False
+        for obj in CorrelationEditor.incoming_frame_buffer:
+            CorrelationEditor.frames_dropped = True
+            new_frame = CLEMFrame(obj)
+            CorrelationEditor.frames.insert(0, new_frame)
+            CorrelationEditor.active_frame = new_frame
+        CorrelationEditor.incoming_frame_buffer = list()
         ## end content
         imgui.render()
         self.imgui_implementation.render(imgui.get_draw_data())
 
     def load_externally_dropped_files(self, paths):
-        pass ## TODO
         for path in paths:
-            filetype = path[path.rfind("."):]
-            if filetype == ".tiff" or filetype == ".tif":
-                img = np.asarray(Image.open(path))
-                CorrelationEditor.add_frame(img)
-            elif filetype == ".png":
-                print("importing png not yet implemented")
-            elif filetype == ".mrc":
-                print("importing mrc not yet implemented")
-        # if .tif/f, .mrc, .png: do something.
+            incoming = ImportedFrameData(path)
+            clem_frame = incoming.to_CLEMFrame()
+            if clem_frame:
+                CorrelationEditor.frames.insert(0, clem_frame)
+                CorrelationEditor.active_frame = clem_frame
 
     def gui_main(self):
-        imgui.show_demo_window()
         imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *CorrelationEditor.COLOUR_PANEL_BACKGROUND)
         imgui.push_style_color(imgui.COLOR_TEXT, *CorrelationEditor.COLOUR_TEXT)
         imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *CorrelationEditor.COLOUR_TITLE_BACKGROUND)
@@ -279,6 +272,7 @@ class CorrelationEditor:
                 imgui.set_next_item_width(60)
                 _c, CorrelationEditor.ARROW_KEY_TRANSLATION = imgui.input_float("Arrow key step size (nm)", CorrelationEditor.ARROW_KEY_TRANSLATION, 0.0, 0.0, "%.1f")
                 _c, CorrelationEditor.snap_enabled = imgui.checkbox("Allow snapping", CorrelationEditor.snap_enabled)
+                _c, CorrelationEditor.mrc_flip_on_load = imgui.checkbox("Flip .mrc files when loading", CorrelationEditor.mrc_flip_on_load)
                 imgui.end_menu()
 
             if imgui.begin_menu("Editor"):
@@ -318,10 +312,13 @@ class CorrelationEditor:
             imgui.text("Pixel size: ")
             imgui.same_line()
             _, af.pixel_size = imgui.drag_float("##Pixel size", af.pixel_size, CorrelationEditor.SCALE_SPEED, 0.0, 0.0, '%.1f nm')
+            af.pixel_size = max([af.pixel_size, 0.1])
             af.pivot_point[0] += dx
             af.pivot_point[1] += dy
         # Visuals info
         expanded, _ = imgui.collapsing_header("Visuals", None)
+        if af is not None and af.is_rgb:
+            expanded = False
         if expanded and af is not None:
             # LUT
             imgui.text("Look-up table")
@@ -354,7 +351,6 @@ class CorrelationEditor:
             imgui.push_item_width(_cw)
             _c, af.contrast_lims[0] = imgui.slider_float("min", af.contrast_lims[0], af.hist_bins[0], af.hist_bins[-1], format='min %.1f')
             _c, af.contrast_lims[1] = imgui.slider_float("max", af.contrast_lims[1], af.hist_bins[0], af.hist_bins[-1], format='max %.1f')
-
         imgui.end()
         imgui.pop_style_color(3)
 
@@ -365,6 +361,7 @@ class CorrelationEditor:
         imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *CorrelationEditor.COLOUR_WINDOW_BACKGROUND)
         imgui.push_style_color(imgui.COLOR_BUTTON, *CorrelationEditor.COLOUR_WINDOW_BACKGROUND)
         imgui.push_style_color(imgui.COLOR_CHECK_MARK, *CorrelationEditor.COLOUR_TEXT)
+
         def frame_info_gui(f, indent=0, enable_drag=True, enable_widgets=True):
             nonlocal content_width, to_delete
             if f.parent is None:
@@ -446,7 +443,7 @@ class CorrelationEditor:
                 CorrelationEditor.frame_drag_payload = None
             if CorrelationEditor.frame_drag_payload is not None:
                 CorrelationEditor.release_frame_drag_payload = True
-        if imgui.begin("Frames in scene", False, imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE):
+        if imgui.begin("Frames in scene", False, imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_COLLAPSE):
             content_width = imgui.get_window_content_region_width()
             for frame in CorrelationEditor.frames:
                 if frame.parent is None:
@@ -475,8 +472,13 @@ class CorrelationEditor:
         imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *CorrelationEditor.COLOUR_TITLE_BACKGROUND)
 
         if CorrelationEditor.active_frame is not None:
-            cw = imgui.get_content_region_available_width()
-
+            if CorrelationEditor.active_frame.has_slices:
+                imgui.set_next_item_width(CorrelationEditor.ALPHA_SLIDER_WIDTH + CorrelationEditor.BLEND_COMBO_WIDTH + 35.0)
+                _c, requested_slice = imgui.slider_int("##slicer", CorrelationEditor.active_frame.current_slice, 0, CorrelationEditor.active_frame.n_slices, format=f"slice %.1f/{CorrelationEditor.active_frame.n_slices}")
+                if _c:
+                    CorrelationEditor.active_frame.set_slice(requested_slice)
+            else:
+                imgui.dummy(0.0, 19.0)
             # interpolation mode
             interp = CorrelationEditor.active_frame.interpolate
             imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0.0, 0.0))
@@ -495,7 +497,6 @@ class CorrelationEditor:
             imgui.same_line()
             imgui.set_next_item_width(CorrelationEditor.BLEND_COMBO_WIDTH)
             _, CorrelationEditor.active_frame.blend_mode = imgui.combo("##blending", CorrelationEditor.active_frame.blend_mode, CorrelationEditor.BLEND_MODES_LIST)
-
         imgui.pop_style_color(5)
         imgui.pop_style_var(3)
         imgui.end()
@@ -544,7 +545,8 @@ class CorrelationEditor:
             return
         if not self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT):
             CorrelationEditor.active_gizmo = None
-
+        if CorrelationEditor.frames_dropped:
+            return
         # Editor mouse input - selecting frames and changing frame gizmo mode
         if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
             # check which object should be active (if any)
@@ -618,15 +620,20 @@ class CorrelationEditor:
             self.context_menu_open = True
 
         # Editor key input
-        if self.window.get_key_event(glfw.KEY_LEFT, glfw.PRESS):  ## TODO: glfw.PRESS | glfw.REPEAT
-            CorrelationEditor.active_frame.transform.translation[0] -= CorrelationEditor.ARROW_KEY_TRANSLATION
-        elif self.window.get_key_event(glfw.KEY_RIGHT, glfw.PRESS):
-            CorrelationEditor.active_frame.transform.translation[0] += CorrelationEditor.ARROW_KEY_TRANSLATION
-        elif self.window.get_key_event(glfw.KEY_UP, glfw.PRESS):
-            CorrelationEditor.active_frame.transform.translation[1] += CorrelationEditor.ARROW_KEY_TRANSLATION
-        elif self.window.get_key_event(glfw.KEY_DOWN, glfw.PRESS):
-            CorrelationEditor.active_frame.transform.translation[1] -= CorrelationEditor.ARROW_KEY_TRANSLATION
-        elif self.window.get_key_event(glfw.KEY_DELETE, glfw.PRESS):
+        ctrl = imgui.is_key_down(glfw.KEY_LEFT_CONTROL) or imgui.is_key_down(glfw.KEY_RIGHT_CONTROL)
+        shift = imgui.is_key_down(glfw.KEY_LEFT_SHIFT) or imgui.is_key_down(glfw.KEY_RIGHT_SHIFT)
+        translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION
+        if ctrl: translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION_SLOW
+        if shift: translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION_FAST
+        if imgui.is_key_pressed(glfw.KEY_LEFT, repeat=True):
+            CorrelationEditor.active_frame.transform.translation[0] -= translation_step
+        elif imgui.is_key_pressed(glfw.KEY_RIGHT, repeat=True):
+            CorrelationEditor.active_frame.transform.translation[0] += translation_step
+        elif imgui.is_key_pressed(glfw.KEY_UP, repeat=True):
+            CorrelationEditor.active_frame.transform.translation[1] += translation_step
+        elif imgui.is_key_pressed(glfw.KEY_DOWN, repeat=True):
+            CorrelationEditor.active_frame.transform.translation[1] -= translation_step
+        elif imgui.is_key_pressed(glfw.KEY_DELETE, repeat=True):
             if CorrelationEditor.active_frame is not None:
                 CorrelationEditor.delete_frame(CorrelationEditor.active_frame)
 
@@ -743,6 +750,7 @@ class Renderer:
             self.quad_shader.uniform2f("contrastLimits", frame.contrast_lims)
             self.quad_shader.uniform1f("alpha", frame.alpha)
             self.quad_shader.uniformmat4("modelMatrix", frame.transform.matrix)
+            self.quad_shader.uniform1f("rgbMode", float(frame.is_rgb))
             glDrawElements(GL_TRIANGLES, frame.quad_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
             self.quad_shader.unbind()
             frame.quad_va.unbind()
@@ -815,14 +823,27 @@ class CLEMFrame:
 
     def __init__(self, img_array):
         """Grayscale images only - img_array must be a 2D np.ndarray"""
-        print(img_array.shape)
         # data
         self.uid = next(CLEMFrame.idgen)
         self.data = img_array
-        self.height, self.width = self.data.shape
+        self.is_rgb = False
+        if len(self.data.shape) == 2:
+            self.height, self.width = self.data.shape
+        elif len(self.data.shape) == 3:
+            self.height = self.data.shape[0]
+            self.width = self.data.shape[1]
+            self.is_rgb = True
+            self.data = self.data[:, :, 0:3]
+        else:
+            raise Exception("Correlation Editor not able to import image data with dimensions other than (XY) or (XYC). How did you manage..?")
         self.children = list()
         self.parent = None
         self.title = "Frame "+str(self.uid)
+        self.path = None
+        self.has_slices = False
+        self.n_slices = 1
+        self.current_slice = 0
+        self.extension = ""
         # transform parameters
         self.pixel_size = CorrelationEditor.DEFAULT_PIXEL_SIZE  # pixel size in nm
         self.pivot_point = np.zeros(2)  # pivot point for rotation and scaling of this particular image. can be moved by the user. In _local coordinates_, i.e. relative to where the frame itself is positioned.
@@ -846,14 +867,50 @@ class CLEMFrame:
         self.corner_positions = [[0, 0], [0, 0], [0, 0], [0, 0]]
 
         # opengl
-        self.texture = Texture(format="r32f")
-        self.texture.update(self.data.astype(np.float32))
+
+        if self.is_rgb:
+            self.texture = Texture(format="rgb32f")
+            self.texture.update(self.data.astype(np.float32))
+        else:
+            self.texture = Texture(format="r32f")
+            self.texture.update(self.data.astype(np.float32))
         self.lut_texture = Texture(format="rgb32f")
         self.quad_va = VertexArray()
         self.vertex_positions = list()
         self.border_va = VertexArray(attribute_format="xy")
         self.update_lut()
         self.generate_va()
+
+    def update_image_texture(self):
+        self.texture.update(self.data.astype(np.float32))
+        if not self.is_rgb:
+            self.compute_histogram()
+
+    def set_slice(self, requested_slice):
+        if not self.has_slices:
+            return
+        requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
+        if requested_slice == self.current_slice:
+            return
+        # else, load slice and update texture.
+        self.current_slice = requested_slice
+        if self.extension == ".tiff" or self.extension == ".tif":
+            data = Image.open(self.path)
+            data.seek(self.current_slice)
+            self.data = np.asarray(data)
+            self.update_image_texture()
+        elif self.extension == ".mrc":
+            mrc = mrcfile.mmap(self.path, mode="r")
+            if CorrelationEditor.mrc_flip_on_load:
+                self.n_slices = mrc.data.shape[2]
+                self.current_slice = min([self.current_slice, self.n_slices - 1])
+                self.data = mrc.data[:, :, self.current_slice]
+                self.update_image_texture()
+            else:
+                self.n_slices = mrc.data.shape[1]
+                self.current_slice = min([self.current_slice, self.n_slices - 1])
+                self.data = mrc.data[:, self.current_slice, :]
+                self.update_image_texture()
 
     def translate(self, translation):
         self.pivot_point[0] += translation[0]
@@ -1129,3 +1186,39 @@ class Transform:
         return out
 
 
+class ImportedFrameData:
+    def __init__(self, path):
+        self.path = path
+        self.title = path[path.rfind("\\")+1:]
+        self.extension = path[path.rfind("."):]
+        self.pxd = None
+        self.n_slices = 1
+        if self.extension == ".tiff" or self.extension == ".tif":
+            img = Image.open(path)
+            self.pxd = np.asarray(img)
+            self.n_slices = img.n_frames
+        elif self.extension == ".png":
+            self.pxd = np.asarray(Image.open(path)) / 255.0
+        elif self.extension == ".mrc":
+            mrc = mrcfile.mmap(self.path, mode="r")
+            if len(mrc.data.shape) == 2:
+                self.pxd = mrc.data
+            else:
+                if CorrelationEditor.mrc_flip_on_load:
+                    self.pxd = mrc.data[:, :, 0]
+                    self.n_slices = mrc.data.shape[1]
+                else:
+                    self.pxd = mrc.data[:, 0, :]
+                    self.n_slices = mrc.data.shape[1]
+
+    def to_CLEMFrame(self):
+        if self.pxd is None:
+            return False
+        clem_frame = CLEMFrame(self.pxd)
+        clem_frame.title = self.title
+        clem_frame.path = self.path
+        clem_frame.extension = self.extension
+        if self.n_slices > 1:
+            clem_frame.has_slices = True
+            clem_frame.n_slices = self.n_slices
+        return clem_frame

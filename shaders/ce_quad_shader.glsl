@@ -23,14 +23,22 @@ layout(binding = 1) uniform sampler2D lut;
 out vec4 fragmentColor;
 
 in vec2 fUV;
-uniform float alpha;
 
+uniform float alpha;
 uniform vec2 contrastLimits;
+uniform float rgbMode;
 
 void main()
 {
-    float pixelValue = texture(image, fUV).r;
-    float contrastValue = (pixelValue - contrastLimits.x) / (contrastLimits.y - contrastLimits.x);
-    vec3 pixelColor = texture(lut, vec2(contrastValue, 0)).rgb;
-    fragmentColor = vec4(pixelColor, alpha);
+    if (rgbMode == 1.0)
+    {
+        fragmentColor = vec4(texture(image, fUV).rgb, alpha);
+    }
+    else
+    {
+        float pixelValue = texture(image, fUV).r;
+        float contrastValue = (pixelValue - contrastLimits.x) / (contrastLimits.y - contrastLimits.x);
+        vec3 pixelColor = texture(lut, vec2(contrastValue, 0)).rgb;
+        fragmentColor = vec4(pixelColor, alpha);
+    }
 }

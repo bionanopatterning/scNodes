@@ -35,18 +35,14 @@ class NodeEditor:
     NODE_FACTORY = dict()
     NODE_GROUPS = dict()
 
-    def __init__(self, window, imgui_context, imgui_impl=None):
+    def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
         self.window.clear_color = NodeEditor.COLOUR_WINDOW_BACKGROUND
         self.window.make_current()
 
         self.imgui_context = imgui_context
-        if imgui_impl is None:
-            self.imgui_implementation = GlfwRenderer(self.window.glfw_window)
-        else:
-            self.imgui_implementation = imgui_impl
-        #self.window.set_mouse_callbacks()
-        #self.window.set_window_callbacks()
+        self.imgui_implementation = imgui_impl
+
 
         # Context menu
         self.context_menu_position = [0, 0]
@@ -96,11 +92,13 @@ class NodeEditor:
         cfg.node_move_requested = [0, 0]
         cfg.camera_move_requested = [0, 0]
         imgui_want_mouse = imgui.get_io().want_capture_mouse
+
         if self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT) and imgui_want_mouse:
             cfg.node_move_requested = self.window.cursor_delta
         elif self.window.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE) and not imgui_want_mouse:
             cfg.camera_move_requested = self.window.cursor_delta
 
+        imgui.get_io().display_size = self.window.width, self.window.height
         imgui.new_frame()
         self._gui_main()
         imgui.render()

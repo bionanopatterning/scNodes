@@ -39,18 +39,14 @@ class ImageViewer:
     FRAME_SELECT_BUTTON_SIZE = [20, 19]
     FRAME_SELECT_BUTTON_SPACING = 4
 
-    def __init__(self, window, imgui_context, imgui_impl=None):
+    def __init__(self, window, imgui_context, imgui_implementation):
         # glfw and imgui
         self.window = window
         self.window.make_current()
 
         self.imgui_context = imgui_context
-        if imgui_impl is None:
-            self.imgui_implementation = GlfwRenderer(self.window.glfw_window)
-        else:
-            self.imgui_implementation = imgui_impl
-        #self.window.set_callbacks()
-        #self.window.set_window_callbacks()
+        self.imgui_implementation = imgui_implementation
+
         self.window.clear_color = ImageViewer.COLOUR_CLEAR
         # Rendering related objects and vars
         self.shader = Shader("shaders/textured_shader.glsl")
@@ -108,6 +104,8 @@ class ImageViewer:
         self.current_dataset = Dataset()
         self.frame_info = ""
 
+        self.never_focused = True
+
     def set_mode(self, mode):
         if mode in ["R", "RGB"]:
             self.mode = mode
@@ -124,7 +122,7 @@ class ImageViewer:
             self.window.pop_any_mouse_event()
 
         self.window.on_update()
-        self.imgui_implementation.refresh_font_texture()
+        #self.imgui_implementation.refresh_font_texture()  # TODO reinstate this line?
         if self.window.window_size_changed:
             settings.iv_window_height = self.window.height
             settings.iv_window_width = self.window.width
@@ -146,6 +144,7 @@ class ImageViewer:
         self._edit_and_render_roi()
 
         # imgui
+        imgui.get_io().display_size = self.window.width, self.window.height
         imgui.new_frame()
         # Push overall imgui style vars
         imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *ImageViewer.COLOUR_FRAME_BACKGROUND)
@@ -260,7 +259,7 @@ class ImageViewer:
             if _always_auto_changed and self.autocontrast[self.contrast_window_channel]:
                 self._compute_auto_contrast()
             if imgui.is_window_focused():
-                if self.window.get_key_event(glfw.KEY_SPACE, glfw.PRESS):
+                if imgui.is_key_pressed(glfw.KEY_SPACE):
                     self._compute_auto_contrast()
             imgui.pop_style_color(4)
             imgui.end()
@@ -329,14 +328,10 @@ class ImageViewer:
             if self.window.scroll_delta[1] != 0:
                 _frame_idx_changed = True
                 self.current_dataset.current_frame -= int(self.window.scroll_delta[1])
-        if self.window.get_key_event(glfw.KEY_LEFT, glfw.PRESS, mods=0) or self.window.get_key_event(glfw.KEY_LEFT,
-                                                                                                     glfw.REPEAT,
-                                                                                                     mods=0):
+        if imgui.is_key_pressed(glfw.KEY_LEFT, True):
             _frame_idx_changed = True
             self.current_dataset.current_frame -= 1
-        if self.window.get_key_event(glfw.KEY_RIGHT, glfw.PRESS, mods=0) or self.window.get_key_event(glfw.KEY_RIGHT,
-                                                                                                      glfw.REPEAT,
-                                                                                                      mods=0):
+        if imgui.is_key_pressed(glfw.KEY_RIGHT, True):
             _frame_idx_changed = True
             self.current_dataset.current_frame += 1
         if _frame_idx_changed:
@@ -420,24 +415,27 @@ class ImageViewer:
                         self.camera.position[1] *= (1.0 + self.window.scroll_delta[1] * ImageViewer.CAMERA_ZOOM_STEP)
 
     def _shortcuts(self):
-        if self.window.get_key_event(glfw.KEY_C, glfw.PRESS, glfw.MOD_SHIFT | glfw.MOD_CONTROL):
+        shift = imgui.is_key_down(glfw.KEY_LEFT_SHIFT)
+        ctrl = imgui.is_key_down(glfw.KEY_LEFT_CONTROL)
+        if imgui.is_key_pressed(glfw.KEY_C) and shift and ctrl:
             self.contrast_window_open = True
-        if self.window.get_key_event(glfw.KEY_W, glfw.PRESS, glfw.MOD_CONTROL):
+        if imgui.is_key_pressed(glfw.KEY_W) and ctrl:
             self.contrast_window_open = False
         if self.contrast_window_open:
-            if self.window.get_key_event(glfw.KEY_SPACE, glfw.PRESS):
-                self._compute_auto_contrast(self.contrast_window_channel)
-            if self.window.get_key_event(glfw.KEY_SPACE, glfw.PRESS, glfw.MOD_CONTROL):
-                self.autocontrast = [True, True, True]
-                self._compute_auto_contrast(0)
-                self._compute_auto_contrast(1)
-                self._compute_auto_contrast(2)
-            if self.window.get_key_event(glfw.KEY_SPACE, glfw.PRESS, glfw.MOD_CONTROL | glfw.MOD_SHIFT):
+            if imgui.is_key_pressed(glfw.KEY_SPACE) and not shift:
+                if not ctrl:
+                    self._compute_auto_contrast(self.contrast_window_channel)
+                else:
+                    self.autocontrast = [True, True, True]
+                    self._compute_auto_contrast(0)
+                    self._compute_auto_contrast(1)
+                    self._compute_auto_contrast(2)
+            if imgui.is_key_pressed(glfw.KEY_SPACE) and shift and ctrl:
                 self.autocontrast = [False, False, False]
-        if self.window.get_key_event(glfw.KEY_S, glfw.PRESS, glfw.MOD_CONTROL):
+        if imgui.is_key_pressed(glfw.KEY_S) and ctrl:
             if self.image_pxd is not None:
                 self.save_current_image()
-        if self.window.get_key_event(glfw.KEY_DELETE, glfw.PRESS) or self.window.get_key_event(glfw.KEY_DELETE, glfw.REPEAT):
+        if imgui.is_key_pressed(glfw.KEY_DELETE, True):
             self.current_dataset.delete_by_index(self.current_dataset.current_frame)
             self.new_image_requested = True
 
@@ -457,6 +455,7 @@ class ImageViewer:
         if _open:
             self.contrast_window_open = True
             self.contrast_window_position = self.context_menu_position
+            self.context_menu_open = False
         _reset_view, _ = imgui.menu_item("Reset view")
         if _reset_view:
             self.center_camera()
@@ -464,6 +463,7 @@ class ImageViewer:
         _add_to_correlation_editor, _ = imgui.menu_item("Add to Correlation Editor")
         if _add_to_correlation_editor:
             cfg.correlation_editor.add_frame(self.image.load())
+            self.context_menu_open = False
         if imgui.begin_menu("Change LUT"):
             for key in settings.lut_names:
                 key_clicked, _ = imgui.menu_item(key)

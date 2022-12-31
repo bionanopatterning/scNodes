@@ -14,7 +14,7 @@ class Window:
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
         glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, OpenGL.GL.GL_TRUE)
         glfw.window_hint(glfw.RESIZABLE, glfw.FALSE)
-        glfw.window_hint(glfw.SAMPLES, 4);
+        glfw.window_hint(glfw.SAMPLES, 4)
 
         self.glfw_window = glfw.create_window(self.width, self.height, self.title, None, None)
         self.focused = True
@@ -49,11 +49,12 @@ class Window:
         self.dropped_files = list()
 
         # default callbacks
-        glfw.set_window_focus_callback(self.glfw_window, self.window_focus_callback)
-        self.set_callbacks()
+        self.set_window_callbacks()
 
     def set_callbacks(self):
+        # note: in current version of pyimgui, callbacks are _either_ to imgui or to app. setting callbacks takes input away from imgui.
         glfw.set_key_callback(self.glfw_window, self.key_callback)
+        # glfw.set_char_callback ... not necessary atm
         glfw.set_mouse_button_callback(self.glfw_window, self.mouse_button_callback)
         glfw.set_scroll_callback(self.glfw_window, self.scroll_callback)
         glfw.set_drop_callback(self.glfw_window, self.drop_file_callback)
@@ -64,6 +65,7 @@ class Window:
 
     def set_window_callbacks(self):
         glfw.set_window_size_callback(self.glfw_window, self.size_changed_callback)
+        glfw.set_window_focus_callback(self.glfw_window, self.window_focus_callback)
 
     def on_update(self):
         current_time = glfw.get_time()
@@ -105,8 +107,7 @@ class Window:
     def size_changed_callback(self, window, width, height):
         self.width = max([width, 1])
         self.height = max([height, 1])
-
-        #glViewport(0, 0, self.width, self.height)
+        glViewport(0, 0, self.width, self.height)
         self.window_size_changed = True
 
     def scroll_callback(self, _, dx, dy):
@@ -169,8 +170,11 @@ class KeyEvent:
 
     def check(self, requested_key, requested_action, requested_mods):
         if self.key == requested_key:
+            print("right key")
             if self.action == requested_action:
+                print("right action")
                 if self.mods == requested_mods:
+                    print("right mpds")
                     return True
         return False
 

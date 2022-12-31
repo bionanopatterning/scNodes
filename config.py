@@ -40,7 +40,7 @@ correlation_editor = None
 pickle_temp = dict()
 
 ## 221221 correlation editor vars & related
-active_editor = 0  # 0 for node editor, 1 for correlation
+active_editor = 1  # 0 for node editor, 1 for correlation
 
 def set_active_node(node, keep_active=False):
     global focused_node, active_node, next_active_node

@@ -122,7 +122,7 @@ class LoadDataNode(Node):
             cfg.image_viewer.center_image_requested = True
             cfg.set_active_node(self)
         except Exception as e:
-            cfg.set_error(e, f"Error importing '{self.path}' as tif stack. Are you sure the data is .tif and grayscale?")
+            cfg.set_error(e, f"Error importing '{self.path}' as tif stack. Are you sure the data is .tif and 1 colour channel?")
 
     def get_image_impl(self, idx):
         if self.dataset.n_frames > 0:
