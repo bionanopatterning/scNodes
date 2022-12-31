@@ -44,6 +44,7 @@ class Window:
         # Aux
         self.glfw_time = 0.0
         self.time = 0.0
+        self.delta_time = 0.0
         self.force_alpha_zero = False
 
         self.dropped_files = list()

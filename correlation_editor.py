@@ -384,7 +384,11 @@ class CorrelationEditor:
             imgui.bullet_text("")
             imgui.same_line()
             label_width = 165 - indent * CorrelationEditor.FRAME_LIST_INDENT_WIDTH
-            _c, selected = imgui.selectable(""+f.title, selected=CorrelationEditor.active_frame == f, width=label_width)
+
+            _c, selected = imgui.selectable(""+f.title+f"###fuid{f.uid}", selected=CorrelationEditor.active_frame == f, width=label_width)
+            if imgui.begin_popup_context_item():
+                _c, f.title = imgui.input_text("##fname", f.title, 30)
+                imgui.end_popup()
             if selected:
                 CorrelationEditor.active_frame = f
             if background_color_active_frame:

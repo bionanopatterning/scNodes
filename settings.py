@@ -3,6 +3,8 @@ import colorcet as cc
 
 n_cpus = -1
 
+
+
 ne_window_width = 1100
 ne_window_height = 700
 ne_window_title = "srNodes editor"
