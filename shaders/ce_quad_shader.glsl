@@ -27,16 +27,25 @@ in vec2 fUV;
 uniform float alpha;
 uniform vec2 contrastLimits;
 uniform float rgbMode;
+uniform float hpix;
+uniform float vpix;
+uniform float binning;
 
 void main()
 {
+    vec2 uv = fUV;
+    if (binning != 1.0)
+    {
+        uv.x = floor((uv.x * hpix) / binning) / hpix * binning + (1.0 / hpix) * binning / 2.0;
+        uv.y = floor((uv.y * vpix) / binning) / vpix * binning + (1.0 / vpix) * binning / 2.0;
+    }
     if (rgbMode == 1.0)
     {
-        fragmentColor = vec4(texture(image, fUV).rgb, alpha);
+        fragmentColor = vec4(texture(image, uv).rgb, alpha);
     }
     else
     {
-        float pixelValue = texture(image, fUV).r;
+        float pixelValue = texture(image, uv).r;
         float contrastValue = (pixelValue - contrastLimits.x) / (contrastLimits.y - contrastLimits.x);
         vec3 pixelColor = texture(lut, vec2(contrastValue, 0)).rgb;
         fragmentColor = vec4(pixelColor, alpha);
