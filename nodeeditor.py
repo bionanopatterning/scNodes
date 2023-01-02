@@ -129,8 +129,8 @@ class NodeEditor:
 
     def _boot_img(self):
         if self.show_boot_img:
-            imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND)
-            imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *cfg.COLOUR_WINDOW_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND[0:3], 0.0)
+            imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *cfg.COLOUR_WINDOW_BACKGROUND[0:3], 0.0)
             imgui.push_style_color(imgui.COLOR_TEXT, *(0.0, 0.0, 0.0, 1.0))
 
             _w = self.boot_img_width * 0.5

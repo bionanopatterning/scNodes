@@ -30,7 +30,6 @@ class ReconstructionRendererNode(Node):
         self.latest_image = None
 
         self.original_pixel_size = 100.0
-        self.reconstruction_pixel_size = 10.0
         self.reconstruction_image_size = [1, 1]
 
         # painting particles
@@ -63,12 +62,15 @@ class ReconstructionRendererNode(Node):
 
             if self.reconstruction_in.check_connect_event() or self.reconstruction_in.check_disconnect_event():
                 self.init_histogram_values()
+                self.on_gain_focus()
 
             imgui.spacing()
             imgui.separator()
             imgui.spacing()
-            imgui.push_item_width(100)
-            _c, self.pixel_size = imgui.input_float("Pixel size", self.pixel_size, 0.0, 0.0, format='%.2f')
+            imgui.push_item_width(90)
+            imgui.text("Pixel size:")
+            imgui.same_line()
+            _c, self.pixel_size = imgui.input_float("##Pixel size", self.pixel_size, 0.0, 0.0, format='%.2f (nm)')
             pxs_changed = _c
             self.any_change = _c or self.any_change
             imgui.text(f"Final image size: {self.reconstruction_image_size[0]} x {self.reconstruction_image_size[1]} px")
@@ -144,13 +146,14 @@ class ReconstructionRendererNode(Node):
         if datasource:
             self.histogram_initiated = True
             particledata = datasource.get_particle_data()
-            if particledata.baked:
-                self.available_parameters = ["Fixed colour"] + list(particledata.histogram_counts.keys())
-                self.parameter = min([1, len(self.available_parameters)])
-                self.histogram_values = particledata.histogram_counts[self.available_parameters[self.parameter]]
-                self.histogram_bins = particledata.histogram_bins[self.available_parameters[self.parameter]]
-                self.min = self.histogram_bins[0]
-                self.max = self.histogram_bins[-1]
+            if particledata:
+                if particledata.baked:
+                    self.available_parameters = ["Fixed colour"] + list(particledata.histogram_counts.keys())
+                    self.parameter = min([1, len(self.available_parameters)])
+                    self.histogram_values = particledata.histogram_counts[self.available_parameters[self.parameter]]
+                    self.histogram_bins = particledata.histogram_bins[self.available_parameters[self.parameter]]
+                    self.min = self.histogram_bins[0]
+                    self.max = self.histogram_bins[-1]
 
 
     def apply_paint(self, particle_data):
@@ -163,6 +166,7 @@ class ReconstructionRendererNode(Node):
             _colour_idx = fac
             particle.colour_idx = _colour_idx
             i += 1
+        self.reconstructor.colours_set = False
         if cfg.profiling:
             self.profiler_time += time.time() - time_start
 
@@ -175,7 +179,7 @@ class ReconstructionRendererNode(Node):
             if datasource:
                 particle_data = datasource.get_particle_data()
                 self.reconstructor.set_particle_data(particle_data)
-                self.reconstructor.set_camera_origin([-particle_data.reconstruction_roi[0] * self.magnification, -particle_data.reconstruction_roi[1] * self.magnification])  ## TODO fix
+                self.reconstructor.set_camera_origin([-particle_data.reconstruction_roi[0], -particle_data.reconstruction_roi[1]])
 
                 ## Apply colours
                 if self.paint_particles:
@@ -187,7 +191,6 @@ class ReconstructionRendererNode(Node):
                         for particle in particle_data.particles:
                             particle.colour_idx = 1.0
                         self.paint_applied = True
-
                 if self.reconstructor.particle_data.empty:
                     return None
                 else:
@@ -202,7 +205,7 @@ class ReconstructionRendererNode(Node):
         if self.latest_image is not None:
             img_wrapper = Frame("super-resolution reconstruction virtual frame")
             img_wrapper.data = self.latest_image
-            img_wrapper.pixel_size = self.reconstruction_pixel_size
+            img_wrapper.pixel_size = self.pixel_size
             return img_wrapper
         else:
             return None
@@ -215,11 +218,15 @@ class ReconstructionRendererNode(Node):
             return ParticleData()
 
     def on_gain_focus(self):
-        self.original_pixel_size = Node.get_source_load_data_node(self).dataset.pixel_size
-        roi = self.get_particle_data().reconstruction_roi
-        img_width = int((roi[2] - roi[0]) * self.magnification)  # TODO
-        img_height = int((roi[3] - roi[1]) * self.magnification)
-        self.reconstruction_image_size = (img_width, img_height)
+        roi = None
+        try:
+            roi = self.get_particle_data().reconstruction_roi
+        except Exception as e:
+            cfg.set_error(e, f"Couldn't get particle data in {self.title} node.")
+        if roi is not None:
+            img_width = int((roi[2] - roi[0]) / self.pixel_size)  # TODO
+            img_height = int((roi[3] - roi[1]) / self.pixel_size)
+            self.reconstruction_image_size = (img_width, img_height)
 
     def pre_save_impl(self):
         cfg.pickle_temp["latest_image"] = self.latest_image

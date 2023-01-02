@@ -3,6 +3,7 @@ from node import *
 def create():
     return ParticlePainterNode()
 
+## TODO delete node.
 
 class ParticlePainterNode(Node):
     title = "Particle painter"

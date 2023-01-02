@@ -42,12 +42,15 @@ class LoadReconstructionNode(Node):
             super().render_end()
 
     def on_select_file(self):
-        print("smik")
         try:
             self.particle_data = ParticleData.from_csv(self.path)
         except Exception as e:
             cfg.set_error(e, "Error importing reconstruction. Reconstruction should be a .csv file.")
 
     def get_particle_data_impl(self):
-        self.particle_data.clean()
-        return self.particle_data
+        try:
+            self.particle_data.clean()
+            return self.particle_data
+        except Exception as e:
+            cfg.set_error(e, f"Error getting reconstruction from {self.title} node")
+            return None

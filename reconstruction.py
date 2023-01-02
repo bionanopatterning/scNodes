@@ -102,6 +102,9 @@ class Reconstructor:
         """
         if not self.particle_data.baked_by_renderer:
             self.update_particle_data()  # refresh the instance buffers
+
+        if not self.colours_set:
+            self.update_particle_colours()
         if fixed_uncertainty is not None:
             self.set_fixed_uncertainty_value(fixed_uncertainty)
 
@@ -142,11 +145,13 @@ class Reconstructor:
         if self.mode == "float":
             return sr_image
         elif self.mode == "ui16":
-            sr_image_ui16 = np.zeros((H, W, 3), dtype = np.uint16)
+            sr_image_ui16 = np.zeros((H, W, 3), dtype=np.uint16)
             _normfac = np.amax(sr_image)
-            r = sr_image[:, :, 0] / (1 * _normfac) * 65535
-            g = sr_image[:, :, 1] / (1 * _normfac) * 65535
-            b = sr_image[:, :, 2] / (1 * _normfac) * 65535
+            if _normfac == 0.0:
+                _normfac = 1
+            r = sr_image[:, :, 0] / _normfac * 65535
+            g = sr_image[:, :, 1] / _normfac * 65535
+            b = sr_image[:, :, 2] / _normfac * 65535
             sr_image_ui16[:, :, 0] = r.astype(np.uint16)
             sr_image_ui16[:, :, 1] = g.astype(np.uint16)
             sr_image_ui16[:, :, 2] = b.astype(np.uint16)

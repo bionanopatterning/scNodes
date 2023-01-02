@@ -796,7 +796,7 @@ class CorrelationEditor:
 
     @staticmethod
     def add_frame(frame_data):
-        CorrelationEditor.incoming_frame_buffer.append(frame_data)
+        CorrelationEditor.incoming_frame_buffer.append(frame_data) ## TODO include pixel size.
 
 
 class Renderer:

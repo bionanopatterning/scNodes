@@ -280,7 +280,8 @@ class Node:
                 cfg.set_active_node(None, True)
             if cfg.active_node == self:
                 cfg.set_active_node(None)
-            cfg.nodes.remove(self)
+            if self in cfg.nodes:
+                cfg.nodes.remove(self)
             for attribute in self.connectable_attributes:
                 attribute.delete()
         except Exception as e:

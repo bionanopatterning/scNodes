@@ -327,6 +327,7 @@ class ParticleData:
         particle_data_obj = ParticleData()
         particle_data_obj.pixel_size = 1
         particle_data_obj.particles = particles
+        particle_data_obj.empty = False
         particle_data_obj.bake()
         particle_data_obj.set_reconstruction_roi([particle_data_obj.x_min, particle_data_obj.y_min, particle_data_obj.x_max, particle_data_obj.y_max])
 
@@ -348,7 +349,6 @@ class Particle:
         self.uncertainty = uncertainty
         self.colour_idx = colour_idx
         self.visible = True
-        print(frame, x, y)
 
     def __str__(self):
         return f"f={self.frame}, x={self.x}, y={self.y}, sigma={self.sigma}, i={self.intensity}, offset={self.offset}, bkgstd={self.bkgstd}"
