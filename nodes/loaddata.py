@@ -2,8 +2,10 @@ from node import *
 from tkinter import filedialog
 from util import get_filetype
 
+
 def create():
     return LoadDataNode()
+
 
 class LoadDataNode(Node):
     title = "Load data"
@@ -152,4 +154,8 @@ class LoadDataNode(Node):
 
     def post_save_impl(self):
         self.dataset = cfg.pickle_temp["dataset"]
+
+    def on_load(self):
+        # TODO
+        pass
 

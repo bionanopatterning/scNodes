@@ -209,7 +209,7 @@ class ParticleData:
         self.baked_by_renderer = False  # flag to store whether renderer has created instance buffers using the latest particle list. ONLY renderer can set it to True, any edits from within ParticleData set it to false.
         self.colours_up_to_date = True
         self.empty = True
-        self.reconstruction_roi = [0, 0, 0, 0]
+        self.reconstruction_roi = [0, 0, 0, 0]  ## todo terms of nm, not px.
 
     def __add__(self, other):
         if isinstance(other, list):
@@ -289,8 +289,6 @@ class ParticleData:
                 if v < min_val or v > max_val:
                     p.visible = False
 
-
-
     def set_reconstruction_roi(self, roi):
         """
         :param roi: The ROI used in the initial particle position estimation (e.g. ParticleDetectionNode). It can be saved in ParticleData in order to facilitate overlaying the final reconstruction with the corresponding region of the widefield image.
@@ -306,21 +304,32 @@ class ParticleData:
         """
         df = pd.read_csv(path)
         particles = list()
+        _idx_x = df.columns.get_loc("x [nm]")
+        _idx_y = df.columns.get_loc("y [nm]")
+        _idx_u = df.columns.get_loc("uncertainty [nm]")
+        _idx_i = df.columns.get_loc("intensity [counts]")
+        _idx_o = df.columns.get_loc("offset [counts]")
+        _idx_s = df.columns.get_loc("sigma [nm]")
+        _idx_b = df.columns.get_loc("bkgstd [counts]")
+        _idx_f = df.columns.get_loc("frame")
         for i in range(df.shape[0]):
             _data = df.iloc[i]
             particles.append(Particle(
-                _data[0],
-                _data[1],
-                _data[2],
-                _data[3],
-                _data[4],
-                _data[5],
-                _data[6],
-                _data[7]
+                _data[_idx_f],
+                _data[_idx_x],
+                _data[_idx_y],
+                _data[_idx_s],
+                _data[_idx_i],
+                _data[_idx_o],
+                _data[_idx_b],
+                _data[_idx_u],
             ))
         particle_data_obj = ParticleData()
+        particle_data_obj.pixel_size = 1
         particle_data_obj.particles = particles
         particle_data_obj.bake()
+        particle_data_obj.set_reconstruction_roi([particle_data_obj.x_min, particle_data_obj.y_min, particle_data_obj.x_max, particle_data_obj.y_max])
+
         return particle_data_obj
 
     def save_as_csv(self, path):
@@ -328,8 +337,7 @@ class ParticleData:
 
 
 class Particle:
-
-    def __init__(self, frame, x, y, sigma, intensity, offset=0, bkgstd=-1, uncertainty=-1, colour=np.asarray([1.0, 1.0, 1.0])):
+    def __init__(self, frame, x, y, sigma, intensity, offset=0, bkgstd=-1, uncertainty=-1, colour_idx=1.0):
         self.frame = frame
         self.x = x
         self.y = y
@@ -338,8 +346,9 @@ class Particle:
         self.offset = offset
         self.bkgstd = bkgstd
         self.uncertainty = uncertainty
-        self.colour = colour
+        self.colour_idx = colour_idx
         self.visible = True
+        print(frame, x, y)
 
     def __str__(self):
         return f"f={self.frame}, x={self.x}, y={self.y}, sigma={self.sigma}, i={self.intensity}, offset={self.offset}, bkgstd={self.bkgstd}"

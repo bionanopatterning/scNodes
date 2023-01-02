@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from dataset import *
 from util import *
+import settings
 
 
 class Reconstructor:
@@ -31,12 +32,20 @@ class Reconstructor:
         self.fbo = FrameBuffer(*self.tile_size, texture_format="rgb32f")
         self.vao = VertexArray(VertexBuffer(Reconstructor.vertices), IndexBuffer(Reconstructor.indices),
                                attribute_format="xyuv")
+        self.lut_texture = Texture(format="rgba32f")
         self.instance_vbos = dict()
         self.particle_data = ParticleData()
         self.camera = StaticCamera(Reconstructor.default_tile_size)
 
         self.mode = "ui16"
         self.camera_origin = [0.0, 0.0]
+        self.colours_set = False
+
+    def set_lut(self, lut_idx):
+        lut_array = np.asarray(settings.luts[settings.lut_names[lut_idx]])
+        if lut_array.shape[1] == 3:
+            lut_array = np.reshape(lut_array, (1, lut_array.shape[0], 3))
+            self.lut_texture.update(lut_array)
 
     def set_mode(self, mode="float"):
         """
@@ -109,6 +118,7 @@ class Reconstructor:
         self.shader.uniform1f("quad_uncertainty", self.quad_uncertainty)
         self.shader.uniform1f("pixel_size", self.pixel_size)
         self.texture.bind(0)
+        self.lut_texture.bind(1)
         # Make empty image
         W = self.image_size[0]
         w = self.tile_size[0]
@@ -116,7 +126,6 @@ class Reconstructor:
         h = self.tile_size[1]
 
         sr_image = np.zeros((H, W, 3), dtype=np.float32)
-        print("sr image shape", sr_image.shape)
         tiles_x = int(np.ceil(W / w))
         tiles_y = int(np.ceil(H / h))
         for i in range(tiles_x):
@@ -134,9 +143,10 @@ class Reconstructor:
             return sr_image
         elif self.mode == "ui16":
             sr_image_ui16 = np.zeros((H, W, 3), dtype = np.uint16)
-            r = sr_image[:, :, 0] / (1 + np.amax(sr_image[:, :, 0])) * 65535
-            g = sr_image[:, :, 1] / (1 + np.amax(sr_image[:, :, 1])) * 65535
-            b = sr_image[:, :, 2] / (1 + np.amax(sr_image[:, :, 2])) * 65535
+            _normfac = np.amax(sr_image)
+            r = sr_image[:, :, 0] / (1 * _normfac) * 65535
+            g = sr_image[:, :, 1] / (1 * _normfac) * 65535
+            b = sr_image[:, :, 2] / (1 * _normfac) * 65535
             sr_image_ui16[:, :, 0] = r.astype(np.uint16)
             sr_image_ui16[:, :, 1] = g.astype(np.uint16)
             sr_image_ui16[:, :, 2] = b.astype(np.uint16)
@@ -148,7 +158,6 @@ class Reconstructor:
         :return:
         """
         self.camera_origin = camera_origin
-        print("CAMERA ORIGIN", self.camera_origin)
 
     def create_instance_buffers(self):
         self.vao.bind()
@@ -165,9 +174,9 @@ class Reconstructor:
         self.instance_vbos["uncertainty"].set_location_and_stride(4, 1)
         self.instance_vbos["uncertainty"].set_divisor_to_per_instance()
 
-        self.instance_vbos["colour"] = VertexBuffer()
-        self.instance_vbos["colour"].set_location_and_stride(5, 3)
-        self.instance_vbos["colour"].set_divisor_to_per_instance()
+        self.instance_vbos["colour_idx"] = VertexBuffer()
+        self.instance_vbos["colour_idx"].set_location_and_stride(5, 1)
+        self.instance_vbos["colour_idx"].set_divisor_to_per_instance()
 
         self.instance_vbos["state"] = VertexBuffer()
         self.instance_vbos["state"].set_location_and_stride(6, 1)
@@ -188,10 +197,10 @@ class Reconstructor:
 
     def update_particle_colours(self):
         self.vao.bind()
-        _colours = list()
+        _colours_idx = list()
         for particle in self.particle_data.particles:
-            _colours.append(particle.colour)
-        self.instance_vbos["colour"].update(np.asarray(_colours).flatten(order = "C"))
+            _colours_idx.append(particle.colour_idx)
+        self.instance_vbos["colour_idx"].update(np.asarray(_colours_idx).flatten(order = "C"))
         self.vao.unbind()
 
     def update_particle_states(self):
@@ -217,7 +226,6 @@ class Reconstructor:
                                 self.particle_data.n_particles)
         tile = glReadPixels(0, 0, self.default_tile_size[0], self.default_tile_size[1], GL_RGB, GL_FLOAT)
         return tile
-
 
 
 class StaticCamera:

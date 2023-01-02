@@ -5,17 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="2301011447">
-      <change afterPath="$PROJECT_DIR$/icons/srNodes_boot.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/icons/srNodes_boot_img_wbg.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/correlation_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/correlation_editor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/imageviewer.py" beforeDir="false" afterPath="$PROJECT_DIR$/imageviewer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/window.py" beforeDir="false" afterPath="$PROJECT_DIR$/window.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/importreconstruction.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/importreconstruction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/loaddata.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/loaddata.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/psffitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/psffitting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/reconstructionrenderer.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/reconstructionrenderer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/reconstruction.py" beforeDir="false" afterPath="$PROJECT_DIR$/reconstruction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/shaders/reconstructor_shader.glsl" beforeDir="false" afterPath="$PROJECT_DIR$/shaders/reconstructor_shader.glsl" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -57,16 +56,11 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">
-    <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
-    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
-    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
-    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="TODO_SCOPE" value="All Places" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/nodes/pysofi" />
-    <property name="restartRequiresConfirmation" value="false" />
-    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
-  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+  }
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\mgflast\PycharmProjects\srNodes\nodes\pysofi" />
@@ -210,8 +204,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.config" />
         <item itemvalue="Python.install" />
+        <item itemvalue="Python.config" />
         <item itemvalue="Python.sofinode (1)" />
         <item itemvalue="Python.delete" />
         <item itemvalue="Python.sofinode" />
@@ -447,7 +441,6 @@
         </entry>
       </map>
     </option>
-    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />

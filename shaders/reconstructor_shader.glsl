@@ -6,8 +6,9 @@ layout(location = 1) in vec2 mesh_uv;
 layout(location = 2) in float x;
 layout(location = 3) in float y;
 layout(location = 4) in float uncertainty;
-layout(location = 5) in vec3 colour;
+layout(location = 5) in float colour_idx;
 layout(location = 6) in float state;
+layout (binding = 1) uniform sampler2D lut;
 
 uniform mat4 cameraMatrix;
 
@@ -23,7 +24,8 @@ void main()
 {
 
     gl_Position = cameraMatrix * vec4(mesh_xy * quad_pixel_size * uncertainty / quad_uncertainty + vec2(x, y) / pixel_size, 0.0, 1.0);
-    fcolour = colour * quad_uncertainty / uncertainty * state;
+    //fcolour = colour * quad_uncertainty / uncertainty * state;
+    fcolour = texture(lut, vec2(colour_idx, 0)).rgb * quad_uncertainty / uncertainty * state;
     fuv = mesh_uv;
 }
 

@@ -42,7 +42,7 @@ class NodeEditor:
             self.boot_img_texture = Texture(format="rgba32f")
             pxd_boot_img_texture = np.asarray(Image.open("icons/srNodes_boot.png")).astype(np.float32) / 255.0
             self.boot_img_texture.update(pxd_boot_img_texture)
-            self.boot_img_width, self.boot_img_height = pxd_boot_img_texture.shape[0:2]
+            self.boot_img_height, self.boot_img_width = pxd_boot_img_texture.shape[0:2]
             self.boot_img_texture.set_linear_interpolation()
             self.show_boot_img = True
     def get_font_atlas_ptr(self):
@@ -135,9 +135,9 @@ class NodeEditor:
 
             _w = self.boot_img_width * 0.5
             _h = self.boot_img_height * 0.5
-            imgui.set_next_window_position((settings.ne_window_height - _w) / 2.0, (settings.ne_window_height - _w) / 2.0)
+            imgui.set_next_window_position((settings.ne_window_width - _w) / 2.0, (settings.ne_window_height - _h) / 2.0)
             self.show_boot_img = imgui.begin("##bootwindow", True, imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_BACKGROUND)[1]
-            imgui.image(self.boot_img_texture.renderer_id, _h, _w)
+            imgui.image(self.boot_img_texture.renderer_id, _w, _h)
             imgui.end()
             imgui.pop_style_color(3)
 

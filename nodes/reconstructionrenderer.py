@@ -1,3 +1,5 @@
+import imgui
+
 from node import *
 from reconstruction import *
 
@@ -20,7 +22,7 @@ class ReconstructionRendererNode(Node):
         self.reconstruction_in = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.INPUT, parent = self)
         self.image_out = ConnectableAttribute(ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.OUTPUT, parent = self)
 
-        self.magnification = 10
+        self.pixel_size = 10.0
         self.default_sigma = 30.0
         self.fix_sigma = False
 
@@ -30,12 +32,22 @@ class ReconstructionRendererNode(Node):
         self.original_pixel_size = 100.0
         self.reconstruction_pixel_size = 10.0
         self.reconstruction_image_size = [1, 1]
-        self.paint_particles = False
-        self.paint_currently_applied = False
 
-        paint_in = ConnectableAttribute(ConnectableAttribute.TYPE_COLOUR, ConnectableAttribute.INPUT, parent=self)
-        self.connectable_attributes.append(paint_in)
-        self.particle_painters = [paint_in]
+        # painting particles
+        self.paint_particles = False
+        self.paint_by = 0
+        self.paint_applied = False
+
+        self.parameter = 0
+        self.available_parameters = ["Fixed colour"]
+        self.colour_min = (0.0, 0.0, 0.0)
+        self.colour_max = (1.0, 1.0, 1.0)
+        self.histogram_values = np.asarray([0, 0]).astype('float32')
+        self.histogram_bins = np.asarray([0, 0]).astype('float32')
+        self.histogram_initiated = False
+        self.min = 0
+        self.max = 0
+        #
         self.does_profiling_time = False
         self.does_profiling_count = False
 
@@ -48,15 +60,17 @@ class ReconstructionRendererNode(Node):
             self.reconstruction_in.render_end()
             self.image_out.render_end()
 
+
+            if self.reconstruction_in.check_connect_event() or self.reconstruction_in.check_disconnect_event():
+                self.init_histogram_values()
+
             imgui.spacing()
             imgui.separator()
             imgui.spacing()
-
             imgui.push_item_width(100)
-            _mag_changed, self.magnification = imgui.input_int("Magnification", self.magnification, 1, 1)
-            self.any_change = _mag_changed or self.any_change
-            self.magnification = max([self.magnification, 1])
-            imgui.text(f"Final pixel size: {self.original_pixel_size / self.magnification:.1f}")
+            _c, self.pixel_size = imgui.input_float("Pixel size", self.pixel_size, 0.0, 0.0, format='%.2f')
+            pxs_changed = _c
+            self.any_change = _c or self.any_change
             imgui.text(f"Final image size: {self.reconstruction_image_size[0]} x {self.reconstruction_image_size[1]} px")
 
             _c, self.fix_sigma = imgui.checkbox("Force uncertainty", self.fix_sigma)
@@ -67,28 +81,26 @@ class ReconstructionRendererNode(Node):
                 _, self.default_sigma = imgui.input_float(" nm", self.default_sigma, 0, 0, format="%.1f")
                 imgui.pop_item_width()
 
-            # Colourize options
-            _c, self.paint_particles = imgui.checkbox("Paint particles", self.paint_particles)
+            # Colourize optionsx
+            _c, self.paint_particles = imgui.checkbox("Colourize particles", self.paint_particles)
             if _c and not self.paint_particles:
-                for i in range(len(self.particle_painters) - 1):
-                    self.particle_painters[i].delete()
-
-            imgui.spacing()
+                self.paint_by = 0
+                self.reconstructor.set_lut(0)
             if self.paint_particles:
-                for connector in self.particle_painters:
-                    # add / remove slots
-                    if connector.check_connect_event():
-                        new_slot = ConnectableAttribute(ConnectableAttribute.TYPE_COLOUR, ConnectableAttribute.INPUT, parent=self)
-                        self.particle_painters.append(new_slot)
-                        self.connectable_attributes.append(new_slot)
-                    elif connector.check_disconnect_event():
-                        self.particle_painters.remove(connector)
-                        self.connectable_attributes.remove(connector)
-
-                    # render blobs
-                    imgui.new_line()
-                    connector.render_start()
-                    connector.render_end()
+                _cw = imgui.get_content_region_available_width()
+                imgui.push_item_width(_cw - 100)
+                _c, self.paint_by = imgui.combo("LUT", self.paint_by, settings.lut_names)
+                if _c:
+                    self.reconstructor.set_lut(self.paint_by)
+                    self.paint_applied = False
+                _c, self.parameter = imgui.combo("Parameter", self.parameter, self.available_parameters)
+                if _c:
+                    self.get_histogram_values()
+                    self.min = self.histogram_bins[0]
+                    self.max = self.histogram_bins[-1]
+                    self.paint_applied = False
+                imgui.pop_item_width()
+                # TODO: histogram
 
             if self.auto_render:
                 if self.any_change:
@@ -100,14 +112,10 @@ class ReconstructionRendererNode(Node):
                 if imgui.button("Render", 70, 30):
                     self.build_reconstruction()
 
-
-            if _mag_changed:
-                data_in = self.reconstruction_in.get_incoming_node()
-                if data_in:
-                    self.original_pixel_size = data_in.get_particle_data().pixel_size
+            if pxs_changed:
                 roi = self.get_particle_data().reconstruction_roi
-                img_width = int((roi[3] - roi[1]) * self.magnification)
-                img_height = int((roi[2] - roi[0]) * self.magnification)
+                img_width = int((roi[3] - roi[1]) / self.pixel_size)
+                img_height = int((roi[2] - roi[0]) / self.pixel_size)
                 self.reconstruction_image_size = (img_width, img_height)
 
             header_expanded, _ = imgui.collapsing_header("Advanced", None)
@@ -116,46 +124,69 @@ class ReconstructionRendererNode(Node):
 
             super().render_end()
 
+
     def render_advanced(self):
         _c, self.auto_render = imgui.checkbox("Auto render", self.auto_render)
         self.tooltip("When checked, instead of displaying a 'render' button,\n"
                      "the node will always render the reconstruction upon any\n"
                      "change to the settings.")
 
-    def update_pixel_size(self):
-        image_width = int((self.get_particle_data().reconstruction_roi[2] - self.get_particle_data().reconstruction_roi[0]) * self.magnification)
-        image_height = int((self.get_particle_data().reconstruction_roi[3] - self.get_particle_data().reconstruction_roi[1]) * self.magnification)
-        self.reconstruction_image_size = (image_width, image_height)
-        new_pixel_size = self.original_pixel_size / self.magnification
-        if new_pixel_size != self.reconstruction_pixel_size:
-            self.reconstruction_pixel_size = new_pixel_size
-            self.reconstructor.set_pixel_size(self.reconstruction_pixel_size)
+    def get_histogram_values(self):
+        datasource = self.reconstruction_in.get_incoming_node()
+        if datasource:
+            particledata = datasource.get_particle_data()
+            if self.available_parameters[self.parameter] in list(particledata.histogram_counts.keys()):
+                self.histogram_values = particledata.histogram_counts[self.available_parameters[self.parameter]]
+                self.histogram_bins = particledata.histogram_bins[self.available_parameters[self.parameter]]
+
+    def init_histogram_values(self):
+        datasource = self.reconstruction_in.get_incoming_node()
+        if datasource:
+            self.histogram_initiated = True
+            particledata = datasource.get_particle_data()
+            if particledata.baked:
+                self.available_parameters = ["Fixed colour"] + list(particledata.histogram_counts.keys())
+                self.parameter = min([1, len(self.available_parameters)])
+                self.histogram_values = particledata.histogram_counts[self.available_parameters[self.parameter]]
+                self.histogram_bins = particledata.histogram_bins[self.available_parameters[self.parameter]]
+                self.min = self.histogram_bins[0]
+                self.max = self.histogram_bins[-1]
+
+
+    def apply_paint(self, particle_data):
+        if cfg.profiling:
+            time_start = time.time()
+        values = particle_data.parameter[self.available_parameters[self.parameter]]
+        i = 0
+        for particle in particle_data.particles:
+            fac = min([max([(values[i] - self.min) / self.max, 0.0]), 1.0])
+            _colour_idx = fac
+            particle.colour_idx = _colour_idx
+            i += 1
+        if cfg.profiling:
+            self.profiler_time += time.time() - time_start
 
     def build_reconstruction(self):
         try:
             self.original_pixel_size = Node.get_source_load_data_node(self).dataset.pixel_size
-            self.update_pixel_size()
-            self.reconstructor.set_pixel_size(self.original_pixel_size / self.magnification)
+            self.reconstructor.set_pixel_size(self.pixel_size)
             self.reconstructor.set_image_size(self.reconstruction_image_size)
             datasource = self.reconstruction_in.get_incoming_node()
             if datasource:
                 particle_data = datasource.get_particle_data()
                 self.reconstructor.set_particle_data(particle_data)
-                self.reconstructor.set_camera_origin([-particle_data.reconstruction_roi[0] * self.magnification, -particle_data.reconstruction_roi[1] * self.magnification])
+                self.reconstructor.set_camera_origin([-particle_data.reconstruction_roi[0] * self.magnification, -particle_data.reconstruction_roi[1] * self.magnification])  ## TODO fix
 
                 ## Apply colours
                 if self.paint_particles:
-                    if len(self.particle_painters) > 0:
-                        for particle in particle_data.particles:
-                            particle.colour = np.asarray([0.0, 0.0, 0.0])
-                    for i in range(0, len(self.particle_painters) - 1):
-                        self.particle_painters[i].get_incoming_node().apply_paint_to_particledata(particle_data)
-                    self.paint_currently_applied = True
+                    if not self.paint_applied:
+                        self.apply_paint(particle_data)
+                        self.paint_applied = True
                 else:
-                    if self.paint_currently_applied:
+                    if not self.paint_applied:
                         for particle in particle_data.particles:
-                            particle.colour = np.asarray([1.0, 1.0, 1.0])
-                    self.paint_currently_applied = False
+                            particle.colour_idx = 1.0
+                        self.paint_applied = True
 
                 if self.reconstructor.particle_data.empty:
                     return None
@@ -186,7 +217,7 @@ class ReconstructionRendererNode(Node):
     def on_gain_focus(self):
         self.original_pixel_size = Node.get_source_load_data_node(self).dataset.pixel_size
         roi = self.get_particle_data().reconstruction_roi
-        img_width = int((roi[2] - roi[0]) * self.magnification)
+        img_width = int((roi[2] - roi[0]) * self.magnification)  # TODO
         img_height = int((roi[3] - roi[1]) * self.magnification)
         self.reconstruction_image_size = (img_width, img_height)
 

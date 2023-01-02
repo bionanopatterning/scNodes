@@ -215,10 +215,10 @@ class ParticleFittingNode(Node):
         return self.particle_data
 
     def pre_save_impl(self):
-        cfg.pickle_temp["particle_data"] = self.particle_data
-        self.particle_data = ParticleData()
+        pass # cfg.pickle_temp["particle_data"] = self.particle_data
+        # self.particle_data = ParticleData()
 
     def post_save_impl(self):
-        self.particle_data = cfg.pickle_temp["particle_data"]
+        pass # self.particle_data = cfg.pickle_temp["particle_data"]
 
 
