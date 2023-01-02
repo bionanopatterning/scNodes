@@ -9,25 +9,12 @@ from tkinter import filedialog
 from node import *
 import os
 import pyperclip
-
+from opengl_classes import Texture
 tkroot = tk.Tk()
 tkroot.withdraw()
 
 
 class NodeEditor:
-    COLOUR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 1.0)
-    CONTEXT_MENU_SIZE = (200, 98)
-    ERROR_WINDOW_HEIGHT = 80
-    COLOUR_ERROR_WINDOW_BACKGROUND = (0.84, 0.84, 0.84, 1.0)
-    COLOUR_ERROR_WINDOW_HEADER = (0.7, 0.7, 0.7, 1.0)
-    COLOUR_ERROR_WINDOW_HEADER_NEW = (0.35, 0.35, 0.35, 1.0)
-    COLOUR_ERROR_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
-    COLOUR_MENU_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 1.0)
-    COLOUR_CM_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
-    COLOUR_CM_OPTION_HOVERED = (1.0, 1.0, 1.0, 1.0)
-    COLOUR_MAIN_MENU_BAR = (0.98, 0.98, 0.98, 0.9)
-    COLOUR_MAIN_MENU_BAR_TEXT = (0.0, 0.0, 0.0, 1.0)
-    COLOUR_MAIN_MENU_BAR_HILIGHT = (0.96, 0.95, 0.92, 1.0)
     TOOLTIP_APPEAR_DELAY = 1.0  # seconds
     TOOLTIP_HOVERED_TIMER = 0.0
     TOOLTIP_HOVERED_START_TIME = 0.0
@@ -37,7 +24,7 @@ class NodeEditor:
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
-        self.window.clear_color = NodeEditor.COLOUR_WINDOW_BACKGROUND
+        self.window.clear_color = cfg.COLOUR_WINDOW_BACKGROUND
         self.window.make_current()
 
         self.imgui_context = imgui_context
@@ -51,10 +38,20 @@ class NodeEditor:
 
         NodeEditor.init_node_factory()
 
+        if True:
+            self.boot_img_texture = Texture(format="rgba32f")
+            pxd_boot_img_texture = np.asarray(Image.open("icons/srNodes_boot.png")).astype(np.float32) / 255.0
+            self.boot_img_texture.update(pxd_boot_img_texture)
+            self.boot_img_width, self.boot_img_height = pxd_boot_img_texture.shape[0:2]
+            self.boot_img_texture.set_linear_interpolation()
+            self.show_boot_img = True
     def get_font_atlas_ptr(self):
         return self.imgui_implementation.io.fonts
 
     def on_update(self):
+        if cfg.node_editor_relink:
+            NodeEditor.relink_after_load()
+            cfg.node_editor_relink = False
         if cfg.next_active_node is not None:
             cfg.active_node = cfg.next_active_node
             cfg.next_active_node = None
@@ -65,15 +62,15 @@ class NodeEditor:
         if self.window.focused:
             self.imgui_implementation.process_inputs()
         self.window.on_update()
-        cfg.window_width = self.window.width
-        cfg.window_height = self.window.height
+        settings.ne_window_width = self.window.width
+        settings.ne_window_height = self.window.height
 
         if not self.window.get_key(glfw.KEY_ESCAPE):
             for node in cfg.nodes:
                 node.clear_flags()
                 node.on_update()
         else:
-            print("Esc pressed - skipping on_update for all nodes.")
+            pass
         if cfg.focused_node is not None:
             cfg.focused_node.any_change = cfg.any_change
         cfg.any_change = False
@@ -128,10 +125,25 @@ class NodeEditor:
 
         NodeEditor._menu_bar()
         self._warning_window()
+        self._boot_img()
+
+    def _boot_img(self):
+        if self.show_boot_img:
+            imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *cfg.COLOUR_WINDOW_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_TEXT, *(0.0, 0.0, 0.0, 1.0))
+
+            _w = self.boot_img_width * 0.5
+            _h = self.boot_img_height * 0.5
+            imgui.set_next_window_position((settings.ne_window_height - _w) / 2.0, (settings.ne_window_height - _w) / 2.0)
+            self.show_boot_img = imgui.begin("##bootwindow", True, imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_BACKGROUND)[1]
+            imgui.image(self.boot_img_texture.renderer_id, _h, _w)
+            imgui.end()
+            imgui.pop_style_color(3)
 
     def _warning_window(self):
         def ww_context_menu():
-            imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *NodeEditor.COLOUR_MENU_WINDOW_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_MENU_WINDOW_BACKGROUND)
             if imgui.begin_popup_context_window():
                 raise_error, _ = imgui.menu_item("Raise error (debug)")
                 if raise_error:
@@ -144,19 +156,19 @@ class NodeEditor:
         ## Error message
         if cfg.error_msg is not None:
             if cfg.error_new:
-                imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *NodeEditor.COLOUR_ERROR_WINDOW_HEADER_NEW)
-                imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *NodeEditor.COLOUR_ERROR_WINDOW_HEADER_NEW)
-                imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_COLLAPSED, *NodeEditor.COLOUR_ERROR_WINDOW_HEADER_NEW)
+                imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *cfg.COLOUR_ERROR_WINDOW_HEADER_NEW)
+                imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *cfg.COLOUR_ERROR_WINDOW_HEADER_NEW)
+                imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_COLLAPSED, *cfg.COLOUR_ERROR_WINDOW_HEADER_NEW)
             else:
-                imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *NodeEditor.COLOUR_ERROR_WINDOW_HEADER)
-                imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *NodeEditor.COLOUR_ERROR_WINDOW_HEADER)
-                imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_COLLAPSED, *NodeEditor.COLOUR_ERROR_WINDOW_HEADER)
-            imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *NodeEditor.COLOUR_ERROR_WINDOW_BACKGROUND)
-            imgui.push_style_color(imgui.COLOR_TEXT, *NodeEditor.COLOUR_ERROR_WINDOW_TEXT)
+                imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *cfg.COLOUR_ERROR_WINDOW_HEADER)
+                imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *cfg.COLOUR_ERROR_WINDOW_HEADER)
+                imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_COLLAPSED, *cfg.COLOUR_ERROR_WINDOW_HEADER)
+            imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *cfg.COLOUR_ERROR_WINDOW_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_ERROR_WINDOW_TEXT)
             imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 3.0)
-            imgui.set_next_window_size(self.window.width, NodeEditor.ERROR_WINDOW_HEIGHT)
-            imgui.set_next_window_position(0, self.window.height - NodeEditor.ERROR_WINDOW_HEIGHT)
-            _, stay_open = imgui.begin("Warning", True, imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE)
+            imgui.set_next_window_size(self.window.width, cfg.ERROR_WINDOW_HEIGHT)
+            imgui.set_next_window_position(0, self.window.height - cfg.ERROR_WINDOW_HEIGHT)
+            _, stay_open = imgui.begin("Notifications", True, imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE)
             imgui.text(cfg.error_msg)
             if imgui.is_window_focused() and self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
                 cfg.error_new = False
@@ -170,10 +182,9 @@ class NodeEditor:
 
     def _context_menu(self):
         imgui.set_next_window_position(self.context_menu_position[0] - 3, self.context_menu_position[1] - 3)
-        imgui.set_next_window_size_constraints((NodeEditor.CONTEXT_MENU_SIZE[0], 10), (NodeEditor.CONTEXT_MENU_SIZE[0], 500))
-        imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *NodeEditor.COLOUR_MENU_WINDOW_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_TEXT, *NodeEditor.COLOUR_CM_WINDOW_TEXT)
-        imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *NodeEditor.COLOUR_MENU_WINDOW_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *cfg.COLOUR_MENU_WINDOW_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_CM_WINDOW_TEXT)
+        imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_MENU_WINDOW_BACKGROUND)
         imgui.begin("##necontextmenu", flags=imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_ALWAYS_AUTO_RESIZE)
         # Close context menu when it is not hovered.
         context_menu_hovered = imgui.is_window_hovered(flags=imgui.HOVERED_ALLOW_WHEN_BLOCKED_BY_POPUP | imgui.HOVERED_CHILD_WINDOWS)
@@ -209,15 +220,29 @@ class NodeEditor:
 
     @staticmethod
     def _menu_bar():
-        imgui.push_style_color(imgui.COLOR_MENUBAR_BACKGROUND, *NodeEditor.COLOUR_MAIN_MENU_BAR)
-        imgui.push_style_color(imgui.COLOR_TEXT, *NodeEditor.COLOUR_MAIN_MENU_BAR_TEXT)
-        imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *NodeEditor.COLOUR_MAIN_MENU_BAR_HILIGHT)
-        imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *NodeEditor.COLOUR_MAIN_MENU_BAR_HILIGHT)
-        imgui.push_style_color(imgui.COLOR_HEADER, *NodeEditor.COLOUR_MAIN_MENU_BAR_HILIGHT)
-        imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *NodeEditor.COLOUR_MENU_WINDOW_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_MENUBAR_BACKGROUND, *cfg.COLOUR_MAIN_MENU_BAR)
+        imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_MAIN_MENU_BAR_TEXT)
+        imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *cfg.COLOUR_MAIN_MENU_BAR_HILIGHT)
+        imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_MAIN_MENU_BAR_HILIGHT)
+        imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_MAIN_MENU_BAR_HILIGHT)
+        imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_MENU_WINDOW_BACKGROUND)
         ## Save node setup.
         if imgui.core.begin_main_menu_bar():
             if imgui.begin_menu('File'):
+                if imgui.menu_item("Save project")[0]:
+                    try:
+                        filename = filedialog.asksaveasfilename(filetypes=[("srNodes project", ".srnp")])
+                        if filename != '':
+                            cfg.save_project(filename)
+                    except Exception as e:
+                        cfg.set_error(e, f"Error saving project\n")
+                if imgui.menu_item("Load project")[0]:
+                    try:
+                        filename = filedialog.askopenfilename(filetypes=[("srNodes project", ".srnp")])
+                        if filename != '':
+                            cfg.load_project(filename)
+                    except Exception as e:
+                        cfg.set_error(e, f"Error loading project - are you sure you selected a '.srnp' file?\n")
                 load_setup, _ = imgui.menu_item("Load node setup")
                 if load_setup:
                     try:
@@ -226,7 +251,7 @@ class NodeEditor:
                             with open(filename, 'rb') as pickle_file:
                                 imported_nodes = pickle.load(pickle_file)
                                 cfg.nodes = imported_nodes
-                                NodeEditor.relink_after_load()
+                                cfg.node_editor_relink = True
                     except Exception as e:
                         cfg.set_error(e, f"Error loading node setup - are you sure you selected a '.srn' file?\n"+str(e))
                 import_setup, _ = imgui.menu_item("Append node setup")
@@ -273,18 +298,19 @@ class NodeEditor:
                             node.profiler_time = 0.0
                             node.profiler_count = 0
                     imgui.end_menu()
-                imgui.set_next_item_width(26)
-                _c, cfg.n_cpus = imgui.input_int("Parallel batch size", cfg.n_cpus, 0, 0)
-                if _c:
-                    cfg.n_cpus = cfg.n_cpus
-                    cfg.batch_size = cfg.n_cpus
-
-                NodeEditor.tooltip("Number of frames to process within one parallel processing batch. Values higher than the amount\n" 
-                             "of CPUs on the PC are allowed and will result in multiple tasks being dispatched to individual\n" 
-                             "CPUs per batch. This can increase processing speed, but reduces GUI responsiveness. For optimal\n" 
-                             "efficiency, set the batch size to an integer multiple of the amount of CPUs on the machine. \n"
-                             f"This PC has: {cfg.n_cpus_max} CPUs.\n"
-                             f"Set to '-1' to force use of all CPUs.")
+                if imgui.begin_menu('Parallel processing'):
+                    imgui.set_next_item_width(26)
+                    _c, cfg.n_cpus = imgui.input_int("batch size", cfg.n_cpus, 0, 0)
+                    if _c:
+                        cfg.batch_size = cfg.n_cpus
+                    NodeEditor.tooltip(
+                        "Number of frames to process within one parallel processing batch. Values higher than the amount\n"
+                        "of CPUs on the PC are allowed and will result in multiple tasks being dispatched to individual\n"
+                        "CPUs per batch. This can increase processing speed, but reduces GUI responsiveness. For optimal\n"
+                        "efficiency, set the batch size to an integer multiple of the amount of CPUs on the machine. \n"
+                        f"This PC has: {cfg.n_cpus_max} CPUs.\n"
+                        f"Set to '-1' to force use of all CPUs.")
+                    imgui.end_menu()
                 imgui.end_menu()
             if imgui.begin_menu('Editor'):
                 select_node_editor, _ = imgui.menu_item("Node Editor", None, selected=True)
@@ -304,7 +330,7 @@ class NodeEditor:
                 node_dir = node_dir.replace('\\', '/')
                 node_name = filename[filename.rfind("/")+1:]
                 shutil.copyfile(filename, node_dir+node_name)
-            cfg.set_error(Exception(), "Node installed - restart required for it to become available")
+            cfg.set_error(Exception(), "Node installed! Restarting the software is required for it to become available.\n\n\n")
         except Exception as e:
             cfg.set_error(e, "Error upon installing node. Are you sure you selected the right file?")
 

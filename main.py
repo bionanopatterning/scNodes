@@ -24,10 +24,12 @@ if __name__ == "__main__":
     node_editor = NodeEditor(main_window, main_window_imgui_context, main_window_imgui_glfw_implementation)
     correlation_editor = CorrelationEditor(main_window, main_window_imgui_context, main_window_imgui_glfw_implementation)
 
-    image_viewer_window = Window(settings.iv_window_width, settings.iv_window_height, settings.iv_window_title)
+
     image_viewer_window_imgui_context = imgui.create_context(main_window_imgui_glfw_implementation.io.fonts)
+    image_viewer_window = Window(settings.iv_window_width, settings.iv_window_height, settings.iv_window_title)
     image_viewer_window_glfw_implementation = GlfwRenderer(image_viewer_window.glfw_window)
     image_viewer = ImageViewer(image_viewer_window, image_viewer_window_imgui_context, image_viewer_window_glfw_implementation)
+    image_viewer_window.set_callbacks()
     node_editor.delete_temporary_files()
     cfg.node_editor = node_editor
     cfg.correlation_editor = correlation_editor
@@ -45,10 +47,9 @@ if __name__ == "__main__":
             else:
                 correlation_editor.on_update()
                 correlation_editor.end_frame()
-
+            image_viewer.window.make_current()
             image_viewer.on_update()
             image_viewer.end_frame()
-
     finally:
         node_editor.delete_temporary_files()
 

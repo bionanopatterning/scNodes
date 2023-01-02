@@ -1,20 +1,22 @@
 from joblib import cpu_count
 import traceback
+import dill as pickle
 # This file defines variables that can be accessed globally.
 # Before re-structuring the code, the Node class would directly access and change NodeEditor class static variables.
 # That messed up inheritance. Instead, all of the variables that were accessed in this way are now defined in this file.
+
+app_name = "srNodes"
 
 nodes = list()
 active_node = None
 focused_node = None
 any_change = False  # top-level change flag
 next_active_node = None
-
 node_move_requested = [0, 0]
 camera_move_requested = [0, 0]
 
-window_width = 1920
-window_height = 1080
+window_width = 1100
+window_height = 700
 
 profiling = False
 
@@ -32,15 +34,17 @@ n_cpus_max = cpu_count()
 n_cpus = n_cpus_max
 batch_size = n_cpus_max
 
-## CONFIG HAS NO ATTRIB IMG VIEWER 221223
 image_viewer = None
 node_editor = None
 correlation_editor = None
-
+node_editor_relink = False
+correlation_editor_relink = False
 pickle_temp = dict()
 
+
 ## 221221 correlation editor vars & related
-active_editor = 1  # 0 for node editor, 1 for correlation
+active_editor = 0  # 0 for node editor, 1 for correlation
+ce_frames = list()
 
 def set_active_node(node, keep_active=False):
     global focused_node, active_node, next_active_node
@@ -74,3 +78,49 @@ def set_error(error_object, error_message):
     print(error_msg)
     error_obj = error_object
     error_new = True
+
+def save_project(filename):
+    if filename[-5:] == '.srnp':
+        filename = filename[:-5]
+    with open(filename+'.srnp', 'wb') as pickle_file:
+        pickle.dump([nodes, ce_frames], pickle_file)
+
+def load_project(filename):
+    global nodes, ce_frames, correlation_editor_relink, node_editor_relink
+    try:
+        with open(filename, 'rb') as pickle_file:
+            data = pickle.load(pickle_file)
+            nodes = data[0]
+            ce_frames = data[1]
+            node_editor_relink = True
+            correlation_editor_relink = True
+    except Exception as e:
+        set_error(e, "Error loading project")
+
+COLOUR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 0.94)
+COLOUR_PANEL_BACKGROUND = (0.94, 0.94, 0.94, 0.94)
+COLOUR_TITLE_BACKGROUND = (0.87, 0.87, 0.83, 0.96)
+COLOUR_TITLE_BACKGROUND_LIGHT = (0.96, 0.96, 0.93, 0.93)
+COLOUR_FRAME_BACKGROUND = (0.87, 0.87, 0.83, 0.96)
+COLOUR_FRAME_ACTIVE = (0.91, 0.91, 0.86, 0.94)
+COLOUR_FRAME_DARK = (0.83, 0.83, 0.76, 0.94)
+COLOUR_FRAME_EXTRA_DARK = (0.76, 0.76, 0.71, 0.94)
+COLOUR_MAIN_MENU_BAR = (0.882, 0.882, 0.882, 0.94)
+COLOUR_MAIN_MENU_BAR_TEXT = (0.0, 0.0, 0.0, 0.94)
+COLOUR_MAIN_MENU_BAR_HILIGHT = (0.96, 0.95, 0.92, 0.94)
+COLOUR_MENU_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 0.94)
+COLOUR_DROP_TARGET = COLOUR_FRAME_DARK
+COLOUR_HEADER = COLOUR_FRAME_DARK
+COLOUR_HEADER_ACTIVE = COLOUR_FRAME_ACTIVE
+COLOUR_HEADER_HOVERED = COLOUR_FRAME_EXTRA_DARK
+COLOUR_TEXT = (0.0, 0.0, 0.0, 1.0)
+COLOUR_TEXT_FADE = COLOUR_FRAME_EXTRA_DARK
+WINDOW_ROUNDING = 5.0
+CONTEXT_MENU_SIZE = (200, 98)
+ERROR_WINDOW_HEIGHT = 80
+COLOUR_ERROR_WINDOW_BACKGROUND = (0.84, 0.84, 0.84, 1.0)
+COLOUR_ERROR_WINDOW_HEADER = (0.7, 0.7, 0.7, 1.0)
+COLOUR_ERROR_WINDOW_HEADER_NEW = (0.35, 0.35, 0.35, 1.0)
+COLOUR_ERROR_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
+COLOUR_CM_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
+COLOUR_CM_OPTION_HOVERED = (1.0, 1.0, 1.0, 1.0)

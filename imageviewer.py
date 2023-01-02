@@ -42,12 +42,12 @@ class ImageViewer:
     def __init__(self, window, imgui_context, imgui_implementation):
         # glfw and imgui
         self.window = window
+        self.window.clear_color = ImageViewer.COLOUR_CLEAR
         self.window.make_current()
 
         self.imgui_context = imgui_context
         self.imgui_implementation = imgui_implementation
 
-        self.window.clear_color = ImageViewer.COLOUR_CLEAR
         # Rendering related objects and vars
         self.shader = Shader("shaders/textured_shader.glsl")
         self.roi_shader = Shader("shaders/line_shader.glsl")
@@ -96,15 +96,13 @@ class ImageViewer:
         self.drawing_roi = False
         self.moving_roi = False
         self.roi = ROI([0, 0, 0, 0], (1.0, 0.0, 1.0, 1.0))
-        self.marker = Marker([-ImageViewer.MARKER_SIZE, 0.0, ImageViewer.MARKER_SIZE, 0.0, 0.0,-ImageViewer.MARKER_SIZE, 0.0, ImageViewer.MARKER_SIZE], [0, 1, 2, 3], ImageViewer.MARKER_COLOUR)
+        self.marker = Marker([-ImageViewer.MARKER_SIZE, 0.0, ImageViewer.MARKER_SIZE, 0.0, 0.0, -ImageViewer.MARKER_SIZE, 0.0, ImageViewer.MARKER_SIZE], [0, 1, 2, 3], ImageViewer.MARKER_COLOUR)
 
         # GUI behaviour
         self.show_frame_select_window = True
         #
         self.current_dataset = Dataset()
         self.frame_info = ""
-
-        self.never_focused = True
 
     def set_mode(self, mode):
         if mode in ["R", "RGB"]:
@@ -122,7 +120,7 @@ class ImageViewer:
             self.window.pop_any_mouse_event()
 
         self.window.on_update()
-        #self.imgui_implementation.refresh_font_texture()  # TODO reinstate this line?
+        self.imgui_implementation.refresh_font_texture()  # TODO reinstate this line?
         if self.window.window_size_changed:
             settings.iv_window_height = self.window.height
             settings.iv_window_width = self.window.width
@@ -147,23 +145,41 @@ class ImageViewer:
         imgui.get_io().display_size = self.window.width, self.window.height
         imgui.new_frame()
         # Push overall imgui style vars
-        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *ImageViewer.COLOUR_FRAME_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *ImageViewer.COLOUR_FRAME_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *ImageViewer.COLOUR_FRAME_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *ImageViewer.COLOUR_MAIN_DARK)
-        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *ImageViewer.COLOUR_MAIN_BRIGHT)
-        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *ImageViewer.COLOUR_THEME)
-        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *ImageViewer.COLOUR_THEME_ACTIVE)
-        imgui.push_style_color(imgui.COLOR_BUTTON, *ImageViewer.COLOUR_MAIN)
-        imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *ImageViewer.COLOUR_THEME_ACTIVE)
-        imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *ImageViewer.COLOUR_MAIN)
-        imgui.push_style_color(imgui.COLOR_CHECK_MARK, *ImageViewer.COLOUR_THEME)
-        imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *ImageViewer.COLOUR_WINDOW_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *cfg.COLOUR_PANEL_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_TEXT)
+        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *cfg.COLOUR_TITLE_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *cfg.COLOUR_TITLE_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_COLLAPSED, *cfg.COLOUR_TITLE_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *cfg.COLOUR_TITLE_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *cfg.COLOUR_TITLE_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *cfg.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_FRAME_ACTIVE)
+        imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *cfg.COLOUR_FRAME_ACTIVE)
+        imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *cfg.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.COLOUR_FRAME_EXTRA_DARK)
+        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.COLOUR_FRAME_DARK)
+        imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_SCROLLBAR_GRAB, *cfg.COLOUR_FRAME_DARK)
+        imgui.push_style_color(imgui.COLOR_SCROLLBAR_GRAB_HOVERED, *cfg.COLOUR_FRAME_DARK)
+        imgui.push_style_color(imgui.COLOR_SCROLLBAR_GRAB_ACTIVE, *cfg.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_SCROLLBAR_BACKGROUND, *cfg.COLOUR_FRAME_EXTRA_DARK)
+        imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *cfg.COLOUR_TEXT)
+        imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM_HOVERED, *cfg.COLOUR_TEXT)
+        imgui.push_style_color(imgui.COLOR_CHECK_MARK, *cfg.COLOUR_FRAME_EXTRA_DARK)
+        imgui.push_style_color(imgui.COLOR_MENUBAR_BACKGROUND, *cfg.COLOUR_MAIN_MENU_BAR)
+        imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_HEADER)
+        imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *cfg.COLOUR_HEADER_HOVERED)
+        imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_HEADER_ACTIVE)
+        imgui.push_style_color(imgui.COLOR_DRAG_DROP_TARGET, *cfg.COLOUR_DROP_TARGET)
+        imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, cfg.WINDOW_ROUNDING)
 
         self._shortcuts()
         self._gui_main()
 
-        imgui.pop_style_color(12)
+        imgui.pop_style_color(28)
+        imgui.pop_style_var(1)
         imgui.render()
         self.imgui_implementation.render(imgui.get_draw_data())
 
@@ -259,7 +275,7 @@ class ImageViewer:
             if _always_auto_changed and self.autocontrast[self.contrast_window_channel]:
                 self._compute_auto_contrast()
             if imgui.is_window_focused():
-                if imgui.is_key_pressed(glfw.KEY_SPACE):
+                if self.window.get_key_event(glfw.KEY_SPACE, glfw.PRESS):
                     self._compute_auto_contrast()
             imgui.pop_style_color(4)
             imgui.end()
@@ -298,6 +314,7 @@ class ImageViewer:
             self.marker.render_end(self.roi_shader)
 
     def _frame_info_window(self):
+
         imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 0.0)
         imgui.set_next_window_position(0, self.window.height - ImageViewer.INFO_BAR_HEIGHT + (cfg.window_height - self.window.height), imgui.ALWAYS)
         imgui.set_next_window_size(self.window.width, ImageViewer.INFO_BAR_HEIGHT)
@@ -328,10 +345,10 @@ class ImageViewer:
             if self.window.scroll_delta[1] != 0:
                 _frame_idx_changed = True
                 self.current_dataset.current_frame -= int(self.window.scroll_delta[1])
-        if imgui.is_key_pressed(glfw.KEY_LEFT, True):
+        if self.window.get_key_event(glfw.KEY_LEFT, glfw.PRESS) or self.window.get_key_event(glfw.KEY_LEFT, glfw.REPEAT):
             _frame_idx_changed = True
             self.current_dataset.current_frame -= 1
-        if imgui.is_key_pressed(glfw.KEY_RIGHT, True):
+        if self.window.get_key_event(glfw.KEY_RIGHT, glfw.PRESS) or self.window.get_key_event(glfw.KEY_RIGHT, glfw.REPEAT):
             _frame_idx_changed = True
             self.current_dataset.current_frame += 1
         if _frame_idx_changed:
@@ -346,6 +363,7 @@ class ImageViewer:
         imgui.text(self.frame_info)
         imgui.pop_style_var(1)
         imgui.end()
+
 
     def _edit_and_render_roi(self):
         if not self.show_image:
@@ -415,27 +433,22 @@ class ImageViewer:
                         self.camera.position[1] *= (1.0 + self.window.scroll_delta[1] * ImageViewer.CAMERA_ZOOM_STEP)
 
     def _shortcuts(self):
-        shift = imgui.is_key_down(glfw.KEY_LEFT_SHIFT)
-        ctrl = imgui.is_key_down(glfw.KEY_LEFT_CONTROL)
-        if imgui.is_key_pressed(glfw.KEY_C) and shift and ctrl:
+        if self.window.get_key_event(glfw.KEY_C, glfw.PRESS, glfw.MOD_SHIFT | glfw.MOD_CONTROL):
             self.contrast_window_open = True
-        if imgui.is_key_pressed(glfw.KEY_W) and ctrl:
+        if self.window.get_key_event(glfw.KEY_W, glfw.PRESS, glfw.MOD_CONTROL):
             self.contrast_window_open = False
         if self.contrast_window_open:
-            if imgui.is_key_pressed(glfw.KEY_SPACE) and not shift:
-                if not ctrl:
-                    self._compute_auto_contrast(self.contrast_window_channel)
-                else:
-                    self.autocontrast = [True, True, True]
-                    self._compute_auto_contrast(0)
-                    self._compute_auto_contrast(1)
-                    self._compute_auto_contrast(2)
-            if imgui.is_key_pressed(glfw.KEY_SPACE) and shift and ctrl:
+            if self.window.get_key_event(glfw.KEY_SPACE, glfw.PRESS, 0):
+                self.autocontrast = [True, True, True]
+                self._compute_auto_contrast(0)
+                self._compute_auto_contrast(1)
+                self._compute_auto_contrast(2)
+            if self.window.get_key_event(glfw.KEY_SPACE, glfw.PRESS, glfw.MOD_SHIFT | glfw.MOD_CONTROL):
                 self.autocontrast = [False, False, False]
-        if imgui.is_key_pressed(glfw.KEY_S) and ctrl:
+        if self.window.get_key_event(glfw.KEY_S, glfw.PRESS, glfw.MOD_CONTROL):
             if self.image_pxd is not None:
                 self.save_current_image()
-        if imgui.is_key_pressed(glfw.KEY_DELETE, True):
+        if self.window.get_key_event(glfw.KEY_DELETE, glfw.PRESS, 0) or self.window.get_key_event(glfw.KEY_DELETE, glfw.REPEAT, 0):
             self.current_dataset.delete_by_index(self.current_dataset.current_frame)
             self.new_image_requested = True
 

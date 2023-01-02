@@ -67,6 +67,9 @@ class Window:
         glfw.set_window_size_callback(self.glfw_window, self.size_changed_callback)
         glfw.set_window_focus_callback(self.glfw_window, self.window_focus_callback)
 
+    def set_key_callbacks(self):
+        glfw.set_key_callback(self.glfw_window, self.key_callback)
+
     def on_update(self):
         current_time = glfw.get_time()
         self.delta_time = current_time - self.time
@@ -134,7 +137,7 @@ class Window:
     def get_mouse_button(self, button):
         return glfw.get_mouse_button(self.glfw_window, button)
 
-    def get_key_event(self, key, action, mods = 0, pop_event = True):
+    def get_key_event(self, key, action, mods=0, pop_event=True):
         if self.key_event:
             if self.key_event.check(key, action, mods):
                 if pop_event:
@@ -168,13 +171,10 @@ class KeyEvent:
         self.action = action
         self.mods = mods
 
-    def check(self, requested_key, requested_action, requested_mods):
+    def check(self, requested_key, requested_action, requested_mods=0):
         if self.key == requested_key:
-            print("right key")
             if self.action == requested_action:
-                print("right action")
                 if self.mods == requested_mods:
-                    print("right mpds")
                     return True
         return False
 
