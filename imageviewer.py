@@ -539,7 +539,7 @@ class ImageViewer:
             self.hist_counts[2] = np.delete(self.hist_counts[2], 0)
             self.hist_bins[2] = np.delete(self.hist_bins[2], 0)
 
-    def _compute_auto_contrast(self, channel = None):
+    def _compute_auto_contrast(self, channel=None):
         img_subsample = self.image_pxd[::settings.autocontrast_subsample, ::settings.autocontrast_subsample, :]
         n = img_subsample.shape[0] * img_subsample.shape[1]
         for i in range(3):
@@ -559,8 +559,8 @@ class ImageViewer:
             self.current_lut = lut_index
             self.lut_array = np.asarray(settings.luts[settings.lut_names[self.current_lut]])
             if self.lut_array.shape[1] == 3:
-                lut_array = np.reshape(self.lut_array, (self.lut_array.shape[0], 1, self.lut_array.shape[1]))
-            self.lut_texture.update(lut_array)
+                self.lut_array = np.reshape(self.lut_array, (self.lut_array.shape[0], 1, self.lut_array.shape[1]))  ## was lut_array = -> now self.lut_array
+            self.lut_texture.update(self.lut_array)
 
     def get_cursor_image_coordinates(self):
         c_pos = self.window.cursor_pos  # cursor position

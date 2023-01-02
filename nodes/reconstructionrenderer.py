@@ -51,6 +51,7 @@ class ReconstructionRendererNode(Node):
         self.does_profiling_count = False
 
         self.auto_render = False
+        self.output_mode = 0
 
     def render(self):
         if super().render_start():
@@ -74,14 +75,6 @@ class ReconstructionRendererNode(Node):
             pxs_changed = _c
             self.any_change = _c or self.any_change
             imgui.text(f"Final image size: {self.reconstruction_image_size[0]} x {self.reconstruction_image_size[1]} px")
-
-            _c, self.fix_sigma = imgui.checkbox("Force uncertainty", self.fix_sigma)
-
-            if self.fix_sigma:
-                imgui.same_line(spacing=10)
-                imgui.push_item_width(50)
-                _, self.default_sigma = imgui.input_float(" nm", self.default_sigma, 0, 0, format="%.1f")
-                imgui.pop_item_width()
 
             # Colourize optionsx
             _c, self.paint_particles = imgui.checkbox("Colourize particles", self.paint_particles)
@@ -128,10 +121,20 @@ class ReconstructionRendererNode(Node):
 
 
     def render_advanced(self):
-        _c, self.auto_render = imgui.checkbox("Auto render", self.auto_render)
-        self.tooltip("When checked, instead of displaying a 'render' button,\n"
-                     "the node will always render the reconstruction upon any\n"
-                     "change to the settings.")
+        _c, self.fix_sigma = imgui.checkbox("Force uncertainty", self.fix_sigma)
+
+        if self.fix_sigma:
+            imgui.same_line(spacing=10)
+            imgui.push_item_width(50)
+            _, self.default_sigma = imgui.input_float(" nm", self.default_sigma, 0, 0, format="%.1f")
+            imgui.pop_item_width()
+
+        _c, self.output_mode = imgui.combo("Output mode", self.output_mode, ["float", "uint16"])
+        if _c:
+            if self.output_mode == 0:
+                self.reconstructor.set_mode("float")
+            else:
+                self.reconstructor.set_mode("ui16")
 
     def get_histogram_values(self):
         datasource = self.reconstruction_in.get_incoming_node()

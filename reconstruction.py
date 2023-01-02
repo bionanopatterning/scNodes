@@ -133,7 +133,6 @@ class Reconstructor:
         tiles_y = int(np.ceil(H / h))
         for i in range(tiles_x):
             for j in range(tiles_y):
-                print(i, j)
                 tile = self.render_tile((i, j))
                 sr_image[j * h:min([(j + 1) * h, H]), i * w:min([(i + 1) * w, W]), :] = tile[:min([h, H - j * h]), :min([w, W - i * w]), :]
 

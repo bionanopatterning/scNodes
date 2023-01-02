@@ -24,7 +24,6 @@ void main()
 {
 
     gl_Position = cameraMatrix * vec4(mesh_xy * quad_pixel_size * uncertainty / quad_uncertainty + vec2(x, y) / pixel_size, 0.0, 1.0);
-    //fcolour = colour * quad_uncertainty / uncertainty * state;
     fcolour = texture(lut, vec2(colour_idx, 0)).rgb * quad_uncertainty / uncertainty * state;
     fuv = mesh_uv;
 }
