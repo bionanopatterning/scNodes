@@ -193,7 +193,13 @@ class ImageViewer:
                     self.current_dataset.current_frame = np.clip(self.current_dataset.current_frame, 0, self.current_dataset.n_frames - 1)
                     cfg.active_node.FRAME_REQUESTED_BY_IMAGE_VIEWER = True
                     new_image = cfg.active_node.get_image(self.current_dataset.current_frame)
-                    cfg.active_node.FRAME_REQUESTED_BY_IMAGE_VIEWER = False
+                    cfg.active_node.FRAME_REQUESTED_BY_IMAGE_VIEWER = False  ## instead of block, send a predetermined contrast lim!
+                    if cfg.active_node.OVERRIDE_AUTOCONTRAST:
+                        print("Overriding contrast settings")
+                        self.autocontrast = [False, False, False]
+                        lims = cfg.active_node.OVERRIDE_AUTOCONTRAST_LIMS
+                        self.contrast_min = [lims[0], lims[0], lims[0]]
+                        self.contrast_max = [lims[1], lims[1], lims[1]]
                     if new_image is not None:
                         self.show_image = True
                         self.set_image(new_image)
@@ -215,7 +221,7 @@ class ImageViewer:
         self.imgui_implementation.shutdown()
 
     def _gui_main(self):
-        if self.show_frame_select_window and self.current_dataset.initialized:
+        if self.show_frame_select_window and self.current_dataset.initialized and not self.mode == "RGB":
             self._frame_info_window()
 
         # Context menu
@@ -249,10 +255,10 @@ class ImageViewer:
             if self.mode == "R":
                 self.contrast_window_channel = 0
                 _idx = int(self.lut_array.shape[0] / 2)
-                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *self.lut_array[-_idx, :])
-                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM_HOVERED, *self.lut_array[-_idx, :])
-                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *self.lut_array[-_idx, :])
-                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *self.lut_array[-_idx, :])
+                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *self.lut_array[-_idx, :], 1.0)
+                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM_HOVERED, *self.lut_array[-_idx, :], 1.0)
+                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *self.lut_array[-_idx, :], 1.0)
+                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *self.lut_array[-_idx, :], 1.0)
             else:
                 _clr = (float(self.contrast_window_channel == 0) + 0.2 * 0.8, float(self.contrast_window_channel == 1) + 0.2 * 0.8, float(self.contrast_window_channel == 2) + 0.2 * 0.8)
                 imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *_clr)
@@ -528,6 +534,8 @@ class ImageViewer:
         self.hist_counts[0] = self.hist_counts[0].astype('float32')
         self.hist_counts[0] = np.delete(self.hist_counts[0], 0)
         self.hist_bins[0] = np.delete(self.hist_bins[0], 0)
+        self.hist_counts[0] = np.log(self.hist_counts[0] + 1)
+
         if self.mode == "RGB":
             self.hist_counts[1], self.hist_bins[1] = np.histogram(self.image_pxd[:, :, 1], bins=ImageViewer.HISTOGRAM_BINS)
             self.hist_counts[1] = self.hist_counts[1].astype('float32')
@@ -538,7 +546,8 @@ class ImageViewer:
             self.hist_counts[2] = self.hist_counts[2].astype('float32')
             self.hist_counts[2] = np.delete(self.hist_counts[2], 0)
             self.hist_bins[2] = np.delete(self.hist_bins[2], 0)
-
+            self.hist_counts[1] = np.log(self.hist_counts[1] + 1)
+            self.hist_counts[2] = np.log(self.hist_counts[2] + 1)
     def _compute_auto_contrast(self, channel=None):
         img_subsample = self.image_pxd[::settings.autocontrast_subsample, ::settings.autocontrast_subsample, :]
         n = img_subsample.shape[0] * img_subsample.shape[1]

@@ -140,6 +140,9 @@ class CorrelationEditor:
         if self.window.focused:
             self.imgui_implementation.process_inputs()
 
+        if imgui.is_key_pressed(glfw.KEY_TAB):
+            cfg.active_editor = 0
+
         if cfg.correlation_editor_relink:
             CorrelationEditor.relink_after_load()
             cfg.correlation_editor_relink = False
@@ -361,7 +364,15 @@ class CorrelationEditor:
             _c, af.contrast_lims[0] = imgui.slider_float("min", af.contrast_lims[0], af.hist_bins[0], af.hist_bins[-1], format='min %.1f')
             _c, af.contrast_lims[1] = imgui.slider_float("max", af.contrast_lims[1], af.hist_bins[0], af.hist_bins[-1], format='max %.1f')
 
-        ## TODO: add export / measure tools
+        if imgui.collapsing_header("Export", None)[0]:
+            _, CorrelationEditor.editing_export_roi = imgui.checkbox("Edit ROI", CorrelationEditor.editing_export_roi)
+            imgui.text("ROI:")
+
+        if imgui.collapsing_header("Measure", None)[0]:
+            imgui.text("To do")
+
+        if imgui.collapsing_header("Alignment tools", None)[0]:
+            imgui.text("To do")
 
         imgui.end()
         imgui.pop_style_color(3)
@@ -392,7 +403,7 @@ class CorrelationEditor:
             # Name
             imgui.bullet_text("")
             imgui.same_line()
-            label_width = 165 - indent * CorrelationEditor.FRAME_LIST_INDENT_WIDTH
+            label_width = 168 - indent * CorrelationEditor.FRAME_LIST_INDENT_WIDTH
 
             _c, selected = imgui.selectable(""+f.title+f"###fuid{f.uid}", selected=CorrelationEditor.active_frame == f, width=label_width)
             if imgui.begin_popup_context_item():

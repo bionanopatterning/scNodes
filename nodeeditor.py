@@ -64,7 +64,8 @@ class NodeEditor:
         self.window.on_update()
         settings.ne_window_width = self.window.width
         settings.ne_window_height = self.window.height
-
+        if imgui.is_key_pressed(glfw.KEY_TAB):
+            cfg.active_editor = 1
         if not self.window.get_key(glfw.KEY_ESCAPE):
             for node in cfg.nodes:
                 node.clear_flags()
@@ -363,9 +364,9 @@ class NodeEditor:
                 nodeimpls.append(NodeImpl(mod.create))
 
             except Exception as e:
+                cfg.nodes = list()
                 print(f"NodeEditor - init node factory didn't work for source file: {nodesrc}")
                 cfg.set_error(e, f"No well-defined Node type found in {nodesrc}. See manual for minimal code requirements.")
-                cfg.nodes = list()
         node_ids = list()
 
         for ni in nodeimpls:

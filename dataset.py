@@ -253,10 +253,10 @@ class ParticleData:
                 sigma.append(p.sigma * self.pixel_size)
                 intensity.append(p.intensity)
                 offset.append(p.offset)
-                p.uncertainty = np.sqrt(((p.sigma*self.pixel_size)**2 + k1) / p.intensity + k2 * (p.sigma*self.pixel_size)**4 * p.bkgstd**2 / p.intensity**2)
+                if p.uncertainty == -1:
+                    p.uncertainty = np.sqrt(((p.sigma*self.pixel_size)**2 + k1) / p.intensity + k2 * (p.sigma*self.pixel_size)**4 * p.bkgstd**2 / p.intensity**2)
                 uncertainty.append(p.uncertainty)
                 bkgstd.append(p.bkgstd)
-
 
         self.parameter['uncertainty [nm]'] = np.asarray(uncertainty)
         self.parameter['intensity [counts]'] = np.asarray(intensity)
@@ -294,6 +294,7 @@ class ParticleData:
         :param roi: The ROI used in the initial particle position estimation (e.g. ParticleDetectionNode). It can be saved in ParticleData in order to facilitate overlaying the final reconstruction with the corresponding region of the widefield image.
         :return:
         """
+        print("Setting reconstruction ROI to: ", roi[0], roi[1], roi[2], roi[3])
         self.reconstruction_roi = roi
 
     @staticmethod
@@ -329,6 +330,10 @@ class ParticleData:
         particle_data_obj.particles = particles
         particle_data_obj.empty = False
         particle_data_obj.bake()
+        print("uncertainty")
+        print(particle_data_obj.parameter["uncertainty [nm]"])
+        print("sigma")
+        print(particle_data_obj.parameter["sigma [nm]"])
         particle_data_obj.set_reconstruction_roi([particle_data_obj.x_min, particle_data_obj.y_min, particle_data_obj.x_max, particle_data_obj.y_max])
 
         return particle_data_obj

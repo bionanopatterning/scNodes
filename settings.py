@@ -20,8 +20,12 @@ luts["Green"] = cc.linear_kgy_5_95_c69
 luts["Blue"] = cc.linear_kbc_5_95_c73
 luts["Fire"] = cc.linear_kryw_0_100_c71
 luts["Parula"] = cc.linear_bgyw_20_98_c66
+luts["Forest"] = cc.linear_gow_65_90_c35
 luts["Heatmap"] = cc.rainbow_bgyr_10_90_c83
 luts["Neon"] = cc.linear_worb_100_25_c53
+luts["Isoluminant hue"] = cc.isoluminant_cgo_80_c38
+luts["Over / under"] = cc.diverging_linear_bjr_30_55_c53
+luts["Glasbey"] = cc.glasbey_bw_minc_20_minl_30
 lut_names = list(luts.keys())
 
 def_img_size = (2048, 2048)

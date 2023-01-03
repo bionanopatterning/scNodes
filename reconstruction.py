@@ -18,7 +18,7 @@ class Reconstructor:
 
     def __init__(self):
         # Shader
-        self.shader = Shader("shaders/reconstructor_shader.glsl")
+        self.shader = Shader("shaders/ne_reconstructor_shader.glsl")
         # create texture, gaussian spot img, set pixel sizes etc.
         self.texture = Texture(format="r32f")
         self.texture.set_linear_interpolation()
@@ -32,7 +32,8 @@ class Reconstructor:
         self.fbo = FrameBuffer(*self.tile_size, texture_format="rgb32f")
         self.vao = VertexArray(VertexBuffer(Reconstructor.vertices), IndexBuffer(Reconstructor.indices),
                                attribute_format="xyuv")
-        self.lut_texture = Texture(format="rgba32f")
+        self.lut_texture = Texture(format="rgb32f")
+        self.set_lut(0)
         self.instance_vbos = dict()
         self.particle_data = ParticleData()
         self.camera = StaticCamera(Reconstructor.default_tile_size)
@@ -86,11 +87,11 @@ class Reconstructor:
 
     def recompile_shader(self):
         """
-        Useful during debugging of the shaders. To be deleted in release.
+        Useful during debugging of the shaders.
         :return:
         """
         try:
-            shader = Shader("shaders/reconstructor_shader.glsl")
+            shader = Shader("shaders/ne_reconstructor_shader.glsl")
             self.shader = shader
         except Exception as e:
             raise e
@@ -100,6 +101,7 @@ class Reconstructor:
         Render the particles in the currently st ParticleData obj. (see set_particle_data()), at the current pixel size (see set_pixel_size()).
         :return: a 3D [width, height, 3] numpy array of type float (when in mode 'float') or uint16 (mode 'ui16'). See set_mode()
         """
+        print("Start render in reconstruction.py")
         if not self.particle_data.baked_by_renderer:
             self.update_particle_data()  # refresh the instance buffers
 
@@ -135,7 +137,6 @@ class Reconstructor:
             for j in range(tiles_y):
                 tile = self.render_tile((i, j))
                 sr_image[j * h:min([(j + 1) * h, H]), i * w:min([(i + 1) * w, W]), :] = tile[:min([h, H - j * h]), :min([w, W - i * w]), :]
-
         self.shader.unbind()
         self.vao.unbind()
         self.fbo.unbind()
@@ -148,6 +149,7 @@ class Reconstructor:
             _normfac = np.amax(sr_image)
             if _normfac == 0.0:
                 _normfac = 1
+            print(_normfac)
             r = sr_image[:, :, 0] / _normfac * 65535
             g = sr_image[:, :, 1] / _normfac * 65535
             b = sr_image[:, :, 2] / _normfac * 65535
@@ -159,11 +161,19 @@ class Reconstructor:
     def set_camera_origin(self, camera_origin):
         """
         :param camera_origin: origin position in world coordinates for the camera.
+        Super-resolution images are rendered in tiles, since the full output image size is often larger than
+        GPU memory constraints would efficiently allow. The nr. of tiles if automatically determined in render()
+        Prior to rendering a reconstruction, the camera origin must be set to the top-left coordinate of the
+        reconstruction ROI.
         :return:
         """
         self.camera_origin = camera_origin
 
     def create_instance_buffers(self):
+        """
+        Generate and populate the instance buffers: GPU-side data arrays of particle position (x, y), uncertainty, colour, etc.
+        :return:
+        """
         self.vao.bind()
 
         self.instance_vbos["x"] = VertexBuffer(self.particle_data.parameter['x [nm]'])
@@ -174,6 +184,7 @@ class Reconstructor:
         self.instance_vbos["y"].set_location_and_stride(3, 1)
         self.instance_vbos["y"].set_divisor_to_per_instance()
 
+        print(self.particle_data.parameter['uncertainty [nm]'])
         self.instance_vbos["uncertainty"] = VertexBuffer(self.particle_data.parameter['uncertainty [nm]'])
         self.instance_vbos["uncertainty"].set_location_and_stride(4, 1)
         self.instance_vbos["uncertainty"].set_divisor_to_per_instance()
@@ -206,6 +217,7 @@ class Reconstructor:
             _colours_idx.append(particle.colour_idx)
         self.instance_vbos["colour_idx"].update(np.asarray(_colours_idx).flatten(order = "C"))
         self.vao.unbind()
+        self.colours_set = True
 
     def update_particle_states(self):
         self.vao.bind()
@@ -228,7 +240,9 @@ class Reconstructor:
         self.shader.uniformmat4("cameraMatrix", self.camera.view_projection_matrix)
         glDrawElementsInstanced(GL_TRIANGLES, self.vao.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None,
                                 self.particle_data.n_particles)
+        print("Done rendering tile")
         tile = glReadPixels(0, 0, self.default_tile_size[0], self.default_tile_size[1], GL_RGB, GL_FLOAT)
+        print("Done reading tile")
         return tile
 
 

@@ -38,7 +38,7 @@ class ReconstructionRendererNode(Node):
         self.paint_applied = False
 
         self.parameter = 0
-        self.available_parameters = ["Fixed colour"]
+        self.available_parameters = ["..."]
         self.colour_min = (0.0, 0.0, 0.0)
         self.colour_max = (1.0, 1.0, 1.0)
         self.histogram_values = np.asarray([0, 0]).astype('float32')
@@ -52,6 +52,8 @@ class ReconstructionRendererNode(Node):
 
         self.auto_render = False
         self.output_mode = 0
+        self.OVERRIDE_AUTOCONTRAST = False
+        self.OVERRIDE_AUTOCONTRAST_LIMS = (0, 65535)
 
     def render(self):
         if super().render_start():
@@ -60,9 +62,7 @@ class ReconstructionRendererNode(Node):
             self.reconstruction_in.render_end()
             self.image_out.render_end()
 
-
             if self.reconstruction_in.check_connect_event() or self.reconstruction_in.check_disconnect_event():
-                self.init_histogram_values()
                 self.on_gain_focus()
 
             imgui.spacing()
@@ -78,23 +78,42 @@ class ReconstructionRendererNode(Node):
 
             # Colourize optionsx
             _c, self.paint_particles = imgui.checkbox("Colourize particles", self.paint_particles)
+            self.BLOCK_AUTOCONTRAST_ON_NEW_FRAME = self.paint_particles
             if _c and not self.paint_particles:
                 self.paint_by = 0
                 self.reconstructor.set_lut(0)
             if self.paint_particles:
                 _cw = imgui.get_content_region_available_width()
-                imgui.push_item_width(_cw - 100)
-                _c, self.paint_by = imgui.combo("LUT", self.paint_by, settings.lut_names)
-                if _c:
-                    self.reconstructor.set_lut(self.paint_by)
-                    self.paint_applied = False
+                imgui.set_next_item_width(_cw - 80)
                 _c, self.parameter = imgui.combo("Parameter", self.parameter, self.available_parameters)
                 if _c:
                     self.get_histogram_values()
                     self.min = self.histogram_bins[0]
                     self.max = self.histogram_bins[-1]
                     self.paint_applied = False
-                imgui.pop_item_width()
+                imgui.set_next_item_width(_cw - 80)
+                _c, self.paint_by = imgui.combo("LUT", self.paint_by, settings.lut_names)
+                if _c:
+                    self.reconstructor.set_lut(self.paint_by)
+                    self.paint_applied = False
+                if True:
+                    imgui.plot_histogram("##hist", self.histogram_values, graph_size=(_cw, 80.0))
+                    _l = self.histogram_bins[0]
+                    _h = self.histogram_bins[-1]
+                    _max = self.max
+                    _min = self.min
+                    _uv_left = 0.5
+                    _uv_right = 0.5
+                    if _max != _min:
+                        _uv_left = 1.0 + (_l - _max) / (_max - _min)
+                        _uv_right = 1.0 + (_h - _max) / (_max - _min)
+                    imgui.image(self.reconstructor.lut_texture.renderer_id, _cw, 10.0, (_uv_left, 0.5),
+                                (_uv_right, 0.5), border_color=(0.0, 0.0, 0.0, 1.0))
+                    imgui.push_item_width(_cw)
+                    _c, self.min = imgui.slider_float("##min", self.min, self.histogram_bins[0], self.histogram_bins[1], format='min: %.1f')
+                    _c, self.max = imgui.slider_float("##max", self.max, self.histogram_bins[0], self.histogram_bins[1],format='max: %.1f')
+                    imgui.pop_item_width()
+
                 # TODO: histogram
 
             if self.auto_render:
@@ -132,9 +151,14 @@ class ReconstructionRendererNode(Node):
         _c, self.output_mode = imgui.combo("Output mode", self.output_mode, ["float", "uint16"])
         if _c:
             if self.output_mode == 0:
+                pass
                 self.reconstructor.set_mode("float")
             else:
+                pass
                 self.reconstructor.set_mode("ui16")
+
+        if imgui.button("Recompile shader"):
+            self.reconstructor.recompile_shader()
 
     def get_histogram_values(self):
         datasource = self.reconstruction_in.get_incoming_node()
@@ -165,9 +189,8 @@ class ReconstructionRendererNode(Node):
         values = particle_data.parameter[self.available_parameters[self.parameter]]
         i = 0
         for particle in particle_data.particles:
-            fac = min([max([(values[i] - self.min) / self.max, 0.0]), 1.0])
-            _colour_idx = fac
-            particle.colour_idx = _colour_idx
+            particle.colour_idx = np.min([np.max([0.0, (values[i] - self.min) / (self.max - self.min)]), 1.0])
+            print(particle.colour_idx)
             i += 1
         self.reconstructor.colours_set = False
         if cfg.profiling:
@@ -182,23 +205,27 @@ class ReconstructionRendererNode(Node):
             if datasource:
                 particle_data = datasource.get_particle_data()
                 self.reconstructor.set_particle_data(particle_data)
-                self.reconstructor.set_camera_origin([-particle_data.reconstruction_roi[0], -particle_data.reconstruction_roi[1]])
+                self.reconstructor.set_camera_origin([-particle_data.reconstruction_roi[0] / self.pixel_size, -particle_data.reconstruction_roi[1] / self.pixel_size])
 
                 ## Apply colours
                 if self.paint_particles:
                     if not self.paint_applied:
                         self.apply_paint(particle_data)
                         self.paint_applied = True
+                        self.reconstructor.colours_set = False
                 else:
                     if not self.paint_applied:
                         for particle in particle_data.particles:
                             particle.colour_idx = 1.0
                         self.paint_applied = True
+                        self.reconstructor.colours_set = False
                 if self.reconstructor.particle_data.empty:
                     return None
                 else:
                     self.latest_image = self.reconstructor.render(fixed_uncertainty=(self.default_sigma if self.fix_sigma else None))
                     self.any_change = True
+                    self.OVERRIDE_AUTOCONTRAST = True
+                    self.OVERRIDE_AUTOCONTRAST_LIMS = (0, np.amax(self.latest_image))
             else:
                 self.latest_image = None
         except Exception as e:
@@ -221,6 +248,7 @@ class ReconstructionRendererNode(Node):
             return ParticleData()
 
     def on_gain_focus(self):
+        self.init_histogram_values()
         roi = None
         try:
             roi = self.get_particle_data().reconstruction_roi
