@@ -452,7 +452,6 @@ class CorrelationEditor:
             CorrelationEditor.tooltip(f"or: {CorrelationEditor.ex_pxnm * 25400000:.0f} dpi :)")
             imgui.same_line()
             imgui.text("nm / px")
-            imgui.text(f"camera xy = {self.camera.position[0]:.0f}, {self.camera.position[1]:.0f}")
             if CorrelationEditor.export_roi_mode == 1:  # export by ROI
                 af = CorrelationEditor.active_frame
                 if af is not None:
@@ -534,14 +533,14 @@ class CorrelationEditor:
                     for frame in cfg.ce_frames:
                         CorrelationEditor.renderer.render_frame_quad(camera, frame)
                     tile = glReadPixels(0, 0, tile_size, tile_size, GL_RGBA, GL_FLOAT)
-                    out_img[i * tile_size:min([(i+1) * tile_size, out_width]), j * tile_size:min([(j+1) * tile_size, out_height])] = tile[:min([tile_size, out_width - i * tile_size]), :min([tile_size, out_height - j * tile_size])]
+                    out_img[i * tile_size:min([(i+1) * tile_size, out_width]), j * tile_size:min([(j+1) * tile_size, out_height])] = np.rot90(tile[:min([tile_size, out_width - i * tile_size]), :min([tile_size, out_height - j * tile_size])], 2, (0, 1))
                     ## TODO: tiles are flipped and in the wrong position
             out_img *= 255
             out_img = out_img.astype(np.uint8)[:, :, :3]
-            CorrelationEditor.EXPORT_FBO.unbind()
             plt.imshow(out_img)
             plt.show()
-            util.save_png(out_img, "C:/Users/mgflast/Desktop/outtest.png")
+            CorrelationEditor.EXPORT_FBO.unbind()
+            util.save_png(out_img, "C:/Users/Mart/Desktop/outtest.png")
 
         def export_tiff_stack():
             pass

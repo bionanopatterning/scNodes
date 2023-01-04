@@ -46,7 +46,6 @@ def save_png(array, path):
             os.makedirs(root)
     if array.dtype != np.dtype(np.uint8):
         array = array.astype(np.uint8)
-        print("Converting ")
     Image.fromarray(array, mode="RGB").save(path)
 
 
@@ -129,6 +128,5 @@ def loadtiff(path):
         printProgressBar(f, depth - 1, prefix="Loading tiff file\t", length=30, printEnd="\r")
         _data.seek(f)
         data[f, :, :] = np.asarray(_data)
-    print()
     data = np.squeeze(data)
     return data
