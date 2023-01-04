@@ -26,7 +26,6 @@ def printProgressBar(iteration, total, prefix = '', suffix = '', decimals = 1, l
 
 
 def save_tiff(array, path, pixel_size_nm = 100, axes = "ZXY"):
-    print(array.shape)
     if not (path[-5:] == ".tiff" or path[-4:] == ".tif"):
         path += ".tif"
     if "/" in path:
@@ -35,6 +34,21 @@ def save_tiff(array, path, pixel_size_nm = 100, axes = "ZXY"):
         if not os.path.exists(root):
             os.makedirs(root)
     tifffile.imwrite(path, array, resolution=(1./(1e-7 * pixel_size_nm), 1./(1e-7 * pixel_size_nm), 'CENTIMETER'))
+
+
+def save_png(array, path):
+    if not path[-4:] == '.png':
+        path = '.png'
+    if "/" in path:
+        root = path.rfind("/")
+        root = path[:root]
+        if not os.path.exists(root):
+            os.makedirs(root)
+    if array.dtype != np.dtype(np.uint8):
+        array = array.astype(np.uint8)
+        print("Converting ")
+    Image.fromarray(array, mode="RGB").save(path)
+
 
 def plot_histogram(data, bins = 'auto', title = None):
     plt.hist(data, bins = bins)

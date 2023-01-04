@@ -47,7 +47,11 @@ void main()
     {
         float pixelValue = texture(image, uv).r;
         float contrastValue = (pixelValue - contrastLimits.x) / (contrastLimits.y - contrastLimits.x);
-        vec3 pixelColor = texture(lut, vec2(contrastValue, 0)).rgb;
-        fragmentColor = vec4(pixelColor, alpha);
+        vec4 pixelColor = texture(lut, vec2(contrastValue, 0));
+        if (pixelColor.a == 0.0)
+        {
+            discard;
+        }
+        fragmentColor = vec4(pixelColor.rgb, alpha);
     }
 }

@@ -45,6 +45,7 @@ class NodeEditor:
             self.boot_img_height, self.boot_img_width = pxd_boot_img_texture.shape[0:2]
             self.boot_img_texture.set_linear_interpolation()
             self.show_boot_img = True
+
     def get_font_atlas_ptr(self):
         return self.imgui_implementation.io.fonts
 
@@ -64,7 +65,7 @@ class NodeEditor:
         self.window.on_update()
         settings.ne_window_width = self.window.width
         settings.ne_window_height = self.window.height
-        if imgui.is_key_pressed(glfw.KEY_TAB):
+        if imgui.is_key_pressed(glfw.KEY_GRAVE_ACCENT):
             cfg.active_editor = 1
         if not self.window.get_key(glfw.KEY_ESCAPE):
             for node in cfg.nodes:

@@ -2,6 +2,8 @@ import glfw
 import imgui
 import numpy as np
 from imgui.integrations.glfw import GlfwRenderer
+
+import util
 from opengl_classes import *
 import settings
 import time
@@ -34,7 +36,7 @@ class CorrelationEditor:
 
     SNAPPING_DISTANCE = 2000.0
     SNAPPING_ACTIVATION_DISTANCE = 5000.0
-    DEFAULT_IMAGE_PIXEL_SIZE = 64.0
+    DEFAULT_IMAGE_PIXEL_SIZE = 100.0 ## TODO set something
     DEFAULT_HORIZONTAL_FOV_WIDTH = 50000  # upon init, camera zoom is such that from left to right of window = 50 micron.
     DEFAULT_ZOOM = 1.0  # adjusted in init
     DEFAULT_WORLD_PIXEL_SIZE = 1.0  # adjusted on init
@@ -88,6 +90,19 @@ class CorrelationEditor:
     incoming_frame_buffer = list()
     frames_dropped = False
 
+    renderer = None
+    # export
+    export_roi_mode = 1  # 0 for ROI, 1 for Image
+    ex_lims = [0, 0, 1000, 1000]
+    ex_pxnm = 10
+    ex_img_size = [0, 0]
+    ex_path = ""
+    ex_png = True
+    EXPORT_FBO = None
+    EXPORT_TILE_SIZE = 1000
+    EXPORT_SIZE_CHANGE_SPEED = 1.0
+    EXPORT_RESOLUTION_CHANGE_SPEED = 0.05
+
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
         self.window.clear_color = cfg.COLOUR_WINDOW_BACKGROUND
@@ -96,7 +111,7 @@ class CorrelationEditor:
         self.imgui_context = imgui_context
         self.imgui_implementation = imgui_impl
 
-        self.renderer = Renderer()
+        CorrelationEditor.renderer = Renderer()
         self.camera = Camera()  # default camera 'zoom' value is 1.0, in which case the vertical field of view size is equal to window_height_in_pixels nanometer.
         CorrelationEditor.DEFAULT_ZOOM = settings.ne_window_height / CorrelationEditor.DEFAULT_HORIZONTAL_FOV_WIDTH  # now it is DEFAULT_HORIZONTAL_FOV_WIDTH
         CorrelationEditor.DEFAULT_WORLD_PIXEL_SIZE = 1.0 / CorrelationEditor.DEFAULT_ZOOM
@@ -114,8 +129,11 @@ class CorrelationEditor:
         self.gizmos.append(EditorGizmo(EditorGizmo.TYPE_ROTATE, idx=3))
         self.gizmos.append(EditorGizmo(EditorGizmo.TYPE_PIVOT))
 
+        # Export FBO
+        CorrelationEditor.EXPORT_FBO = FrameBuffer(CorrelationEditor.EXPORT_TILE_SIZE, CorrelationEditor.EXPORT_TILE_SIZE, texture_format="rgba32f")
+
         # DEBUG
-        cfg.ce_frames.append(CLEMFrame(np.asarray(Image.open("ce_test_refl.tif"))))
+        cfg.ce_frames.append(CLEMFrame(np.asarray(Image.open("ce_test_refl.tif"))[:200, :200]))
         CorrelationEditor.active_frame = cfg.ce_frames[0]
 
         # load icons
@@ -140,7 +158,7 @@ class CorrelationEditor:
         if self.window.focused:
             self.imgui_implementation.process_inputs()
 
-        if imgui.is_key_pressed(glfw.KEY_TAB):
+        if imgui.is_key_pressed(glfw.KEY_GRAVE_ACCENT):
             cfg.active_editor = 0
 
         if cfg.correlation_editor_relink:
@@ -235,13 +253,13 @@ class CorrelationEditor:
 
         first_frame = True
         for frame in reversed(cfg.ce_frames):
-            self.renderer.render_frame_quad(self.camera, frame, override_blending=False)  # previously: override_blending = first_frame
+            CorrelationEditor.renderer.render_frame_quad(self.camera, frame, override_blending=False)  # previously: override_blending = first_frame
             first_frame = False
         if CorrelationEditor.active_frame is not None:
-            self.renderer.render_frame_border(self.camera, CorrelationEditor.active_frame)
+            CorrelationEditor.renderer.render_frame_border(self.camera, CorrelationEditor.active_frame)
             if not CorrelationEditor.active_frame.hide:
                 for gizmo in self.gizmos:
-                    self.renderer.render_gizmo(self.camera, gizmo)
+                    CorrelationEditor.renderer.render_gizmo(self.camera, gizmo)
         self.menu_bar()
         self.context_menu()
         self.tool_info_window()
@@ -326,6 +344,7 @@ class CorrelationEditor:
             af.pixel_size = max([af.pixel_size, 0.1])
             af.pivot_point[0] += dx
             af.pivot_point[1] += dy
+            imgui.spacing()
 
         # Visuals info
         expanded, _ = imgui.collapsing_header("Visuals", None)
@@ -359,15 +378,119 @@ class CorrelationEditor:
             if _max != _min:
                 _uv_left = 1.0 + (_l - _max) / (_max - _min)
                 _uv_right = 1.0 + (_h - _max) / (_max - _min)
-            imgui.image(af.lut_texture.renderer_id, _cw, CorrelationEditor.INFO_LUT_PREVIEW_HEIGHT, (_uv_left, 0.5), (_uv_right, 0.5), border_color=cfg.COLOUR_FRAME_BACKGROUND)
+            imgui.image(af.lut_texture.renderer_id, _cw - 1, CorrelationEditor.INFO_LUT_PREVIEW_HEIGHT, (_uv_left, 0.5), (_uv_right, 0.5), border_color=cfg.COLOUR_FRAME_BACKGROUND)
             imgui.push_item_width(_cw)
             _c, af.contrast_lims[0] = imgui.slider_float("min", af.contrast_lims[0], af.hist_bins[0], af.hist_bins[-1], format='min %.1f')
             _c, af.contrast_lims[1] = imgui.slider_float("max", af.contrast_lims[1], af.hist_bins[0], af.hist_bins[-1], format='max %.1f')
+            imgui.pop_item_width()
+            imgui.text("Saturation:")
+            imgui.same_line()
+            _cw = imgui.get_content_region_available_width()
+            imgui.set_next_item_width(_cw)
+            _c, af.lut_clamp_mode = imgui.combo("##clamping", af.lut_clamp_mode, ["Clamp", "Discard"])
+            if _c:
+                af.update_lut()
+            CorrelationEditor.tooltip("Set whether saturated pixels (with intensities outside of the min/max range)\n"
+                                      "are clamped to the min/max value, or discarded (alpha set to 0.0)")
+            imgui.spacing()
 
         if imgui.collapsing_header("Export", None)[0]:
-            _, CorrelationEditor.editing_export_roi = imgui.checkbox("Edit ROI", CorrelationEditor.editing_export_roi)
-            imgui.text("ROI:")
+            # Export mode selection buttons
+            _cw = imgui.get_content_region_available_width()
+            _button_width = (_cw - 10) / 2
+            _button_height = 20
+            imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, CorrelationEditor.ALPHA_SLIDER_ROUNDING)
+            if CorrelationEditor.export_roi_mode == 0:
+                imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_DARK)
+            else:
+                imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_BACKGROUND)
+            if imgui.button("ROI", _button_width, _button_height): CorrelationEditor.export_roi_mode = 0
+            imgui.pop_style_color()
+            if CorrelationEditor.export_roi_mode == 1:
+                imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_DARK)
+            else:
+                imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_BACKGROUND)
+            imgui.same_line()
+            if imgui.button("Selection", _button_width, _button_height): CorrelationEditor.export_roi_mode = 1
+            imgui.pop_style_color()
+            imgui.pop_style_var(1)
+            imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (2.0, 1.0))
+            # X/Y limit widget
+            imgui.spacing()
+            imgui.push_item_width(50)
+            lims = np.asarray(CorrelationEditor.ex_lims) / 1000.0
 
+            imgui.text(" X:")
+            imgui.same_line()
+            _a, lims[0] = imgui.drag_float("##export_xmin", lims[0], CorrelationEditor.EXPORT_SIZE_CHANGE_SPEED, format = f'{lims[0]:.2f}')
+            imgui.same_line()
+            imgui.text("to")
+            imgui.same_line()
+            _b, lims[2] = imgui.drag_float("##export_xmax", lims[2], CorrelationEditor.EXPORT_SIZE_CHANGE_SPEED, format = f'{lims[2]:.2f}')
+            imgui.same_line()
+            imgui.text("um")
+            imgui.text(" Y:")
+            imgui.same_line()
+            _c, lims[1] = imgui.drag_float("##export_ymin", lims[1], CorrelationEditor.EXPORT_SIZE_CHANGE_SPEED, format = f'{lims[1]:.2f}')
+            imgui.same_line()
+            imgui.text("to")
+            imgui.same_line()
+            _d, lims[3] = imgui.drag_float("##export_ymax", lims[3], CorrelationEditor.EXPORT_SIZE_CHANGE_SPEED, format = f'{lims[3]:.2f}')
+            if _a or _b or _c or _d:
+                CorrelationEditor.export_roi_mode = 0
+            imgui.same_line()
+            imgui.text("um")
+            CorrelationEditor.ex_lims = lims * 1000.0
+            imgui.spacing()
+            # Pixels per nm + width/height
+            imgui.text("Resolution:")
+            imgui.same_line()
+            imgui.push_item_width(40)
+            _c, CorrelationEditor.ex_pxnm = imgui.drag_float("##export_pxnm", CorrelationEditor.ex_pxnm, CorrelationEditor.EXPORT_RESOLUTION_CHANGE_SPEED, format = f'%.2f')
+            imgui.pop_style_var()
+            CorrelationEditor.ex_pxnm = max([0.1, CorrelationEditor.ex_pxnm])
+            CorrelationEditor.tooltip(f"or: {CorrelationEditor.ex_pxnm * 25400000:.0f} dpi :)")
+            imgui.same_line()
+            imgui.text("nm / px")
+            imgui.text(f"camera xy = {self.camera.position[0]:.0f}, {self.camera.position[1]:.0f}")
+            if CorrelationEditor.export_roi_mode == 1:  # export by ROI
+                af = CorrelationEditor.active_frame
+                if af is not None:
+                    corners = np.asarray(af.corner_positions)
+                    left = np.amin(corners[:, 0])
+                    right = np.amax(corners[:, 0])
+                    top = np.amin(corners[:, 1])
+                    bottom = np.amax(corners[:, 1])
+                    CorrelationEditor.ex_lims = [left, top, right, bottom]
+
+            CorrelationEditor.ex_img_size = [int(1000.0 * (lims[2] - lims[0]) / CorrelationEditor.ex_pxnm), int(1000.0 * (lims[3] - lims[1]) / CorrelationEditor.ex_pxnm)]
+            imgui.text(f"Output size: {CorrelationEditor.ex_img_size[0]} x {CorrelationEditor.ex_img_size[1]}")
+            imgui.text("Export as:")
+            imgui.text(" ")
+            imgui.same_line()
+            if imgui.radio_button(".png", CorrelationEditor.ex_png):
+                CorrelationEditor.ex_png = not CorrelationEditor.ex_png
+            imgui.same_line(spacing = 20)
+            if imgui.radio_button(".tif stack", not CorrelationEditor.ex_png):
+                CorrelationEditor.ex_png = not CorrelationEditor.ex_png
+            imgui.text("Filename:")
+            imgui.set_next_item_width(150)
+            _c, CorrelationEditor.ex_path = imgui.input_text("##outpath", CorrelationEditor.ex_path, 256)
+            CorrelationEditor.tooltip(CorrelationEditor.ex_path)
+            imgui.same_line()
+            if imgui.button("...", 26, 19):
+                selected_file = filedialog.asksaveasfilename()
+                if selected_file is not None:
+                    CorrelationEditor.ex_path = selected_file
+            imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, CorrelationEditor.ALPHA_SLIDER_ROUNDING)
+            imgui.new_line()
+            imgui.same_line(spacing=(_cw - _button_width) / 2.0)
+            if imgui.button("Export##button", _button_width, _button_height):
+                print("adsad")
+                self.export_image()
+            imgui.pop_style_var()
+            imgui.spacing()
+            # TODO: png, or .tiff stack
         if imgui.collapsing_header("Measure", None)[0]:
             imgui.text("To do")
 
@@ -376,6 +499,57 @@ class CorrelationEditor:
 
         imgui.end()
         imgui.pop_style_color(3)
+
+    def export_image(self):
+        def export_png():
+            tile_size = CorrelationEditor.EXPORT_TILE_SIZE
+            out_width = CorrelationEditor.ex_img_size[0]
+            out_height = CorrelationEditor.ex_img_size[0]
+            pixel_size = CorrelationEditor.ex_pxnm
+            camera = Camera()
+            camera.set_projection_matrix(tile_size, tile_size)
+            camera_origin = np.asarray([CorrelationEditor.ex_lims[0], CorrelationEditor.ex_lims[1]])
+            print("Render camera origin:")
+            print(camera_origin)
+            camera.zoom = CorrelationEditor.DEFAULT_ZOOM * CorrelationEditor.DEFAULT_WORLD_PIXEL_SIZE / pixel_size
+            print(camera.zoom)
+            out_img = np.zeros((CorrelationEditor.ex_img_size[0], CorrelationEditor.ex_img_size[1], 4))
+            # Render all frames
+            # Set camera position
+            horizontal_tiles = int(np.ceil(out_width / tile_size))
+            vertical_tiles = int(np.ceil(out_height / tile_size))
+            print(f"Horizontal tiles: {horizontal_tiles}. Vertical tiles: {vertical_tiles}")
+            import matplotlib.pyplot as plt
+            for i in range(horizontal_tiles):
+                for j in range(vertical_tiles):
+                    print(f"Rendering tile {i}, {j}")
+                    CorrelationEditor.EXPORT_FBO.clear((0.0, 0.0, 0.0, 0.0))
+                    CorrelationEditor.EXPORT_FBO.bind()
+                    camera.position[1] = camera_origin[0] + tile_size * pixel_size * (i + 0.5)
+                    camera.position[0] = camera_origin[1] + tile_size * pixel_size * (j + 0.5)
+                    #camera.position[0] /= camera.zoom  # prevent the default 'zoom to center of view' behaviour of Camera class
+                    #camera.position[1] /= camera.zoom  # prevent the default 'zoom to center of view' behaviour of Camera class
+                    print(f"Camera pos: {camera.position[0]}, {camera.position[1]}")
+                    camera.on_update()
+                    for frame in cfg.ce_frames:
+                        CorrelationEditor.renderer.render_frame_quad(camera, frame)
+                    tile = glReadPixels(0, 0, tile_size, tile_size, GL_RGBA, GL_FLOAT)
+                    out_img[i * tile_size:min([(i+1) * tile_size, out_width]), j * tile_size:min([(j+1) * tile_size, out_height])] = tile[:min([tile_size, out_width - i * tile_size]), :min([tile_size, out_height - j * tile_size])]
+                    ## TODO: tiles are flipped and in the wrong position
+            out_img *= 255
+            out_img = out_img.astype(np.uint8)[:, :, :3]
+            CorrelationEditor.EXPORT_FBO.unbind()
+            plt.imshow(out_img)
+            plt.show()
+            util.save_png(out_img, "C:/Users/mgflast/Desktop/outtest.png")
+
+        def export_tiff_stack():
+            pass
+
+        if CorrelationEditor.ex_png:
+            export_png()
+        else:
+            export_tiff_stack()
 
     def objects_info_window(self):
         content_width = 0
@@ -939,6 +1113,7 @@ class CLEMFrame:
         self.binning = 1
         self.blend_mode = 0
         self.lut = 1
+        self.lut_clamp_mode = 0
         self.colour = (1.0, 1.0, 1.0, 1.0)
         self.alpha = 1.0
         self.contrast_lims = [0.0, 65535.0]
@@ -968,7 +1143,7 @@ class CLEMFrame:
         else:
             self.texture = Texture(format="r32f")
             self.texture.update(self.data.astype(np.float32))
-        self.lut_texture = Texture(format="rgb32f")
+        self.lut_texture = Texture(format="rgba32f")
         self.quad_va = VertexArray()
         self.vertex_positions = list()
         self.border_va = VertexArray(attribute_format="xy")
@@ -1094,7 +1269,13 @@ class CLEMFrame:
             lut_array = np.asarray(settings.luts[settings.lut_names[0]]) * np.asarray(self.colour[0:3])
         if lut_array.shape[1] == 3:
             lut_array = np.reshape(lut_array, (1, lut_array.shape[0], 3))
-            self.lut_texture.update(lut_array)
+        # Add alpha
+        lut_array_rgba = np.ones((1, lut_array.shape[1], 4))
+        lut_array_rgba[:, :, 0:3] = lut_array
+        if self.lut_clamp_mode == 1:
+            lut_array_rgba[0, 0, 3] = 0.0
+            lut_array_rgba[0, -1, 3] = 0.0
+        self.lut_texture.update(lut_array_rgba)
 
     def compute_autocontrast(self):
         subsample = self.data[::settings.autocontrast_subsample, ::settings.autocontrast_subsample]
