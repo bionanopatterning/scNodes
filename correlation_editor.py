@@ -2,7 +2,6 @@ import glfw
 import imgui
 import numpy as np
 from imgui.integrations.glfw import GlfwRenderer
-
 import util
 from opengl_classes import *
 import settings
@@ -14,6 +13,7 @@ from PIL import Image
 import mrcfile
 from tkinter import filedialog
 import pyperclip
+import tifffile
 
 class CorrelationEditor:
     FRAME_LIST_INDENT_WIDTH = 20.0
@@ -297,6 +297,7 @@ class CorrelationEditor:
                 imgui.end_menu()
             if imgui.begin_menu("Settings"):
                 _c, self.window.clear_color = imgui.color_edit4("Background colour", *self.window.clear_color, flags=imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_SIDE_PREVIEW)
+                cfg.ce_clear_colour = self.window.clear_color
                 imgui.set_next_item_width(60)
                 _c, CorrelationEditor.ARROW_KEY_TRANSLATION = imgui.input_float("Arrow key step size (nm)", CorrelationEditor.ARROW_KEY_TRANSLATION, 0.0, 0.0, "%.1f")
                 _c, CorrelationEditor.snap_enabled = imgui.checkbox("Allow snapping", CorrelationEditor.snap_enabled)
@@ -446,10 +447,10 @@ class CorrelationEditor:
             imgui.text("Resolution:")
             imgui.same_line()
             imgui.push_item_width(40)
-            _c, CorrelationEditor.ex_pxnm = imgui.drag_float("##export_pxnm", CorrelationEditor.ex_pxnm, CorrelationEditor.EXPORT_RESOLUTION_CHANGE_SPEED, format = f'%.2f')
+            _c, CorrelationEditor.ex_pxnm = imgui.drag_float("##export_pxnm", CorrelationEditor.ex_pxnm, CorrelationEditor.EXPORT_RESOLUTION_CHANGE_SPEED, format = f'%.1f')
             imgui.pop_style_var()
             CorrelationEditor.ex_pxnm = max([0.1, CorrelationEditor.ex_pxnm])
-            CorrelationEditor.tooltip(f"or: {CorrelationEditor.ex_pxnm * 25400000:.0f} dpi :)")
+            CorrelationEditor.tooltip(f"equals {CorrelationEditor.ex_pxnm * 25400000:.0f} dpi :)")
             imgui.same_line()
             imgui.text("nm / px")
             if CorrelationEditor.export_roi_mode == 1:  # export by ROI
@@ -485,7 +486,6 @@ class CorrelationEditor:
             imgui.new_line()
             imgui.same_line(spacing=(_cw - _button_width) / 2.0)
             if imgui.button("Export##button", _button_width, _button_height):
-                print("adsad")
                 self.export_image()
             imgui.pop_style_var()
             imgui.spacing()
@@ -501,49 +501,92 @@ class CorrelationEditor:
 
     def export_image(self):
         def export_png():
-            tile_size = CorrelationEditor.EXPORT_TILE_SIZE
-            out_width = CorrelationEditor.ex_img_size[0]
-            out_height = CorrelationEditor.ex_img_size[0]
-            pixel_size = CorrelationEditor.ex_pxnm
+            # Set up
             camera = Camera()
-            camera.set_projection_matrix(tile_size, tile_size)
-            camera_origin = np.asarray([CorrelationEditor.ex_lims[0], CorrelationEditor.ex_lims[1]])
-            print("Render camera origin:")
-            print(camera_origin)
-            camera.zoom = CorrelationEditor.DEFAULT_ZOOM * CorrelationEditor.DEFAULT_WORLD_PIXEL_SIZE / pixel_size
-            print(camera.zoom)
-            out_img = np.zeros((CorrelationEditor.ex_img_size[0], CorrelationEditor.ex_img_size[1], 4))
-            # Render all frames
-            # Set camera position
-            horizontal_tiles = int(np.ceil(out_width / tile_size))
-            vertical_tiles = int(np.ceil(out_height / tile_size))
-            print(f"Horizontal tiles: {horizontal_tiles}. Vertical tiles: {vertical_tiles}")
-            import matplotlib.pyplot as plt
-            for i in range(horizontal_tiles):
-                for j in range(vertical_tiles):
-                    print(f"Rendering tile {i}, {j}")
-                    CorrelationEditor.EXPORT_FBO.clear((0.0, 0.0, 0.0, 0.0))
-                    CorrelationEditor.EXPORT_FBO.bind()
-                    camera.position[1] = camera_origin[0] + tile_size * pixel_size * (i + 0.5)
-                    camera.position[0] = camera_origin[1] + tile_size * pixel_size * (j + 0.5)
-                    #camera.position[0] /= camera.zoom  # prevent the default 'zoom to center of view' behaviour of Camera class
-                    #camera.position[1] /= camera.zoom  # prevent the default 'zoom to center of view' behaviour of Camera class
-                    print(f"Camera pos: {camera.position[0]}, {camera.position[1]}")
+            camera.set_projection_matrix(CorrelationEditor.EXPORT_TILE_SIZE, CorrelationEditor.EXPORT_TILE_SIZE)
+            # Compute renderer tile size in nm
+            tile_size_pixels = CorrelationEditor.EXPORT_TILE_SIZE
+            T = tile_size_pixels
+            pixel_size = CorrelationEditor.ex_pxnm
+            tile_size = tile_size_pixels * pixel_size
+            # Compute required number of tiles
+            out_size_pixels = [int(np.ceil((CorrelationEditor.ex_lims[2] - CorrelationEditor.ex_lims[0]) / pixel_size)), int(np.ceil((CorrelationEditor.ex_lims[3] - CorrelationEditor.ex_lims[1]) / pixel_size))]
+            W = out_size_pixels[0]
+            H = out_size_pixels[1]
+            tiles_h = int(np.ceil((CorrelationEditor.ex_lims[2] - CorrelationEditor.ex_lims[0]) / tile_size))
+            tiles_v = int(np.ceil((CorrelationEditor.ex_lims[3] - CorrelationEditor.ex_lims[1]) / tile_size))
+            camera.zoom = CorrelationEditor.DEFAULT_WORLD_PIXEL_SIZE / pixel_size * CorrelationEditor.DEFAULT_ZOOM
+            camera_start_position = [CorrelationEditor.ex_lims[0], CorrelationEditor.ex_lims[3]]
+            out_img = np.zeros((out_size_pixels[0], out_size_pixels[1], 4))
+            for i in range(tiles_h):
+                for j in range(tiles_v):
+                    offset_x = (0.5 + i) * tile_size
+                    offset_y = (0.5 + j) * tile_size
+                    camera.position[0] = camera_start_position[0] + offset_x
+                    camera.position[1] = camera_start_position[1] - offset_y
                     camera.on_update()
-                    for frame in cfg.ce_frames:
+                    CorrelationEditor.EXPORT_FBO.clear((1.0, 1.0, 1.0, -1.0))
+                    CorrelationEditor.EXPORT_FBO.bind()
+                    for frame in reversed(cfg.ce_frames):
                         CorrelationEditor.renderer.render_frame_quad(camera, frame)
-                    tile = glReadPixels(0, 0, tile_size, tile_size, GL_RGBA, GL_FLOAT)
-                    out_img[i * tile_size:min([(i+1) * tile_size, out_width]), j * tile_size:min([(j+1) * tile_size, out_height])] = np.rot90(tile[:min([tile_size, out_width - i * tile_size]), :min([tile_size, out_height - j * tile_size])], 2, (0, 1))
-                    ## TODO: tiles are flipped and in the wrong position
-            out_img *= 255
-            out_img = out_img.astype(np.uint8)[:, :, :3]
-            plt.imshow(out_img)
-            plt.show()
+                    tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_RGBA, GL_FLOAT)
+                    out_img[i*T:min([(i+1)*T, W]), j*T:min([(j+1)*T, H]), :] = np.rot90(tile, 3, (1, 0))[:min([T, W-(i*T)]), :min([T, H-(j*T)]), :]
+            import matplotlib.pyplot as plt
+            out_img[:, :, 3] = 1.0
             CorrelationEditor.EXPORT_FBO.unbind()
-            util.save_png(out_img, "C:/Users/Mart/Desktop/outtest.png")
+            out_img = np.rot90(out_img, 3, (0, 1))
+            out_img *= 255
+            out_img[out_img < 0] = 0
+            out_img[out_img > 255] = 255
+            out_img = out_img.astype(np.uint8)
+            out_img = out_img[:, ::-1]  ## TODO check handedness
+            # TODO: aisha's crash: particle_data.bake() when PSF fit node no input causes crash
+            util.save_png(out_img, CorrelationEditor.ex_path)
 
         def export_tiff_stack():
-            pass
+            # Set up
+            camera = Camera()
+            camera.set_projection_matrix(CorrelationEditor.EXPORT_TILE_SIZE, CorrelationEditor.EXPORT_TILE_SIZE)
+            # Compute renderer tile size in nm
+            tile_size_pixels = CorrelationEditor.EXPORT_TILE_SIZE
+            T = tile_size_pixels
+            pixel_size = CorrelationEditor.ex_pxnm
+            tile_size = tile_size_pixels * pixel_size
+            # Compute required number of tiles
+            out_size_pixels = [int(np.ceil((CorrelationEditor.ex_lims[2] - CorrelationEditor.ex_lims[0]) / pixel_size)),
+                               int(np.ceil((CorrelationEditor.ex_lims[3] - CorrelationEditor.ex_lims[1]) / pixel_size))]
+            W = out_size_pixels[0]
+            H = out_size_pixels[1]
+            tiles_h = int(np.ceil((CorrelationEditor.ex_lims[2] - CorrelationEditor.ex_lims[0]) / tile_size))
+            tiles_v = int(np.ceil((CorrelationEditor.ex_lims[3] - CorrelationEditor.ex_lims[1]) / tile_size))
+            camera.zoom = CorrelationEditor.DEFAULT_WORLD_PIXEL_SIZE / pixel_size * CorrelationEditor.DEFAULT_ZOOM
+            camera_start_position = [CorrelationEditor.ex_lims[0], CorrelationEditor.ex_lims[3]]
+            tiff_path = CorrelationEditor.ex_path
+            if not (tiff_path[-5:] == ".tiff" or tiff_path[-4:] == ".tif"):
+                tiff_path += ".tif"
+
+            with tifffile.TiffWriter(tiff_path) as tiffw:
+                for frame in reversed(cfg.ce_frames):
+                    if frame.hide:
+                        continue
+                    out_img = np.zeros((out_size_pixels[0], out_size_pixels[1]), dtype=np.float32)
+                    frame.force_lut_grayscale()
+                    for i in range(tiles_h):
+                        for j in range(tiles_v):
+                            offset_x = (0.5 + i) * tile_size
+                            offset_y = (0.5 + j) * tile_size
+                            camera.position[0] = camera_start_position[0] + offset_x
+                            camera.position[1] = camera_start_position[1] - offset_y
+                            camera.on_update()
+                            CorrelationEditor.EXPORT_FBO.clear((0.0, 0.0, 0.0, 0.0))
+                            CorrelationEditor.EXPORT_FBO.bind()
+                            CorrelationEditor.renderer.render_frame_quad(camera, frame, override_blending=True)
+                            tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_RED, GL_FLOAT)
+                            out_img[i * T:min([(i + 1) * T, W]), j * T:min([(j + 1) * T, H])] = np.rot90(tile, 3, (1, 0))[:min([T, W - (i * T)]), :min([T, H - (j * T)])]
+                    out_img = np.rot90(out_img, 3, (0, 1))
+                    tiffw.write(out_img, description=frame.title, resolution=(1./(1e-7 * pixel_size), 1./(1e-7 * pixel_size), 'CENTIMETER'))
+                    frame.update_lut()
+            CorrelationEditor.EXPORT_FBO.unbind()
 
         if CorrelationEditor.ex_png:
             export_png()
@@ -608,11 +651,12 @@ class CorrelationEditor:
 
             if enable_widgets:
                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1.0)
-                imgui.same_line(position=content_width - 35.0)
-                _c, f.colour = imgui.color_edit4("##Background colour", *f.colour, flags=imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP | imgui.COLOR_EDIT_DISPLAY_HEX | imgui.COLOR_EDIT_DISPLAY_RGB)
-                if _c:
-                    f.lut = 0  # change lut to custom colour
-                    f.update_lut()
+                if not f.is_rgb:
+                    imgui.same_line(position=content_width - 35.0)
+                    _c, f.colour = imgui.color_edit4("##Background colour", *f.colour, flags=imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP | imgui.COLOR_EDIT_DISPLAY_HEX | imgui.COLOR_EDIT_DISPLAY_RGB)
+                    if _c:
+                        f.lut = 0  # change lut to custom colour
+                        f.update_lut()
                 # Hide checkbox
                 imgui.same_line(position=content_width - 20.0)
                 visible = not f.hide
@@ -1075,7 +1119,7 @@ class Camera:
             [0.0, 0.0, 0.0, 1.0],
         ])
         self.view_projection_matrix = np.matmul(self.projection_matrix, self.view_matrix)
-
+        ## TODO figure out maximum zoom and corresponding pixel size, set that pixel size as minimum in export
 
 class CLEMFrame:
     idgen = count(0)
@@ -1259,6 +1303,12 @@ class CLEMFrame:
             self.texture.set_linear_interpolation()
         else:
             self.texture.set_no_interpolation()
+
+    def force_lut_grayscale(self):
+        original_lut = self.lut
+        self.lut = 1
+        self.update_lut()
+        self.lut = original_lut
 
     def update_lut(self):
         if self.lut > 0:
@@ -1472,23 +1522,26 @@ class ImportedFrameData:
         self.extension = path[path.rfind("."):]
         self.pxd = None
         self.n_slices = 1
-        if self.extension == ".tiff" or self.extension == ".tif":
-            img = Image.open(path)
-            self.pxd = np.asarray(img)
-            self.n_slices = img.n_frames
-        elif self.extension == ".png":
-            self.pxd = np.asarray(Image.open(path)) / 255.0
-        elif self.extension == ".mrc":
-            mrc = mrcfile.mmap(self.path, mode="r")
-            if len(mrc.data.shape) == 2:
-                self.pxd = mrc.data
-            else:
-                if CorrelationEditor.mrc_flip_on_load:
-                    self.pxd = mrc.data[:, :, 0]
-                    self.n_slices = mrc.data.shape[1]
+        try:
+            if self.extension == ".tiff" or self.extension == ".tif":
+                img = Image.open(path)
+                self.pxd = np.asarray(img)
+                self.n_slices = img.n_frames
+            elif self.extension == ".png":
+                self.pxd = np.asarray(Image.open(path)) / 255.0
+            elif self.extension == ".mrc":
+                mrc = mrcfile.mmap(self.path, mode="r")
+                if len(mrc.data.shape) == 2:
+                    self.pxd = mrc.data
                 else:
-                    self.pxd = mrc.data[:, 0, :]
-                    self.n_slices = mrc.data.shape[1]
+                    if CorrelationEditor.mrc_flip_on_load:
+                        self.pxd = mrc.data[:, :, 0]
+                        self.n_slices = mrc.data.shape[1]
+                    else:
+                        self.pxd = mrc.data[:, 0, :]
+                        self.n_slices = mrc.data.shape[1]
+        except Exception as e:
+            pass
 
     def to_CLEMFrame(self):
         if self.pxd is None:

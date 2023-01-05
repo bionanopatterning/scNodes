@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tifffile
 import glob
+import config as cfg
 
 def printProgressBar(iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
     # from: https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters?noredirect=1&lq=1
@@ -33,21 +34,26 @@ def save_tiff(array, path, pixel_size_nm = 100, axes = "ZXY"):
         root = path[:root]
         if not os.path.exists(root):
             os.makedirs(root)
-    tifffile.imwrite(path, array, resolution=(1./(1e-7 * pixel_size_nm), 1./(1e-7 * pixel_size_nm), 'CENTIMETER'))
+    tifffile.imwrite(path, array.astype(np.float32), resolution=(1./(1e-7 * pixel_size_nm), 1./(1e-7 * pixel_size_nm), 'CENTIMETER'))
 
 
-def save_png(array, path):
-    if not path[-4:] == '.png':
-        path = '.png'
-    if "/" in path:
-        root = path.rfind("/")
-        root = path[:root]
-        if not os.path.exists(root):
-            os.makedirs(root)
-    if array.dtype != np.dtype(np.uint8):
-        array = array.astype(np.uint8)
-    Image.fromarray(array, mode="RGB").save(path)
-
+def save_png(array, path, alpha=True):
+    try:
+        if not path[-4:] == '.png':
+            path += '.png'
+        if "/" in path:
+            root = path.rfind("/")
+            root = path[:root]
+            if not os.path.exists(root):
+                os.makedirs(root)
+        if array.dtype != np.dtype(np.uint8):
+            array = array.astype(np.uint8)
+        if alpha:
+            Image.fromarray(array, mode="RGBA").save(path)
+        else:
+            Image.fromarray(array, mode="RGB").save(path)
+    except Exception as e:
+        cfg.set_error(e, "Error exporting image as .png. Is the path valid?")
 
 def plot_histogram(data, bins = 'auto', title = None):
     plt.hist(data, bins = bins)
