@@ -36,7 +36,7 @@ class CorrelationEditor:
 
     SNAPPING_DISTANCE = 2000.0
     SNAPPING_ACTIVATION_DISTANCE = 5000.0
-    DEFAULT_IMAGE_PIXEL_SIZE = 100.0 ## TODO set something
+    DEFAULT_IMAGE_PIXEL_SIZE = 100.0
     DEFAULT_HORIZONTAL_FOV_WIDTH = 50000  # upon init, camera zoom is such that from left to right of window = 50 micron.
     DEFAULT_ZOOM = 1.0  # adjusted in init
     DEFAULT_WORLD_PIXEL_SIZE = 1.0  # adjusted on init
@@ -59,6 +59,12 @@ class CorrelationEditor:
     VISUALS_CTRL_ALPHA = 0.8
 
     CAMERA_MAX_ZOOM = 0.7
+
+    SCALE_BAR_HEIGHT = 6.0
+    SCALE_BAR_WINDOW_MARGIN = 5.0
+    SCALE_BAR_COLOUR = (0.0, 0.0, 0.0, 1.0)
+    scale_bar_size = 5000.0
+    show_scale_bar = False
 
     # editing
     MOUSE_SHORT_PRESS_MAX_DURATION = 0.25  # seconds
@@ -91,6 +97,8 @@ class CorrelationEditor:
     frames_dropped = False
 
     renderer = None
+
+
     # export
     export_roi_mode = 1  # 0 for ROI, 1 for Image
     ex_lims = [0, 0, 1000, 1000]
@@ -102,6 +110,7 @@ class CorrelationEditor:
     EXPORT_TILE_SIZE = 1000
     EXPORT_SIZE_CHANGE_SPEED = 1.0
     EXPORT_RESOLUTION_CHANGE_SPEED = 0.05
+
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -260,11 +269,13 @@ class CorrelationEditor:
             if not CorrelationEditor.active_frame.hide:
                 for gizmo in self.gizmos:
                     CorrelationEditor.renderer.render_gizmo(self.camera, gizmo)
+
         self.menu_bar()
         self.context_menu()
         self.tool_info_window()
         self.objects_info_window()
         self.visuals_window()
+        self.scale_bar_window()
         self._warning_window()
 
         imgui.pop_style_color(28)
@@ -491,7 +502,14 @@ class CorrelationEditor:
             imgui.spacing()
             # TODO: png, or .tiff stack
         if imgui.collapsing_header("Measure", None)[0]:
-            imgui.text("To do")
+            imgui.new_line()
+            imgui.same_line(spacing=5.0)
+            _c, CorrelationEditor.show_scale_bar = imgui.checkbox("Scalebar"+(":" if CorrelationEditor.show_scale_bar else ""), CorrelationEditor.show_scale_bar)
+            if CorrelationEditor.show_scale_bar:
+                imgui.set_next_item_width(80)
+                imgui.same_line()
+                _c, CorrelationEditor.scale_bar_size = imgui.drag_float("##scalebarlength", CorrelationEditor.scale_bar_size, 1.0, 0.0, 0.0, format='%.0f nm')
+
 
         if imgui.collapsing_header("Alignment tools", None)[0]:
             imgui.text("To do")
@@ -523,23 +541,26 @@ class CorrelationEditor:
                     offset_x = (0.5 + i) * tile_size
                     offset_y = (0.5 + j) * tile_size
                     camera.position[0] = camera_start_position[0] + offset_x
-                    camera.position[1] = camera_start_position[1] - offset_y
+                    camera.position[1] = camera_start_position[1] + offset_y
                     camera.on_update()
-                    CorrelationEditor.EXPORT_FBO.clear((1.0, 1.0, 1.0, -1.0))
+                    CorrelationEditor.EXPORT_FBO.clear((1.0, 1.0, 1.0, 0.0))
                     CorrelationEditor.EXPORT_FBO.bind()
                     for frame in reversed(cfg.ce_frames):
                         CorrelationEditor.renderer.render_frame_quad(camera, frame)
                     tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_RGBA, GL_FLOAT)
                     out_img[i*T:min([(i+1)*T, W]), j*T:min([(j+1)*T, H]), :] = np.rot90(tile, 3, (1, 0))[:min([T, W-(i*T)]), :min([T, H-(j*T)]), :]
-            import matplotlib.pyplot as plt
-            out_img[:, :, 3] = 1.0
             CorrelationEditor.EXPORT_FBO.unbind()
+            import matplotlib.pyplot as plt
+            print(np.amin(out_img), np.amax(out_img))
+            plt.imshow(out_img)
+            plt.show()
+            out_img[:, :, 3] = 1.0
             out_img = np.rot90(out_img, 3, (0, 1))
             out_img *= 255
             out_img[out_img < 0] = 0
             out_img[out_img > 255] = 255
             out_img = out_img.astype(np.uint8)
-            out_img = out_img[:, ::-1]  ## TODO check handedness
+            out_img = out_img[::-1, :]  ## TODO check handedness
             # TODO: aisha's crash: particle_data.bake() when PSF fit node no input causes crash
             util.save_png(out_img, CorrelationEditor.ex_path)
 
@@ -584,6 +605,7 @@ class CorrelationEditor:
                             tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_RED, GL_FLOAT)
                             out_img[i * T:min([(i + 1) * T, W]), j * T:min([(j + 1) * T, H])] = np.rot90(tile, 3, (1, 0))[:min([T, W - (i * T)]), :min([T, H - (j * T)])]
                     out_img = np.rot90(out_img, 3, (0, 1))
+                    out_img = out_img[::-1, :]
                     tiffw.write(out_img, description=frame.title, resolution=(1./(1e-7 * pixel_size), 1./(1e-7 * pixel_size), 'CENTIMETER'))
                     frame.update_lut()
             CorrelationEditor.EXPORT_FBO.unbind()
@@ -698,6 +720,30 @@ class CorrelationEditor:
         imgui.end()
         imgui.pop_style_color(3)
         imgui.pop_style_var(1)
+
+    def scale_bar_window(self):
+        if CorrelationEditor.show_scale_bar:
+            imgui.push_style_var(imgui.STYLE_WINDOW_PADDING, (0.0, 0.0))
+            imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 0.0)
+            imgui.push_style_var(imgui.STYLE_WINDOW_MIN_SIZE, (0.0, 0.0))
+            imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *self.window.clear_color)
+            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *self.window.clear_color)
+            world_pixel = CorrelationEditor.DEFAULT_WORLD_PIXEL_SIZE / self.camera.zoom * CorrelationEditor.DEFAULT_ZOOM
+            scale_bar_pixels = CorrelationEditor.scale_bar_size / world_pixel
+            m = CorrelationEditor.SCALE_BAR_WINDOW_MARGIN
+            imgui.set_next_window_size(2 * m + scale_bar_pixels, 2 * m + CorrelationEditor.SCALE_BAR_HEIGHT)
+            imgui.begin("##scaasdlebar", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_SCROLLBAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_BACKGROUND)
+            draw_list = imgui.get_background_draw_list()
+            window_pos = imgui.get_window_position()
+            draw_list.add_rect_filled(window_pos[0] + m, window_pos[1] + m, window_pos[0] + scale_bar_pixels + m, window_pos[1] + CorrelationEditor.SCALE_BAR_HEIGHT + m, imgui.get_color_u32_rgba(*CorrelationEditor.SCALE_BAR_COLOUR))
+            if imgui.begin_popup_context_window():
+                imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1.0)
+                _c, CorrelationEditor.SCALE_BAR_COLOUR = imgui.color_edit4("Scale bar colour", *CorrelationEditor.SCALE_BAR_COLOUR, flags=imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
+                imgui.pop_style_var(1)
+                imgui.end_popup()
+            imgui.end()
+            imgui.pop_style_color(2)
+            imgui.pop_style_var(3)
 
     def visuals_window(self):
         imgui.begin("##visualsw", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_SCROLLBAR | imgui.WINDOW_NO_BACKGROUND | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE)
@@ -1120,6 +1166,7 @@ class Camera:
         ])
         self.view_projection_matrix = np.matmul(self.projection_matrix, self.view_matrix)
         ## TODO figure out maximum zoom and corresponding pixel size, set that pixel size as minimum in export
+
 
 class CLEMFrame:
     idgen = count(0)

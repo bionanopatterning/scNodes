@@ -43,7 +43,7 @@ pickle_temp = dict()
 
 
 ## 221221 correlation editor vars & related
-active_editor = 0  # 0 for node editor, 1 for correlation
+active_editor = 1  # 0 for node editor, 1 for correlation
 ce_frames = list()
 ce_clear_colour = (1.0,1.0,1.0,1.0)
 def set_active_node(node, keep_active=False):
