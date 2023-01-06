@@ -34,7 +34,7 @@ def save_tiff(array, path, pixel_size_nm = 100, axes = "ZXY"):
         root = path[:root]
         if not os.path.exists(root):
             os.makedirs(root)
-    tifffile.imwrite(path, array.astype(np.float32), resolution=(1./(1e-7 * pixel_size_nm), 1./(1e-7 * pixel_size_nm), 'CENTIMETER'))
+    tifffile.imwrite(path, array.astype(np.float32), resolution=(1./(1e-7 * pixel_size_nm), 1./(1e-7 * pixel_size_nm), 'CENTIMETER'))  # Changed to astype npfloat32 on 230105 to fix importing tifffile tiff with PIL Image open. Default for tifffile export unspecified-float np array appears to be 64bit which PIL doesnt support.
 
 
 def save_png(array, path, alpha=True):

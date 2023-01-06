@@ -254,11 +254,10 @@ class ImageViewer:
 
             if self.mode == "R":
                 self.contrast_window_channel = 0
-                _idx = int(self.lut_array.shape[0] / 2)
-                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *self.lut_array[-_idx, :], 1.0)
-                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM_HOVERED, *self.lut_array[-_idx, :], 1.0)
-                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *self.lut_array[-_idx, :], 1.0)
-                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *self.lut_array[-_idx, :], 1.0)
+                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, 0.0, 0.0, 0.0, 1.0)
+                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM_HOVERED, 0.0, 0.0, 0.0, 1.0)
+                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, 0.0, 0.0, 0.0, 1.0)
+                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, 0.0, 0.0, 0.0, 1.0)
             else:
                 _clr = (float(self.contrast_window_channel == 0) + 0.2 * 0.8, float(self.contrast_window_channel == 1) + 0.2 * 0.8, float(self.contrast_window_channel == 2) + 0.2 * 0.8)
                 imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *_clr)
@@ -481,7 +480,12 @@ class ImageViewer:
             self.context_menu_open = False
         _add_to_correlation_editor, _ = imgui.menu_item("Add to Correlation Editor")
         if _add_to_correlation_editor:
-            cfg.correlation_editor.add_frame(self.image.load())
+            self.image._ce_lut = self.current_lut + 1  # note: idx + 1 as ImageViewer has an extra 'auto' lut option at index 0.
+            cfg.correlation_editor.add_frame(self.image)
+            self.context_menu_open = False
+        _export, _ = imgui.menu_item("Save as .tiff")
+        if _export:
+            self.save_current_image()
             self.context_menu_open = False
         if imgui.begin_menu("Change LUT"):
             for key in settings.lut_names:

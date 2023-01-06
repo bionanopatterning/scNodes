@@ -143,6 +143,7 @@ class Frame:
         self.gpu_data_buffer = None
         self.gpu_params_buffer = None
         self.gpu_crop_xy_buffer = None
+        self._ce_lut = 0
 
     def load(self):
         if self.data is not None:
@@ -230,6 +231,8 @@ class ParticleData:
         self.baked_by_renderer = False
 
     def bake(self, discard_filtered_particles=False):
+        if self.empty:
+            return
         self.baked = True
         self.baked_by_renderer = False
         frame = list()

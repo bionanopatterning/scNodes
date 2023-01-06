@@ -40,7 +40,7 @@ class NodeEditor:
 
         if True:
             self.boot_img_texture = Texture(format="rgba32f")
-            pxd_boot_img_texture = np.asarray(Image.open("icons/srNodes_boot.png")).astype(np.float32) / 255.0
+            pxd_boot_img_texture = np.asarray(Image.open("icons/scnodes_boot_img.png")).astype(np.float32) / 255.0
             self.boot_img_texture.update(pxd_boot_img_texture)
             self.boot_img_height, self.boot_img_width = pxd_boot_img_texture.shape[0:2]
             self.boot_img_texture.set_linear_interpolation()
@@ -366,7 +366,6 @@ class NodeEditor:
 
             except Exception as e:
                 cfg.nodes = list()
-                print(f"NodeEditor - init node factory didn't work for source file: {nodesrc}")
                 cfg.set_error(e, f"No well-defined Node type found in {nodesrc}. See manual for minimal code requirements.")
         node_ids = list()
 
