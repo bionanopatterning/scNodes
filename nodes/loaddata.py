@@ -8,7 +8,7 @@ def create():
 
 
 class LoadDataNode(Node):
-    title = "Load data"
+    title = "Import dataset"
     group = "Data IO"
 
     colour = (54 / 255, 47 / 255, 192 / 255, 1.0)

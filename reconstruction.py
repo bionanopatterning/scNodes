@@ -149,7 +149,6 @@ class Reconstructor:
             _normfac = np.amax(sr_image)
             if _normfac == 0.0:
                 _normfac = 1
-            print(_normfac)
             r = sr_image[:, :, 0] / _normfac * 65535
             g = sr_image[:, :, 1] / _normfac * 65535
             b = sr_image[:, :, 2] / _normfac * 65535

@@ -1,11 +1,10 @@
 from joblib import cpu_count
 import traceback
 import dill as pickle
-# This file defines variables that can be accessed globally.
-# Before re-structuring the code, the Node class would directly access and change NodeEditor class static variables.
-# That messed up inheritance. Instead, all of the variables that were accessed in this way are now defined in this file.
 
-app_name = "srNodes"
+# This file defines variables that can be accessed globally.
+
+app_name = "scNodes"
 
 nodes = list()
 active_node = None

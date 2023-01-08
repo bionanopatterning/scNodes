@@ -14,7 +14,7 @@ class ExportDataNode(Node):
     title = "Export data"
     group = "Data IO"
     colour = (138 / 255, 8 / 255, 8 / 255, 1.0)
-    sortid = 1
+    sortid = 5
 
     def __init__(self):
         super().__init__()

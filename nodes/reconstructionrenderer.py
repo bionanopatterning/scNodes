@@ -110,8 +110,10 @@ class ReconstructionRendererNode(Node):
                     imgui.image(self.reconstructor.lut_texture.renderer_id, _cw, 10.0, (_uv_left, 0.5),
                                 (_uv_right, 0.5), border_color=(0.0, 0.0, 0.0, 1.0))
                     imgui.push_item_width(_cw)
-                    _c, self.min = imgui.slider_float("##min", self.min, self.histogram_bins[0], self.histogram_bins[1], format='min: %.1f')
+                    _c, self.min = imgui.slider_float("##min", self.min, self.histogram_bins[0], self.histogram_bins[1],format='min: %.1f')
+                    if _c: self.paint_applied = False
                     _c, self.max = imgui.slider_float("##max", self.max, self.histogram_bins[0], self.histogram_bins[1],format='max: %.1f')
+                    if _c: self.paint_applied = False
                     imgui.pop_item_width()
 
                 # TODO: histogram
@@ -157,8 +159,8 @@ class ReconstructionRendererNode(Node):
                 pass
                 self.reconstructor.set_mode("ui16")
 
-        if imgui.button("Recompile shader"):
-            self.reconstructor.recompile_shader()
+        # if imgui.button("Recompile shader"):
+        #     self.reconstructor.recompile_shader()
 
     def get_histogram_values(self):
         datasource = self.reconstruction_in.get_incoming_node()
@@ -186,13 +188,17 @@ class ReconstructionRendererNode(Node):
     def apply_paint(self, particle_data):
         if cfg.profiling:
             time_start = time.time()
-        values = particle_data.parameter[self.available_parameters[self.parameter]]
-        i = 0
-        for particle in particle_data.particles:
-            particle.colour_idx = np.min([np.max([0.0, (values[i] - self.min) / (self.max - self.min)]), 1.0])
-            print(particle.colour_idx)
-            i += 1
-        self.reconstructor.colours_set = False
+        if self.parameter == 0:
+            for particle in particle_data.particles:
+                particle.colour_idx = 1.0
+        else:
+            values = particle_data.parameter[self.available_parameters[self.parameter]]
+            i = 0
+            for particle in particle_data.particles:
+                particle.colour_idx = np.min([np.max([0.0, (values[i] - self.min) / (self.max - self.min)]), 1.0])
+                print(particle.colour_idx)
+                i += 1
+            self.reconstructor.colours_set = False
         if cfg.profiling:
             self.profiler_time += time.time() - time_start
 
@@ -208,6 +214,7 @@ class ReconstructionRendererNode(Node):
                 self.reconstructor.set_camera_origin([-particle_data.reconstruction_roi[0] / self.pixel_size, -particle_data.reconstruction_roi[1] / self.pixel_size])
 
                 ## Apply colours
+                ## TODO: add option to output a monochrome channel
                 if self.paint_particles:
                     if not self.paint_applied:
                         self.apply_paint(particle_data)
@@ -223,6 +230,8 @@ class ReconstructionRendererNode(Node):
                     return None
                 else:
                     self.latest_image = self.reconstructor.render(fixed_uncertainty=(self.default_sigma if self.fix_sigma else None))
+                    if not self.paint_particles:
+                        self.latest_image = self.latest_image[:, :, 0]  # single channel only for non-painted particles
                     self.any_change = True
                     self.OVERRIDE_AUTOCONTRAST = True
                     self.OVERRIDE_AUTOCONTRAST_LIMS = (0, np.amax(self.latest_image))

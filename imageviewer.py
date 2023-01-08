@@ -444,12 +444,11 @@ class ImageViewer:
             self.contrast_window_open = False
         if self.contrast_window_open:
             if self.window.get_key_event(glfw.KEY_SPACE, glfw.PRESS, 0):
-                self.autocontrast = [True, True, True]
                 self._compute_auto_contrast(0)
                 self._compute_auto_contrast(1)
                 self._compute_auto_contrast(2)
             if self.window.get_key_event(glfw.KEY_SPACE, glfw.PRESS, glfw.MOD_SHIFT | glfw.MOD_CONTROL):
-                self.autocontrast = [False, False, False]
+                self.autocontrast = [True, True, True]
         if self.window.get_key_event(glfw.KEY_S, glfw.PRESS, glfw.MOD_CONTROL):
             if self.image_pxd is not None:
                 self.save_current_image()
