@@ -174,19 +174,19 @@ class Node:
                     cfg.set_active_node(None, True)
                     cfg.set_active_node(self, False)
                 imgui.close_current_popup()
-            _duplicate, _ = imgui.menu_item("Duplicate node")
-            if _duplicate:
-                duplicate_node = Node.create_node_by_type(self.type) ## TODO FIX
-                duplicate_node.position = [self.position[0] + 10, self.position[1] + 10]
-                cfg.set_active_node(duplicate_node)
+            # _duplicate, _ = imgui.menu_item("Duplicate node")
+            # if _duplicate:
+            #     duplicate_node = Node.create_node_by_type(self.type) ## TODO FIX
+            #     duplicate_node.position = [self.position[0] + 10, self.position[1] + 10]
+            #     cfg.set_active_node(duplicate_node)
             _delete, _ = imgui.menu_item("Delete node")
             if _delete:
                 self.delete()
             _reset, _ = imgui.menu_item("Reset node")
-            if _reset:
-                new_node = Node.create_node_by_type(self.type) ## TODO FIX
-                new_node.position = self.position
-                self.delete()
+            # if _reset:
+            #     new_node = Node.create_node_by_type(self.type) ## TODO FIX
+            #     new_node.position = self.position
+            #     self.delete()
             if imgui.begin_menu("Set node-specific LUT"):
                 for lut in ["auto"] + settings.lut_names:
                     _lut, _ = imgui.menu_item(lut)

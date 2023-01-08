@@ -124,9 +124,10 @@ class CorrelationEditor:
         EXPORT_ROI_LINE_COLOUR = (255 / 255, 202 / 255, 28 / 255, 1.0)
 
         # tools
-        tools = dict()
+        tool_factory = dict()
         tools_list = list()
         tool_descriptions = list()
+        current_tool = None
         selected_tool = 0
 
     def __init__(self, window, imgui_context, imgui_impl):
@@ -566,11 +567,16 @@ class CorrelationEditor:
         if imgui.collapsing_header("Alignment tools", None)[0]:
             imgui.text("Select tool:")
             _cw = imgui.get_content_region_available_width()
-            imgui.set_next_item_width(_cw - 40)
-            _c, CorrelationEditor.selected_tool = imgui.combo("##tools", CorrelationEditor.selected_tool, CorrelationEditor.tools_list)
-            imgui.same_line()
-            imgui.button("?", 19, 19)
-            CorrelationEditor.tooltip(CorrelationEditor.tool_descriptions[CorrelationEditor.selected_tool])
+            imgui.set_next_item_width(_cw - 25)
+            _c, CorrelationEditor.selected_tool = imgui.combo("##tools", CorrelationEditor.selected_tool, ["..."] + CorrelationEditor.tools_list)
+            if _c and CorrelationEditor.selected_tool > 0:
+                CorrelationEditor.current_tool = CorrelationEditor.tool_factory[CorrelationEditor.tools_list[CorrelationEditor.selected_tool - 1]]()
+            if CorrelationEditor.selected_tool > 0:
+                imgui.same_line()
+                imgui.button("?", 19, 19)
+                CorrelationEditor.tooltip(CorrelationEditor.tool_descriptions[CorrelationEditor.selected_tool - 1])
+            if CorrelationEditor.current_tool is not None:
+                CorrelationEditor.current_tool.render()
 
         imgui.end()
         imgui.pop_style_color(3)
@@ -819,7 +825,7 @@ class CorrelationEditor:
             scale_bar_pixels = CorrelationEditor.scale_bar_size / world_pixel
             m = CorrelationEditor.SCALE_BAR_WINDOW_MARGIN
             imgui.set_next_window_size(2 * m + scale_bar_pixels, 2 * m + CorrelationEditor.SCALE_BAR_HEIGHT)
-            imgui.begin("##scaasdlebar", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_SCROLLBAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_BACKGROUND)
+            imgui.begin("##scalebar", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_SCROLLBAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_BACKGROUND)
             draw_list = imgui.get_background_draw_list()
             window_pos = imgui.get_window_position()
             draw_list.add_rect_filled(window_pos[0] + m, window_pos[1] + m, window_pos[0] + scale_bar_pixels + m, window_pos[1] + CorrelationEditor.SCALE_BAR_HEIGHT + m, imgui.get_color_u32_rgba(*CorrelationEditor.SCALE_BAR_COLOUR))
@@ -1194,13 +1200,12 @@ class CorrelationEditor:
             except Exception as e:
                 cfg.set_error(e, f"No well-defined Tool type found in {toolsrc}. See manual for minimal code requirements.")
 
-        CorrelationEditor.tools = dict()
+        CorrelationEditor.tool_factory = dict()
         CorrelationEditor.tool_descriptions = list()
         for toolimpl in toolimpls:
-            CorrelationEditor.tools[toolimpl.title] = toolimpl.create_fn
+            CorrelationEditor.tool_factory[toolimpl.title] = toolimpl.create_fn
             CorrelationEditor.tool_descriptions.append(toolimpl.info)
-        CorrelationEditor.tools_list = list(CorrelationEditor.tools.keys())
-
+        CorrelationEditor.tools_list = list(CorrelationEditor.tool_factory.keys())
 
 
 class Renderer:
