@@ -75,7 +75,7 @@ class CorrelationEditor:
 
         measure_active = False
         measure_tool = None
-        measure_tool_colour = (1.0, 0.0, 0.5, 1.0)
+        measure_tool_colour = (255 / 255, 202 / 255, 28 / 255, 1.0)
         # editing
         MOUSE_SHORT_PRESS_MAX_DURATION = 0.25  # seconds
         ARROW_KEY_TRANSLATION = 100.0  # nm
@@ -234,12 +234,14 @@ class CorrelationEditor:
             new_frame = CLEMFrame(pxd)
             new_frame.pixel_size = frame_obj.pixel_size
             new_frame.lut = frame_obj._ce_lut
+            new_frame.contrast_lims = copy(frame_obj._ce_clims)
             new_frame.update_lut()
+            ## todo make rgb contrast adjustable
             cfg.ce_frames.insert(0, new_frame)
             CorrelationEditor.active_frame = new_frame
         CorrelationEditor.incoming_frame_buffer = list()
 
-        ## end content
+        # end content
         imgui.render()
         self.imgui_implementation.render(imgui.get_draw_data())
 
@@ -566,12 +568,14 @@ class CorrelationEditor:
             imgui.set_next_window_position(window_pos[0] + 10.0, window_pos[1] - 10.0)
             imgui.begin("##measure_t_outp", False, imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_BACKGROUND)
             distance = CorrelationEditor.measure_tool.distance
+            imgui.push_style_color(imgui.COLOR_TEXT, *CorrelationEditor.measure_tool_colour)
             if distance < 100:
                 imgui.text(f"{distance:.1f} nm")
             elif distance < 5000:
                 imgui.text(f"{distance:.0f} nm")
             else:
                 imgui.text(f"{distance / 1000.0:.1f} um")
+            imgui.pop_style_color(1)
             imgui.end()
         if imgui.collapsing_header("Alignment tools", None)[0]:
             imgui.text("Select tool:")
@@ -625,7 +629,7 @@ class CorrelationEditor:
                     tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_RGBA, GL_FLOAT)
                     out_img[i*T:min([(i+1)*T, W]), j*T:min([(j+1)*T, H]), :] = np.rot90(tile, 1, (1, 0))[:min([T, W-(i*T)]), :min([T, H-(j*T)]), :]
             CorrelationEditor.EXPORT_FBO.unbind()
-            import matplotlib.pyplot as plt
+
             out_img[:, :, 3] = (out_img[:, :, 3] > 1.0) * 1.0  # threshold alpha: 1.0 = background, set to 0.0, >1.0 = image content.
             out_img = np.rot90(out_img, -1, (1, 0))
             out_img *= 255

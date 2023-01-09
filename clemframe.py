@@ -6,7 +6,7 @@ from opengl_classes import *
 from PIL import Image
 import mrcfile
 from copy import copy
-
+import datetime
 
 class CLEMFrame:
     idgen = count(0)
@@ -15,7 +15,8 @@ class CLEMFrame:
     def __init__(self, img_array):
         """Grayscale images only - img_array must be a 2D np.ndarray"""
         # data
-        self.uid = next(CLEMFrame.idgen)
+        uid_counter = next(CLEMFrame.idgen)
+        self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')+"000") + uid_counter
         self.data = img_array
         self.is_rgb = False
         if len(self.data.shape) == 2:
@@ -29,7 +30,7 @@ class CLEMFrame:
             raise Exception("CLEMFrame not able to import image data with dimensions other than (XY) or (XYC). How did you manage..?")
         self.children = list()
         self.parent = None
-        self.title = "Frame "+str(self.uid)
+        self.title = "Frame "+str(uid_counter)
         self.path = None
         self.has_slices = False
         self.n_slices = 1

@@ -144,8 +144,7 @@ class ParticleFittingNode(Node):
             self.time_start = time.time()
             dataset_source = Node.get_source_load_data_node(self)
             self.particle_data = ParticleData(dataset_source.pixel_size)
-            _roi = dataset_source.dataset.reconstruction_roi
-            self.particle_data.set_reconstruction_roi(np.asarray([_roi[1], _roi[0]]) * dataset_source.pixel_size) ## 230109 check todo
+            self.particle_data.set_reconstruction_roi(np.asarray(dataset_source.dataset.reconstruction_roi) * dataset_source.pixel_size)
             self.fitting = True
             self.frames_to_fit = list()
             if self.range_option == 0:

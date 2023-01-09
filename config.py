@@ -1,10 +1,19 @@
 from joblib import cpu_count
 import traceback
 import dill as pickle
-
+from os import path, remove
 # This file defines variables that can be accessed globally.
+from datetime import datetime
 
 app_name = "scNodes"
+version = "1.0"
+# logpath = app_name+"_log.txt"
+# if path.exists(logpath):
+#     remove(logpath)
+# logfile = open(logpath, "a")
+# logfile.write(app_name+" log - started at: "+datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\n")
+# logfile.write("version: "+version+"\n\n")
+
 
 nodes = list()
 active_node = None
@@ -76,12 +85,11 @@ def set_active_node(node, keep_active=False):
     else:
         return False
 
-
 def set_error(error_object, error_message):
     global error_msg, error_obj, error_new
     error_msg = error_message + "\n\n"
     error_msg += "".join(traceback.TracebackException.from_exception(error_object).format())
-    print(error_msg)
+    # logfile.write("Non critical error at "+datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\n"+error_msg)
     error_obj = error_object
     error_new = True
 

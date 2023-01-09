@@ -48,7 +48,7 @@ class Node:
     DISABLE_FRAME_INFO_WINDOW = False
 
     def __init__(self):
-        self.id = int(datetime.datetime.now().strftime("%Y%m%d")+"000") + next(Node.id_generator)
+        self.id = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')+"000") + next(Node.id_generator)
         self.position = [0, 0]
         self.last_measured_window_position = [0, 0]
         self.node_height = 100
