@@ -5,13 +5,9 @@ n_cpus = -1
 
 
 
-ne_window_width = 1100
-ne_window_height = 700
-ne_window_title = "srNodes editor"
+ne_window_title = "scNodes editor"
 
-iv_window_width = 600
-iv_window_height = 700
-iv_window_title = "srNodes image viewer"
+iv_window_title = "scNodes image viewer"
 
 luts = dict()
 luts["Gray"] = cc.linear_grey_0_100_c0

@@ -230,6 +230,8 @@ class CLEMFrame:
         if self.lut_clamp_mode == 1:
             lut_array_rgba[0, 0, 3] = 0.0
             lut_array_rgba[0, -1, 3] = 0.0
+        elif self.lut_clamp_mode == 2:
+            lut_array_rgba[0, 0, 3] = 0.0
         self.lut_texture.update(lut_array_rgba)
 
     def compute_autocontrast(self):

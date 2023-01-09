@@ -100,6 +100,7 @@ class ImageViewer:
 
         # GUI behaviour
         self.show_frame_select_window = True
+        self.node_blocking_frame_window = False
         #
         self.current_dataset = Dataset()
         self.frame_info = ""
@@ -122,8 +123,8 @@ class ImageViewer:
         self.window.on_update()
         self.imgui_implementation.refresh_font_texture()  # TODO reinstate this line?
         if self.window.window_size_changed:
-            settings.iv_window_height = self.window.height
-            settings.iv_window_width = self.window.width
+            cfg.iv_window_height = self.window.height
+            cfg.iv_window_width = self.window.width
             self.camera.set_projection_matrix(self.window.width, self.window.height)
             self.window.window_size_changed = False
 
@@ -185,6 +186,7 @@ class ImageViewer:
 
         if cfg.active_node is not None:
             ImageViewer.MARKER_COLOUR = cfg.active_node.colour
+            self.node_blocking_frame_window = cfg.active_node.DISABLE_FRAME_INFO_WINDOW
             if self.previous_active_node is not cfg.active_node or cfg.active_node.any_change or self.new_image_requested:
                 if cfg.active_node.NODE_RETURNS_IMAGE:
                     an = cfg.active_node
@@ -193,7 +195,7 @@ class ImageViewer:
                     self.current_dataset.current_frame = np.clip(self.current_dataset.current_frame, 0, self.current_dataset.n_frames - 1)
                     cfg.active_node.FRAME_REQUESTED_BY_IMAGE_VIEWER = True
                     new_image = cfg.active_node.get_image(self.current_dataset.current_frame)
-                    cfg.active_node.FRAME_REQUESTED_BY_IMAGE_VIEWER = False  ## instead of block, send a predetermined contrast lim!
+                    cfg.active_node.FRAME_REQUESTED_BY_IMAGE_VIEWER = False
                     if cfg.active_node.OVERRIDE_AUTOCONTRAST:
                         print("Overriding contrast settings")
                         self.autocontrast = [False, False, False]
@@ -221,7 +223,7 @@ class ImageViewer:
         self.imgui_implementation.shutdown()
 
     def _gui_main(self):
-        if self.show_frame_select_window and self.current_dataset.initialized and not self.mode == "RGB":
+        if self.show_frame_select_window and self.current_dataset.initialized and not self.mode == "RGB" and not self.node_blocking_frame_window:
             self._frame_info_window()
 
         # Context menu
@@ -604,7 +606,7 @@ class Camera:
         self.view_matrix = np.identity(4)
         self.projection_matrix = np.identity(4)
         self.view_projection_matrix = np.identity(4)
-        self.set_projection_matrix(settings.iv_window_width, settings.iv_window_height)
+        self.set_projection_matrix(cfg.iv_window_width, cfg.iv_window_height)
 
     def set_projection_matrix(self, window_width, window_height):
         self.projection_matrix = np.matrix([
