@@ -53,6 +53,8 @@ class CLEMFrame:
         self.compute_autocontrast()
         self.hist_bins = list()
         self.hist_vals = list()
+        self.rgb_hist_vals = list()
+        self.rgb_contrast_lims = [0, 255, 0, 255, 0, 255]
         self.compute_histogram()
         self.hide = False
         self.interpolate = False  # False for pixelated, True for interpolated
@@ -243,16 +245,23 @@ class CLEMFrame:
         self.contrast_lims[1] = sorted_pixelvals[int((1.0 - settings.autocontrast_saturation / 100.0) * n)]
 
     def compute_histogram(self):
-        # ignore very bright pixels
-        mean = np.mean(self.data)
-        std = np.std(self.data)
-        self.hist_vals, self.hist_bins = np.histogram(self.data[self.data < (mean + 10 * std)], bins=CLEMFrame.HISTOGRAM_BINS)
+        if not self.is_rgb:
+            # ignore very bright pixels
+            mean = np.mean(self.data)
+            std = np.std(self.data)
+            self.hist_vals, self.hist_bins = np.histogram(self.data[self.data < (mean + 10 * std)], bins=CLEMFrame.HISTOGRAM_BINS)
 
-        self.hist_vals = self.hist_vals.astype('float32')
-        self.hist_bins = self.hist_bins.astype('float32')
-        self.hist_vals = np.delete(self.hist_vals, 0)
-        self.hist_bins = np.delete(self.hist_bins, 0)
-        self.hist_vals = np.log(self.hist_vals + 1)
+            self.hist_vals = self.hist_vals.astype('float32')
+            self.hist_bins = self.hist_bins.astype('float32')
+            self.hist_vals = np.delete(self.hist_vals, 0)
+            self.hist_bins = np.delete(self.hist_bins, 0)
+            self.hist_vals = np.log(self.hist_vals + 1)
+        else:
+            for i in range(3):
+                vals, _ = np.histogram(self.data[:, :, i], bins=CLEMFrame.HISTOGRAM_BINS)
+                vals = vals.astype('float32')
+                vals = np.delete(vals, 0)
+                self.rgb_hist_vals.append(vals)
 
     def generate_va(self):
         # set up the quad vertex array

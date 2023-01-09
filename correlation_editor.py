@@ -395,8 +395,40 @@ class CorrelationEditor:
         # Visuals info
         expanded, _ = imgui.collapsing_header("Visuals", None)
         if expanded and af is not None:
-            if af.is_rgb:
-                imgui.text("(No editing RGB img)")
+            if af.is_rgb:  # rgb histograms
+                _cw = imgui.get_content_region_available_width()
+                imgui.push_item_width(_cw)
+                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0.0, 0.0))
+                imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 5.0)
+                # Red histogram
+                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *(0.8, 0.1, 0.1, 1.0))
+                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *(0.8, 0.1, 0.1, 1.0))
+                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *(0.9, 0.1, 0.1, 1.0))
+                imgui.plot_histogram("##histR", af.rgb_hist_vals[0], graph_size=(_cw, CorrelationEditor.INFO_HISTOGRAM_HEIGHT // 2))
+                _c, af.rgb_contrast_lims[0] = imgui.slider_float("#minr", af.rgb_contrast_lims[0], 0, 255, format='min %.0f')
+                _c, af.rgb_contrast_lims[1] = imgui.slider_float("#maxr", af.rgb_contrast_lims[1], 0, 255, format='max %.0f')
+                imgui.pop_style_color(3)
+
+                # Green histogram
+                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *(0.1, 0.8, 0.1, 1.0))
+                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *(0.1, 0.8, 0.1, 1.0))
+                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *(0.1, 0.9, 0.1, 1.0))
+                imgui.plot_histogram("##histG", af.rgb_hist_vals[1], graph_size=(_cw, CorrelationEditor.INFO_HISTOGRAM_HEIGHT // 2))
+                _c, af.rgb_contrast_lims[2] = imgui.slider_float("#ming", af.rgb_contrast_lims[2], 0, 255, format='min %.0f')
+                _c, af.rgb_contrast_lims[3] = imgui.slider_float("#maxg", af.rgb_contrast_lims[3], 0, 255, format='max %.0f')
+                imgui.pop_style_color(3)
+
+                # Blue histogram
+                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *(0.1, 0.1, 0.8, 1.0))
+                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *(0.1, 0.1, 0.9, 1.0))
+                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *(0.1, 0.1, 0.8, 1.0))
+                imgui.plot_histogram("##histB", af.rgb_hist_vals[2], graph_size=(_cw, CorrelationEditor.INFO_HISTOGRAM_HEIGHT // 2))
+                _c, af.rgb_contrast_lims[4] = imgui.slider_float("#minb", af.rgb_contrast_lims[4], 0, 255, format='min %.0f')
+                _c, af.rgb_contrast_lims[5] = imgui.slider_float("#maxb", af.rgb_contrast_lims[5], 0, 255, format='max %.0f')
+                imgui.pop_style_color(3)
+
+                imgui.pop_item_width()
+                imgui.pop_style_var(2)
             else:
                 # LUT
                 imgui.text("Look-up table")
@@ -1253,10 +1285,18 @@ class Renderer:
             frame.texture.bind(0)
             frame.lut_texture.bind(1)
             self.quad_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
-            self.quad_shader.uniform2f("contrastLimits", frame.contrast_lims)
             self.quad_shader.uniform1f("alpha", frame.alpha)
             self.quad_shader.uniformmat4("modelMatrix", frame.transform.matrix)
-            self.quad_shader.uniform1f("rgbMode", float(frame.is_rgb))
+            if frame.is_rgb:
+                self.quad_shader.uniform1f("rgbMode", 1.0)
+                l = frame.rgb_contrast_lims
+                print(l)
+                self.quad_shader.uniform3f("contrastMin", [l[0], l[2], l[4]])
+                self.quad_shader.uniform3f("contrastMax", [l[1], l[3], l[5]])
+            else:
+                self.quad_shader.uniform1f("rgbMode", 1.0)
+                self.quad_shader.uniform3f("contrastMin", [frame.contrast_lims[0], 0.0, 0.0])
+                self.quad_shader.uniform3f("contrastMax", [frame.contrast_lims[1], 0.0, 0.0])
             self.quad_shader.uniform1f("hpix", frame.width)
             self.quad_shader.uniform1f("vpix", frame.height)
             self.quad_shader.uniform1f("binning", frame.binning)
