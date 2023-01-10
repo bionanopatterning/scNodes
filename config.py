@@ -17,6 +17,8 @@ camera_move_requested = [0, 0]
 
 window_width = 1100
 window_height = 700
+iv_window_width = 600
+iv_window_height = 700
 
 profiling = False
 

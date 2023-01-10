@@ -1319,6 +1319,7 @@ class Renderer:
                 self.quad_shader.uniform3f("contrastMin", [l[0] / 255.0, l[2] / 255.0, l[4] / 255.0])
                 self.quad_shader.uniform3f("contrastMax", [l[1] / 255.0, l[3] / 255.0, l[5] / 255.0])
             else:
+                self.quad_shader.uniform1f("rgbMode", 0.0)
                 self.quad_shader.uniform3f("contrastMin", [frame.contrast_lims[0], 0.0, 0.0])
                 self.quad_shader.uniform3f("contrastMax", [frame.contrast_lims[1], 0.0, 0.0])
             self.quad_shader.uniform1f("hpix", frame.width)
