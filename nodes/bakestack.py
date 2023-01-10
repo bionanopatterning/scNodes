@@ -174,6 +174,7 @@ class BakeStackNode(Node):
                     self.frames_to_bake.pop()
                     coordinates = self.get_image_and_save(index)
                     self.n_baked += 1
+                    ## todo fix error where bakestack freezes upon leaving entire node setup intact, changing source data node input to a different stack, then pressing GO on bake stack node.
                 if self.bake_coordinates:
                     self.coordinates += coordinates  # coordinates is a list of lists. in the end, self.coordinates will be a list of length [amount of frames], with a sublist of xy coords for every img.
                 if cfg.profiling:

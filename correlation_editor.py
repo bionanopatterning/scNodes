@@ -60,6 +60,7 @@ class CorrelationEditor:
 
         ALPHA_SLIDER_WIDTH = 450
         ALPHA_SLIDER_H_OFFSET = 0
+        ALPHA_SLIDER_ROUNDING = 50.0
         BLEND_COMBO_WIDTH = 150
         VISUALS_CTRL_ALPHA = 0.8
 
@@ -70,6 +71,7 @@ class CorrelationEditor:
         SCALE_BAR_COLOUR = (0.0, 0.0, 0.0, 1.0)
         scale_bar_size = 5000.0
         show_scale_bar = False
+        scale_bar_world_position = [0, 0]
 
         measure_active = False
         measure_tool = None
@@ -142,7 +144,7 @@ class CorrelationEditor:
 
         CorrelationEditor.renderer = Renderer()
         self.camera = Camera()  # default camera 'zoom' value is 1.0, in which case the vertical field of view size is equal to window_height_in_pixels nanometer.
-        CorrelationEditor.DEFAULT_ZOOM = settings.ne_window_height / CorrelationEditor.DEFAULT_HORIZONTAL_FOV_WIDTH  # now it is DEFAULT_HORIZONTAL_FOV_WIDTH
+        CorrelationEditor.DEFAULT_ZOOM = cfg.window_height / CorrelationEditor.DEFAULT_HORIZONTAL_FOV_WIDTH  # now it is DEFAULT_HORIZONTAL_FOV_WIDTH
         CorrelationEditor.DEFAULT_WORLD_PIXEL_SIZE = 1.0 / CorrelationEditor.DEFAULT_ZOOM
         self.camera.zoom = CorrelationEditor.DEFAULT_ZOOM
 
@@ -197,6 +199,10 @@ class CorrelationEditor:
 
         incoming_files = deepcopy(self.window.dropped_files)
         self.window.on_update()
+        if self.window.window_size_changed:
+            cfg.window_width = self.window.width
+            cfg.window_height = self.window.height
+            self.camera.set_projection_matrix(cfg.window_width, cfg.window_height)
         imgui.get_io().display_size = self.window.width, self.window.height
         imgui.new_frame()
 
@@ -478,7 +484,7 @@ class CorrelationEditor:
                 imgui.same_line()
                 _cw = imgui.get_content_region_available_width()
                 imgui.set_next_item_width(_cw)
-                _c, af.lut_clamp_mode = imgui.combo("##clamping", af.lut_clamp_mode, ["Clamp", "Discard"])
+                _c, af.lut_clamp_mode = imgui.combo("##clamping", af.lut_clamp_mode, ["Clamp", "Discard", "Discard min"])
                 if _c:
                     af.update_lut()
                 CorrelationEditor.tooltip("Set whether saturated pixels (with intensities outside of the min/max range)\n"
@@ -574,7 +580,7 @@ class CorrelationEditor:
                 selected_file = filedialog.asksaveasfilename()
                 if selected_file is not None:
                     CorrelationEditor.ex_path = selected_file
-            imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, cfg.CE_WIDGET_ROUNDING)
+            imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, CorrelationEditor.ALPHA_SLIDER_ROUNDING)
             imgui.new_line()
             imgui.same_line(spacing=(_cw - _button_width) / 2.0)
             if imgui.button("Export##button", _button_width, _button_height):
@@ -592,13 +598,17 @@ class CorrelationEditor:
                 _c, CorrelationEditor.scale_bar_size = imgui.drag_float("##scalebarlength", CorrelationEditor.scale_bar_size, 1.0, 0.0, 0.0, format='%.0f nm')
                 if imgui.begin_popup_context_item():
                     imgui.set_next_item_width(40)
-                    _c, CorrelationEditor.SCALE_BAR_HEIGHT = imgui.drag_int("Scale bar thickness", CorrelationEditor.SCALE_BAR_HEIGHT, 1.0, 1.0, 0.0, format = '%i px')
+                    _c, CorrelationEditor.SCALE_BAR_HEIGHT = imgui.drag_int("##Scale bar thickness", CorrelationEditor.SCALE_BAR_HEIGHT, 1.0, 1.0, 0.0, format = 'Drag me to change scale bar thickness: %i px')
+                    CorrelationEditor.SCALE_BAR_HEIGHT = max([1, CorrelationEditor.SCALE_BAR_HEIGHT])
                     imgui.end_popup()
             imgui.new_line()
             imgui.same_line(spacing=5.0)
             _c, CorrelationEditor.measure_active = imgui.checkbox("Measure tool", CorrelationEditor.measure_active)
             if _c:
                 CorrelationEditor.measure_tool.reset()
+            if CorrelationEditor.measure_active:
+                imgui.same_line()
+                _c, CorrelationEditor.measure_tool_colour = imgui.color_edit4("##text colour", *CorrelationEditor.measure_tool_colour, flags=imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
         # draw the measure image
         if CorrelationEditor.measure_active and CorrelationEditor.measure_tool.p_set:
             if CorrelationEditor.measure_tool.q_set:
@@ -768,34 +778,34 @@ class CorrelationEditor:
             if imgui.begin_popup_context_item():
                 _c, f.title = imgui.input_text("##fname", f.title, 30)
                 if imgui.menu_item("Send to top")[0]:
-                    frame.move_to_front()
+                    f.move_to_front()
                 elif imgui.menu_item("Send to bottom")[0]:
-                    frame.move_to_back()
+                    f.move_to_back()
                 elif imgui.menu_item("Raise one step")[0]:
-                    frame.move_forwards()
+                    f.move_forwards()
                 elif imgui.menu_item("Lower one step")[0]:
-                    frame.move_backwards()
+                    f.move_backwards()
                 elif imgui.menu_item("Rotate +90° (ccw)")[0]:
-                    frame.transform.rotation += 90.0
+                    f.transform.rotation += 90.0
                 elif imgui.menu_item("Rotate -90° (cw)")[0]:
-                    frame.transform.rotation -= 90.0
+                    f.transform.rotation -= 90.0
                 elif imgui.menu_item("Flip horizontally")[0]:
-                    frame.flip()
+                    f.flip()
                 elif imgui.menu_item("Flip vertically")[1]:
-                    frame.flip(horizontally=False)
+                    f.flip(horizontally=False)
                 if imgui.begin_menu("Binning"):
-                    if imgui.menu_item("None", selected=frame.binning==1)[0]:
-                        frame.binning = 1
-                    if imgui.menu_item("1.5 x", selected=frame.binning==1.5)[0]:
-                        frame.binning = 1.5
-                    elif imgui.menu_item("2 x", selected=frame.binning==2)[0]:
-                        frame.binning = 2
-                    elif imgui.menu_item("3 x", selected=frame.binning==3)[0]:
-                        frame.binning = 3
-                    elif imgui.menu_item("4 x", selected=frame.binning==4)[0]:
-                        frame.binning = 4
-                    elif imgui.menu_item("8 x", selected=frame.binning==8)[0]:
-                        frame.binning = 8
+                    if imgui.menu_item("None", selected=f.binning==1)[0]:
+                        f.binning = 1
+                    if imgui.menu_item("1.5 x", selected=f.binning==1.5)[0]:
+                        f.binning = 1.5
+                    elif imgui.menu_item("2 x", selected=f.binning==2)[0]:
+                        f.binning = 2
+                    elif imgui.menu_item("3 x", selected=f.binning==3)[0]:
+                        f.binning = 3
+                    elif imgui.menu_item("4 x", selected=f.binning==4)[0]:
+                        f.binning = 4
+                    elif imgui.menu_item("8 x", selected=f.binning==8)[0]:
+                        f.binning = 8
                     imgui.end_menu()
                 imgui.end_popup()
             if selected:
@@ -883,8 +893,10 @@ class CorrelationEditor:
             world_pixel = CorrelationEditor.DEFAULT_WORLD_PIXEL_SIZE / self.camera.zoom * CorrelationEditor.DEFAULT_ZOOM
             scale_bar_pixels = CorrelationEditor.scale_bar_size / world_pixel
             m = CorrelationEditor.SCALE_BAR_WINDOW_MARGIN
-            imgui.set_next_window_size(2 * m + scale_bar_pixels, 2 * m + CorrelationEditor.SCALE_BAR_HEIGHT)
-            imgui.begin("##scalebar", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_SCROLLBAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_BACKGROUND)
+            window_width = 2 * m + scale_bar_pixels
+            window_height = 2 * m + CorrelationEditor.SCALE_BAR_HEIGHT
+            imgui.set_next_window_size(window_width, window_height)
+            imgui.begin("##scalebar", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_SCROLLBAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_BACKGROUND | imgui.WINDOW_NO_MOVE)
             draw_list = imgui.get_background_draw_list()
             window_pos = imgui.get_window_position()
             draw_list.add_rect_filled(window_pos[0] + m, window_pos[1] + m, window_pos[0] + scale_bar_pixels + m, window_pos[1] + CorrelationEditor.SCALE_BAR_HEIGHT + m, imgui.get_color_u32_rgba(*CorrelationEditor.SCALE_BAR_COLOUR))
@@ -893,6 +905,13 @@ class CorrelationEditor:
                 _c, CorrelationEditor.SCALE_BAR_COLOUR = imgui.color_edit4("Scale bar colour", *CorrelationEditor.SCALE_BAR_COLOUR, flags=imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
                 imgui.pop_style_var(1)
                 imgui.end_popup()
+            elif imgui.is_mouse_down(glfw.MOUSE_BUTTON_LEFT) and imgui.is_window_focused():
+                cursor_world_pos_prev = self.camera.cursor_to_world_position(self.window.cursor_pos_previous_frame)
+                cursor_world_pos_current = self.camera.cursor_to_world_position(self.window.cursor_pos)
+                delta_x = cursor_world_pos_current[0] - cursor_world_pos_prev[0]
+                delta_y = cursor_world_pos_current[1] - cursor_world_pos_prev[1]
+                CorrelationEditor.scale_bar_world_position[0] += delta_x
+                CorrelationEditor.scale_bar_world_position[1] += delta_y
             imgui.end()
             imgui.pop_style_color(2)
             imgui.pop_style_var(3)
@@ -1196,7 +1215,6 @@ class CorrelationEditor:
             if gizmo.hide:
                 continue
             if is_point_in_rectangle(cursor_world_position, gizmo.corner_positions):
-                print("picked gizmo")
                 return gizmo
         if prioritize_active_frame:
             if CorrelationEditor.active_frame is not None:
@@ -1283,9 +1301,8 @@ class Renderer:
             glBlendEquation(GL_FUNC_ADD)
         else:
             blend_mode = CorrelationEditor.BLEND_MODES[CorrelationEditor.BLEND_MODES_LIST[frame.blend_mode]]
-            # glBlendFunc(blend_mode[0], blend_mode[1])
-            glBlendFuncSeparate(blend_mode[0], blend_mode[1], GL_SRC_ALPHA,
-                                GL_ONE)  ## TODO wip 230106 trying to export w alpha
+            #glBlendFunc(blend_mode[0], blend_mode[1])
+            glBlendFuncSeparate(blend_mode[0], blend_mode[1], GL_SRC_ALPHA, GL_ONE) ## TODO wip 230106 trying to export w alpha
             glBlendEquation(blend_mode[2])
         if not frame.hide:
             self.quad_shader.bind()
@@ -1374,12 +1391,12 @@ class Camera:
         self.zoom = 1.0
         self.projection_width = 1
         self.projection_height = 1
-        self.set_projection_matrix(settings.ne_window_width, settings.ne_window_height)
+        self.set_projection_matrix(cfg.window_width, cfg.window_height)
 
     def cursor_to_world_position(self, cursor_pos):
         """Converts an input cursor position to corresponding world position. Assuming orthographic projection matrix."""
         inverse_matrix = np.linalg.inv(self.view_projection_matrix)
-        window_coordinates = (2 * cursor_pos[0] / settings.ne_window_width - 1, 1 - 2 * cursor_pos[1] / settings.ne_window_height)
+        window_coordinates = (2 * cursor_pos[0] / cfg.window_width - 1, 1 - 2 * cursor_pos[1] / cfg.window_height)
         window_vec = np.matrix([*window_coordinates, 1.0, 1.0]).T
         world_vec = (inverse_matrix * window_vec)
         return [float(world_vec[0]), float(world_vec[1])]

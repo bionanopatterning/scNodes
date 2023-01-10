@@ -1,0 +1,39 @@
+scNodes log - started at: 01/09/2023, 17:44:46
+version: 1.0
+
+Non critical error at 01/09/2023, 17:48:54
+Error baking stack: 
+A task has failed to un-serialize. Please ensure that the arguments of the function are all picklable.
+
+joblib.externals.loky.process_executor._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "C:\Users\mgflast\PycharmProjects\srNodes\venv\lib\site-packages\joblib\externals\loky\process_executor.py", line 407, in _process_worker
+    call_item = call_queue.get(block=True, timeout=timeout)
+  File "C:\Users\mgflast\AppData\Local\Programs\Python\Python39\lib\multiprocessing\queues.py", line 122, in get
+    return _ForkingPickler.loads(res)
+  File "C:\Users\mgflast\PycharmProjects\srNodes\nodes\bakestack.py", line 1, in <module>
+    from node import *
+  File "C:\Users\mgflast\PycharmProjects\srNodes\node.py", line 2, in <module>
+    import config as cfg
+  File "C:\Users\mgflast\PycharmProjects\srNodes\config.py", line 12, in <module>
+    remove(logpath)
+PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: 'scNodes_log.txt'
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\mgflast\PycharmProjects\srNodes\nodes\bakestack.py", line 170, in on_update
+    coordinates = Parallel(n_jobs=cfg.batch_size, mmap_mode=settings.joblib_mmmode)(delayed(self.get_image_and_save)(index) for index in indices)
+  File "C:\Users\mgflast\PycharmProjects\srNodes\venv\lib\site-packages\joblib\parallel.py", line 1056, in __call__
+    self.retrieve()
+  File "C:\Users\mgflast\PycharmProjects\srNodes\venv\lib\site-packages\joblib\parallel.py", line 935, in retrieve
+    self._output.extend(job.get(timeout=self.timeout))
+  File "C:\Users\mgflast\PycharmProjects\srNodes\venv\lib\site-packages\joblib\_parallel_backends.py", line 542, in wrap_future_result
+    return future.result(timeout=timeout)
+  File "C:\Users\mgflast\AppData\Local\Programs\Python\Python39\lib\concurrent\futures\_base.py", line 445, in result
+    return self.__get_result()
+  File "C:\Users\mgflast\AppData\Local\Programs\Python\Python39\lib\concurrent\futures\_base.py", line 390, in __get_result
+    raise self._exception
+joblib.externals.loky.process_executor.BrokenProcessPool: A task has failed to un-serialize. Please ensure that the arguments of the function are all picklable.

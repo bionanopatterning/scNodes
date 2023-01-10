@@ -297,7 +297,7 @@ class ParticleData:
         :param roi: The ROI used in the initial particle position estimation (e.g. ParticleDetectionNode). It can be saved in ParticleData in order to facilitate overlaying the final reconstruction with the corresponding region of the widefield image.
         :return:
         """
-        print("Setting reconstruction ROI to: ", roi[0], roi[1], roi[2], roi[3])
+        print("Setting reconstruction ROI to: ", roi[0], roi[1], roi[2], roi[3]) ## check! todo
         self.reconstruction_roi = roi
 
     @staticmethod

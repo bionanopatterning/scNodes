@@ -63,8 +63,9 @@ class NodeEditor:
         if self.window.focused:
             self.imgui_implementation.process_inputs()
         self.window.on_update()
-        settings.ne_window_width = self.window.width
-        settings.ne_window_height = self.window.height
+        if self.window.window_size_changed:
+            cfg.window_width = self.window.width
+            cfg.window_height = self.window.height
         if imgui.is_key_pressed(glfw.KEY_GRAVE_ACCENT):
             cfg.active_editor = 1
         if not self.window.get_key(glfw.KEY_ESCAPE):
@@ -137,7 +138,7 @@ class NodeEditor:
 
             _w = self.boot_img_width * 0.5
             _h = self.boot_img_height * 0.5
-            imgui.set_next_window_position((settings.ne_window_width - _w) / 2.0, (settings.ne_window_height - _h) / 2.0)
+            imgui.set_next_window_position((cfg.window_width - _w) / 2.0, (cfg.window_height - _h) / 2.0 - 25)
             self.show_boot_img = imgui.begin("##bootwindow", True, imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_BACKGROUND)[1]
             imgui.image(self.boot_img_texture.renderer_id, _w, _h)
             imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND)
@@ -405,7 +406,7 @@ class NodeEditor:
                 if attribute.direction == ConnectableAttribute.INPUT:
                     for partner in attribute.linked_attributes:
                         ids_to_link.append((attribute.id, partner.id))
-                attribute.disconnect_all()
+                #attribute.disconnect_all()
 
         def _find_attribute_by_id(target_id):
             for a in attributes:

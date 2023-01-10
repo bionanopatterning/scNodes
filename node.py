@@ -45,6 +45,8 @@ class Node:
     TOOLTIP_HOVERED_TIMER = 0.0
     TOOLTIP_HOVERED_START_TIME = 0.0
 
+    DISABLE_FRAME_INFO_WINDOW = False
+
     def __init__(self):
         self.id = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')+"000") + next(Node.id_generator)
         self.position = [0, 0]

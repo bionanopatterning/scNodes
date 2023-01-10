@@ -16,6 +16,8 @@ class ReconstructionRendererNode(Node):
     COLOUR_MODE = ["RGB, LUT"]
     sortid = 1005
 
+    DISABLE_FRAME_INFO_WINDOW = True
+
     def __init__(self):
         super().__init__()
 
@@ -177,7 +179,7 @@ class ReconstructionRendererNode(Node):
             particledata = datasource.get_particle_data()
             if particledata:
                 if particledata.baked:
-                    self.available_parameters = ["Fixed colour"] + list(particledata.histogram_counts.keys())
+                    self.available_parameters = list(particledata.histogram_counts.keys())
                     self.parameter = min([1, len(self.available_parameters)])
                     self.histogram_values = particledata.histogram_counts[self.available_parameters[self.parameter]]
                     self.histogram_bins = particledata.histogram_bins[self.available_parameters[self.parameter]]
@@ -188,17 +190,13 @@ class ReconstructionRendererNode(Node):
     def apply_paint(self, particle_data):
         if cfg.profiling:
             time_start = time.time()
-        if self.parameter == 0:
-            for particle in particle_data.particles:
-                particle.colour_idx = 1.0
-        else:
-            values = particle_data.parameter[self.available_parameters[self.parameter]]
-            i = 0
-            for particle in particle_data.particles:
-                particle.colour_idx = np.min([np.max([0.0, (values[i] - self.min) / (self.max - self.min)]), 1.0])
-                print(particle.colour_idx)
-                i += 1
-            self.reconstructor.colours_set = False
+
+        values = particle_data.parameter[self.available_parameters[self.parameter]]
+        i = 0
+        for particle in particle_data.particles:
+            particle.colour_idx = np.min([np.max([0.0, (values[i] - self.min) / (self.max - self.min)]), 1.0])
+            i += 1
+        self.reconstructor.colours_set = False
         if cfg.profiling:
             self.profiler_time += time.time() - time_start
 
@@ -233,9 +231,10 @@ class ReconstructionRendererNode(Node):
                     if not self.paint_particles:
                         self.latest_image = self.latest_image[:, :, 0]  # single channel only for non-painted particles
                     self.any_change = True
-                    self.OVERRIDE_AUTOCONTRAST = True
-                    clims = self.compute_contrast_lims(self.latest_image)
-                    self.OVERRIDE_AUTOCONTRAST_LIMS = (clims[0], clims[1])
+                    if self.paint_particles:
+                        self.OVERRIDE_AUTOCONTRAST = True
+                        clims = self.compute_contrast_lims(self.latest_image)
+                        self.OVERRIDE_AUTOCONTRAST_LIMS = (clims[0], clims[1])
             else:
                 self.latest_image = None
         except Exception as e:
@@ -243,7 +242,7 @@ class ReconstructionRendererNode(Node):
 
     @staticmethod
     def compute_contrast_lims(rgb_image):
-        max_channel = np.unravel_index(np.argmax(rgb_image), rgb_image.shape)[2]
+        max_channel = np.unravel_index(np.argmax(rgb_image), rgb_image.shape)
         img_sorted = np.sort(rgb_image[:, :, max_channel].flatten())
         n = img_sorted.shape[0] * img_sorted.shape[1]
         cmin = img_sorted[int(settings.autocontrast_saturation / 100.0 * n)]
