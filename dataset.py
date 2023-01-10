@@ -177,7 +177,6 @@ class Frame:
         self.data = transform.warp(self.data, tmat, order=interpolation, mode=edges, preserve_range=preserve_range)
 
     def load_roi(self, roi=None):
-        print("load_roi")
         if roi is None:
             return self.load()
         else:

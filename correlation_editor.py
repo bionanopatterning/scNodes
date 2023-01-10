@@ -58,6 +58,8 @@ class CorrelationEditor:
         TOOLTIP_HOVERED_TIMER = 0.0
         TOOLTIP_HOVERED_START_TIME = 0.0
 
+        FRAMES_IN_SCENE_WINDOW_WIDTH = 300
+
         ALPHA_SLIDER_WIDTH = 450
         ALPHA_SLIDER_H_OFFSET = 0
         ALPHA_SLIDER_ROUNDING = 50.0
@@ -114,7 +116,7 @@ class CorrelationEditor:
         export_roi_mode = 1  # 0 for ROI, 1 for Image
         export_roi_obj = None
         export_roi_render = False
-        ex_lims = [0, 0, 1000, 1000]
+        ex_lims = [-10000, -10000, 10000, 10000]
         ex_pxnm = 10.0
         ex_img_size = [0, 0]
         ex_path = ""
@@ -245,7 +247,8 @@ class CorrelationEditor:
             new_frame = CLEMFrame(pxd)
             new_frame.pixel_size = frame_obj.pixel_size
             new_frame.lut = frame_obj._ce_lut
-            new_frame.contrast_lims = copy(frame_obj._ce_clims)
+            new_frame.contrast_lims = [frame_obj._ce_clims[0], frame_obj._ce_clims[1]]
+            new_frame.rgb_contrast_lims = copy(frame_obj._ce_clims)
             new_frame.update_lut()
             cfg.ce_frames.insert(0, new_frame)
             CorrelationEditor.active_frame = new_frame
@@ -551,7 +554,7 @@ class CorrelationEditor:
             CorrelationEditor.tooltip(f"equals {CorrelationEditor.ex_pxnm * 25400000:.0f} dpi :)")
             imgui.same_line()
             imgui.text("nm / px")
-            if CorrelationEditor.export_roi_mode == 1:  # export by ROI
+            if CorrelationEditor.export_roi_mode == 1:  # export by selection
                 af = CorrelationEditor.active_frame
                 if af is not None:
                     corners = np.asarray(af.corner_positions)
@@ -560,7 +563,8 @@ class CorrelationEditor:
                     top = np.amin(corners[:, 1])
                     bottom = np.amax(corners[:, 1])
                     CorrelationEditor.ex_lims = [left, top, right, bottom]
-
+            else:
+                pass # TODO draw and handle ROI corner boxes.
             CorrelationEditor.ex_img_size = [int(1000.0 * (lims[2] - lims[0]) / CorrelationEditor.ex_pxnm), int(1000.0 * (lims[3] - lims[1]) / CorrelationEditor.ex_pxnm)]
             imgui.text(f"Output size: {CorrelationEditor.ex_img_size[0]} x {CorrelationEditor.ex_img_size[1]}")
             imgui.text("Export as:")
@@ -613,7 +617,6 @@ class CorrelationEditor:
         if CorrelationEditor.measure_active and CorrelationEditor.measure_tool.p_set:
             if CorrelationEditor.measure_tool.q_set:
                 window_pos = self.camera.world_to_screen_position(CorrelationEditor.measure_tool.q)
-                print(window_pos)
             else:
                 window_pos = self.window.cursor_pos
             imgui.set_next_window_position(window_pos[0] + 10.0, window_pos[1] - 10.0)
@@ -866,7 +869,8 @@ class CorrelationEditor:
                 CorrelationEditor.frame_drag_payload = None
             if CorrelationEditor.frame_drag_payload is not None:
                 CorrelationEditor.release_frame_drag_payload = True
-        imgui.set_next_window_position(self.window.width - 255, 18)
+        imgui.set_next_window_position(self.window.width - CorrelationEditor.FRAMES_IN_SCENE_WINDOW_WIDTH, 18)
+        imgui.set_next_window_size(CorrelationEditor.FRAMES_IN_SCENE_WINDOW_WIDTH, self.window.height - 18)
         if imgui.begin(" Frames in scene", False, imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE):
             content_width = imgui.get_window_content_region_width()
             for frame in cfg.ce_frames:
@@ -896,6 +900,8 @@ class CorrelationEditor:
             window_width = 2 * m + scale_bar_pixels
             window_height = 2 * m + CorrelationEditor.SCALE_BAR_HEIGHT
             imgui.set_next_window_size(window_width, window_height)
+            world_pos = self.camera.world_to_screen_position(CorrelationEditor.scale_bar_world_position)
+            imgui.set_next_window_position(world_pos[0], world_pos[1])
             imgui.begin("##scalebar", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_SCROLLBAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_BACKGROUND | imgui.WINDOW_NO_MOVE)
             draw_list = imgui.get_background_draw_list()
             window_pos = imgui.get_window_position()

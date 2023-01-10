@@ -482,7 +482,7 @@ class ImageViewer:
         _add_to_correlation_editor, _ = imgui.menu_item("Add to Correlation Editor")
         if _add_to_correlation_editor:
             self.image._ce_lut = self.current_lut + 1  # note: idx + 1 as ImageViewer has an extra 'auto' lut option at index 0.
-            self.image._ce_lims = [self.contrast_min[0], self.contrast_max[0], self.contrast_min[1], self.contrast_max[1], self.contrast_min[2], self.contrast_max[2]]
+            self.image._ce_clims = [self.contrast_min[0], self.contrast_max[0], self.contrast_min[1], self.contrast_max[1], self.contrast_min[2], self.contrast_max[2]]
             cfg.correlation_editor.add_frame(self.image)
             self.context_menu_open = False
         _export, _ = imgui.menu_item("Save as .tiff")

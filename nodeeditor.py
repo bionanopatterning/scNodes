@@ -143,9 +143,7 @@ class NodeEditor:
             imgui.image(self.boot_img_texture.renderer_id, _w, _h)
             imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND)
             if imgui.begin_popup_context_window():
-                imgui.text("version " + cfg.version + ". source:")
-                imgui.text("github.com/bionanopatterning/scNodes")
-                imgui.text(cfg.license)
+                imgui.text(f"version {cfg.version}\nsource: github.com/bionanopatterning/scNodes")
                 imgui.end_popup()
             imgui.pop_style_color(1)
             imgui.end()
