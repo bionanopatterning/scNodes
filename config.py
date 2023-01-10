@@ -49,8 +49,8 @@ active_editor = 1  # 0 for node editor, 1 for correlation
 ce_frames = list()
 ce_clear_colour = (1.0,1.0,1.0,1.0)
 ce_default_pixel_size = 64.0
-ce_flip_on_load = True
-ce_flip_mrc_on_load = True
+ce_flip_on_load = False
+ce_flip_mrc_on_load = False
 ce_selected_position = [0, 0]
 
 def set_active_node(node, keep_active=False):

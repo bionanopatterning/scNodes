@@ -628,7 +628,7 @@ class CorrelationEditor:
                 imgui.text(f"{distance / 1000.0:.1f} um")
             imgui.pop_style_color(1)
             imgui.end()
-        if imgui.collapsing_header("Alignment tools", None)[0]:
+        if imgui.collapsing_header("Tools", None)[0]:
             imgui.text("Select tool:")
             _cw = imgui.get_content_region_available_width()
             imgui.set_next_item_width(_cw - 25)
@@ -931,7 +931,7 @@ class CorrelationEditor:
         if CorrelationEditor.active_frame is not None:
             if CorrelationEditor.active_frame.has_slices:
                 imgui.set_next_item_width(CorrelationEditor.ALPHA_SLIDER_WIDTH + CorrelationEditor.BLEND_COMBO_WIDTH + 35.0)
-                _c, requested_slice = imgui.slider_int("##slicer", CorrelationEditor.active_frame.current_slice, 0, CorrelationEditor.active_frame.n_slices, format=f"slice %.1f/{CorrelationEditor.active_frame.n_slices}")
+                _c, requested_slice = imgui.slider_int("##slicer", CorrelationEditor.active_frame.current_slice, 0, CorrelationEditor.active_frame.n_slices, format=f"slice {CorrelationEditor.active_frame.current_slice+1:.0f}/{CorrelationEditor.active_frame.n_slices:.0f}")
                 if _c:
                     CorrelationEditor.active_frame.set_slice(requested_slice)
             else:
@@ -1315,7 +1315,6 @@ class Renderer:
             if frame.is_rgb:
                 self.quad_shader.uniform1f("rgbMode", 1.0)
                 l = frame.rgb_contrast_lims
-                print(l)
                 self.quad_shader.uniform3f("contrastMin", [l[0] / 255.0, l[2] / 255.0, l[4] / 255.0])
                 self.quad_shader.uniform3f("contrastMax", [l[1] / 255.0, l[3] / 255.0, l[5] / 255.0])
             else:

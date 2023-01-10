@@ -4,9 +4,15 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="RESTORE MISSED COMMIT 2">
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="2301101120">
+      <change afterPath="$PROJECT_DIR$/cetools/split_rgb.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cetool.py" beforeDir="false" afterPath="$PROJECT_DIR$/cetool.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cetools/grayscalereg.py" beforeDir="false" afterPath="$PROJECT_DIR$/cetools/grayscalereg.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/clemframe.py" beforeDir="false" afterPath="$PROJECT_DIR$/clemframe.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/correlation_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/correlation_editor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -460,7 +466,14 @@
       <option name="project" value="LOCAL" />
       <updated>1673345682768</updated>
     </task>
-    <option name="localTasksCounter" value="36" />
+    <task id="LOCAL-00036" summary="2301101120">
+      <created>1673346016577</created>
+      <option name="number" value="00036" />
+      <option name="presentableId" value="LOCAL-00036" />
+      <option name="project" value="LOCAL" />
+      <updated>1673346016577</updated>
+    </task>
+    <option name="localTasksCounter" value="37" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -491,7 +504,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$" />
     </ignored-roots>
-    <MESSAGE value="added install.py" />
     <MESSAGE value="uncertainty &amp; bgkstd now part of particle fit" />
     <MESSAGE value="focus node &amp; duplicate node added, particledetection returns list of coordinates now instead of image. particlefitting takes dataset + coordinate list." />
     <MESSAGE value="parallel processing for bake stack node works for dataset (not yet for coordinates)" />
@@ -516,6 +528,7 @@
     <MESSAGE value="2301061715 fixed export, refactoring CE, edited boot image, transferring frames from IV to CE, started work on dyn imp tools in CE." />
     <MESSAGE value="RESTORE MISSED COMMIT" />
     <MESSAGE value="RESTORE MISSED COMMIT 2" />
-    <option name="LAST_COMMIT_MESSAGE" value="RESTORE MISSED COMMIT 2" />
+    <MESSAGE value="2301101120" />
+    <option name="LAST_COMMIT_MESSAGE" value="2301101120" />
   </component>
 </project>

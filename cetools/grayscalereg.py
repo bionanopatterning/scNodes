@@ -26,9 +26,6 @@ class GrayscaleRegTool(CETool):
         self.input_pos = True
 
     def render(self):
-        frame_list = list()
-        for frame in cfg.ce_frames:
-            frame_list.append(frame.title)
 
         _cw = imgui.get_content_region_available_width()
         imgui.push_item_width(_cw)

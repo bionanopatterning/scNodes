@@ -10,6 +10,7 @@ class CETool:
 
     frames_by_title = list()
     frames_by_title_no_rgb = list()
+    frames_by_title_rgb = list()
     FLAG_SHOW_LOCATION_PICKER = False
     selected_position = [0, 0]
 
@@ -33,10 +34,13 @@ class CETool:
         """Do not override."""
         CETool.frames_by_title = list()
         CETool.frames_by_title_no_rgb = list()
+        CETool.frames_by_title_rgb = list()
         for f in cfg.ce_frames:
             CETool.frames_by_title.append(f.title)
             if not f.is_rgb:
                 CETool.frames_by_title_no_rgb.append(f.title)
+            else:
+                CETool.frames_by_title_rgb.append(f.title)
         CETool.selected_position = copy(cfg.ce_selected_position)
 
     @staticmethod
@@ -51,6 +55,21 @@ class CETool:
             current_idx = CETool.frames_by_title_no_rgb.index(current_frame.title)
         imgui.text(label)
         _c, idx = imgui.combo("##"+label, current_idx, CETool.frames_by_title_no_rgb)
+        selected_frame = cfg.ce_frames[idx] if (idx < len(cfg.ce_frames)) else None
+        return _c, selected_frame
+
+    @staticmethod
+    def widget_select_frame_rgb(label, current_frame):
+        """Wrapper for an imgui combo (drop-down) menu with all of the current
+        frames in the Correlation Editor available for selection. RGB frames only.
+        :param current_frame: CLEMFrame object
+        :return: tuple (bool:changed, CLEMFrame: selected frame)
+        """
+        current_idx = 0
+        if current_frame is not None and current_frame.title in CETool.frames_by_title_rgb:
+            current_idx = CETool.frames_by_title_rgb.index(current_frame.title)
+        imgui.text(label)
+        _c, idx = imgui.combo("##"+label, current_idx, CETool.frames_by_title_rgb)
         selected_frame = cfg.ce_frames[idx] if (idx < len(cfg.ce_frames)) else None
         return _c, selected_frame
 

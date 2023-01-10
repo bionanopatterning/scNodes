@@ -119,14 +119,13 @@ class CLEMFrame:
                 self.data = np.flip(self.data, axis=0)
             self.update_image_texture()
         elif self.extension == ".mrc":
-
             mrc = mrcfile.mmap(self.path, mode="r")
             self.n_slices = mrc.data.shape[0]
             self.current_slice = min([self.current_slice, self.n_slices - 1])
             if cfg.ce_flip_mrc_on_load:
                 self.data = mrc.data[:, self.current_slice, :]
             else:
-                self.data = mrc.data[self.current_slice, :, ]
+                self.data = mrc.data[self.current_slice, :, :]
             if self.flip_h:
                 self.data = np.flip(self.data, axis=1)
             if self.flip_v:

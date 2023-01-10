@@ -147,8 +147,9 @@ class NodeEditor:
                 imgui.text("github.com/bionanopatterning/scNodes")
                 imgui.text(cfg.license)
                 imgui.end_popup()
+            imgui.pop_style_color(1)
             imgui.end()
-            imgui.pop_style_color(4)
+            imgui.pop_style_color(3)
 
     def _warning_window(self):
         def ww_context_menu():
