@@ -5,7 +5,8 @@ import dill as pickle
 # This file defines variables that can be accessed globally.
 
 app_name = "scNodes"
-
+version = "1.0.0"
+license = "GNU GPL v3"
 nodes = list()
 active_node = None
 focused_node = None
@@ -42,13 +43,13 @@ pickle_temp = dict()
 
 
 ## 221221 correlation editor vars & related
-active_editor = 0  # 0 for node editor, 1 for correlation
+active_editor = 1  # 0 for node editor, 1 for correlation
 ce_frames = list()
 ce_clear_colour = (1.0,1.0,1.0,1.0)
 ce_default_pixel_size = 64.0
 ce_flip_on_load = True
 ce_flip_mrc_on_load = True
-
+ce_selected_position = [0, 0]
 
 def set_active_node(node, keep_active=False):
     global focused_node, active_node, next_active_node
@@ -128,3 +129,9 @@ COLOUR_ERROR_WINDOW_HEADER_NEW = (0.35, 0.35, 0.35, 1.0)
 COLOUR_ERROR_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
 COLOUR_CM_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
 COLOUR_CM_OPTION_HOVERED = (1.0, 1.0, 1.0, 1.0)
+
+TOOLTIP_APPEAR_DELAY = 1.0
+TOOLTIP_HOVERED_TIMER = 0.0
+TOOLTIP_HOVERED_START_TIME = 0.0
+
+CE_WIDGET_ROUNDING = 50.0

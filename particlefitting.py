@@ -22,6 +22,7 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
         return list()
     pxd = frame.load()
     width, height = pxd.shape
+
     # Filter maxima and convert to floored int.
     xy = list()
     n_particles = 0
@@ -32,7 +33,6 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
             n_particles += 1
 
     # Prepare data for gpufit
-
     data = np.empty((n_particles, (crop_radius * 2 + 1)**2), dtype=np.float32)
     params = np.empty((n_particles, 5), dtype=np.float32)
     for i in range(n_particles):
@@ -52,14 +52,13 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
                                                                                             max_number_iterations=100,
                                                                                             constraint_types=constraint_type,
                                                                                             constraints=constraint_values)
-
+    # TODO: 3d fitting.
     xy = np.asarray(xy)
     parameters[:, 0] *= 2 * np.pi * parameters[:, 3]**2  # scaling from (maximum value of gaussian) to (number of photons)
     parameters[:, 1:3] -= crop_radius
     if np.sum(states == 0) == 0:
         return list()
-    #
-    #
+
     # print('ratio converged         {:6.2f} %'.format(np.sum(states == 0) / n_particles * 100))
     # print('ratio max it. exceeded  {:6.2f} %'.format(np.sum(states == 1) / n_particles * 100))
     # print('ratio singular hessian  {:6.2f} %'.format(np.sum(states == 2) / n_particles * 100))

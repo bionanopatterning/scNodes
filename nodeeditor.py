@@ -140,8 +140,14 @@ class NodeEditor:
             imgui.set_next_window_position((settings.ne_window_width - _w) / 2.0, (settings.ne_window_height - _h) / 2.0)
             self.show_boot_img = imgui.begin("##bootwindow", True, imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_BACKGROUND)[1]
             imgui.image(self.boot_img_texture.renderer_id, _w, _h)
+            imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND)
+            if imgui.begin_popup_context_window():
+                imgui.text("version " + cfg.version + ". source:")
+                imgui.text("github.com/bionanopatterning/scNodes")
+                imgui.text(cfg.license)
+                imgui.end_popup()
             imgui.end()
-            imgui.pop_style_color(3)
+            imgui.pop_style_color(4)
 
     def _warning_window(self):
         def ww_context_menu():

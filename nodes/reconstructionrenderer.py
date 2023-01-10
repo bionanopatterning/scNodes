@@ -234,11 +234,21 @@ class ReconstructionRendererNode(Node):
                         self.latest_image = self.latest_image[:, :, 0]  # single channel only for non-painted particles
                     self.any_change = True
                     self.OVERRIDE_AUTOCONTRAST = True
-                    self.OVERRIDE_AUTOCONTRAST_LIMS = (0, np.amax(self.latest_image))
+                    clims = self.compute_contrast_lims(self.latest_image)
+                    self.OVERRIDE_AUTOCONTRAST_LIMS = (clims[0], clims[1])
             else:
                 self.latest_image = None
         except Exception as e:
             cfg.set_error(e, "Error building reconstruction.\n"+str(e))
+
+    @staticmethod
+    def compute_contrast_lims(rgb_image):
+        max_channel = np.unravel_index(np.argmax(rgb_image), rgb_image.shape)[2]
+        img_sorted = np.sort(rgb_image[:, :, max_channel].flatten())
+        n = img_sorted.shape[0] * img_sorted.shape[1]
+        cmin = img_sorted[int(settings.autocontrast_saturation / 100.0 * n)]
+        cmax = img_sorted[int((1.0 - settings.autocontrast_saturation / 100.0) * n)]
+        return cmin, cmax
 
     def get_image_impl(self, idx=None):
         if self.latest_image is not None:

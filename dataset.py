@@ -144,6 +144,7 @@ class Frame:
         self.gpu_params_buffer = None
         self.gpu_crop_xy_buffer = None
         self._ce_lut = 0
+        self._ce_clims = [0, 1]
 
     def load(self):
         if self.data is not None:
@@ -192,7 +193,6 @@ class Frame:
 
 
 class ParticleData:
-    # TODO: make compatible with different kinds of particle datasets, e.g. (x, y, sigma only) or (x, y, z, etc.) - in particular in ParticleData.from_csv
     HISTOGRAM_BINS = 50
 
     def __init__(self, pixel_size=100):
@@ -210,7 +210,7 @@ class ParticleData:
         self.baked_by_renderer = False  # flag to store whether renderer has created instance buffers using the latest particle list. ONLY renderer can set it to True, any edits from within ParticleData set it to false.
         self.colours_up_to_date = True
         self.empty = True
-        self.reconstruction_roi = [0, 0, 0, 0]  ## todo terms of nm, not px.
+        self.reconstruction_roi = [0, 0, 0, 0]
 
     def __add__(self, other):
         if isinstance(other, list):

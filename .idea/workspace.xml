@@ -4,11 +4,28 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="2301081245 reconstruction renderer output improved">
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="2301061715 fixed export, refactoring CE, edited boot image, transferring frames from IV to CE, started work on dyn imp tools in CE.">
+      <change afterPath="$PROJECT_DIR$/LICENSE.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cetool.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cetools/grayscalereg.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/icons/icon_location_256.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pyGpufit-1.2.0-py2.py3-none-any.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cetools/turboreg.py" beforeDir="false" afterPath="$PROJECT_DIR$/cetools/turboreg.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cetools/turboreg.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/citations.txt" beforeDir="false" afterPath="$PROJECT_DIR$/citations.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/clemframe.py" beforeDir="false" afterPath="$PROJECT_DIR$/clemframe.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/correlation_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/correlation_editor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node.py" beforeDir="false" afterPath="$PROJECT_DIR$/node.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/imageviewer.py" beforeDir="false" afterPath="$PROJECT_DIR$/imageviewer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/dataset_to_composite.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/particlefilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/particlefilter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/particlepainter.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/reconstructionrenderer.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/reconstructionrenderer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/particlefitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/particlefitting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/shaders/ce_quad_shader.glsl" beforeDir="false" afterPath="$PROJECT_DIR$/shaders/ce_quad_shader.glsl" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,6 +56,9 @@
       <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
     </file-type-list>
   </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/correlation_editor.py" root0="SKIP_HIGHLIGHTING" />
+  </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
@@ -51,13 +71,14 @@
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="restartRequiresConfirmation" value="false" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\mgflast\PycharmProjects\220729_ImageViewer" />
       <recent name="C:\Users\mgflast\PycharmProjects\srNodes\nodes\pysofi" />
       <recent name="C:\Users\mart_\PycharmProjects\srNodes" />
-      <recent name="C:\Users\mgflast\PycharmProjects\220729_ImageViewer" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\mgflast\PycharmProjects\220729_ImageViewer\icons" />
@@ -437,21 +458,14 @@
       <option name="project" value="LOCAL" />
       <updated>1672945943751</updated>
     </task>
-    <task id="LOCAL-00033" summary="2301052122 fixed export png">
-      <created>1672946559020</created>
+    <task id="LOCAL-00033" summary="2301061715 fixed export, refactoring CE, edited boot image, transferring frames from IV to CE, started work on dyn imp tools in CE.">
+      <created>1673021791516</created>
       <option name="number" value="00033" />
       <option name="presentableId" value="LOCAL-00033" />
       <option name="project" value="LOCAL" />
-      <updated>1672946559020</updated>
+      <updated>1673021791516</updated>
     </task>
-    <task id="LOCAL-00034" summary="2301081245 reconstruction renderer output improved">
-      <created>1673174782297</created>
-      <option name="number" value="00034" />
-      <option name="presentableId" value="LOCAL-00034" />
-      <option name="project" value="LOCAL" />
-      <updated>1673174782297</updated>
-    </task>
-    <option name="localTasksCounter" value="35" />
+    <option name="localTasksCounter" value="34" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -475,12 +489,14 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <ignored-roots>
       <path value="$PROJECT_DIR$" />
     </ignored-roots>
+    <MESSAGE value="added roi to exportdatanode" />
     <MESSAGE value="gpu smlm fitting works now + particle fitting node started." />
     <MESSAGE value="added install.py" />
     <MESSAGE value="uncertainty &amp; bgkstd now part of particle fit" />
@@ -504,8 +520,7 @@
     <MESSAGE value="2301011447" />
     <MESSAGE value="improving reconstruction_renderer, removing particle_painter" />
     <MESSAGE value="2301052111 added scale bar,  broke correlation editor export png" />
-    <MESSAGE value="2301052122 fixed export png" />
-    <MESSAGE value="2301081245 reconstruction renderer output improved" />
-    <option name="LAST_COMMIT_MESSAGE" value="2301081245 reconstruction renderer output improved" />
+    <MESSAGE value="2301061715 fixed export, refactoring CE, edited boot image, transferring frames from IV to CE, started work on dyn imp tools in CE." />
+    <option name="LAST_COMMIT_MESSAGE" value="2301061715 fixed export, refactoring CE, edited boot image, transferring frames from IV to CE, started work on dyn imp tools in CE." />
   </component>
 </project>

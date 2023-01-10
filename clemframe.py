@@ -6,7 +6,7 @@ from opengl_classes import *
 from PIL import Image
 import mrcfile
 from copy import copy
-
+import datetime
 
 class CLEMFrame:
     idgen = count(0)
@@ -15,7 +15,8 @@ class CLEMFrame:
     def __init__(self, img_array):
         """Grayscale images only - img_array must be a 2D np.ndarray"""
         # data
-        self.uid = next(CLEMFrame.idgen)
+        uid_counter = next(CLEMFrame.idgen)
+        self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')+"000") + uid_counter
         self.data = img_array
         self.is_rgb = False
         if len(self.data.shape) == 2:
@@ -29,7 +30,7 @@ class CLEMFrame:
             raise Exception("CLEMFrame not able to import image data with dimensions other than (XY) or (XYC). How did you manage..?")
         self.children = list()
         self.parent = None
-        self.title = "Frame "+str(self.uid)
+        self.title = "Frame "+str(uid_counter)
         self.path = None
         self.has_slices = False
         self.n_slices = 1
@@ -52,6 +53,8 @@ class CLEMFrame:
         self.compute_autocontrast()
         self.hist_bins = list()
         self.hist_vals = list()
+        self.rgb_hist_vals = list()
+        self.rgb_contrast_lims = [0, 255, 0, 255, 0, 255]
         self.compute_histogram()
         self.hide = False
         self.interpolate = False  # False for pixelated, True for interpolated
@@ -165,6 +168,14 @@ class CLEMFrame:
             corner_pos = (self.transform.matrix * vec)[0:2]
             self.corner_positions[i] = [float(corner_pos[0]), float(corner_pos[1])]
 
+    def world_to_pixel_coordinate(self, world_coordinate):
+        vec = np.matrix([world_coordinate[0], world_coordinate[1], 0.0, 1.0]).T
+        invmat = np.linalg.inv(self.transform.matrix)
+        out_vec = invmat * vec
+        va_coordinate = [out_vec[0, 0], out_vec[1, 0]]
+        pixel_coordinate = [int(out_vec[0,0] + self.width / 2), int(out_vec[1,0] + self.height / 2)]
+        return pixel_coordinate, va_coordinate
+
     def unparent(self):
         if self.parent is not None:
             self.parent.children.remove(self)
@@ -230,6 +241,8 @@ class CLEMFrame:
         if self.lut_clamp_mode == 1:
             lut_array_rgba[0, 0, 3] = 0.0
             lut_array_rgba[0, -1, 3] = 0.0
+        elif self.lut_clamp_mode == 2:
+            lut_array_rgba[0, 0, 3] = 0.0
         self.lut_texture.update(lut_array_rgba)
 
     def compute_autocontrast(self):
@@ -240,16 +253,23 @@ class CLEMFrame:
         self.contrast_lims[1] = sorted_pixelvals[int((1.0 - settings.autocontrast_saturation / 100.0) * n)]
 
     def compute_histogram(self):
-        # ignore very bright pixels
-        mean = np.mean(self.data)
-        std = np.std(self.data)
-        self.hist_vals, self.hist_bins = np.histogram(self.data[self.data < (mean + 10 * std)], bins=CLEMFrame.HISTOGRAM_BINS)
+        if not self.is_rgb:
+            # ignore very bright pixels
+            mean = np.mean(self.data)
+            std = np.std(self.data)
+            self.hist_vals, self.hist_bins = np.histogram(self.data[self.data < (mean + 10 * std)], bins=CLEMFrame.HISTOGRAM_BINS)
 
-        self.hist_vals = self.hist_vals.astype('float32')
-        self.hist_bins = self.hist_bins.astype('float32')
-        self.hist_vals = np.delete(self.hist_vals, 0)
-        self.hist_bins = np.delete(self.hist_bins, 0)
-        self.hist_vals = np.log(self.hist_vals + 1)
+            self.hist_vals = self.hist_vals.astype('float32')
+            self.hist_bins = self.hist_bins.astype('float32')
+            self.hist_vals = np.delete(self.hist_vals, 0)
+            self.hist_bins = np.delete(self.hist_bins, 0)
+            self.hist_vals = np.log(self.hist_vals + 1)
+        else:
+            for i in range(3):
+                vals, _ = np.histogram(self.data[:, :, i], bins=CLEMFrame.HISTOGRAM_BINS)
+                vals = vals.astype('float32')
+                vals = np.delete(vals, 0)
+                self.rgb_hist_vals.append(vals)
 
     def generate_va(self):
         # set up the quad vertex array
@@ -260,6 +280,7 @@ class CLEMFrame:
                              w, h, 1.0, 1.0, 1.0]
         self.corner_positions_local = [[-w, h], [-w, -h], [w, -h], [w, h]]
         indices = [0, 1, 2, 2, 0, 3]
+        ## TODO: tesselate
         self.quad_va.update(VertexBuffer(vertex_attributes), IndexBuffer(indices))
 
         # set up the border vertex array

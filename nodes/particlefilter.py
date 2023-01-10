@@ -8,7 +8,7 @@ def create():
 class ParticleFilterNode(Node):
     title = "Particle filter"
     group = "PSF-fitting reconstruction"
-    colour = (230 / 255, 13 / 255, 13 / 255, 1.0)
+    colour = (243 / 255, 0 / 255, 80 / 255, 1.0)
     size = 310
     sortid = 1002
     def __init__(self):

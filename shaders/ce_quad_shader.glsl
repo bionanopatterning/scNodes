@@ -25,7 +25,8 @@ out vec4 fragmentColor;
 in vec2 fUV;
 
 uniform float alpha;
-uniform vec2 contrastLimits;
+uniform vec3 contrastMin;
+uniform vec3 contrastMax;
 uniform float rgbMode;
 uniform float hpix;
 uniform float vpix;
@@ -41,12 +42,16 @@ void main()
     }
     if (rgbMode == 1.0)
     {
-        fragmentColor = vec4(texture(image, uv).rgb, alpha);
+        vec3 rgb = texture(image, uv).rgb;
+        float r = (rgb.r - contrastMin.r) / (contrastMax.r - contrastMin.r);
+        float g = (rgb.g - contrastMin.g) / (contrastMax.g - contrastMin.g);
+        float b = (rgb.b - contrastMin.b) / (contrastMax.b - contrastMin.b);
+        fragmentColor = vec4(r, g, b, alpha);
     }
     else
     {
         float pixelValue = texture(image, uv).r;
-        float contrastValue = (pixelValue - contrastLimits.x) / (contrastLimits.y - contrastLimits.x);
+        float contrastValue = (pixelValue - contrastMin.r) / (contrastMax.r - contrastMin.r);
         vec4 pixelColor = texture(lut, vec2(contrastValue, 0));
         if (pixelColor.a == 0.0)
         {
