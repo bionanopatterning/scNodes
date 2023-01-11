@@ -15,40 +15,29 @@ whenever necessary.
 
 class Texture:
     idGenerator = count()
-    """Texture takes one of three (for now) possible formats: ru16 (default), r32f, rgb32f, or rgba32f"""
-    def __init__(self, format = None):
+
+    IF_F_T = dict() # internalformat, format, type
+    IF_F_T[None] = [GL_R16UI, GL_RED_INTEGER, GL_UNSIGNED_SHORT]
+    IF_F_T["rgba32f"] = [GL_RGBA32F, GL_RGBA, GL_FLOAT]
+    IF_F_T["rgb32f"] = [GL_RGB32F, GL_RGB, GL_FLOAT]
+    IF_F_T["r32f"] = [GL_R32F, GL_RED, GL_FLOAT]
+    IF_F_T["rgbu16"] = [GL_RGB16UI, GL_RGB_INTEGER, GL_UNSIGNED_SHORT]
+    IF_F_T["rgb8u"] = [GL_RGB8UI, GL_RGB_INTEGER, GL_UNSIGNED_INT]  # should be GL_BYTE but not touching it for now
+    IF_F_T["rgba8u"] = [GL_RGBA8UI, GL_RGBA_INTEGER, GL_UNSIGNED_INT]  # should be GL_BYTE but not touching it for now
+    IF_F_T["rgba16u"] = [GL_RGBA16UI, GL_RGBA_INTEGER, GL_UNSIGNED_SHORT]
+    IF_F_T["rgba32u"] = [GL_RGBA32UI, GL_RGBA_INTEGER, GL_UNSIGNED_INT]
+
+    def __init__(self, format=None):
         if format:
             self.id = next(Texture.idGenerator)
             self.renderer_id = glGenTextures(1)
             self.width = 0
             self.height = 0
-            self.internalformat = GL_R16UI
-            self.format = GL_RED_INTEGER
-            self.type = GL_UNSIGNED_SHORT
-            if format == "rgba32f":
-                self.internalformat = GL_RGBA32F
-                self.format = GL_RGBA
-                self.type = GL_FLOAT
-            elif format == "rgb32f":
-                self.internalformat = GL_RGB32F
-                self.format = GL_RGB
-                self.type = GL_FLOAT
-            elif format == "r32f":
-                self.internalformat = GL_R32F
-                self.format = GL_RED
-                self.type = GL_FLOAT
-            elif format == "rgbu16":  ## should be rgb16u, but leaving it like this to avoid messing up old code
-                self.internalformat = GL_RGB16UI
-                self.format = GL_RGB_INTEGER
-                self.type = GL_UNSIGNED_SHORT
-            elif format == "rgb8u":
-                self.internalformat = GL_RGB8UI
-                self.format = GL_RGB_INTEGER
-                self.type = GL_UNSIGNED_INT
-            elif format == "rgba8u":
-                self.internalformat = GL_RGBA8UI
-                self.format = GL_RGBA_INTEGER
-                self.type = GL_UNSIGNED_INT
+            if_f_t = Texture.IF_F_T[format]
+            self.internalformat = if_f_t[0]
+            self.format = if_f_t[1]
+            self.type = if_f_t[2]
+
             glBindTexture(GL_TEXTURE_2D, self.renderer_id)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
@@ -59,7 +48,7 @@ class Texture:
         glActiveTexture(GL_TEXTURE0 + int(slot))
         glBindTexture(GL_TEXTURE_2D, self.renderer_id)
 
-    def update(self, pixeldata, width = None, height = None):
+    def update(self, pixeldata, width=None, height=None):
         self.bind()
         if width:
             self.width = width
@@ -267,7 +256,7 @@ class VertexArray:
 
 class FrameBuffer:
     """For now, FrameBuffers have one texture (COLOR and DEPTH) only."""
-    def __init__(self, width = None, height = None, texture_format = "rgba32f"):
+    def __init__(self, width = None, height = None, texture_format="rgba32f"):
         """
         :param width: int
         :param height: int
@@ -279,7 +268,7 @@ class FrameBuffer:
             self.height = height
             # Set up texture
             self.texture_format = texture_format
-            self.texture = Texture(format = texture_format)
+            self.texture = Texture(format=texture_format)
             self.texture.bind()
             self.texture.update(None, self.width, self.height)
             glBindTexture(GL_TEXTURE_2D, 0)
@@ -295,12 +284,12 @@ class FrameBuffer:
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, self.depthRenderbuffer)
 
             if glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE:
-                raise RuntimeError("Framebuffer binding failed, GPU probably does not support this configuration.")
+                raise RuntimeError("Framebuffer binding failed, GPU might not support this configuration.")
             glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
     def clear(self, color):
         glBindFramebuffer(GL_FRAMEBUFFER, self.framebufferObject)
-        glClearColor(color[0], color[1], color[2], 1.0)
+        glClearColor(color[0], color[1], color[2], 1.0 if len(color) == 3 else color[3])
         glClearDepth(1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glBindFramebuffer(GL_FRAMEBUFFER, 0)

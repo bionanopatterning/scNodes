@@ -279,6 +279,7 @@ class CLEMFrame:
                              w, h, 1.0, 1.0, 1.0]
         self.corner_positions_local = [[-w, h], [-w, -h], [w, -h], [w, h]]
         indices = [0, 1, 2, 2, 0, 3]
+
         ## TODO: tesselate
         self.quad_va.update(VertexBuffer(vertex_attributes), IndexBuffer(indices))
 

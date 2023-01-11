@@ -4,15 +4,17 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="2301101120">
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="split rgb tool, minor edits">
       <change beforePath="$PROJECT_DIR$/.idea/220729_ImageViewer.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/220729_ImageViewer.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/clemframe.py" beforeDir="false" afterPath="$PROJECT_DIR$/clemframe.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/correlation_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/correlation_editor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/imageviewer.py" beforeDir="false" afterPath="$PROJECT_DIR$/imageviewer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/opengl_classes.py" beforeDir="false" afterPath="$PROJECT_DIR$/opengl_classes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/util.py" beforeDir="false" afterPath="$PROJECT_DIR$/util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/window.py" beforeDir="false" afterPath="$PROJECT_DIR$/window.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -44,7 +46,7 @@
     </file-type-list>
   </component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="file://$PROJECT_DIR$/correlation_editor.py" root0="SKIP_INSPECTION" />
+    <setting file="file://$PROJECT_DIR$/correlation_editor.py" root0="SKIP_HIGHLIGHTING" />
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
@@ -473,7 +475,14 @@
       <option name="project" value="LOCAL" />
       <updated>1673346016577</updated>
     </task>
-    <option name="localTasksCounter" value="37" />
+    <task id="LOCAL-00037" summary="split rgb tool, minor edits">
+      <created>1673353571131</created>
+      <option name="number" value="00037" />
+      <option name="presentableId" value="LOCAL-00037" />
+      <option name="project" value="LOCAL" />
+      <updated>1673353571131</updated>
+    </task>
+    <option name="localTasksCounter" value="38" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -497,13 +506,13 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <ignored-roots>
       <path value="$PROJECT_DIR$" />
     </ignored-roots>
-    <MESSAGE value="uncertainty &amp; bgkstd now part of particle fit" />
     <MESSAGE value="focus node &amp; duplicate node added, particledetection returns list of coordinates now instead of image. particlefitting takes dataset + coordinate list." />
     <MESSAGE value="parallel processing for bake stack node works for dataset (not yet for coordinates)" />
     <MESSAGE value="thunderstorm comparison" />
@@ -528,6 +537,7 @@
     <MESSAGE value="RESTORE MISSED COMMIT" />
     <MESSAGE value="RESTORE MISSED COMMIT 2" />
     <MESSAGE value="2301101120" />
-    <option name="LAST_COMMIT_MESSAGE" value="2301101120" />
+    <MESSAGE value="split rgb tool, minor edits" />
+    <option name="LAST_COMMIT_MESSAGE" value="split rgb tool, minor edits" />
   </component>
 </project>

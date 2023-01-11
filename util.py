@@ -55,6 +55,7 @@ def save_png(array, path, alpha=True):
     except Exception as e:
         cfg.set_error(e, "Error exporting image as .png. Is the path valid?")
 
+
 def plot_histogram(data, bins = 'auto', title = None):
     plt.hist(data, bins = bins)
     if title:

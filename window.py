@@ -15,7 +15,6 @@ class Window:
         glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, OpenGL.GL.GL_TRUE)
         glfw.window_hint(glfw.RESIZABLE, glfw.FALSE)  ## in order to avoid an issue with pyimgui multiple contexts, window sizes are fixed.
         glfw.window_hint(glfw.SAMPLES, 4)
-
         self.glfw_window = glfw.create_window(self.width, self.height, self.title, None, None)
         self.focused = True
         glfw.make_context_current(self.glfw_window)
