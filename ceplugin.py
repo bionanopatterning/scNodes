@@ -13,6 +13,7 @@ class CEPlugin:
     frames_by_title_rgb = list()
     FLAG_SHOW_LOCATION_PICKER = False
     selected_position = [0, 0]
+    selected_frame = None
 
     def init(self):
         """Only one CEPlugin exists at a time; when selecting a different type tool
@@ -42,6 +43,16 @@ class CEPlugin:
             else:
                 CEPlugin.frames_by_title_rgb.append(f.title)
         CEPlugin.selected_position = copy(cfg.ce_selected_position)
+        CEPlugin.selected_frame = cfg.ce_active_frame
+
+    @staticmethod
+    def widget_show_active_frame_title():
+        if CEPlugin.selected_frame is not None:
+            imgui.text(CEPlugin.selected_frame.title)
+            return CEPlugin.selected_frame
+        else:
+            imgui.text("No frame selected.")
+            return None
 
     @staticmethod
     def widget_select_frame_no_rgb(label, current_frame):

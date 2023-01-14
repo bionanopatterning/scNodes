@@ -48,18 +48,17 @@ class BinImageNode(Node):
             image_in = data_source.get_image(idx)
             pxd = image_in.load()
             width, height = pxd.shape
-            ## TODO: fix binning
             pxd = pxd[:self.factor * (width // self.factor), :self.factor * (height // self.factor)]
             if self.mode == 0:
-                pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).mean(2).mean(0)
+                pxd = pxd.reshape((width // self.factor, self.factor, height // self.factor, self.factor)).mean(3).mean(1)
             elif self.mode == 1:
-                pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).median(2).median(0)
+                pxd = pxd.reshape((width // self.factor, self.factor, height // self.factor, self.factor))
+                pxd = np.median(pxd, axis=(3, 1))
             elif self.mode == 2:
-                pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).min(2).min(0)
+                pxd = pxd.reshape((width // self.factor, self.factor, height // self.factor, self.factor)).min(3).min(1)
             elif self.mode == 3:
-                pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).max(2).max(0)
+                pxd = pxd.reshape((width // self.factor, self.factor, height // self.factor, self.factor)).max(3).max(1)
             elif self.mode == 4:
-                pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).sum(2).sum(0)
-            image_in.data = pxd
+                pxd = pxd.reshape((width // self.factor, self.factor, height // self.factor, self.factor)).sum(3).sum(1)
             return image_in
 

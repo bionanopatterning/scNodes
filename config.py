@@ -47,6 +47,7 @@ pickle_temp = dict()
 ## 221221 correlation editor vars & related
 active_editor = 1  # 0 for node editor, 1 for correlation
 ce_frames = list()
+ce_active_frame = None
 ce_clear_colour = (1.0, 1.0, 1.0, 1.0)
 ce_default_pixel_size = 64.0
 ce_flip_on_load = False

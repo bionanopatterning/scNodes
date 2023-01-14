@@ -6,8 +6,8 @@ def create():
 
 
 class BinPlugin(CEPlugin):
-    title = "Apply binning"
-    description = "Apply binning to an image in memory, rather than in rendering (which is the default in the Correlation Editor)"
+    title = "Bin"
+    description = "Create a binned copy of a frame."
 
     MODES = ["Average", "Median", "Min", "Max", "Sum"]
     
@@ -18,20 +18,23 @@ class BinPlugin(CEPlugin):
         self.factor = 2
         
     def render(self):
-        _, self.frame = self.widget_select_frame_any("Frame:", self.frame)
-        _, self.keep_original = imgui.checkbox("Keep original", self.keep_original)
+        imgui.text("Selected frame:")
+        self.frame = self.widget_show_active_frame_title()
         imgui.push_item_width(100)
         _, self.mode = imgui.combo("Mode", self.mode, BinPlugin.MODES)
         _, self.factor = imgui.input_int("Factor", self.factor, 0, 0)
         imgui.pop_item_width()
+        _, self.keep_original = imgui.checkbox("Keep original", self.keep_original)
         self.factor = max([self.factor, 1])
         if self.centred_button("Convert"):
-            binned_frame = BinPlugin.bin_clemframe(self.frame, self.factor, self.mode)
-            binned_frame.update_lut()
-            cfg.ce_frames.append(binned_frame)
-            binned_frame.move_to_front()
-            if not self.keep_original:
-                cfg.correlation_editor.delete_frame(self.frame)
+            if self.frame is not None:
+                binned_frame = BinPlugin.bin_clemframe(self.frame, self.factor, self.mode)
+                binned_frame.update_lut()
+                cfg.ce_frames.append(binned_frame)
+                binned_frame.move_to_front()
+                binned_frame.transform = deepcopy(self.frame.transform)
+                if not self.keep_original:
+                    cfg.correlation_editor.delete_frame(self.frame)
 
     @staticmethod
     def bin_clemframe(frame, factor, mode):
@@ -55,13 +58,14 @@ class BinPlugin(CEPlugin):
         width, height = array.shape
         pxd = array[:factor * (width // factor), :factor * (height // factor)]
         if mode == 0:
-            pxd = pxd.reshape((factor, width // factor, factor, height // factor)).mean(2).mean(0)
+            pxd = pxd.reshape((width // factor, factor, height // factor, factor)).mean(3).mean(1)
         elif mode == 1:
-            pxd = pxd.reshape((factor, width // factor, factor, height // factor)).median(2).median(0)
+            pxd = pxd.reshape((width // factor, factor, height // factor, factor))
+            pxd = np.median(pxd, axis=(3, 1))
         elif mode == 2:
-            pxd = pxd.reshape((factor, width // factor, factor, height // factor)).min(2).min(0)
+            pxd = pxd.reshape((width // factor, factor, height // factor, factor)).min(3).min(1)
         elif mode == 3:
-            pxd = pxd.reshape((factor, width // factor, factor, height // factor)).max(2).max(0)
+            pxd = pxd.reshape((width // factor, factor, height // factor, factor)).max(3).max(1)
         elif mode == 4:
-            pxd = pxd.reshape((factor, width // factor, factor, height // factor)).sum(2).sum(0)
+            pxd = pxd.reshape((width // factor, factor, height // factor, factor)).sum(3).sum(1)
         return pxd

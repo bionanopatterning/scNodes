@@ -656,7 +656,6 @@ class CorrelationEditor:
                 imgui.same_line()
                 _c, CorrelationEditor.scale_bar_size = imgui.drag_float("##scalebarlength", CorrelationEditor.scale_bar_size, 1.0, 0.0, 0.0, format='%.0f nm')
                 if imgui.begin_popup_context_item():
-                    imgui.set_next_item_width(40)
                     _c, CorrelationEditor.SCALE_BAR_HEIGHT = imgui.drag_int("##Scale bar thickness", CorrelationEditor.SCALE_BAR_HEIGHT, 1.0, 1.0, 0.0, format = 'Drag me to change scale bar thickness: %i px')
                     CorrelationEditor.SCALE_BAR_HEIGHT = max([1, CorrelationEditor.SCALE_BAR_HEIGHT])
                     imgui.end_popup()
@@ -688,6 +687,7 @@ class CorrelationEditor:
             imgui.end()
 
         if imgui.collapsing_header("Plugins", None)[0]:
+            cfg.ce_active_frame = CorrelationEditor.active_frame
             _cw = imgui.get_content_region_available_width()
             imgui.set_next_item_width(_cw - 25)
             _c, CorrelationEditor.selected_tool = imgui.combo("##tools", CorrelationEditor.selected_tool, ["Select plugin..."] + CorrelationEditor.tools_list)
@@ -865,7 +865,7 @@ class CorrelationEditor:
                     f.flip()
                 elif imgui.menu_item("Flip vertically")[1]:
                     f.flip(horizontally=False)
-                if imgui.begin_menu("Binning"):
+                if imgui.begin_menu("Render binned"):
                     if imgui.menu_item("None", selected=f.binning==1)[0]:
                         f.binning = 1
                     if imgui.menu_item("1.5 x", selected=f.binning==1.5)[0]:
@@ -1250,7 +1250,7 @@ class CorrelationEditor:
                     frame.flip()
                 elif imgui.menu_item("Flip vertically")[1]:
                     frame.flip(horizontally=False)
-                if imgui.begin_menu("Binning"):
+                if imgui.begin_menu("Render binned"):
                     if imgui.menu_item("None", selected=frame.binning==1)[0]:
                         frame.binning = 1
                     if imgui.menu_item("1.5 x", selected=frame.binning==1.5)[0]:
