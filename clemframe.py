@@ -5,7 +5,7 @@ import numpy as np
 from opengl_classes import *
 from PIL import Image
 import mrcfile
-from copy import copy
+from copy import copy, deepcopy
 import datetime
 
 class CLEMFrame:
@@ -70,6 +70,7 @@ class CLEMFrame:
         self.vertex_positions = None
         self.border_va = None
         self.setup_opengl_objects()
+
 
     def flip(self, horizontally=True):
         if horizontally:

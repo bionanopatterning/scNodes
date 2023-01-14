@@ -46,15 +46,20 @@ class CEPlugin:
     @staticmethod
     def widget_select_frame_no_rgb(label, current_frame):
         """Wrapper for an imgui combo (drop-down) menu with all of the current
-        frames in the Correlation Editor available for selection.
+        frames in the Correlation Editor available for selection. Only grayscale
+        (no RGB / png) images are offered.
+        :param label: The label text displayed alongside the drop down menu
         :param current_frame: CLEMFrame object
         :return: tuple (bool:changed, CLEMFrame: selected frame)
         """
+        _cw = imgui.get_content_region_available_width()
+        imgui.push_item_width(_cw)
         current_idx = 0
         if current_frame is not None and current_frame.title in CEPlugin.frames_by_title_no_rgb:
             current_idx = CEPlugin.frames_by_title_no_rgb.index(current_frame.title)
         imgui.text(label)
         _c, idx = imgui.combo("##" + label, current_idx, CEPlugin.frames_by_title_no_rgb)
+        imgui.pop_item_width()
         selected_frame = cfg.ce_frames[idx] if (idx < len(cfg.ce_frames)) else None
         return _c, selected_frame
 
@@ -62,14 +67,37 @@ class CEPlugin:
     def widget_select_frame_rgb(label, current_frame):
         """Wrapper for an imgui combo (drop-down) menu with all of the current
         frames in the Correlation Editor available for selection. RGB frames only.
+        :param label: The label text displayed alongside the drop down menu
         :param current_frame: CLEMFrame object
         :return: tuple (bool:changed, CLEMFrame: selected frame)
         """
+        _cw = imgui.get_content_region_available_width()
+        imgui.push_item_width(_cw)
         current_idx = 0
         if current_frame is not None and current_frame.title in CEPlugin.frames_by_title_rgb:
             current_idx = CEPlugin.frames_by_title_rgb.index(current_frame.title)
         imgui.text(label)
         _c, idx = imgui.combo("##" + label, current_idx, CEPlugin.frames_by_title_rgb)
+        imgui.pop_item_width()
+        selected_frame = cfg.ce_frames[idx] if (idx < len(cfg.ce_frames)) else None
+        return _c, selected_frame
+
+    @staticmethod
+    def widget_select_frame_any(label, current_frame):
+        """Wrapper for an imgui combo (drop-down) menu with all of the current
+        frames in the Correlation Editor available for selection.
+        :param label: The label text displayed alongside the drop down menu
+        :param current_frame: CLEMFrame object
+        :return: tuple (bool:changed, CLEMFrame: selected frame)
+        """
+        _cw = imgui.get_content_region_available_width()
+        imgui.push_item_width(_cw)
+        current_idx = 0
+        if current_frame is not None and current_frame.title in CEPlugin.frames_by_title:
+            current_idx = CEPlugin.frames_by_title.index(current_frame.title)
+        imgui.text(label)
+        _c, idx = imgui.combo("##" + label, current_idx, CEPlugin.frames_by_title)
+        imgui.pop_item_width()
         selected_frame = cfg.ce_frames[idx] if (idx < len(cfg.ce_frames)) else None
         return _c, selected_frame
 

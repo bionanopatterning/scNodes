@@ -256,7 +256,7 @@ class VertexArray:
 
 class FrameBuffer:
     """For now, FrameBuffers have one texture (COLOR and DEPTH) only."""
-    def __init__(self, width = None, height = None, texture_format="rgba32f"):
+    def __init__(self, width=None, height=None, texture_format="rgba32f"):
         """
         :param width: int
         :param height: int

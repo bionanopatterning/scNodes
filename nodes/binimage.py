@@ -48,6 +48,7 @@ class BinImageNode(Node):
             image_in = data_source.get_image(idx)
             pxd = image_in.load()
             width, height = pxd.shape
+            ## TODO: fix binning
             pxd = pxd[:self.factor * (width // self.factor), :self.factor * (height // self.factor)]
             if self.mode == 0:
                 pxd = pxd.reshape((self.factor, width // self.factor, self.factor, height // self.factor)).mean(2).mean(0)

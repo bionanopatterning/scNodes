@@ -27,14 +27,14 @@ class GrayscaleRegPlugin(CEPlugin):
 
     def render(self):
 
-        _cw = imgui.get_content_region_available_width()
-        imgui.push_item_width(_cw)
+
         _c, self.parent_frame = self.widget_select_frame_no_rgb("Parent frame:", self.parent_frame)
         _c, self.child_frame = self.widget_select_frame_no_rgb("Child frame:", self.child_frame)
-        imgui.pop_item_width()
 
+        _cw = imgui.get_content_region_available_width()
         imgui.push_item_width(_cw-120)
         _c, self.regmode = imgui.combo("Transform type", self.regmode, GrayscaleRegPlugin.REGMODES_STR)
+        imgui.pop_item_width()
         self.tooltip("T = Translation, R = Rotation, S = Scaling.\n"
                      "Note: when allowing Scaling, the resulting image pixel size may differ from the\n"
                      "value found in the original image's header file or what was input by the user.\n"

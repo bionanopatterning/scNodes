@@ -39,6 +39,9 @@ class SplitRGBPlugin(CEPlugin):
             cfg.ce_frames.append(r)
             cfg.ce_frames.append(g)
             cfg.ce_frames.append(b)
+            b.move_to_front()
+            g.move_to_front()
+            r.move_to_front()
             if not self.keep_original:
                 cfg.correlation_editor.delete_frame(self.rgb_frame)
 

@@ -702,10 +702,13 @@ class CorrelationEditor:
                 CorrelationEditor.tooltip(CorrelationEditor.tool_descriptions[CorrelationEditor.selected_tool - 1])
             if CorrelationEditor.current_tool is not None:
                 imgui.separator()
-                cfg.ce_selected_position = CorrelationEditor.location_gizmo.transform.translation
-                CorrelationEditor.current_tool.on_update()
-                CorrelationEditor.current_tool.render()
-                CorrelationEditor.location_gizmo_visible = CorrelationEditor.current_tool.FLAG_SHOW_LOCATION_PICKER
+                try:
+                    cfg.ce_selected_position = CorrelationEditor.location_gizmo.transform.translation
+                    CorrelationEditor.current_tool.on_update()
+                    CorrelationEditor.current_tool.render()
+                    CorrelationEditor.location_gizmo_visible = CorrelationEditor.current_tool.FLAG_SHOW_LOCATION_PICKER
+                except Exception as e:
+                    cfg.set_error(e, f"Plugin '{CorrelationEditor.tools_list[CorrelationEditor.selected_tool - 1]}' caused an error:")
 
         imgui.end()
         imgui.pop_style_color(3)
