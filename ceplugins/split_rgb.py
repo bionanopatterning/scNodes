@@ -1,11 +1,11 @@
-from cetool import *
+from ceplugin import *
 from copy import deepcopy
 
 def create():
-    return SplitRGBTool()
+    return SplitRGBPlugin()
 
 
-class SplitRGBTool(CETool):
+class SplitRGBPlugin(CEPlugin):
     title = "Split RGB"
     description = "Split an RGB frame into the three underlying grayscale images."
 

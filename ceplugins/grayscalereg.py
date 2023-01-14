@@ -1,13 +1,13 @@
-from cetool import *
+from ceplugin import *
 from copy import copy, deepcopy
 from pystackreg import StackReg
 import cv2
 
 def create():
-    return GrayscaleRegTool()
+    return GrayscaleRegPlugin()
 
 
-class GrayscaleRegTool(CETool):
+class GrayscaleRegPlugin(CEPlugin):
     title = "Register Grayscale"
     description = "Register images of equal or different sizes based on image intensity.\n" \
                   "Useful to register high-magnification TEM images to low-magnification\n" \
@@ -34,7 +34,7 @@ class GrayscaleRegTool(CETool):
         imgui.pop_item_width()
 
         imgui.push_item_width(_cw-120)
-        _c, self.regmode = imgui.combo("Transform type", self.regmode, GrayscaleRegTool.REGMODES_STR)
+        _c, self.regmode = imgui.combo("Transform type", self.regmode, GrayscaleRegPlugin.REGMODES_STR)
         self.tooltip("T = Translation, R = Rotation, S = Scaling.\n"
                      "Note: when allowing Scaling, the resulting image pixel size may differ from the\n"
                      "value found in the original image's header file or what was input by the user.\n"
@@ -70,7 +70,7 @@ class GrayscaleRegTool(CETool):
                 _parent = self.crop_center(p, _size)
 
             # Find transformation matrix that matches the frames
-            sr = StackReg(GrayscaleRegTool.REGMODES[self.regmode])
+            sr = StackReg(GrayscaleRegPlugin.REGMODES[self.regmode])
             tmat = sr.register(_parent, _child)
             T, R, S = self.decompose_transform_matrix(tmat)
 

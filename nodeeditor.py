@@ -353,6 +353,7 @@ class NodeEditor:
                 self.title = self.node_obj.title
                 self.group = self.node_obj.group
                 self.id = self.node_obj.sortid
+                self.enabled = self.node_obj.enabled
 
             def __del__(self):
                 self.node_obj.delete()
@@ -361,14 +362,17 @@ class NodeEditor:
         i = 0
         for nodesrc in node_source_files:  # for every file, dynamically load module and save the module's create() function to a dict, keyed by name of node.
             i += 1
-            if "custom_node_template" in nodesrc or "__init__.py" in nodesrc:
+            if "__init__.py" in nodesrc:
                 continue
 
             module_name = nodesrc[nodesrc.rfind("\\")+1:-3]
             try:
                 # get the module spec and import the module
                 mod = importlib.import_module("nodes."+module_name)
-                nodeimpls.append(NodeImpl(mod.create))
+                impl = NodeImpl(mod.create)
+                if not impl.enabled:
+                    continue
+                nodeimpls.append(impl)
 
             except Exception as e:
                 cfg.nodes = list()

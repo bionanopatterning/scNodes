@@ -12,6 +12,7 @@ class LoadImageNode(Node):
     group = "Data IO"
     colour = (84 / 255, 77 / 255, 222 / 255, 1.0)
     sortid = 3
+
     def __init__(self):
         super().__init__()
         self.size = 200

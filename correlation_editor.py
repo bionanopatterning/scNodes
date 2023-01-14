@@ -18,7 +18,7 @@ import tifffile
 from dataset import Frame
 import glob
 #from clemframe import CLEMFrame, Transform
-from cetool import *
+from ceplugin import *
 
 class CorrelationEditor:
     if True:
@@ -550,7 +550,7 @@ class CorrelationEditor:
             imgui.push_item_width(40)
             _c, CorrelationEditor.ex_pxnm = imgui.drag_float("##export_pxnm", CorrelationEditor.ex_pxnm, CorrelationEditor.EXPORT_RESOLUTION_CHANGE_SPEED, format = f'%.1f')
             imgui.pop_style_var()
-            CorrelationEditor.ex_pxnm = max([0.1, CorrelationEditor.ex_pxnm])
+            CorrelationEditor.ex_pxnm = max([0.001, CorrelationEditor.ex_pxnm])
             CorrelationEditor.tooltip(f"equals {CorrelationEditor.ex_pxnm * 25400000:.0f} dpi :)")
             imgui.same_line()
             imgui.text("nm / px")
@@ -687,16 +687,15 @@ class CorrelationEditor:
             imgui.pop_style_color(1)
             imgui.end()
 
-        if imgui.collapsing_header("Tools", None)[0]:
-            imgui.text("Select tool:")
+        if imgui.collapsing_header("Plugins", None)[0]:
             _cw = imgui.get_content_region_available_width()
             imgui.set_next_item_width(_cw - 25)
-            _c, CorrelationEditor.selected_tool = imgui.combo("##tools", CorrelationEditor.selected_tool, ["No tool"] + CorrelationEditor.tools_list)
+            _c, CorrelationEditor.selected_tool = imgui.combo("##tools", CorrelationEditor.selected_tool, ["Select plugin..."] + CorrelationEditor.tools_list)
             if _c:
                 if CorrelationEditor.selected_tool > 0:
                     CorrelationEditor.current_tool = CorrelationEditor.tool_factory[CorrelationEditor.tools_list[CorrelationEditor.selected_tool - 1]]()
                 else:
-                    CorrelationEditor.current_tool = CETool()
+                    CorrelationEditor.current_tool = CEPlugin()
             if CorrelationEditor.selected_tool > 0:
                 imgui.same_line()
                 imgui.button("?", 19, 19)
@@ -749,7 +748,7 @@ class CorrelationEditor:
                         CorrelationEditor.renderer.render_frame_quad(camera, frame)
                     tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_RGB, GL_FLOAT)
                     out_img[i*T:min([(i+1)*T, W]), j*T:min([(j+1)*T, H]), 0:3] = np.rot90(tile, 1, (1, 0))[:min([T, W-(i*T)]), :min([T, H-(j*T)]), :]
-                    depth_tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_DEPTH_COMPONENT, GL_FLOAT) ## todo: use depth to render an alpha mask.
+                    depth_tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_DEPTH_COMPONENT, GL_FLOAT)
                     alpha_mask[i*T:min([(i+1)*T, W]), j*T:min([(j+1)*T, H])] = np.rot90(depth_tile, 1, (1, 0))[:min([T, W-(i*T)]), :min([T, H-(j*T)])]
             glDisable(GL_DEPTH_TEST)
             CorrelationEditor.EXPORT_FBO.unbind()
@@ -1342,14 +1341,14 @@ class CorrelationEditor:
                 self.info = self.tool_obj.description
 
         toolimpls = list()
-        tool_source_files = glob.glob("cetools/*.py")
+        tool_source_files = glob.glob("ceplugins/*.py")
         for toolsrc in tool_source_files:
             if "custom_tool_template" in toolsrc or "__init__.py" in toolsrc:
                 continue
 
             module_name = toolsrc[toolsrc.rfind("\\")+1:-3]
             try:
-                mod = importlib.import_module("cetools."+module_name)
+                mod = importlib.import_module("ceplugins."+module_name)
                 toolimpls.append(ToolImpl(mod.create))
             except Exception as e:
                 cfg.set_error(e, f"No well-defined Tool type found in {toolsrc}. See manual for minimal code requirements.")
@@ -1414,10 +1413,10 @@ class Renderer:
         frame.border_va.unbind()
 
     def render_measure_tool(self, camera, tool):
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendEquation(GL_FUNC_ADD)
         if not tool.p_set:
             return
-        glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR)
-        glBlendEquation(GL_FUNC_ADD)
         self.border_shader.bind()
         tool.va.bind()
         self.border_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
@@ -1701,5 +1700,3 @@ class ExportROI:
         vertex_attributes = [r[0], r[1], r[2], r[1], r[2], r[3], r[0], r[3]]
         indices = [0, 1, 1, 2, 2, 3, 3, 0]
         self.va.update(VertexBuffer(vertex_attributes), IndexBuffer(indices))
-
-

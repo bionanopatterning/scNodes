@@ -18,6 +18,7 @@ class Node:
     id_generator = count(0)
     size = 200
     sortid = 9999
+    enabled = True
 
     COLOUR_WINDOW_BACKGROUND = (0.96, 0.96, 0.96, 0.96)
     COLOUR_FOCUSED_NODE_WINDOW_BACKGROUND = (0.99, 0.93, 0.93, 0.96)

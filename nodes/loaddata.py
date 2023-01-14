@@ -11,7 +11,7 @@ class LoadDataNode(Node):
     title = "Import dataset"
     group = "Data IO"
 
-    colour = (54 / 255, 47 / 255, 192 / 255, 1.0)
+    colour = (84 / 255, 77 / 255, 222 / 255, 1.0)
 
     sortid = 0
 

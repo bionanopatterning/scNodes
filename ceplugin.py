@@ -3,9 +3,9 @@ import config as cfg
 from clemframe import *
 import time
 
-class CETool:
-    title = "Unnamed tool"
-    description = "The text entered here is shown as a tooltip when the tool is\n" \
+class CEPlugin:
+    title = "Unnamed plugin"
+    description = "The text entered here is shown as a tooltip when the plugin is\n" \
                   "selected and hovered in the Correlation Editor / Tools menu. "
 
     frames_by_title = list()
@@ -15,7 +15,7 @@ class CETool:
     selected_position = [0, 0]
 
     def init(self):
-        """Only one CETool exists at a time; when selecting a different type tool
+        """Only one CEPlugin exists at a time; when selecting a different type tool
         in the Correlation Editor tools menu, an instance of the selected tool
         object is created and used as the active tool. The CETool class is thus
         fairly minimal, but it does provide some useful wrappers for use in your
@@ -32,16 +32,16 @@ class CETool:
     @staticmethod
     def on_update():
         """Do not override."""
-        CETool.frames_by_title = list()
-        CETool.frames_by_title_no_rgb = list()
-        CETool.frames_by_title_rgb = list()
+        CEPlugin.frames_by_title = list()
+        CEPlugin.frames_by_title_no_rgb = list()
+        CEPlugin.frames_by_title_rgb = list()
         for f in cfg.ce_frames:
-            CETool.frames_by_title.append(f.title)
+            CEPlugin.frames_by_title.append(f.title)
             if not f.is_rgb:
-                CETool.frames_by_title_no_rgb.append(f.title)
+                CEPlugin.frames_by_title_no_rgb.append(f.title)
             else:
-                CETool.frames_by_title_rgb.append(f.title)
-        CETool.selected_position = copy(cfg.ce_selected_position)
+                CEPlugin.frames_by_title_rgb.append(f.title)
+        CEPlugin.selected_position = copy(cfg.ce_selected_position)
 
     @staticmethod
     def widget_select_frame_no_rgb(label, current_frame):
@@ -51,10 +51,10 @@ class CETool:
         :return: tuple (bool:changed, CLEMFrame: selected frame)
         """
         current_idx = 0
-        if current_frame is not None and current_frame.title in CETool.frames_by_title_no_rgb:
-            current_idx = CETool.frames_by_title_no_rgb.index(current_frame.title)
+        if current_frame is not None and current_frame.title in CEPlugin.frames_by_title_no_rgb:
+            current_idx = CEPlugin.frames_by_title_no_rgb.index(current_frame.title)
         imgui.text(label)
-        _c, idx = imgui.combo("##"+label, current_idx, CETool.frames_by_title_no_rgb)
+        _c, idx = imgui.combo("##" + label, current_idx, CEPlugin.frames_by_title_no_rgb)
         selected_frame = cfg.ce_frames[idx] if (idx < len(cfg.ce_frames)) else None
         return _c, selected_frame
 
@@ -66,18 +66,18 @@ class CETool:
         :return: tuple (bool:changed, CLEMFrame: selected frame)
         """
         current_idx = 0
-        if current_frame is not None and current_frame.title in CETool.frames_by_title_rgb:
-            current_idx = CETool.frames_by_title_rgb.index(current_frame.title)
+        if current_frame is not None and current_frame.title in CEPlugin.frames_by_title_rgb:
+            current_idx = CEPlugin.frames_by_title_rgb.index(current_frame.title)
         imgui.text(label)
-        _c, idx = imgui.combo("##"+label, current_idx, CETool.frames_by_title_rgb)
+        _c, idx = imgui.combo("##" + label, current_idx, CEPlugin.frames_by_title_rgb)
         selected_frame = cfg.ce_frames[idx] if (idx < len(cfg.ce_frames)) else None
         return _c, selected_frame
 
     @staticmethod
     def info_selected_position():
         _cw = imgui.get_content_region_available_width()
-        imgui.text(f"x: {CETool.selected_position[0]/1000.0:.2f} um")
-        imgui.text(f"y: {CETool.selected_position[1]/1000.0:.2f} um")
+        imgui.text(f"x: {CEPlugin.selected_position[0] / 1000.0:.2f} um")
+        imgui.text(f"y: {CEPlugin.selected_position[1] / 1000.0:.2f} um")
 
     @staticmethod
     def centred_button(label, width=None, height=20):

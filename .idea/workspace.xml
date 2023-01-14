@@ -4,10 +4,19 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="fix export png (but no longer exporting with alpha)&#10;added export roi handles">
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="png export now with alpha">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cetool.py" beforeDir="false" afterPath="$PROJECT_DIR$/ceplugin.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cetools/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/ceplugins/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cetools/grayscalereg.py" beforeDir="false" afterPath="$PROJECT_DIR$/ceplugins/grayscalereg.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cetools/split_rgb.py" beforeDir="false" afterPath="$PROJECT_DIR$/ceplugins/split_rgb.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/correlation_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/correlation_editor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node.py" beforeDir="false" afterPath="$PROJECT_DIR$/node.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/custom_node_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/custom_node_template.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/loaddata.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/loaddata.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/loadimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/loadimage.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -482,7 +491,14 @@
       <option name="project" value="LOCAL" />
       <updated>1673442866778</updated>
     </task>
-    <option name="localTasksCounter" value="39" />
+    <task id="LOCAL-00039" summary="png export now with alpha">
+      <created>1673451012007</created>
+      <option name="number" value="00039" />
+      <option name="presentableId" value="LOCAL-00039" />
+      <option name="project" value="LOCAL" />
+      <updated>1673451012007</updated>
+    </task>
+    <option name="localTasksCounter" value="40" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -513,7 +529,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$" />
     </ignored-roots>
-    <MESSAGE value="parallel processing for bake stack node works for dataset (not yet for coordinates)" />
     <MESSAGE value="thunderstorm comparison" />
     <MESSAGE value="fix typo in req.txt" />
     <MESSAGE value="fixed reconstruction .csv compatibility with thunderstorm&#10;fixed joblib resource issue in bakestacknode" />
@@ -538,6 +553,7 @@
     <MESSAGE value="2301101120" />
     <MESSAGE value="split rgb tool, minor edits" />
     <MESSAGE value="fix export png (but no longer exporting with alpha)&#10;added export roi handles" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix export png (but no longer exporting with alpha)&#10;added export roi handles" />
+    <MESSAGE value="png export now with alpha" />
+    <option name="LAST_COMMIT_MESSAGE" value="png export now with alpha" />
   </component>
 </project>
