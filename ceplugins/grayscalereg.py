@@ -83,6 +83,8 @@ class GrayscaleRegPlugin(CEPlugin):
             # Filter, resize, and crop images
             p = self.filter_image(self.parent_frame.data)
             c = self.filter_image(self.child_frame.data)
+            p = self.parent_frame.data
+            c = self.child_frame.data
             npix_p = self.parent_frame.pixel_size
             npix_c = self.child_frame.pixel_size
             _size = np.asarray(np.shape(c)) * npix_c / npix_p
@@ -91,20 +93,12 @@ class GrayscaleRegPlugin(CEPlugin):
             ## GET PIXEL COORDINATES OF WORLD LOCATION CURSOR
             pixel_offset = [0, 0]
             if self.input_pos:
-                print("cropping around input pos")
                 pixel_coordinate, pixel_offset = self.parent_frame.world_to_pixel_coordinate(self.selected_position)
-                print(pixel_coordinate, pixel_offset)
                 # TODO: fix this - crop from parent isn't correct.
                 _parent = self.crop_around_coordinate(p, _size, pixel_coordinate)
             else:
                 _parent = self.crop_center(p, _size)
 
-            plt.subplot(1, 2, 1)
-            plt.imshow(_child)
-            plt.subplot(1, 2, 2)
-            plt.imshow(_parent)
-            plt.show()
-            return
             if self.bin:
                 width, height = _child.shape
                 _child = _child[:self.binfac * (width // self.binfac), :self.binfac * (height // self.binfac)]
@@ -114,23 +108,30 @@ class GrayscaleRegPlugin(CEPlugin):
             if self.smooth:
                 _child = gaussian_filter(_child, self.smoothfac)
                 _parent = gaussian_filter(_parent, self.smoothfac)
+            import matplotlib.pyplot as plt
 
+            plt.subplot(1, 2, 1)
+            plt.imshow(_child)
+            plt.subplot(1, 2, 2)
+            plt.imshow(_parent)
+            plt.show()
             # Find transformation matrix that matches the frames
+            ## TODO: proper check
             sr = StackReg(GrayscaleRegPlugin.REGMODES[self.regmode])
             tmat = sr.register(_parent, _child)
             T, R, S = self.decompose_transform_matrix(tmat)
-
+            print(T, R, S)
             # Apply transform to child
             self.child_frame.parent_to(self.parent_frame)
             self.child_frame.transform = deepcopy(self.parent_frame.transform)
-            dx = T[0] * npix_c + pixel_offset[0] * npix_p  ## TODO: swap [0], [1]
+            dx = T[0] * npix_c + pixel_offset[0] * npix_p
             dy = T[1] * npix_c + pixel_offset[1] * npix_p
             self.child_frame.transform.translation[0] += dx
             self.child_frame.transform.translation[1] += dy
-            self.child_frame.transform.rotation += R
+            self.child_frame.transform.rotation -= R
             self.child_frame.transform.scale *= S
-            self.child_frame.pivot_point[0] += dx
-            self.child_frame.pivot_point[0] += dy
+            self.child_frame.pivot_point[0] = self.child_frame.transform.translation[0]
+            self.child_frame.pivot_point[1] = self.child_frame.transform.translation[1]
 
         except Exception as e:
             cfg.set_error(e, "Error aligning frames in Register Grayscale tool.")
@@ -149,12 +150,10 @@ class GrayscaleRegPlugin(CEPlugin):
         w, h = img.shape
         if W > w or H > h:
             raise Exception("ROI can't be larger than the original image.")
-        X = coordinate[0]
-        Y = coordinate[1]
-        print(X, Y)
+        X = coordinate[1]
+        Y = coordinate[0]
         X = max([W // 2, min([X, w - W // 2])])
         Y = max([H // 2, min([Y, h - H // 2])])
-        print(X, Y, W, H)
         return img[X - W // 2:X + W // 2, Y - H // 2:Y + H // 2]
 
     @staticmethod
@@ -162,7 +161,7 @@ class GrayscaleRegPlugin(CEPlugin):
         data = copy(array)
         mu = np.mean(data)
         std = np.std(data)
-        mask = data > (mu + std * 3.0)
+        mask = data > (mu + std * 10.0)
         data[mask] = mu
         data = data - np.amin(data)
         data = data / np.amax(data)
