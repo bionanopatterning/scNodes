@@ -248,6 +248,7 @@ class CorrelationEditor:
             new_frame.lut = frame_obj._ce_lut
             new_frame.contrast_lims = [frame_obj._ce_clims[0], frame_obj._ce_clims[1]]
             new_frame.rgb_contrast_lims = copy(frame_obj._ce_clims)
+            new_frame.transform.translation = deepcopy(self.camera.position)
             new_frame.update_lut()
             cfg.ce_frames.insert(0, new_frame)
             CorrelationEditor.active_frame = new_frame
@@ -992,6 +993,7 @@ class CorrelationEditor:
             imgui.pop_style_var(3)
 
     def visuals_window(self):
+        imgui.set_next_window_position(86,641)
         imgui.begin("##visualsw", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_SCROLLBAR | imgui.WINDOW_NO_BACKGROUND | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE)
         imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, cfg.CE_WIDGET_ROUNDING)
         imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, cfg.CE_WIDGET_ROUNDING)

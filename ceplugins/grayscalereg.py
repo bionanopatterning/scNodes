@@ -2,6 +2,7 @@ from ceplugin import *
 from copy import copy, deepcopy
 from pystackreg import StackReg
 import cv2
+from scipy.ndimage import gaussian_filter
 
 def create():
     return GrayscaleRegPlugin()
@@ -23,6 +24,10 @@ class GrayscaleRegPlugin(CEPlugin):
         self.child_frame = None
         self.FLAG_SHOW_LOCATION_PICKER = True
         self.regmode = 0
+        self.bin = False
+        self.binfac = 2
+        self.smooth = False
+        self.smoothfac = 2.0
         self.input_pos = True
 
     def render(self):
@@ -42,6 +47,24 @@ class GrayscaleRegPlugin(CEPlugin):
                      "The selected mode is only applied in the image registration step. In the prior\n"
                      "filtering and rough alignment steps, the input images' (differing) pixel\n"
                      "sizes are always taken in to account.")
+
+        # binning and smoothing
+        _c, self.bin = imgui.checkbox("Bin", self.bin)
+        if self.bin:
+            imgui.same_line(position=110)
+            imgui.set_next_item_width(30)
+            _c, self.binfac = imgui.input_int("factor##b", self.binfac, 0.0, 0.0)
+            self.binfac = max([1, self.binfac])
+            self.tooltip("Bin images prior to registration. Factor is the binning factor.")
+        _c, self.smooth = imgui.checkbox("Smooth", self.smooth)
+        if self.smooth:
+            imgui.same_line(position=110)
+            imgui.set_next_item_width(30)
+            _c, self.smoothfac = imgui.input_float("factor##s", self.smoothfac, 0.0, 0.0, format="%.1f")
+            self.smoothfac = max([0.1, self.smoothfac])
+            self.tooltip("Apply a Gaussian blur to the images prior to registration.\n"
+                         "Factor is the stdev (in units of the child image's pixel size) of the kernel")
+
         _c, self.input_pos = imgui.checkbox("Location hint:", self.input_pos)
         self.FLAG_SHOW_LOCATION_PICKER = self.input_pos
         if self.input_pos:
@@ -68,6 +91,14 @@ class GrayscaleRegPlugin(CEPlugin):
                 _parent = self.crop_around_coordinate(p, _size, pixel_coordinate)
             else:
                 _parent = self.crop_center(p, _size)
+
+            if self.bin:
+                width, height = _child.shape
+                _child = _child.reshape((width // self.binfac, self.binfac, height // self.binfac, self.binfac)).mean(3).mean(1)
+                _parent = _parent.reshape((width // self.binfac, self.binfac, height // self.binfac, self.binfac)).mean(3).mean(1)
+            if self.smooth:
+                _child = gaussian_filter(_child, self.smoothfac)
+                _parent = gaussian_filter(_parent, self.smoothfac)
 
             # Find transformation matrix that matches the frames
             sr = StackReg(GrayscaleRegPlugin.REGMODES[self.regmode])

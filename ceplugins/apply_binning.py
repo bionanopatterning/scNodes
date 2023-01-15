@@ -6,7 +6,7 @@ def create():
 
 
 class BinPlugin(CEPlugin):
-    title = "Bin"
+    title = "Apply binning"
     description = "Create a binned copy of a frame."
 
     MODES = ["Average", "Median", "Min", "Max", "Sum"]
@@ -50,6 +50,7 @@ class BinPlugin(CEPlugin):
         outframe.lut = copy(frame.lut)
         outframe.contrast_lims = copy(frame.contrast_lims)
         outframe.lut_clamp_mode = copy(frame.lut_clamp_mode)
+        outframe.pivot_point = copy(frame.pivot_point)
         outframe.title = frame.title + f"_bin{factor}"
         return outframe
 

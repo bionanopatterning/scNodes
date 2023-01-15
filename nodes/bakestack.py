@@ -200,3 +200,9 @@ class BakeStackNode(Node):
                 self.play = False
                 cfg.set_error(e, "Error baking stack: \n"+str(e))
 
+    def pre_save_impl(self):
+        cfg.pickle_temp["dataset"] = self.dataset
+        self.dataset = Dataset()
+
+    def post_save_impl(self):
+        self.dataset = cfg.pickle_temp["dataset"]
