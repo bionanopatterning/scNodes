@@ -4,14 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="fixed bug in binimage node">
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="working on manual">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ceplugins/apply_binning.py" beforeDir="false" afterPath="$PROJECT_DIR$/ceplugins/apply_binning.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ceplugin.py" beforeDir="false" afterPath="$PROJECT_DIR$/ceplugin.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ceplugins/grayscalereg.py" beforeDir="false" afterPath="$PROJECT_DIR$/ceplugins/grayscalereg.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/correlation_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/correlation_editor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes/bakestack.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodes/bakestack.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/settings.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -486,7 +485,14 @@
       <option name="project" value="LOCAL" />
       <updated>1673708362125</updated>
     </task>
-    <option name="localTasksCounter" value="39" />
+    <task id="LOCAL-00039" summary="working on manual">
+      <created>1673793707972</created>
+      <option name="number" value="00039" />
+      <option name="presentableId" value="LOCAL-00039" />
+      <option name="project" value="LOCAL" />
+      <updated>1673793707972</updated>
+    </task>
+    <option name="localTasksCounter" value="40" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -516,7 +522,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$" />
     </ignored-roots>
-    <MESSAGE value="parallel processing for bake stack node works for dataset (not yet for coordinates)" />
     <MESSAGE value="thunderstorm comparison" />
     <MESSAGE value="fix typo in req.txt" />
     <MESSAGE value="fixed reconstruction .csv compatibility with thunderstorm&#10;fixed joblib resource issue in bakestacknode" />
@@ -541,6 +546,7 @@
     <MESSAGE value="2301101120" />
     <MESSAGE value="fix IV -&gt; CE contrast [0, 1] bug" />
     <MESSAGE value="fixed bug in binimage node" />
-    <option name="LAST_COMMIT_MESSAGE" value="fixed bug in binimage node" />
+    <MESSAGE value="working on manual" />
+    <option name="LAST_COMMIT_MESSAGE" value="working on manual" />
   </component>
 </project>

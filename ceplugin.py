@@ -1,5 +1,4 @@
 import imgui
-import config as cfg
 from clemframe import *
 import time
 
@@ -117,6 +116,10 @@ class CEPlugin:
         _cw = imgui.get_content_region_available_width()
         imgui.text(f"x: {CEPlugin.selected_position[0] / 1000.0:.2f} um")
         imgui.text(f"y: {CEPlugin.selected_position[1] / 1000.0:.2f} um")
+
+    @staticmethod
+    def set_selected_position(x, y):
+        cfg.ce_selected_position = [x, y]
 
     @staticmethod
     def centred_button(label, width=None, height=20):

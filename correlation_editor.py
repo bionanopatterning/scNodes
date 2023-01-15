@@ -20,6 +20,7 @@ import glob
 #from clemframe import CLEMFrame, Transform
 from ceplugin import *
 
+
 class CorrelationEditor:
     if True:
         FRAME_LIST_INDENT_WIDTH = 20.0
@@ -263,6 +264,8 @@ class CorrelationEditor:
             incoming = ImportedFrameData(path)
             clem_frame = incoming.to_CLEMFrame()
             if clem_frame:
+                pos = deepcopy(self.camera.position)
+                clem_frame.transform.translation = [-pos[0], -pos[1]]
                 cfg.ce_frames.insert(0, clem_frame)
                 CorrelationEditor.active_frame = clem_frame
 
@@ -850,6 +853,8 @@ class CorrelationEditor:
             _c, selected = imgui.selectable(""+f.title+f"###fuid{f.uid}", selected=CorrelationEditor.active_frame == f, width=label_width)
             if imgui.begin_popup_context_item():
                 _c, f.title = imgui.input_text("##fname", f.title, 30)
+                if f.title == "":
+                    f.title = str(f.uid)
                 if imgui.menu_item("Send to top")[0]:
                     f.move_to_front()
                 elif imgui.menu_item("Send to bottom")[0]:
@@ -1307,6 +1312,9 @@ class CorrelationEditor:
     def get_camera_zoom(self):
         return self.camera.zoom
 
+    def set_location_indicator_gizmo_pos(self, x, y):
+        self.location_gizmo.transform.translation = [x, y]
+
     @staticmethod
     def tooltip(text):
         if imgui.is_item_hovered():
@@ -1534,7 +1542,8 @@ class EditorGizmo:
         icon_scale[:, :, 0:2] = 1.0
         icon_rotate[:, :, 0:2] = 1.0
         icon_pivot[:, :, 0:2] = 1.0
-        icon_location[:, :, 0:2] = 1.0
+        icon_location[:, :, 0] = 1.0
+        icon_location[:, :, 1] = 0.7
         EditorGizmo.ICON_TEXTURES[EditorGizmo.TYPE_SCALE] = Texture(format="rgba32f")
         EditorGizmo.ICON_TEXTURES[EditorGizmo.TYPE_SCALE].update(icon_scale)
         EditorGizmo.ICON_TEXTURES[EditorGizmo.TYPE_SCALE].set_linear_interpolation()

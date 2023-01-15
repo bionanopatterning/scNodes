@@ -69,6 +69,9 @@ class GrayscaleRegPlugin(CEPlugin):
         self.FLAG_SHOW_LOCATION_PICKER = self.input_pos
         if self.input_pos:
             self.info_selected_position()
+        if _c and self.input_pos:
+            new_pos = self.child_frame.transform.translation
+            cfg.correlation_editor.set_location_indicator_gizmo_pos(new_pos[0], new_pos[1])
 
         imgui.spacing()
         if self.centred_button("Align!"):
@@ -76,6 +79,7 @@ class GrayscaleRegPlugin(CEPlugin):
 
     def align_frames(self):
         try:
+            import matplotlib.pyplot as plt
             # Filter, resize, and crop images
             p = self.filter_image(self.parent_frame.data)
             c = self.filter_image(self.child_frame.data)
@@ -87,13 +91,24 @@ class GrayscaleRegPlugin(CEPlugin):
             ## GET PIXEL COORDINATES OF WORLD LOCATION CURSOR
             pixel_offset = [0, 0]
             if self.input_pos:
+                print("cropping around input pos")
                 pixel_coordinate, pixel_offset = self.parent_frame.world_to_pixel_coordinate(self.selected_position)
+                print(pixel_coordinate, pixel_offset)
+                # TODO: fix this - crop from parent isn't correct.
                 _parent = self.crop_around_coordinate(p, _size, pixel_coordinate)
             else:
                 _parent = self.crop_center(p, _size)
 
+            plt.subplot(1, 2, 1)
+            plt.imshow(_child)
+            plt.subplot(1, 2, 2)
+            plt.imshow(_parent)
+            plt.show()
+            return
             if self.bin:
                 width, height = _child.shape
+                _child = _child[:self.binfac * (width // self.binfac), :self.binfac * (height // self.binfac)]
+                _parent = _parent[:self.binfac * (width // self.binfac), :self.binfac * (height // self.binfac)]
                 _child = _child.reshape((width // self.binfac, self.binfac, height // self.binfac, self.binfac)).mean(3).mean(1)
                 _parent = _parent.reshape((width // self.binfac, self.binfac, height // self.binfac, self.binfac)).mean(3).mean(1)
             if self.smooth:
@@ -108,10 +123,14 @@ class GrayscaleRegPlugin(CEPlugin):
             # Apply transform to child
             self.child_frame.parent_to(self.parent_frame)
             self.child_frame.transform = deepcopy(self.parent_frame.transform)
-            self.child_frame.transform.translation[0] += T[0] * npix_c + pixel_offset[0] * npix_p
-            self.child_frame.transform.translation[1] += T[1] * npix_c + pixel_offset[1] * npix_p
+            dx = T[0] * npix_c + pixel_offset[0] * npix_p  ## TODO: swap [0], [1]
+            dy = T[1] * npix_c + pixel_offset[1] * npix_p
+            self.child_frame.transform.translation[0] += dx
+            self.child_frame.transform.translation[1] += dy
             self.child_frame.transform.rotation += R
             self.child_frame.transform.scale *= S
+            self.child_frame.pivot_point[0] += dx
+            self.child_frame.pivot_point[0] += dy
 
         except Exception as e:
             cfg.set_error(e, "Error aligning frames in Register Grayscale tool.")
@@ -132,8 +151,10 @@ class GrayscaleRegPlugin(CEPlugin):
             raise Exception("ROI can't be larger than the original image.")
         X = coordinate[0]
         Y = coordinate[1]
+        print(X, Y)
         X = max([W // 2, min([X, w - W // 2])])
         Y = max([H // 2, min([Y, h - H // 2])])
+        print(X, Y, W, H)
         return img[X - W // 2:X + W // 2, Y - H // 2:Y + H // 2]
 
     @staticmethod
@@ -142,7 +163,7 @@ class GrayscaleRegPlugin(CEPlugin):
         mu = np.mean(data)
         std = np.std(data)
         mask = data > (mu + std * 3.0)
-        data[mask == True] = mu  ## todo array[mask]=mu
+        data[mask] = mu
         data = data - np.amin(data)
         data = data / np.amax(data)
         return data
