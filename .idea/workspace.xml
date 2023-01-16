@@ -4,16 +4,87 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="added bin plugin">
-      <change afterPath="$PROJECT_DIR$/ceplugins/delete.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="updated grayscale reg plugin">
+      <change afterPath="$PROJECT_DIR$/log.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/setup.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ceplugins/blur_image.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ceplugins/custom_plugin_template.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ceplugins/grayscalereg.py" beforeDir="false" afterPath="$PROJECT_DIR$/ceplugins/grayscalereg.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/correlation_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/correlation_editor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scNodes_log.txt" beforeDir="false" afterPath="$PROJECT_DIR$/scNodes_log.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ce_test_fluo.tif" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ce_test_refl.tif" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ceplugin.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ceplugin.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ceplugins/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ceplugins/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ceplugins/apply_binning.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ceplugins/apply_binning.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ceplugins/grayscalereg.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ceplugins/grayscalereg.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ceplugins/split_rgb.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ceplugins/split_rgb.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/citations.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/clemframe.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/clemframe.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/correlation_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/correlation_editor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/icons/icon_close_256.png" beforeDir="false" afterPath="$PROJECT_DIR$/src/icons/icon_close_256.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/icons/icon_linterp_256.png" beforeDir="false" afterPath="$PROJECT_DIR$/src/icons/icon_linterp_256.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/icons/icon_location_256.png" beforeDir="false" afterPath="$PROJECT_DIR$/src/icons/icon_location_256.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/icons/icon_ninterp_256.png" beforeDir="false" afterPath="$PROJECT_DIR$/src/icons/icon_ninterp_256.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/icons/icon_pivot_256.png" beforeDir="false" afterPath="$PROJECT_DIR$/src/icons/icon_pivot_256.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/icons/icon_rotate_256.png" beforeDir="false" afterPath="$PROJECT_DIR$/src/icons/icon_rotate_256.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/icons/icon_scale_256.png" beforeDir="false" afterPath="$PROJECT_DIR$/src/icons/icon_scale_256.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/icons/scnodes_boot_img.png" beforeDir="false" afterPath="$PROJECT_DIR$/src/icons/scnodes_boot_img.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/imageviewer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/imageviewer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/src/imgui.ini" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/install.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/install.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/node.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodeeditor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/bakestack.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/bakestack.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/binimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/binimage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/cropimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/cropimage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/custom_node_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/custom_node_template.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/exportdata.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/exportdata.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/frameshift.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/frameshift.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/getimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/getimage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/imagecalculator.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/imagecalculator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/importreconstruction.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/importreconstruction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/invert_node.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/invert_node.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/loaddata.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/loaddata.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/loadimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/loadimage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/mathnode.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/mathnode.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/particledetection.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/particledetection.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/particlefilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/particlefilter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/psffitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/psffitting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/pysofi/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/pysofi/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/pysofi/deconvsk.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/pysofi/deconvsk.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/pysofi/filtering.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/pysofi/filtering.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/pysofi/finterp.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/pysofi/finterp.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/pysofi/ldrc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/pysofi/ldrc.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/pysofi/masks.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/pysofi/masks.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/pysofi/pysofi.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/pysofi/pysofi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/pysofi/reconstruction.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/pysofi/reconstruction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/pysofi/switches.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/pysofi/switches.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/reconstructionrenderer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/reconstructionrenderer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/register.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/register.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/scaleimage.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/scaleimage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/sofinode.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/sofinode.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/spatialfilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/spatialfilter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodes/temporalfilter.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/nodes/temporalfilter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/opengl_classes.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/opengl_classes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/particlefitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/particlefitting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pyGpufit-1.2.0-py2.py3-none-any.whl" beforeDir="false" afterPath="$PROJECT_DIR$/src/wheels/pyGpufit-1.2.0-py2.py3-none-any.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/reconstruction.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/reconstruction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/roi.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/roi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/shaders/ce_border_shader.glsl" beforeDir="false" afterPath="$PROJECT_DIR$/src/shaders/ce_border_shader.glsl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/shaders/ce_gizmo_shader.glsl" beforeDir="false" afterPath="$PROJECT_DIR$/src/shaders/ce_gizmo_shader.glsl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/shaders/ce_quad_shader.glsl" beforeDir="false" afterPath="$PROJECT_DIR$/src/shaders/ce_quad_shader.glsl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/shaders/line_shader.glsl" beforeDir="false" afterPath="$PROJECT_DIR$/src/shaders/line_shader.glsl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/shaders/ne_reconstructor_shader.glsl" beforeDir="false" afterPath="$PROJECT_DIR$/src/shaders/ne_reconstructor_shader.glsl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/shaders/textured_shader.glsl" beforeDir="false" afterPath="$PROJECT_DIR$/src/shaders/textured_shader.glsl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/util.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wheels/pyGpufit-1.2.0-py2.py3-none-any.whl" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/window.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/window.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -23,6 +94,7 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
+        <option value="Setup Script" />
         <option value="Python Script" />
       </list>
     </option>
@@ -45,7 +117,7 @@
     </file-type-list>
   </component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="file://$PROJECT_DIR$/correlation_editor.py" root0="SKIP_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/correlation_editor.py" root0="SKIP_HIGHLIGHTING" />
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
@@ -69,11 +141,11 @@
       <recent name="C:\Users\mart_\PycharmProjects\srNodes" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\mgflast\PycharmProjects\220729_ImageViewer\src" />
       <recent name="C:\Users\mgflast\PycharmProjects\220729_ImageViewer\icons" />
       <recent name="C:\Users\Mart\PycharmProjects\srNodes2" />
       <recent name="C:\Users\Mart\PycharmProjects\srNodes2\icons" />
       <recent name="C:\Users\mgflast\PycharmProjects\srNodes\wheels" />
-      <recent name="C:\Users\mgflast\PycharmProjects\srNodes\nodes\pysofi" />
     </key>
   </component>
   <component name="RunManager" selected="Python.main">
@@ -89,7 +161,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/config.py" />
+      <option name="SCRIPT_NAME" value="C:\Users\mgflast\PycharmProjects\220729_ImageViewer\src\config.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -131,7 +203,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/install.py" />
+      <option name="SCRIPT_NAME" value="C:\Users\mgflast\PycharmProjects\220729_ImageViewer\src\install.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -152,7 +224,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
+      <option name="SCRIPT_NAME" value="C:\Users\mgflast\PycharmProjects\220729_ImageViewer\src\main.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -182,7 +254,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="sofinode" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="test" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="220729_ImageViewer" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -190,11 +262,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/nodes" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="C:\Users\mgflast\PycharmProjects\srNodes\nodes\sofinode.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/test.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -205,11 +277,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.test" />
         <item itemvalue="Python.install" />
         <item itemvalue="Python.config" />
         <item itemvalue="Python.sofinode (1)" />
         <item itemvalue="Python.delete" />
-        <item itemvalue="Python.sofinode" />
       </list>
     </recent_temporary>
   </component>
@@ -509,7 +581,21 @@
       <option name="project" value="LOCAL" />
       <updated>1673709381051</updated>
     </task>
-    <option name="localTasksCounter" value="42" />
+    <task id="LOCAL-00042" summary="updated grayscale reg plugin">
+      <created>1673857544502</created>
+      <option name="number" value="00042" />
+      <option name="presentableId" value="LOCAL-00042" />
+      <option name="project" value="LOCAL" />
+      <updated>1673857544502</updated>
+    </task>
+    <task id="LOCAL-00043" summary="updated grayscale reg plugin">
+      <created>1673857586810</created>
+      <option name="number" value="00043" />
+      <option name="presentableId" value="LOCAL-00043" />
+      <option name="project" value="LOCAL" />
+      <updated>1673857586810</updated>
+    </task>
+    <option name="localTasksCounter" value="44" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -540,7 +626,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$" />
     </ignored-roots>
-    <MESSAGE value="fixed reconstruction .csv compatibility with thunderstorm&#10;fixed joblib resource issue in bakestacknode" />
     <MESSAGE value="started implementing orb for registration" />
     <MESSAGE value="big refactor: all nodes now in separate .py files, nodeeditor automatically finds these and sets up a node_factory on init (meaning: adding a node by placing a .py file in the /nodes subfolder will make that node available in the software). The base Node() and the inheriting implementation classes no longer call NodeEditor static variables." />
     <MESSAGE value="started work on documentation" />
@@ -565,6 +650,7 @@
     <MESSAGE value="png export now with alpha" />
     <MESSAGE value="minor improvements" />
     <MESSAGE value="added bin plugin" />
-    <option name="LAST_COMMIT_MESSAGE" value="added bin plugin" />
+    <MESSAGE value="updated grayscale reg plugin" />
+    <option name="LAST_COMMIT_MESSAGE" value="updated grayscale reg plugin" />
   </component>
 </project>

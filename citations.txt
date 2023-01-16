@@ -1,6 +1,0 @@
-This project relies on (a.o.) the following modules / methods / publications by others:
-
-Burnley T, Palmer C & Winn M (2017) Recent developments in the CCP-EM software suite. Acta Cryst. D73:469–477. doi: 10.1107/S2059798317007859
-Miao Y, Weiss S, Yi X (2022) PySOFI: an open source Python package for SOFI. Biophys. Rep. 2:2:100052. doi: 10.1016/j.bpr.2022.100052
-Przybylski et al. (2017) Gpufit: An open-source toolkit for GPU-accelerated curve fitting. Sci. Rep. 7:15722. doi: 10.1038/s41598-017-15313-9
-P. Thévenaz, U. E. Ruttimann, M. Unser (1998) A Pyramid Approach to Subpixel Registration Based on Intensity. IEEE Trans. Image Process. 7:1:27-41 doi: 10.1109/83.650848
