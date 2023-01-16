@@ -5,9 +5,72 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="release 1.0.0">
-      <change afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/ceplugin.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/ceplugins/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/ceplugins/apply_binning.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/ceplugins/blur_image.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/ceplugins/custom_plugin_template.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/ceplugins/grayscalereg.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/ceplugins/split_rgb.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/clemframe.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/config.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/correlation_editor.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/dataset.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/imageviewer.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/install.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/node.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodeeditor.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/bakestack.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/binimage.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/cropimage.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/custom_node_template.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/exportdata.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/frameshift.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/getimage.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/imagecalculator.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/importreconstruction.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/invert_node.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/loaddata.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/loadimage.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/mathnode.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/particledetection.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/particlefilter.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/psffitting.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/pysofi/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/pysofi/deconvsk.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/pysofi/filtering.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/pysofi/finterp.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/pysofi/ldrc.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/pysofi/masks.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/pysofi/pysofi.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/pysofi/reconstruction.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/pysofi/switches.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/reconstructionrenderer.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/register.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/scaleimage.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/sofinode.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/spatialfilter.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/nodes/temporalfilter.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/opengl_classes.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/particlefitting.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/reconstruction.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/roi.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/settings.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/test.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/util.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build/lib/src/window.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/dist/scNodes-1.0.1-py3-none-any.whl" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/dist/scNodes-1.0.1.tar.gz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scNodes.egg-info/PKG-INFO" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scNodes.egg-info/SOURCES.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scNodes.egg-info/dependency_links.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scNodes.egg-info/top_level.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/__main__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/setup.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/build/lib/src/__main__.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -56,6 +119,7 @@
   <component name="PropertiesComponent">
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="restartRequiresConfirmation" value="false" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
@@ -71,7 +135,70 @@
       <recent name="C:\Users\mgflast\PycharmProjects\srNodes\wheels" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.main">
+  <component name="RunManager" selected="Python.__main__ (2)">
+    <configuration name="__main__ (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="220729_ImageViewer" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/__main__.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="__main__ (2)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="220729_ImageViewer" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scNodes" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scNodes/__main__.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="__main__" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="220729_ImageViewer" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="C:\Users\mgflast\PycharmProjects\220729_ImageViewer\src\__main__.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="config" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="220729_ImageViewer" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -93,27 +220,6 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="delete" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="220729_ImageViewer" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/delete.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <configuration name="install" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="220729_ImageViewer" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -127,48 +233,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="C:\Users\mgflast\PycharmProjects\220729_ImageViewer\src\install.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
-      <module name="220729_ImageViewer" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="C:\Users\mgflast\PycharmProjects\220729_ImageViewer\src\main.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="sofinode (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="220729_ImageViewer" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/nodes" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/nodes/sofinode.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -200,11 +264,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.__main__ (2)" />
+        <item itemvalue="Python.__main__ (1)" />
         <item itemvalue="Python.test" />
         <item itemvalue="Python.install" />
         <item itemvalue="Python.config" />
-        <item itemvalue="Python.sofinode (1)" />
-        <item itemvalue="Python.delete" />
       </list>
     </recent_temporary>
   </component>

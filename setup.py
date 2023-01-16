@@ -1,9 +1,9 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='scNodes',
-    version='1.0.0',
-    packages=['src', 'src.nodes', 'src.nodes.pysofi', 'src.ceplugins'],
+    version='1.0.1',
+    packages=find_packages(),
     url='https://github.com/bionanopatterning/scNodes',
     license='GNU GPL v3',
     author='mgflast',
