@@ -4,10 +4,16 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="working on manual">
+    <list default="true" id="203e9691-50b2-4b6f-a3d2-fb46cd736909" name="Changes" comment="added bin plugin">
+      <change afterPath="$PROJECT_DIR$/ceplugins/delete.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ceplugins/grayscalereg.py" beforeDir="false" afterPath="$PROJECT_DIR$/ceplugins/grayscalereg.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/imgui.ini" beforeDir="false" afterPath="$PROJECT_DIR$/imgui.ini" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/correlation_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/correlation_editor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nodeeditor.py" beforeDir="false" afterPath="$PROJECT_DIR$/nodeeditor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scNodes_log.txt" beforeDir="false" afterPath="$PROJECT_DIR$/scNodes_log.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,7 +45,7 @@
     </file-type-list>
   </component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="file://$PROJECT_DIR$/correlation_editor.py" root0="SKIP_INSPECTION" />
+    <setting file="file://$PROJECT_DIR$/correlation_editor.py" root0="SKIP_HIGHLIGHTING" />
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
@@ -468,35 +474,42 @@
       <option name="project" value="LOCAL" />
       <updated>1673346016577</updated>
     </task>
-    <task id="LOCAL-00037" summary="fix IV -&gt; CE contrast [0, 1] bug">
-      <created>1673382720178</created>
+    <task id="LOCAL-00037" summary="split rgb tool, minor edits">
+      <created>1673353571131</created>
       <option name="number" value="00037" />
       <option name="presentableId" value="LOCAL-00037" />
       <option name="project" value="LOCAL" />
-      <updated>1673382720178</updated>
+      <updated>1673353571131</updated>
     </task>
-    <task id="LOCAL-00038" summary="fixed bug in binimage node">
-      <created>1673708362125</created>
+    <task id="LOCAL-00038" summary="fix export png (but no longer exporting with alpha)&#10;added export roi handles">
+      <created>1673442866778</created>
       <option name="number" value="00038" />
       <option name="presentableId" value="LOCAL-00038" />
       <option name="project" value="LOCAL" />
-      <updated>1673708362125</updated>
+      <updated>1673442866778</updated>
     </task>
-    <task id="LOCAL-00039" summary="working on manual">
-      <created>1673793707972</created>
+    <task id="LOCAL-00039" summary="png export now with alpha">
+      <created>1673451012007</created>
       <option name="number" value="00039" />
       <option name="presentableId" value="LOCAL-00039" />
       <option name="project" value="LOCAL" />
-      <updated>1673793707972</updated>
+      <updated>1673451012007</updated>
     </task>
-    <task id="LOCAL-00040" summary="working on manual">
-      <created>1673807616912</created>
+    <task id="LOCAL-00040" summary="minor improvements">
+      <created>1673707088674</created>
       <option name="number" value="00040" />
       <option name="presentableId" value="LOCAL-00040" />
       <option name="project" value="LOCAL" />
-      <updated>1673807616912</updated>
+      <updated>1673707088674</updated>
     </task>
-    <option name="localTasksCounter" value="41" />
+    <task id="LOCAL-00041" summary="added bin plugin">
+      <created>1673709381051</created>
+      <option name="number" value="00041" />
+      <option name="presentableId" value="LOCAL-00041" />
+      <option name="project" value="LOCAL" />
+      <updated>1673709381051</updated>
+    </task>
+    <option name="localTasksCounter" value="42" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -520,14 +533,13 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <ignored-roots>
       <path value="$PROJECT_DIR$" />
     </ignored-roots>
-    <MESSAGE value="thunderstorm comparison" />
-    <MESSAGE value="fix typo in req.txt" />
     <MESSAGE value="fixed reconstruction .csv compatibility with thunderstorm&#10;fixed joblib resource issue in bakestacknode" />
     <MESSAGE value="started implementing orb for registration" />
     <MESSAGE value="big refactor: all nodes now in separate .py files, nodeeditor automatically finds these and sets up a node_factory on init (meaning: adding a node by placing a .py file in the /nodes subfolder will make that node available in the software). The base Node() and the inheriting implementation classes no longer call NodeEditor static variables." />
@@ -548,9 +560,11 @@
     <MESSAGE value="RESTORE MISSED COMMIT" />
     <MESSAGE value="RESTORE MISSED COMMIT 2" />
     <MESSAGE value="2301101120" />
-    <MESSAGE value="fix IV -&gt; CE contrast [0, 1] bug" />
-    <MESSAGE value="fixed bug in binimage node" />
-    <MESSAGE value="working on manual" />
-    <option name="LAST_COMMIT_MESSAGE" value="working on manual" />
+    <MESSAGE value="split rgb tool, minor edits" />
+    <MESSAGE value="fix export png (but no longer exporting with alpha)&#10;added export roi handles" />
+    <MESSAGE value="png export now with alpha" />
+    <MESSAGE value="minor improvements" />
+    <MESSAGE value="added bin plugin" />
+    <option name="LAST_COMMIT_MESSAGE" value="added bin plugin" />
   </component>
 </project>

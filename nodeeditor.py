@@ -177,6 +177,9 @@ class NodeEditor:
             imgui.set_next_window_size(self.window.width, cfg.ERROR_WINDOW_HEIGHT)
             imgui.set_next_window_position(0, self.window.height - cfg.ERROR_WINDOW_HEIGHT)
             _, stay_open = imgui.begin("Notifications", True, imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE)
+            if not cfg.error_logged:
+                cfg.write_to_log(cfg.error_msg)
+                cfg.error_logged = True
             imgui.text(cfg.error_msg)
             if imgui.is_window_focused() and self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
                 cfg.error_new = False

@@ -1,39 +1,21 @@
-scNodes log - started at: 01/09/2023, 17:44:46
-version: 1.0
+scNodes version 1.0.0 GNU GPL v3
+01/16/2023, 09:19:58
 
-Non critical error at 01/09/2023, 17:48:54
-Error baking stack: 
-A task has failed to un-serialize. Please ensure that the arguments of the function are all picklable.
+ ____________________ 
 
-joblib.externals.loky.process_executor._RemoteTraceback: 
-"""
-Traceback (most recent call last):
-  File "C:\Users\mgflast\PycharmProjects\srNodes\venv\lib\site-packages\joblib\externals\loky\process_executor.py", line 407, in _process_worker
-    call_item = call_queue.get(block=True, timeout=timeout)
-  File "C:\Users\mgflast\AppData\Local\Programs\Python\Python39\lib\multiprocessing\queues.py", line 122, in get
-    return _ForkingPickler.loads(res)
-  File "C:\Users\mgflast\PycharmProjects\srNodes\nodes\bakestack.py", line 1, in <module>
-    from node import *
-  File "C:\Users\mgflast\PycharmProjects\srNodes\node.py", line 2, in <module>
-    import config as cfg
-  File "C:\Users\mgflast\PycharmProjects\srNodes\config.py", line 12, in <module>
-    remove(logpath)
-PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: 'scNodes_log.txt'
-"""
-
-The above exception was the direct cause of the following exception:
+No well-defined Tool type found in ceplugins\delete.py. See manual for minimal code requirements.
 
 Traceback (most recent call last):
-  File "C:\Users\mgflast\PycharmProjects\srNodes\nodes\bakestack.py", line 170, in on_update
-    coordinates = Parallel(n_jobs=cfg.batch_size, mmap_mode=settings.joblib_mmmode)(delayed(self.get_image_and_save)(index) for index in indices)
-  File "C:\Users\mgflast\PycharmProjects\srNodes\venv\lib\site-packages\joblib\parallel.py", line 1056, in __call__
-    self.retrieve()
-  File "C:\Users\mgflast\PycharmProjects\srNodes\venv\lib\site-packages\joblib\parallel.py", line 935, in retrieve
-    self._output.extend(job.get(timeout=self.timeout))
-  File "C:\Users\mgflast\PycharmProjects\srNodes\venv\lib\site-packages\joblib\_parallel_backends.py", line 542, in wrap_future_result
-    return future.result(timeout=timeout)
-  File "C:\Users\mgflast\AppData\Local\Programs\Python\Python39\lib\concurrent\futures\_base.py", line 445, in result
-    return self.__get_result()
-  File "C:\Users\mgflast\AppData\Local\Programs\Python\Python39\lib\concurrent\futures\_base.py", line 390, in __get_result
-    raise self._exception
-joblib.externals.loky.process_executor.BrokenProcessPool: A task has failed to un-serialize. Please ensure that the arguments of the function are all picklable.
+  File "C:\Users\mgflast\PycharmProjects\220729_ImageViewer\correlation_editor.py", line 1367, in init_toolkit
+    mod = importlib.import_module("ceplugins."+module_name)
+  File "C:\Users\mgflast\AppData\Local\Programs\Python\Python39\lib\importlib\__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1030, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1007, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 986, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 680, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 855, in exec_module
+  File "<frozen importlib._bootstrap>", line 228, in _call_with_frames_removed
+  File "C:\Users\mgflast\PycharmProjects\220729_ImageViewer\ceplugins\delete.py", line 1, in <module>
+    def register_and_show(ref, img, method=StackReg.TRANSLATION):
+NameError: name 'StackReg' is not defined

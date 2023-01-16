@@ -52,6 +52,9 @@ if __name__ == "__main__":
             image_viewer.window.make_current()
             image_viewer.on_update()
             image_viewer.end_frame()
+    except Exception as e:
+        cfg.set_error(e, "CRITICAL ERROR IN SCNODES MAIN\n")
+        cfg.write_to_log(cfg.error_msg)
     finally:
         node_editor.delete_temporary_files()
 

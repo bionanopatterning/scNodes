@@ -1,12 +1,14 @@
 from joblib import cpu_count
 import traceback
 import dill as pickle
-
+import os
+from datetime import datetime
 # This file defines variables that can be accessed globally.
 
 app_name = "scNodes"
 version = "1.0.0"
 license = "GNU GPL v3"
+logpath = app_name+"_log.txt"
 nodes = list()
 active_node = None
 focused_node = None
@@ -25,6 +27,7 @@ profiling = False
 error_msg = None
 error_new = True
 error_obj = None
+error_logged = False
 
 active_connector = None
 active_connector_parent_node = None
@@ -80,12 +83,13 @@ def set_active_node(node, keep_active=False):
 
 
 def set_error(error_object, error_message):
-    global error_msg, error_obj, error_new
+    global error_msg, error_obj, error_new, error_logged
     error_msg = error_message + "\n\n"
     error_msg += "".join(traceback.TracebackException.from_exception(error_object).format())
     print(error_msg)
     error_obj = error_object
     error_new = True
+    error_logged = False
 
 def save_project(filename):
     if filename[-5:] == '.srnp':
@@ -104,6 +108,17 @@ def load_project(filename):
             correlation_editor_relink = True
     except Exception as e:
         set_error(e, "Error loading project")
+
+def write_to_log(text):
+    with open(logpath, "a") as f:
+        f.write("\n\n ____________________ \n\n")
+        f.write(text)
+
+def start_log():
+    if os.path.exists(logpath):
+        os.remove(logpath)
+    with open(logpath, "a") as f:
+        f.write(app_name+" version "+version+" "+license+"\n"+datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
 
 COLOUR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 0.94)
 COLOUR_PANEL_BACKGROUND = (0.94, 0.94, 0.94, 0.94)
@@ -138,3 +153,5 @@ TOOLTIP_HOVERED_TIMER = 0.0
 TOOLTIP_HOVERED_START_TIME = 0.0
 
 CE_WIDGET_ROUNDING = 50.0
+
+start_log()

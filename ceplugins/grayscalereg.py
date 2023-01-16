@@ -19,6 +19,7 @@ class GrayscaleRegPlugin(CEPlugin):
     REGMODES = [StackReg.TRANSLATION, StackReg.RIGID_BODY, StackReg.SCALED_ROTATION]
     REGMODES_STR = ["T", "T+R", "T+R+S"]
 
+
     def __init__(self):
         self.parent_frame = None
         self.child_frame = None
@@ -30,9 +31,8 @@ class GrayscaleRegPlugin(CEPlugin):
         self.smoothfac = 2.0
         self.input_pos = True
 
+
     def render(self):
-
-
         _c, self.parent_frame = self.widget_select_frame_no_rgb("Parent frame:", self.parent_frame)
         _c, self.child_frame = self.widget_select_frame_no_rgb("Child frame:", self.child_frame)
 
@@ -77,14 +77,13 @@ class GrayscaleRegPlugin(CEPlugin):
         if self.centred_button("Align!"):
             self.align_frames()
 
+
     def align_frames(self):
         try:
             import matplotlib.pyplot as plt
             # Filter, resize, and crop images
             p = self.filter_image(self.parent_frame.data)
             c = self.filter_image(self.child_frame.data)
-            p = self.parent_frame.data
-            c = self.child_frame.data
             npix_p = self.parent_frame.pixel_size
             npix_c = self.child_frame.pixel_size
             _size = np.asarray(np.shape(c)) * npix_c / npix_p
@@ -94,7 +93,6 @@ class GrayscaleRegPlugin(CEPlugin):
             pixel_offset = [0, 0]
             if self.input_pos:
                 pixel_coordinate, pixel_offset = self.parent_frame.world_to_pixel_coordinate(self.selected_position)
-                # TODO: fix this - crop from parent isn't correct.
                 _parent = self.crop_around_coordinate(p, _size, pixel_coordinate)
             else:
                 _parent = self.crop_center(p, _size)
@@ -108,19 +106,12 @@ class GrayscaleRegPlugin(CEPlugin):
             if self.smooth:
                 _child = gaussian_filter(_child, self.smoothfac)
                 _parent = gaussian_filter(_parent, self.smoothfac)
-            import matplotlib.pyplot as plt
 
-            plt.subplot(1, 2, 1)
-            plt.imshow(_child)
-            plt.subplot(1, 2, 2)
-            plt.imshow(_parent)
-            plt.show()
             # Find transformation matrix that matches the frames
-            ## TODO: proper check
             sr = StackReg(GrayscaleRegPlugin.REGMODES[self.regmode])
             tmat = sr.register(_parent, _child)
             T, R, S = self.decompose_transform_matrix(tmat)
-            print(T, R, S)
+
             # Apply transform to child
             self.child_frame.parent_to(self.parent_frame)
             self.child_frame.transform = deepcopy(self.parent_frame.transform)
@@ -136,12 +127,14 @@ class GrayscaleRegPlugin(CEPlugin):
         except Exception as e:
             cfg.set_error(e, "Error aligning frames in Register Grayscale tool.")
 
+
     @staticmethod
     def crop_center(img, size):
         w, h = img.shape
         dw = (w - size[0]) // 2
         dh = (h - size[1]) // 2
         return img[dw:dw + size[0], dh:dh + size[1]]
+
 
     @staticmethod
     def crop_around_coordinate(img, size, coordinate):
@@ -156,6 +149,7 @@ class GrayscaleRegPlugin(CEPlugin):
         Y = max([H // 2, min([Y, h - H // 2])])
         return img[X - W // 2:X + W // 2, Y - H // 2:Y + H // 2]
 
+
     @staticmethod
     def filter_image(array):
         data = copy(array)
@@ -166,6 +160,7 @@ class GrayscaleRegPlugin(CEPlugin):
         data = data - np.amin(data)
         data = data / np.amax(data)
         return data
+
 
     @staticmethod
     def decompose_transform_matrix(tmat):
