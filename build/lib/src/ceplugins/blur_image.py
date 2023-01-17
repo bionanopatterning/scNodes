@@ -1,6 +1,6 @@
 import imgui.internal
 
-from scNodes.ceplugin import *
+from scNodes.core.ceplugin import *
 from scipy.ndimage import gaussian_filter
 
 def create():

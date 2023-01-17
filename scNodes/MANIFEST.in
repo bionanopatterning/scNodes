@@ -1,0 +1,4 @@
+recursive-include scNodes/icons/*.png
+recursive-include scNodes/shaders/*.glsl
+recursive-include scNodes/wheels/*.whl
+recursive-include scNodes/wheels/*.tar.gz

@@ -1,6 +1,6 @@
-from scNodes.node import *
+from scNodes.core.node import *
 from tkinter import filedialog
-from scNodes.util import get_filetype
+from scNodes.core.util import get_filetype
 
 
 def create():

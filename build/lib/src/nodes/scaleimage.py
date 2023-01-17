@@ -1,4 +1,4 @@
-from scNodes.node import *
+from scNodes.core.node import *
 import cv2
 
 

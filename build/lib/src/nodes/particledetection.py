@@ -1,4 +1,4 @@
-from scNodes.node import *
+from scNodes.core.node import *
 from skimage.feature import peak_local_max
 
 def create():

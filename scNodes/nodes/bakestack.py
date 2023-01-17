@@ -1,4 +1,4 @@
-from scNodes.node import *
+from scNodes.core.node import *
 import os
 from tkinter import filedialog
 import shutil

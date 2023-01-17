@@ -1,4 +1,4 @@
-from scNodes.node import *
+from scNodes.core.node import *
 from tkinter import filedialog
 
 

@@ -1,5 +1,5 @@
-from scNodes.node import *
-from scNodes import particlefitting as pfit
+from scNodes.core.node import *
+from scNodes.core import particlefitting as pfit
 
 
 def create():

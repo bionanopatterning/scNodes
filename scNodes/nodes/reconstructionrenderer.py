@@ -1,5 +1,5 @@
-from scNodes.node import *
-from scNodes.reconstruction import *
+from scNodes.core.node import *
+from scNodes.core.reconstruction import *
 
 
 def create():

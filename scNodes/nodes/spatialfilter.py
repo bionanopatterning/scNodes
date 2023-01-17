@@ -1,4 +1,4 @@
-from scNodes.node import *
+from scNodes.core.node import *
 
 import pywt
 from scipy.ndimage import gaussian_filter

@@ -1,4 +1,4 @@
-from scNodes.node import *
+from scNodes.core.node import *
 from scNodes.nodes.pysofi import pysofi
 from scNodes.nodes.pysofi import finterp
 import os

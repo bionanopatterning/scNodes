@@ -1,4 +1,4 @@
-from scNodes.node import *
+from scNodes.core.node import *
 
 """
 This file can be used as a template to build a custom node. See the user manual for more information.

@@ -1,4 +1,4 @@
-from scNodes.ceplugin import *
+from scNodes.core.ceplugin import *
 
 
 def create():

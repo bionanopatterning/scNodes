@@ -1,6 +1,6 @@
-from scNodes.node import *
+from scNodes.core.node import *
 from tkinter import filedialog
-from scNodes import util
+from scNodes.core import util
 import os
 from joblib.externals.loky import set_loky_pickler
 set_loky_pickler("dill")
