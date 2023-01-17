@@ -1,3 +1,6 @@
 /venv/
 imgui.ini
 /.idea
+/build
+/dist
+/scNodes.egg-info

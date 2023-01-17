@@ -1,0 +1,200 @@
+scNodes version 1.0.40 GNU GPL v3
+01/17/2023, 14:39:13
+
+ ____________________ 
+
+<nodes.register.RegisterNode object at 0x0000026587D0DC70> error: too many indices for array: array is 2-dimensional, but 3 were indexed
+
+Traceback (most recent call last):
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\node.py", line 348, in get_image
+    self.last_frame_returned = self.get_image_impl(idx)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\nodes\register.py", line 169, in get_image_impl
+    input_img.bake_transform(interpolation=self.interpolation, edges=RegisterNode.edge_fill_options_scipy_argument[self.edge_fill], preserve_range=self.preserve_range)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\dataset.py", line 177, in bake_transform
+    self.data = transform.warp(self.data, tmat, order=interpolation, mode=edges, preserve_range=preserve_range)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\skimage\transform\_warps.py", line 988, in warp
+    coords = warp_coords(coord_map, output_shape)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\skimage\transform\_warps.py", line 675, in warp_coords
+    tf_coords = coord_map(tf_coords)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\skimage\transform\_warps.py", line 979, in coord_map
+    return inverse_map(*args, **map_args)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\skimage\transform\_geometric.py", line 616, in __call__
+    return self._apply_mat(coords, self.params)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\skimage\transform\_geometric.py", line 590, in _apply_mat
+    dst[dst[:, ndim] == 0, ndim] = np.finfo(float).eps
+IndexError: too many indices for array: array is 2-dimensional, but 3 were indexed
+
+
+ ____________________ 
+
+<nodes.register.RegisterNode object at 0x0000026587D0DC70> error: too many indices for array: array is 2-dimensional, but 3 were indexed
+
+Traceback (most recent call last):
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\node.py", line 348, in get_image
+    self.last_frame_returned = self.get_image_impl(idx)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\nodes\register.py", line 169, in get_image_impl
+    input_img.bake_transform(interpolation=self.interpolation, edges=RegisterNode.edge_fill_options_scipy_argument[self.edge_fill], preserve_range=self.preserve_range)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\dataset.py", line 177, in bake_transform
+    self.data = transform.warp(self.data, tmat, order=interpolation, mode=edges, preserve_range=preserve_range)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\skimage\transform\_warps.py", line 988, in warp
+    coords = warp_coords(coord_map, output_shape)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\skimage\transform\_warps.py", line 675, in warp_coords
+    tf_coords = coord_map(tf_coords)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\skimage\transform\_warps.py", line 979, in coord_map
+    return inverse_map(*args, **map_args)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\skimage\transform\_geometric.py", line 616, in __call__
+    return self._apply_mat(coords, self.params)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\skimage\transform\_geometric.py", line 590, in _apply_mat
+    dst[dst[:, ndim] == 0, ndim] = np.finfo(float).eps
+IndexError: too many indices for array: array is 2-dimensional, but 3 were indexed
+
+
+ ____________________ 
+
+Error baking stack: 
+name 'Parallel' is not defined
+
+Traceback (most recent call last):
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\nodes\bakestack.py", line 171, in on_update
+    coordinates = Parallel(n_jobs=cfg.batch_size, mmap_mode=settings.joblib_mmmode)(delayed(self.get_image_and_save)(index) for index in indices)
+NameError: name 'Parallel' is not defined
+
+
+ ____________________ 
+
+<nodes.psffitting.ParticleFittingNode object at 0x0000026588178160> error: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+Traceback (most recent call last):
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\node.py", line 351, in get_image
+    retval = self.get_image_impl(idx)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\nodes\psffitting.py", line 205, in get_image_impl
+    particles = pfit.frame_to_particles(frame, self.initial_sigma, self.estimator, self.crop_radius, constraints = [self.intensity_min, self.intensity_max, -1, -1, -1, -1, self.sigma_min, self.sigma_max, self.offset_min, self.offset_max])
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\particlefitting.py", line 49, in frame_to_particles
+    parameters, states, chi_squares, number_iterations, execution_time = gf.fit_constrained(data, None,
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\pygpufit\gpufit.py", line 282, in fit_constrained
+    raise RuntimeError('status = {}, message = {}'.format(status, error_message))
+RuntimeError: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+
+ ____________________ 
+
+<nodes.psffitting.ParticleFittingNode object at 0x0000026588178160> error: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+Traceback (most recent call last):
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\node.py", line 351, in get_image
+    retval = self.get_image_impl(idx)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\nodes\psffitting.py", line 205, in get_image_impl
+    particles = pfit.frame_to_particles(frame, self.initial_sigma, self.estimator, self.crop_radius, constraints = [self.intensity_min, self.intensity_max, -1, -1, -1, -1, self.sigma_min, self.sigma_max, self.offset_min, self.offset_max])
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\particlefitting.py", line 49, in frame_to_particles
+    parameters, states, chi_squares, number_iterations, execution_time = gf.fit_constrained(data, None,
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\pygpufit\gpufit.py", line 282, in fit_constrained
+    raise RuntimeError('status = {}, message = {}'.format(status, error_message))
+RuntimeError: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+
+ ____________________ 
+
+<nodes.psffitting.ParticleFittingNode object at 0x0000026588178160> error: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+Traceback (most recent call last):
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\node.py", line 351, in get_image
+    retval = self.get_image_impl(idx)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\nodes\psffitting.py", line 205, in get_image_impl
+    particles = pfit.frame_to_particles(frame, self.initial_sigma, self.estimator, self.crop_radius, constraints = [self.intensity_min, self.intensity_max, -1, -1, -1, -1, self.sigma_min, self.sigma_max, self.offset_min, self.offset_max])
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\particlefitting.py", line 49, in frame_to_particles
+    parameters, states, chi_squares, number_iterations, execution_time = gf.fit_constrained(data, None,
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\pygpufit\gpufit.py", line 282, in fit_constrained
+    raise RuntimeError('status = {}, message = {}'.format(status, error_message))
+RuntimeError: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+
+ ____________________ 
+
+<nodes.psffitting.ParticleFittingNode object at 0x0000026588178160> error: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+Traceback (most recent call last):
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\node.py", line 351, in get_image
+    retval = self.get_image_impl(idx)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\nodes\psffitting.py", line 205, in get_image_impl
+    particles = pfit.frame_to_particles(frame, self.initial_sigma, self.estimator, self.crop_radius, constraints = [self.intensity_min, self.intensity_max, -1, -1, -1, -1, self.sigma_min, self.sigma_max, self.offset_min, self.offset_max])
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\particlefitting.py", line 49, in frame_to_particles
+    parameters, states, chi_squares, number_iterations, execution_time = gf.fit_constrained(data, None,
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\pygpufit\gpufit.py", line 282, in fit_constrained
+    raise RuntimeError('status = {}, message = {}'.format(status, error_message))
+RuntimeError: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+
+ ____________________ 
+
+<nodes.psffitting.ParticleFittingNode object at 0x0000026588178160> error: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+Traceback (most recent call last):
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\node.py", line 351, in get_image
+    retval = self.get_image_impl(idx)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\nodes\psffitting.py", line 205, in get_image_impl
+    particles = pfit.frame_to_particles(frame, self.initial_sigma, self.estimator, self.crop_radius, constraints = [self.intensity_min, self.intensity_max, -1, -1, -1, -1, self.sigma_min, self.sigma_max, self.offset_min, self.offset_max])
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\particlefitting.py", line 49, in frame_to_particles
+    parameters, states, chi_squares, number_iterations, execution_time = gf.fit_constrained(data, None,
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\pygpufit\gpufit.py", line 282, in fit_constrained
+    raise RuntimeError('status = {}, message = {}'.format(status, error_message))
+RuntimeError: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+
+ ____________________ 
+
+<nodes.psffitting.ParticleFittingNode object at 0x0000026588178160> error: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+Traceback (most recent call last):
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\node.py", line 351, in get_image
+    retval = self.get_image_impl(idx)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\nodes\psffitting.py", line 205, in get_image_impl
+    particles = pfit.frame_to_particles(frame, self.initial_sigma, self.estimator, self.crop_radius, constraints = [self.intensity_min, self.intensity_max, -1, -1, -1, -1, self.sigma_min, self.sigma_max, self.offset_min, self.offset_max])
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\particlefitting.py", line 49, in frame_to_particles
+    parameters, states, chi_squares, number_iterations, execution_time = gf.fit_constrained(data, None,
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\pygpufit\gpufit.py", line 282, in fit_constrained
+    raise RuntimeError('status = {}, message = {}'.format(status, error_message))
+RuntimeError: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+
+ ____________________ 
+
+<nodes.psffitting.ParticleFittingNode object at 0x0000026588178160> error: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+Traceback (most recent call last):
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\node.py", line 351, in get_image
+    retval = self.get_image_impl(idx)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\nodes\psffitting.py", line 205, in get_image_impl
+    particles = pfit.frame_to_particles(frame, self.initial_sigma, self.estimator, self.crop_radius, constraints = [self.intensity_min, self.intensity_max, -1, -1, -1, -1, self.sigma_min, self.sigma_max, self.offset_min, self.offset_max])
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\particlefitting.py", line 49, in frame_to_particles
+    parameters, states, chi_squares, number_iterations, execution_time = gf.fit_constrained(data, None,
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\pygpufit\gpufit.py", line 282, in fit_constrained
+    raise RuntimeError('status = {}, message = {}'.format(status, error_message))
+RuntimeError: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+
+ ____________________ 
+
+<nodes.psffitting.ParticleFittingNode object at 0x0000026588178160> error: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+Traceback (most recent call last):
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\node.py", line 351, in get_image
+    retval = self.get_image_impl(idx)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\nodes\psffitting.py", line 205, in get_image_impl
+    particles = pfit.frame_to_particles(frame, self.initial_sigma, self.estimator, self.crop_radius, constraints = [self.intensity_min, self.intensity_max, -1, -1, -1, -1, self.sigma_min, self.sigma_max, self.offset_min, self.offset_max])
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\particlefitting.py", line 49, in frame_to_particles
+    parameters, states, chi_squares, number_iterations, execution_time = gf.fit_constrained(data, None,
+  File "C:\Users\mgflast\PycharmProjects\scNodes\venv\lib\site-packages\pygpufit\gpufit.py", line 282, in fit_constrained
+    raise RuntimeError('status = {}, message = {}'.format(status, error_message))
+RuntimeError: status = -1, message = b'CUDA driver version is insufficient for CUDA runtime version'
+
+
+ ____________________ 
+
+<nodes.exportdata.ExportDataNode object at 0x0000026592D14880> error: 'NoneType' object has no attribute 'load'
+
+Traceback (most recent call last):
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\core\node.py", line 351, in get_image
+    retval = self.get_image_impl(idx)
+  File "C:\Users\mgflast\PycharmProjects\scNodes\scNodes\nodes\exportdata.py", line 158, in get_image_impl
+    img_pxd = incoming_img.load()
+AttributeError: 'NoneType' object has no attribute 'load'
