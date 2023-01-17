@@ -14,5 +14,9 @@ def install():
     #    f.write('@echo off\n"' + str(executable) + '" "' + root + '__main__.py' + '"\npause')
     subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-index", "--find-links", root+"wheels/pyGpufit-1.2.0-py2.py3-none-any.whl", "pyGpufit"])
     subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-index", "--find-links", root+"wheels/dill-0.3.6-py3-none-any.whl", "pyGpufit"])
-    subprocess.check_call([sys.executable, "-m", "pip", "install", root+"wheels/pyimgui_wheels-2.0.1-cp38-cp38-manylinux1_x86_64.whl", "pyimgui-wheels"])
+    try:
+        print("Trying to install pyimgui-wheels...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", root+"wheels/pyimgui-wheels-2.0.1.tar.gz"])
+    except Exception as e:
+        print("Installation of pyimgui-wheels failed - try running the following command:\npip install pyimgui-wheels\nand if succesful:\npython -m scNodes")
 

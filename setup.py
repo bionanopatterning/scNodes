@@ -2,14 +2,14 @@ from setuptools import setup, find_packages
 
 setup(
     name='scNodes',
-    version='1.0.40',
+    version='1.0.47',
     packages=find_packages(),
     url='https://github.com/bionanopatterning/scNodes',
     license='GPL v3',
     author='mgflast',
     author_email='m.g.f.last@lumc.nl',
     description='Correlating super-resolution fluorescence and transmission electron cryo-microscopy',
-    package_data={'': ['*.png', '*.glsl', '*.whl', '*.tar.gz']},
+    package_data={'': ['*.png', '*.glsl', '*.whl', '*.tar.gz', '*.pdf']},
     include_package_data=True,
     install_requires=[
         "colorcet>=3.0.0",

@@ -9,6 +9,7 @@ from tkinter import filedialog
 from scNodes.core.node import *
 import os
 import pyperclip
+import dill as pickle
 from scNodes.core.opengl_classes import Texture
 tkroot = tk.Tk()
 tkroot.withdraw()
@@ -361,7 +362,7 @@ class NodeEditor:
             def __del__(self):
                 self.node_obj.delete()
 
-        node_source_files = glob.glob("nodes/*.py")  # load all .py files in the /nodes folder
+        node_source_files = glob.glob(cfg.root+"nodes/*.py")  # load all .py files in the /nodes folder
         i = 0
         for nodesrc in node_source_files:  # for every file, dynamically load module and save the module's create() function to a dict, keyed by name of node.
             i += 1
@@ -371,7 +372,7 @@ class NodeEditor:
             module_name = nodesrc[nodesrc.rfind("\\")+1:-3]
             try:
                 # get the module spec and import the module
-                mod = importlib.import_module("nodes."+module_name)
+                mod = importlib.import_module("scNodes.nodes."+module_name)
                 impl = NodeImpl(mod.create)
                 if not impl.enabled:
                     continue

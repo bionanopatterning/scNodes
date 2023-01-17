@@ -7,7 +7,7 @@ from datetime import datetime
 
 root = ""
 app_name = "scNodes"
-version = "1.0.40"
+version = "1.0.41"
 license = "GNU GPL v3"
 logpath = "log.txt"
 nodes = list()
@@ -49,7 +49,7 @@ pickle_temp = dict()
 
 
 ## 221221 correlation editor vars & related
-active_editor = 1  # 0 for node editor, 1 for correlation
+active_editor = 0  # 0 for node editor, 1 for correlation
 ce_frames = list()
 ce_active_frame = None
 ce_clear_colour = (1.0, 1.0, 1.0, 1.0)

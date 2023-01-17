@@ -15,7 +15,7 @@ class Reconstructor:
 
     def __init__(self):
         # Shader
-        self.shader = Shader("shaders/ne_reconstructor_shader.glsl")
+        self.shader = Shader(cfg.root+"shaders/ne_reconstructor_shader.glsl")
         # create texture, gaussian spot img, set pixel sizes etc.
         self.texture = Texture(format="r32f")
         self.texture.set_linear_interpolation()

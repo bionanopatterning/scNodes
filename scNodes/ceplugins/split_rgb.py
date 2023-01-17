@@ -1,6 +1,7 @@
 from scNodes.core.ceplugin import *
 from copy import deepcopy
 
+
 def create():
     return SplitRGBPlugin()
 
