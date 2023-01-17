@@ -239,6 +239,7 @@ class CorrelationEditor:
             new_frame.contrast_lims = [frame_obj._ce_clims[0], frame_obj._ce_clims[1]]
             new_frame.rgb_contrast_lims = copy(frame_obj._ce_clims)
             new_frame.transform.translation = deepcopy(self.camera.position)
+            new_frame.pivot_point = deepcopy(self.camera.position )
             new_frame.update_lut()
             cfg.ce_frames.insert(0, new_frame)
             CorrelationEditor.active_frame = new_frame
@@ -601,7 +602,6 @@ class CorrelationEditor:
                 if force_square:
                     ex_width = CorrelationEditor.ex_lims[2] - CorrelationEditor.ex_lims[0]
                     ex_height = CorrelationEditor.ex_lims[3] - CorrelationEditor.ex_lims[1]
-                    print(ex_width, ex_height)
                     if ex_width > ex_height:
                         delta = ex_width - ex_height
                         CorrelationEditor.ex_lims[2] -= delta / 2
@@ -1362,14 +1362,14 @@ class CorrelationEditor:
                 self.info = self.tool_obj.description
 
         toolimpls = list()
-        tool_source_files = glob.glob("ceplugins/*.py")
+        tool_source_files = glob.glob(cfg.root+"ceplugins/*.py")
         for toolsrc in tool_source_files:
             if "custom_tool_template" in toolsrc or "__init__.py" in toolsrc:
                 continue
 
             module_name = toolsrc[toolsrc.rfind("\\")+1:-3]
             try:
-                mod = importlib.import_module("ceplugins."+module_name)
+                mod = importlib.import_module("scNodes.ceplugins."+module_name)
                 toolimpls.append(ToolImpl(mod.create))
             except Exception as e:
                 cfg.set_error(e, f"No well-defined Plugin found in {toolsrc}. See manual for minimal code requirements.")
