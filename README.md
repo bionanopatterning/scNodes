@@ -14,19 +14,19 @@ Instructions on how to install and use scNodes can be found in the manual: 'scNo
 
 ### Gallery
 ___
-####scNodes home screen
+#### scNodes home screen
 ![](res/readme_img_c.png)
 ___
-####Overview of default nodes in the Node Editor
+#### Overview of default nodes in the Node Editor
 ![](res/readme_img_b.png)
 ___
-####Correlating super-resolution fluorescnce with cryo-electron tomography in the Correlation Editor
+#### Correlating super-resolution fluorescnce with cryo-electron tomography in the Correlation Editor
 ![](res/readme_img_a.png)!
 
 ___
-####Super-resolution fluorescence reconstruction in the Node Editor
+#### Super-resolution fluorescence reconstruction in the Node Editor
 ![](res/readme_img_d.png)
 
 ___
-####Editing tools in the Correlation Editor
+#### Editing tools in the Correlation Editor
 ![](res/readme_img_e.png)
