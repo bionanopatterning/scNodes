@@ -20,8 +20,8 @@ ___
 #### Overview of default nodes in the Node Editor
 ![](res/readme_img_b.png)
 ___
-#### Correlating super-resolution fluorescnce with cryo-electron tomography in the Correlation Editor
-![](res/readme_img_a.png)!
+#### Correlating super-resolution fluorescence with cryo-electron tomography in the Correlation Editor
+![](res/readme_img_a.png)
 
 ___
 #### Super-resolution fluorescence reconstruction in the Node Editor
