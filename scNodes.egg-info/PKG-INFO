@@ -1,13 +1,9 @@
 Metadata-Version: 2.1
 Name: scNodes
-Version: 1.0.36
+Version: 1.0.40
 Summary: Correlating super-resolution fluorescence and transmission electron cryo-microscopy
 Home-page: https://github.com/bionanopatterning/scNodes
 Author: mgflast
 Author-email: m.g.f.last@lumc.nl
-License: GNU GPL v3
-Platform: UNKNOWN
+License: GPL v3
 License-File: LICENSE.txt
-
-UNKNOWN
-

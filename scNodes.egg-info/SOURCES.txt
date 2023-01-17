@@ -79,6 +79,7 @@ scNodes/shaders/line_shader.glsl
 scNodes/shaders/ne_reconstructor_shader.glsl
 scNodes/shaders/textured_shader.glsl
 scNodes/wheels/__init__.py
+scNodes/wheels/dill-0.3.6-py3-none-any.whl
 scNodes/wheels/pyGpufit-1.2.0-py2.py3-none-any.whl
 scNodes/wheels/pyimgui-wheels-2.0.1.tar.gz
 scNodes/wheels/pyimgui_wheels-2.0.1-cp38-cp38-manylinux1_x86_64.whl

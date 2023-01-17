@@ -1,12 +1,11 @@
 from setuptools import setup, find_packages
-import scNodes.core.config as cfg
 
 setup(
     name='scNodes',
-    version=cfg.version,
+    version='1.0.40',
     packages=find_packages(),
     url='https://github.com/bionanopatterning/scNodes',
-    license='GNU GPL v3',
+    license='GPL v3',
     author='mgflast',
     author_email='m.g.f.last@lumc.nl',
     description='Correlating super-resolution fluorescence and transmission electron cryo-microscopy',

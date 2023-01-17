@@ -7,7 +7,7 @@ from datetime import datetime
 
 root = ""
 app_name = "scNodes"
-version = "1.0.37"
+version = "1.0.40"
 license = "GNU GPL v3"
 logpath = "log.txt"
 nodes = list()
