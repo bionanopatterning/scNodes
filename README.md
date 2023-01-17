@@ -1,6 +1,6 @@
 ![](scNodes/icons/scnodes_boot_img.png)
 
-###scNodes: correlating super-resolution fluorescence & transmission electron cryomicroscopy
+### scNodes: correlating super-resolution fluorescence & transmission electron cryomicroscopy
 
 #### About
 scNodes is multiple things: i) software for super-resolution fluorescence microscopy data processing, ii) software for correlation of multi-modal microscopy, such as fluorescence & electron microscopy, but mainly iii) **a software suite for correlated super-resolution fluorescence and transmission electron cryomicroscopy.** 
@@ -12,7 +12,7 @@ While the first public release of scNodes comprises a fully functional programme
 #### Installation
 Instructions on how to install and use scNodes can be found in the manual: 'scNodes_manual.pdf'. For help, visit the Discussions board. Inquiries: m.g.f.last@lumc.nl
 
-###Gallery
+### Gallery
 ___
 ####scNodes home screen
 ![](res/readme_img_c.png)
