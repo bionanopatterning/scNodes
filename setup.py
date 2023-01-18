@@ -1,8 +1,18 @@
 from setuptools import setup, find_packages
 
+# how to release:
+# update version number in config manually
+
+# push to pypi:
+# python setup.py sdist
+# twine upload dist/*
+#
+# bundle as .exe:
+# pyinstaller scNodes.spec --noconfirm
+
 setup(
     name='scNodes',
-    version='1.0.61',
+    version='1.0.62',
     packages=find_packages(),
     url='https://github.com/bionanopatterning/scNodes',
     license='GPL v3',
