@@ -248,6 +248,8 @@ class ParticleData:
         self.n_particles = 0
         for p in self.particles:
             if p.visible or not discard_filtered_particles:
+                if p.intensity == 0.0:
+                    continue
                 self.n_particles += 1
                 frame.append(p.frame)
                 x.append(p.x)
