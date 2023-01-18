@@ -60,5 +60,7 @@ class BinImageNode(Node):
                 pxd = pxd.reshape((width // self.factor, self.factor, height // self.factor, self.factor)).max(3).max(1)
             elif self.mode == 4:
                 pxd = pxd.reshape((width // self.factor, self.factor, height // self.factor, self.factor)).sum(3).sum(1)
-            return image_in
+            image_out = image_in.clone()
+            image_out.data = pxd
+            return image_out
 
