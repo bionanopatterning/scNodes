@@ -365,6 +365,7 @@ class NodeEditor:
         node_source_files = glob.glob(cfg.root+"nodes/*.py")  # load all .py files in the /nodes folder
         i = 0
         for nodesrc in node_source_files:  # for every file, dynamically load module and save the module's create() function to a dict, keyed by name of node.
+            print(nodesrc)
             i += 1
             if "__init__.py" in nodesrc:
                 continue
@@ -372,7 +373,7 @@ class NodeEditor:
             module_name = nodesrc[nodesrc.rfind("\\")+1:-3]
             try:
                 # get the module spec and import the module
-                mod = importlib.import_module("scNodes.nodes."+module_name)
+                mod = importlib.import_module("nodes."+module_name)
                 impl = NodeImpl(mod.create)
                 if not impl.enabled:
                     continue

@@ -1,7 +1,9 @@
 import os, sys
 directory = os.path.join(os.path.dirname(__file__))
 directory = directory[:directory.rfind("\\")]
+sys.path.insert(0, os.path.abspath(".."))
 sys.path.append(directory)
+
 
 if __name__ == "__main__":
     if 'install' in sys.argv:
@@ -16,11 +18,10 @@ if __name__ == "__main__":
         from joblib.externals.loky import set_loky_pickler
         set_loky_pickler("cloudpickle")
 
-        cfg.root = os.path.join(os.path.dirname(__file__)).replace("\\", "/")+"/"
+        #cfg.root = os.path.join(os.path.dirname(__file__)).replace("\\", "/")+"/"
         cfg.start_log()
         if not glfw.init():
             raise Exception("Could not initialize GLFW library!")
-
 
         # Init the main window, its imgui context, and a glfw rendering impl.
         main_window = Window(cfg.window_width, cfg.window_height, settings.ne_window_title)
@@ -44,12 +45,10 @@ if __name__ == "__main__":
         cfg.correlation_editor = correlation_editor
         cfg.image_viewer = image_viewer
 
-
         try:
             while not glfw.window_should_close(main_window.glfw_window):
                 if not (main_window.focused or image_viewer_window.focused):
                     glfw.poll_events()
-
                 if cfg.active_editor == 0:
                     node_editor.on_update()
                     node_editor.end_frame()
@@ -60,7 +59,7 @@ if __name__ == "__main__":
                 image_viewer.on_update()
                 image_viewer.end_frame()
         except Exception as e:
-            cfg.set_error(e, "CRITICAL ERROR IN SCNODES MAIN\n")
+            cfg.set_error(e, "CRASH")
             cfg.write_to_log(cfg.error_msg)
         finally:
             node_editor.delete_temporary_files()

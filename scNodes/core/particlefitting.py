@@ -3,7 +3,6 @@ import pygpufit.gpufit as gf
 from scNodes.core.reconstruction import Particle
 
 
-
 def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constraints=(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1)):
     def get_background_stdev(flat_roi, fitted_params):
         gauss = np.empty_like(flat_roi)

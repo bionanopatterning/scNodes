@@ -4,3 +4,6 @@ imgui.ini
 /build
 /dist
 /scNodes.egg-info
+/scNodes/build/
+/scNodes/dist/
+/scNodes/__main__.spec

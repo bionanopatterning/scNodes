@@ -32,3 +32,5 @@ setup(
         "tifffile>=2021.11.2" ## todo check - was 2022.8.12
     ]
 )
+
+# pyinstaller --onefile --name=scNodes scNodes.spec
