@@ -1,5 +1,5 @@
-scNodes version 1.0.41 GNU GPL v3
-01/18/2023, 19:37:35
+scNodes version 1.0.62 GNU GPL v3
+01/18/2023, 22:35:06
 
  ____________________ 
 

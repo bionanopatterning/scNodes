@@ -240,7 +240,9 @@ class CorrelationEditor:
             new_frame.contrast_lims = [frame_obj._ce_clims[0], frame_obj._ce_clims[1]]
             new_frame.rgb_contrast_lims = copy(frame_obj._ce_clims)
             new_frame.transform.translation = deepcopy(self.camera.position)
-            new_frame.pivot_point = deepcopy(self.camera.position )
+            new_frame.transform.translation[0] *= -1
+            new_frame.transform.translation[1] *= -1
+            new_frame.pivot_point = deepcopy(self.camera.position)
             new_frame.update_lut()
             cfg.ce_frames.insert(0, new_frame)
             CorrelationEditor.active_frame = new_frame
