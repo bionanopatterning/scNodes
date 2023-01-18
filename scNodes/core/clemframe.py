@@ -282,23 +282,31 @@ class CLEMFrame:
     def generate_va(self):
         # set up the quad vertex array
         w, h = self.width * 0.5, self.height * 0.5
-        vertex_attributes = [-w, h, 1.0, 0.0, 1.0,
-                             -w, -h, 1.0, 0.0, 0.0,
-                             w, -h, 1.0, 1.0, 0.0,
-                             w, h, 1.0, 1.0, 1.0]
+        vertex_attributes = list()
+        indices = list()
+        border_indices = list()
+        n = cfg.ce_va_subdivision
+        for i in range(n):
+            for j in range(n):
+                x = ((2 * i / (n - 1)) - 1) * w
+                y = ((2 * j / (n - 1)) - 1) * h
+                u = 0.5 + x / w / 2
+                v = 0.5 + y / h / 2
+                vertex_attributes += [x, y, 0.0, u, v]
+        for i in range(n - 1):
+            for j in range(n - 1):
+                idx = i * n + j
+                indices += [idx, idx + 1, idx + n, idx + n, idx + 1, idx + n + 1]
+
         self.corner_positions_local = [[-w, h], [-w, -h], [w, -h], [w, h]]
-        indices = [0, 1, 2, 2, 0, 3]
-
-        ## TODO: tesselate
         self.quad_va.update(VertexBuffer(vertex_attributes), IndexBuffer(indices))
-
         # set up the border vertex array
         vertex_attributes = [-w, h,
                              w, h,
                              w, -h,
                              -w, -h]
         indices = [0, 1, 1, 2, 2, 3, 3, 0]
-        self.border_va.update(VertexBuffer(vertex_attributes), IndexBuffer(indices))
+        self.border_va.update(VertexBuffer(vertex_attributes), IndexBuffer(border_indices))
 
     def move_to_front(self):
         cfg.ce_frames.insert(0, cfg.ce_frames.pop(cfg.ce_frames.index(self)))

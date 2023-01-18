@@ -8,7 +8,7 @@ from datetime import datetime
 frozen = False
 root = ""
 app_name = "scNodes"
-version = "1.0.62"
+version = "1.0.63"
 license = "GNU GPL v3"
 logpath = "log.txt"
 nodes = list()
@@ -58,7 +58,7 @@ ce_default_pixel_size = 64.0
 ce_flip_on_load = False
 ce_flip_mrc_on_load = False
 ce_selected_position = [0, 0]
-
+ce_va_subdivision = 8
 def set_active_node(node, keep_active=False):
     global focused_node, active_node, next_active_node
     """

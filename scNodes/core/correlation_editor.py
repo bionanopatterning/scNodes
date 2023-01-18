@@ -56,7 +56,7 @@ class CorrelationEditor:
         BLEND_COMBO_WIDTH = 150
         VISUALS_CTRL_ALPHA = 0.8
 
-        CAMERA_MAX_ZOOM = 0.7
+        CAMERA_MAX_ZOOM = 10.0
 
         SCALE_BAR_HEIGHT = 6.0
         SCALE_BAR_WINDOW_MARGIN = 5.0
@@ -173,6 +173,7 @@ class CorrelationEditor:
             pxd_icon_close = np.asarray(Image.open(cfg.root+"icons/icon_close_256.png")).astype(np.float32) / 255.0
             self.icon_close.update(pxd_icon_close)
             self.icon_close.set_linear_interpolation()
+
 
     def on_update(self):
         imgui.set_current_context(self.imgui_context)
@@ -1516,7 +1517,7 @@ class Camera:
         self.view_matrix = np.matrix([
             [self.zoom, 0.0, 0.0, self.position[0] * self.zoom],
             [0.0, self.zoom, 0.0, self.position[1] * self.zoom],
-            [0.0, 0.0, self.zoom, self.position[2]],
+            [0.0, 0.0, 1.0, self.position[2]],
             [0.0, 0.0, 0.0, 1.0],
         ])
         self.view_projection_matrix = np.matmul(self.projection_matrix, self.view_matrix)
@@ -1582,10 +1583,10 @@ class EditorGizmo:
 
     def generate_va(self):
         w = EditorGizmo.ICON_SIZE * EditorGizmo.ICON_SIZES[self.gizmo_type]
-        vertex_attributes = [-w, w, 1.0, 0.0, 1.0,
-                             -w, -w, 1.0, 0.0, 0.0,
-                             w, -w, 1.0, 1.0, 0.0,
-                             w, w, 1.0, 1.0, 1.0]
+        vertex_attributes = [-w, w, 0.0, 0.0, 1.0,
+                             -w, -w, 0.0, 0.0, 0.0,
+                             w, -w, 0.0, 1.0, 0.0,
+                             w, w, 0.0, 1.0, 1.0]
         self.corner_positions_local = [[-w, w], [-w, -w], [w, -w], [w, w]]
         indices = [0, 1, 2, 2, 0, 3]
         self.va.update(VertexBuffer(vertex_attributes), IndexBuffer(indices))
