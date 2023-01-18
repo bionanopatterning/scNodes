@@ -12,14 +12,12 @@ def install():
     #executable = sys.executable
     #with open(directory + "scNodes.bat", "w") as f:
     #    f.write('@echo off\n"' + str(executable) + '" "' + root + '__main__.py' + '"\npause')
-
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-index", "--find-links", root+"wheels/pyGpufit-1.2.0-py2.py3-none-any.whl", "pyGpufit"])
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-index", "--find-links", root+"wheels/dill-0.3.6-py3-none-any.whl", "dill"])
     try:
-        print("Trying to install pyimgui-wheels. This may take a couple of minutes.")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", root+"wheels/pyimgui-wheels-2.0.1.tar.gz"])
+        print("Trying to install pyGpufit, with wheel at:\n"+root+"wheels/pyGpufit-1.2.0-py2.py3-none-any.whl")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", root+"wheels/pyGpufit-1.2.0-py2.py3-none-any.whl", "pyGpufit"])
     except Exception as e:
-        print("Installation of pyimgui-wheels failed - try running the following command:\npip install pyimgui-wheels\nand if succesful:\npython -m scNodes")
+        print("Installation of pyGpufit failed. Try installing it manually.")
+        raise e
 
 if __name__=="__main__":
     install()

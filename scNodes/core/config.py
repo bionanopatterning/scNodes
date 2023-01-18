@@ -111,14 +111,14 @@ def load_project(filename):
         set_error(e, "Error loading project")
 
 def write_to_log(text):
-    with open(logpath, "a") as f:
+    with open(root+logpath, "a") as f:
         f.write("\n\n ____________________ \n\n")
         f.write(text)
 
 def start_log():
-    if os.path.exists(logpath):
-        os.remove(logpath)
-    with open(logpath, "a") as f:
+    if os.path.exists(root+logpath):
+        os.remove(root+logpath)
+    with open(root+logpath, "a") as f:
         f.write(app_name+" version "+version+" "+license+"\n"+datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
 
 COLOUR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 0.94)
@@ -154,5 +154,3 @@ TOOLTIP_HOVERED_TIMER = 0.0
 TOOLTIP_HOVERED_START_TIME = 0.0
 
 CE_WIDGET_ROUNDING = 50.0
-
-start_log()

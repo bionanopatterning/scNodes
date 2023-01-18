@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='scNodes',
-    version='1.0.53',
+    version='1.0.57',
     packages=find_packages(),
     url='https://github.com/bionanopatterning/scNodes',
     license='GPL v3',
@@ -27,6 +27,7 @@ setup(
         "PyWavelets>=1.3.0",
         "pyperclip>=1.8.2",
         "pystackreg>=0.2.6.post1",
+        "pyimgui-wheels",
         "scikit-image>=0.19.3",
         "tifffile>=2021.11.2" ## todo check - was 2022.8.12
     ]

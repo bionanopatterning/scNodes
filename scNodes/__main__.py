@@ -17,6 +17,7 @@ if __name__ == "__main__":
         set_loky_pickler("cloudpickle")
 
         cfg.root = os.path.join(os.path.dirname(__file__)).replace("\\", "/")+"/"
+        cfg.start_log()
         if not glfw.init():
             raise Exception("Could not initialize GLFW library!")
 
