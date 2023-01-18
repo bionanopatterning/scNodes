@@ -9,7 +9,7 @@ a = Analysis(
     pathex=['../venv/lib/site-packages/glfw', '../venv/lib/site-packages/pygpufit'],
     binaries=[],
     datas=[
-    ("./icons", "icons"), ("./shaders", "shaders"), ("./nodes", "nodes"),
+    ("./icons", "icons"), ("./shaders", "shaders"), ("./nodes", "nodes"), ("./ceplugins", "ceplugins"),
     ("./core/particlefitting.py", "scNodes/core"), ("./nodes/pysofi", "scNodes/nodes/pysofi"),
     ("../venv/lib/site-packages/pygpufit/Gpufit.dll", "pygpufit")],
     hiddenimports=['pywt', 'scNodes.core.particlefitting', 'pystackreg', 'cv2', 'scNodes.nodes.pysofi', 'pygpufit'],
