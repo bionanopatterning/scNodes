@@ -18,8 +18,14 @@ if __name__ == "__main__":
         from joblib.externals.loky import set_loky_pickler
         set_loky_pickler("cloudpickle")
 
-        #cfg.root = os.path.join(os.path.dirname(__file__)).replace("\\", "/")+"/"
         cfg.start_log()
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            cfg.write_to_log("Running in pyinstaller bundle")
+            cfg.frozen = True
+        else:
+            cfg.write_to_log("Running as a normal Python process.")
+            cfg.root = os.path.join(os.path.dirname(__file__)).replace("\\", "/")+"/"
+
         if not glfw.init():
             raise Exception("Could not initialize GLFW library!")
 

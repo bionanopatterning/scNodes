@@ -14,7 +14,7 @@ def install():
     #    f.write('@echo off\n"' + str(executable) + '" "' + root + '__main__.py' + '"\npause')
     try:
         print("Trying to install pyGpufit, with wheel at:\n"+root+"wheels/pyGpufit-1.2.0-py2.py3-none-any.whl")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", root+"wheels/pyGpufit-1.2.0-py2.py3-none-any.whl", "pyGpufit"])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", root+"wheels/pyGpufit-1.2.0-py2.py3-none-any.whl"])
     except Exception as e:
         print("Installation of pyGpufit failed. Try installing it manually.")
         raise e

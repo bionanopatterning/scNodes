@@ -1369,7 +1369,7 @@ class CorrelationEditor:
 
             module_name = toolsrc[toolsrc.rfind("\\")+1:-3]
             try:
-                mod = importlib.import_module("ceplugins."+module_name)
+                mod = importlib.import_module(("scNodes." if not cfg.frozen else "")+"ceplugins."+module_name)
                 toolimpls.append(ToolImpl(mod.create))
             except Exception as e:
                 cfg.set_error(e, f"No well-defined Plugin found in {toolsrc}. See manual for minimal code requirements.")

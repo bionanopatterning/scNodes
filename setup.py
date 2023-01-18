@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='scNodes',
-    version='1.0.57',
+    version='1.0.61',
     packages=find_packages(),
     url='https://github.com/bionanopatterning/scNodes',
     license='GPL v3',
@@ -32,5 +32,3 @@ setup(
         "tifffile>=2021.11.2" ## todo check - was 2022.8.12
     ]
 )
-
-# pyinstaller --onefile --name=scNodes scNodes.spec

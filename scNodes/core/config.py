@@ -5,9 +5,10 @@ import os
 from datetime import datetime
 # This file defines variables that can be accessed globally.
 
+frozen = False
 root = ""
 app_name = "scNodes"
-version = "1.0.41"
+version = "1.0.60"
 license = "GNU GPL v3"
 logpath = "log.txt"
 nodes = list()

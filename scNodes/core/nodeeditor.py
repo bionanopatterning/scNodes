@@ -146,6 +146,8 @@ class NodeEditor:
             if imgui.begin_popup_context_window():
                 imgui.text(f"version {cfg.version}\nsource: github.com/bionanopatterning/scNodes")
                 imgui.end_popup()
+            if self.window.focused and imgui.is_mouse_clicked(glfw.MOUSE_BUTTON_LEFT) and not imgui.is_window_hovered():
+                self.show_boot_img = False
             imgui.pop_style_color(1)
             imgui.end()
             imgui.pop_style_color(3)
@@ -365,7 +367,6 @@ class NodeEditor:
         node_source_files = glob.glob(cfg.root+"nodes/*.py")  # load all .py files in the /nodes folder
         i = 0
         for nodesrc in node_source_files:  # for every file, dynamically load module and save the module's create() function to a dict, keyed by name of node.
-            print(nodesrc)
             i += 1
             if "__init__.py" in nodesrc:
                 continue
@@ -373,7 +374,7 @@ class NodeEditor:
             module_name = nodesrc[nodesrc.rfind("\\")+1:-3]
             try:
                 # get the module spec and import the module
-                mod = importlib.import_module("nodes."+module_name)
+                mod = importlib.import_module(("scNodes." if not cfg.frozen else "")+"nodes."+module_name)
                 impl = NodeImpl(mod.create)
                 if not impl.enabled:
                     continue
