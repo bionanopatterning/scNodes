@@ -44,7 +44,7 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
     estimator = gf.EstimatorID.LSE if method == 0 else gf.EstimatorID.MLE
 
     # Set up constraints
-    constraint_type, constraint_values = parse_constraints(constraints, n_particles)
+    constraint_type, constraint_values = parse_constraints(constraints, n_particles, crop_radius)
     parameters, states, chi_squares, number_iterations, execution_time = gf.fit_constrained(data, None,
                                                                                             gf.ModelID.GAUSS_2D, params,
                                                                                             estimator_id=estimator,
@@ -80,12 +80,14 @@ constraint_type_dict[(True, False)] = gf.ConstraintType.UPPER
 constraint_type_dict[(False, False)] = gf.ConstraintType.LOWER_UPPER
 
 
-def parse_constraints(constraints, n_particles):
+def parse_constraints(constraints, n_particles, crop_radius):
     c_type_intensity = constraint_type_dict[(constraints[0] == -1.0, constraints[1] == -1.0)]
     c_type_sigma = constraint_type_dict[(constraints[6] == -1.0, constraints[7] == -1.0)]
     c_type_offset = constraint_type_dict[(constraints[8] == -1.0, constraints[9] == -1.0)]
 
-    constraint_types = np.asarray([c_type_intensity, gf.ConstraintType.FREE, gf.ConstraintType.FREE, c_type_sigma, c_type_offset], dtype=np.int32)
+    constraint_types = np.asarray([c_type_intensity, gf.ConstraintType.LOWER_UPPER, gf.ConstraintType.LOWER_UPPER, c_type_sigma, c_type_offset], dtype=np.int32)
     constraint_values = np.zeros((n_particles, 10), dtype=np.float32)
     constraint_values[:, :] = constraints
+    constraint_values[:, 3] = crop_radius*2 + 1
+    constraint_values[:, 5] = crop_radius*2 + 1
     return constraint_types, constraint_values

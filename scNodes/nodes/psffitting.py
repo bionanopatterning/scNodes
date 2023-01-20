@@ -147,8 +147,6 @@ class ParticleFittingNode(Node):
             imgui.pop_item_width()
 
     def init_fit(self):
-        print("STARTING PSF FITTING")
-        print(datetime.datetime.now().strftime('%Y%m%d %H:%M:%S'))
         try:
             self.time_start = time.time()
             dataset_source = Node.get_source_load_data_node(self)
@@ -178,8 +176,6 @@ class ParticleFittingNode(Node):
                     self.fitting = False
                     self.play = False
                     self.particle_data.bake()
-                    print("PSF FITTING DONE")
-                    print(datetime.datetime.now().strftime('%Y%m%d %H:%M:%S'))
                 else:
                     fitted_frame = self.get_image(self.frames_to_fit[-1])
                     self.n_fitted += 1
@@ -205,7 +201,7 @@ class ParticleFittingNode(Node):
                 return frame
             particles = list()
             if self.estimator in [0, 1]:
-                particles = pfit.frame_to_particles(frame, self.initial_sigma, self.estimator, self.crop_radius, constraints = [self.intensity_min, self.intensity_max, -1, -1, -1, -1, self.sigma_min, self.sigma_max, self.offset_min, self.offset_max])
+                particles = pfit.frame_to_particles(frame, self.initial_sigma, self.estimator, self.crop_radius, constraints=[self.intensity_min, self.intensity_max, -1, -1, -1, -1, self.sigma_min, self.sigma_max, self.offset_min, self.offset_max])
             elif self.estimator == 2:
                 particles = list()
                 pxd = frame.load()

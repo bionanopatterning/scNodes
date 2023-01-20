@@ -124,7 +124,7 @@ class ReconstructionRendererNode(Node):
             else:
                 _cw = imgui.get_content_region_available_width()
                 imgui.new_line()
-                imgui.same_line(spacing = _cw / 2 - 70 / 2)
+                imgui.same_line(spacing=_cw / 2 - 70 / 2)
                 if imgui.button("Render", 70, 30):
                     self.build_reconstruction()
 

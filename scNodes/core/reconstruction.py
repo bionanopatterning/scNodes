@@ -98,7 +98,6 @@ class Reconstructor:
         Render the particles in the currently st ParticleData obj. (see set_particle_data()), at the current pixel size (see set_pixel_size()).
         :return: a 3D [width, height, 3] numpy array of type float (when in mode 'float') or uint16 (mode 'ui16'). See set_mode()
         """
-        print("Start render in reconstruction.py")
         if not self.particle_data.baked_by_renderer:
             self.update_particle_data()  # refresh the instance buffers
 

@@ -169,13 +169,13 @@ class Frame:
     def clean(self):
         self.translation = [0.0, 0.0]
         self.discard = False
-        self.data = None ## TODO: check whether app is faster and output still correct when this line is removed.
+        self.data = None
         self.maxima = list()
 
     def clone(self):
         return copy.deepcopy(self)
 
-    def bake_transform(self, interpolation = 1, edges = 'constant', preserve_range=False):
+    def bake_transform(self, interpolation=1, edges='constant', preserve_range=False):
         tmat = transform.AffineTransform(np.matrix([[1.0, 0.0, self.translation[0]], [0.0, 1.0, self.translation[1]], [0.0, 0.0, 1.0]]))
         self.data = transform.warp(self.data, tmat, order=interpolation, mode=edges, preserve_range=preserve_range)
 
@@ -252,8 +252,6 @@ class ParticleData:
         for p in self.particles:
             if p.visible or not discard_filtered_particles:
                 if p.intensity == 0.0:
-                    continue
-                if p.x < 0 or p.y < 0 or p.x > self.reconstruction_roi or p.y > self.reconstruction_roi:
                     continue
                 self.n_particles += 1
                 frame.append(p.frame)
