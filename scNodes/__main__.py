@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 directory = os.path.join(os.path.dirname(__file__))
 directory = directory[:directory.rfind("\\")]
 sys.path.insert(0, os.path.abspath(".."))

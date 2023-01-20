@@ -47,8 +47,8 @@ class ParticleDetectionNode(Node):
             _c, self.use_roi = imgui.checkbox("use ROI", self.use_roi)
             self.any_change = self.any_change or _c
             imgui.push_item_width(160)
-            _c, self.method = imgui.combo("Detection method", self.method, ParticleDetectionNode.METHODS)
-            self.any_change = self.any_change or _c
+            #_c, self.method = imgui.combo("Detection method", self.method, ParticleDetectionNode.METHODS)
+            #self.any_change = self.any_change or _c
             _c, self.thresholding = imgui.combo("Threshold method", self.thresholding, ParticleDetectionNode.THRESHOLD_OPTIONS)
             self.any_change = self.any_change or _c
             if self.thresholding == 0:

@@ -61,7 +61,7 @@ class ParticleFittingNode(Node):
             imgui.spacing()
             imgui.separator()
             imgui.spacing()
-            imgui.set_next_item_width(200)
+            imgui.set_next_item_width(180)
             _c, self.estimator = imgui.combo("Estimator", self.estimator, ParticleFittingNode.ESTIMATORS)
             if self.estimator in [0, 1]:
                 imgui.same_line()
@@ -78,7 +78,7 @@ class ParticleFittingNode(Node):
                 self.any_change = _c or self.any_change
             imgui.pop_item_width()
             imgui.spacing()
-            imgui.set_next_item_width(200)
+            imgui.set_next_item_width(180)
             _c, self.range_option = imgui.combo("Range", self.range_option,
                                                 ParticleFittingNode.RANGE_OPTIONS)
             if self.range_option == 2:
@@ -147,6 +147,8 @@ class ParticleFittingNode(Node):
             imgui.pop_item_width()
 
     def init_fit(self):
+        print("STARTING PSF FITTING")
+        print(datetime.datetime.now().strftime('%Y%m%d %H:%M:%S'))
         try:
             self.time_start = time.time()
             dataset_source = Node.get_source_load_data_node(self)
@@ -176,7 +178,8 @@ class ParticleFittingNode(Node):
                     self.fitting = False
                     self.play = False
                     self.particle_data.bake()
-                    print(self.particle_data)
+                    print("PSF FITTING DONE")
+                    print(datetime.datetime.now().strftime('%Y%m%d %H:%M:%S'))
                 else:
                     fitted_frame = self.get_image(self.frames_to_fit[-1])
                     self.n_fitted += 1
@@ -188,7 +191,7 @@ class ParticleFittingNode(Node):
         except Exception as e:
             self.fitting = False
             self.play = False
-            cfg.set_error(e, "Error in ParticleFitNode.on_update(self): "+str(e))
+            cfg.set_error(e, "Error while fitting with PSF fitting node: "+str(e))
 
     def get_image_impl(self, idx=None):
         data_source = self.dataset_in.get_incoming_node()
@@ -223,10 +226,10 @@ class ParticleFittingNode(Node):
         return self.particle_data
 
     def pre_save_impl(self):
-        pass # cfg.pickle_temp["particle_data"] = self.particle_data
-        # self.particle_data = ParticleData()
+        cfg.pickle_temp["particle_data"] = self.particle_data
+        self.particle_data = ParticleData()
 
     def post_save_impl(self):
-        pass # self.particle_data = cfg.pickle_temp["particle_data"]
+        self.particle_data = cfg.pickle_temp["particle_data"]
 
 

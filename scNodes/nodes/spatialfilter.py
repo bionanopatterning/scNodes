@@ -24,7 +24,6 @@ class SpatialFilterNode(Node):
     WAVELETS["Reverse biorthogonal 2.2"] = 'rbio2.2'
     WAVELETS["Other..."] = None
 
-
     WAVELET_NAMES = list(WAVELETS.keys())
     WAVELET_OTHER_IDX = WAVELET_NAMES.index("Other...")
 
@@ -103,6 +102,8 @@ class SpatialFilterNode(Node):
             pxd = input_image.load()
             if self.filter == 0:
                 chosen_wavelet = SpatialFilterNode.WAVELETS[SpatialFilterNode.WAVELET_NAMES[self.wavelet]]
+                w, h = pxd.shape
+                pxd = pxd[:(w//2)*2, :(h//2)*2]
                 if chosen_wavelet is None:
                     chosen_wavelet = self.custom_wavelet
                 pxd = pywt.swt2(pxd, wavelet=chosen_wavelet, level=self.level, norm=True, trim_approx=True)[0]

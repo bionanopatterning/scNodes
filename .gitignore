@@ -7,3 +7,4 @@ imgui.ini
 /scNodes/build/
 /scNodes/dist/
 /scNodes/__main__.spec
+.log

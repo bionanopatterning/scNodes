@@ -14,7 +14,7 @@ class LoadDataNode(Node):
     colour = (84 / 255, 77 / 255, 222 / 255, 1.0)
 
     sortid = 0
-
+    IMPORT_BATCH_SIZE = 10
     def __init__(self):
         super().__init__()
         self.size = 200
@@ -143,6 +143,10 @@ class LoadDataNode(Node):
             if self.to_load_idx < self.dataset.n_frames:
                 self.dataset.get_indexed_image(self.to_load_idx).load()
                 self.to_load_idx += 1
+                for i in range(LoadDataNode.IMPORT_BATCH_SIZE):
+                    if self.to_load_idx < self.dataset.n_frames:
+                        self.dataset.get_indexed_image(self.to_load_idx).load()
+                        self.to_load_idx += 1
             else:
                 self.done_loading = True
             if cfg.profiling:

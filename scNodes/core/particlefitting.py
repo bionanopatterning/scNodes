@@ -58,12 +58,6 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
     if np.sum(states == 0) == 0:
         return list()
 
-    # print('ratio converged         {:6.2f} %'.format(np.sum(states == 0) / n_particles * 100))
-    # print('ratio max it. exceeded  {:6.2f} %'.format(np.sum(states == 1) / n_particles * 100))
-    # print('ratio singular hessian  {:6.2f} %'.format(np.sum(states == 2) / n_particles * 100))
-    # print('ratio neg curvature MLE {:6.2f} %'.format(np.sum(states == 3) / n_particles * 100))
-    # print('ratio gpu not read      {:6.2f} %'.format(np.sum(states == 4) / n_particles * 100))
-
     background_stdev = np.empty(n_particles)
     for i in range(n_particles):
         background_stdev[i] = get_background_stdev(data[i, :], parameters[i, :])

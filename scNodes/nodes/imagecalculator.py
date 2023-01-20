@@ -55,6 +55,13 @@ class ImageCalculatorNode(Node):
                 img_b = source_b.get_image(idx)
                 img_a_pxd = img_a.load()
                 img_b_pxd = img_b.load()
+
+                w = min([img_a_pxd.shape[0], img_b_pxd.shape[0]])
+                h = min([img_a_pxd.shape[1], img_b_pxd.shape[1]])
+
+                img_a_pxd = img_a_pxd[:w, :h]
+                img_b_pxd = img_b_pxd[:w, :h]
+
                 img_out = None
                 if self.operation == 0:
                     img_out = img_a_pxd + img_b_pxd

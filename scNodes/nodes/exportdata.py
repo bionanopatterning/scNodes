@@ -2,9 +2,7 @@ from scNodes.core.node import *
 from tkinter import filedialog
 from scNodes.core import util
 import os
-from joblib.externals.loky import set_loky_pickler
-set_loky_pickler("dill")
-
+import dill as pickle
 
 def create():
     return ExportDataNode()
@@ -28,6 +26,8 @@ class ExportDataNode(Node):
         self.include_discarded_frames = False
         self.saving = False
         self.export_type = 0  # 0 for dataset, 1 for image.
+        self.export_reconstruction_as_csv = True
+        self.export_reconstruction_as_pickle = False
         self.frames_to_load = list()
         self.n_frames_to_save = 1
         self.n_frames_saved = 0
@@ -69,6 +69,10 @@ class ExportDataNode(Node):
                     self.path = filename
             if self.export_type == 0:
                 _c, self.parallel = imgui.checkbox("Parallel", self.parallel)
+
+            if self.export_type == 2:
+                _c, self.export_reconstruction_as_csv = imgui.checkbox("save as .csv", self.export_reconstruction_as_csv)
+                _c, self.export_reconstruction_as_pickle = imgui.checkbox("as .recon (pickle)", self.export_reconstruction_as_pickle)
             content_width = imgui.get_window_width()
             save_button_width = 85
             save_button_height = 25
@@ -124,9 +128,14 @@ class ExportDataNode(Node):
                 cfg.set_error(e, "Error saving image: "+str(e))
         elif self.export_type == 2: # Save particle data
             try:
-                self.dataset_in.get_incoming_node().get_particle_data().save_as_csv(self.path+".csv")
+                pd = self.dataset_in.get_incoming_node().get_particle_data()
+                if self.export_reconstruction_as_csv:
+                    pd.save_as_csv(self.path+".csv")
+                if self.export_reconstruction_as_pickle:
+                    with open(self.path+".recon", 'wb') as pickle_file:
+                        pickle.dump(pd, pickle_file)
             except Exception as e:
-                cfg.set_error(e, "Error saving .csv\n"+str(e))
+                cfg.set_error(e, "Error saving reconstruction\n"+str(e))
         if cfg.profiling:
             self.profiler_time += time.time() - time_start
 
@@ -139,7 +148,7 @@ class ExportDataNode(Node):
                         self.n_frames_saved += 1
                         indices.append(self.frames_to_load[-1])
                         self.frames_to_load.pop()
-                    Parallel(n_jobs=cfg.batch_size, mmap_mode=settings.joblib_mmmode)(delayed(self.get_img_and_save)(index) for index in indices)
+                    self.parallel_process(self.get_img_and_save, indices)
                 else:
                     self.n_frames_saved += 1
                     self.get_img_and_save(self.frames_to_load[-1])

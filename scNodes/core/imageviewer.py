@@ -235,9 +235,9 @@ class ImageViewer:
 
         # Brightness/contrast window
         if self.contrast_window_open:
-            imgui.set_next_window_size(ImageViewer.CONTRAST_WINDOW_SIZE[0], ImageViewer.CONTRAST_WINDOW_SIZE[1])
+            imgui.set_next_window_size_constraints((ImageViewer.CONTRAST_WINDOW_SIZE[0], 100), (-1, -1))
             imgui.set_next_window_position(self.contrast_window_position[0], self.contrast_window_position[1], condition = imgui.APPEARING)
-            _, self.contrast_window_open = imgui.begin("Adjust contrast", closable = True, flags = imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_RESIZE)
+            _, self.contrast_window_open = imgui.begin("Adjust contrast", closable = True, flags = imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_ALWAYS_AUTO_RESIZE)
             self.contrast_window_position = imgui.get_window_position()
             available_width = imgui.get_content_region_available_width()
             _rgb_button_spacing = 4

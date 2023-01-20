@@ -48,7 +48,7 @@ class SofiNode(Node):
         self.pxsizein = 100
         self.stack_prepared = False
         self.processing = False
-        self.temp_dir = "_srnodes_temp_dir_sofinode_"+str(self.id)
+        self.temp_dir = self.gen_temp_dir_name()
 
     def render(self):
         if super().render_start():  # as in the above __init__ function, the render function must by calling the base class' render_start() function, and end with a matching render_end() - see below.

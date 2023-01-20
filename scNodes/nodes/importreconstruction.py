@@ -1,6 +1,6 @@
 from scNodes.core.node import *
 from tkinter import filedialog
-
+import dill as pickle
 
 def create():
     return LoadReconstructionNode()
@@ -35,7 +35,7 @@ class LoadReconstructionNode(Node):
             imgui.pop_item_width()
             imgui.same_line()
             if imgui.button("...", 26, 19):
-                selected_file = filedialog.askopenfilename(filetype=[("Reconstruction", ".csv")])
+                selected_file = filedialog.askopenfilename(filetype=[("Reconstruction", ".csv"), ("Reconstruction", ".recon")])
                 if selected_file is not None:
                     self.path = selected_file
                     self.on_select_file()
@@ -43,7 +43,11 @@ class LoadReconstructionNode(Node):
 
     def on_select_file(self):
         try:
-            self.particle_data = ParticleData.from_csv(self.path)
+            if self.path[-1] == "v":
+                self.particle_data = ParticleData.from_csv(self.path)
+            else:
+                with open(self.path, 'rb') as pickle_file:
+                    self.particle_data = pickle.load(pickle_file)
         except Exception as e:
             cfg.set_error(e, "Error importing reconstruction. Reconstruction should be a .csv file.")
 

@@ -240,7 +240,7 @@ class ReconstructionRendererNode(Node):
 
     @staticmethod
     def compute_contrast_lims(rgb_image):
-        max_channel = np.unravel_index(np.argmax(rgb_image), rgb_image.shape)
+        max_channel = np.unravel_index(np.argmax(rgb_image), rgb_image.shape)[2]
         img_sorted = np.sort(rgb_image[:, :, max_channel].flatten())
         n = img_sorted.shape[0] * img_sorted.shape[1]
         cmin = img_sorted[int(settings.autocontrast_saturation / 100.0 * n)]

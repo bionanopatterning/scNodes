@@ -42,8 +42,11 @@ class Dataset:
             parts[1::2] = map(int, parts[1::2])
             return parts
 
-        # stack
         img = Image.open(self.path)
+        tif = tifffile.TiffFile(self.path)
+        n_frames = len(tif.pages)
+        print(n_frames)
+        print(img.n_frames)
         if img.n_frames > 1:
             for i in range(img.n_frames):
                 self.n_frames += 1
@@ -131,6 +134,10 @@ class Frame:
         self.index = index
         self.framenr = framenr
         self.path = path
+        if "/" in self.path:
+            self.title = self.path[self.path[:-1].rfind("/"):]
+        else:
+            self.title = self.path
         self.data = None
         self.raw_data = None
         self.width = None
@@ -149,18 +156,14 @@ class Frame:
     def load(self):
         if self.data is not None:
             return self.data
-        elif self.raw_data is not None:
-            self.data = self.raw_data.copy()
-            return self.data
         else:
             # 221202 Note: using tifffile instead of PIL now!
             if self.index is None:
-                self.raw_data = tifffile.imread(self.path).astype(np.float)
+                self.data = tifffile.imread(self.path).astype(np.float)
             else:
-                self.raw_data = tifffile.imread(self.path, key=self.index).astype(np.float)
-            self.data = self.raw_data.copy()
-            self.width = self.raw_data.shape[0]
-            self.height = self.raw_data.shape[1]
+                self.data = tifffile.imread(self.path, key=self.index).astype(np.float)
+            self.width = self.data.shape[0]
+            self.height = self.data.shape[1]
             return self.data
 
     def clean(self):
@@ -183,7 +186,7 @@ class Frame:
             return self.load()[roi[1]:roi[3], roi[0]:roi[2]]
 
     def __str__(self):
-        sstr = f"Frame at path: \n{self.path}\n" \
+        sstr = "Frame: "+ self.title + "\n" \
             + ("Discarded frame. " if self.discard else "Frame in use. ") \
             + f"Shift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
         if self.maxima is not []:
@@ -250,6 +253,8 @@ class ParticleData:
             if p.visible or not discard_filtered_particles:
                 if p.intensity == 0.0:
                     continue
+                if p.x < 0 or p.y < 0 or p.x > self.reconstruction_roi or p.y > self.reconstruction_roi:
+                    continue
                 self.n_particles += 1
                 frame.append(p.frame)
                 x.append(p.x)
@@ -298,7 +303,7 @@ class ParticleData:
         :param roi: The ROI used in the initial particle position estimation (e.g. ParticleDetectionNode). It can be saved in ParticleData in order to facilitate overlaying the final reconstruction with the corresponding region of the widefield image.
         :return:
         """
-        print("Setting reconstruction ROI to: ", roi[0], roi[1], roi[2], roi[3]) ## check! todo
+        print("Setting reconstruction ROI to: ", roi[0], roi[1], roi[2], roi[3]) ## 0213, 1032
         self.reconstruction_roi = roi
 
     @staticmethod
@@ -318,6 +323,8 @@ class ParticleData:
         _idx_b = df.columns.get_loc("bkgstd [counts]")
         _idx_f = df.columns.get_loc("frame")
         for i in range(df.shape[0]):
+            if (i % 100000 == 0):
+                print(i)
             _data = df.iloc[i]
             particles.append(Particle(
                 _data[_idx_f],
@@ -334,10 +341,6 @@ class ParticleData:
         particle_data_obj.particles = particles
         particle_data_obj.empty = False
         particle_data_obj.bake()
-        print("uncertainty")
-        print(particle_data_obj.parameter["uncertainty [nm]"])
-        print("sigma")
-        print(particle_data_obj.parameter["sigma [nm]"])
         particle_data_obj.set_reconstruction_roi([particle_data_obj.x_min, particle_data_obj.y_min, particle_data_obj.x_max, particle_data_obj.y_max])
 
         return particle_data_obj

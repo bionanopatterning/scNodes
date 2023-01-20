@@ -38,12 +38,13 @@ class BakeStackNode(Node):
         self.has_dataset = False
         self.dataset = Dataset()
         self.frames_to_bake = list()
-        self.temp_dir_do_not_edit = "_srnodes_temp_dir_bakestack_"+str(self.id)
+        self.temp_dir = self.gen_temp_dir_name()
         self.joblib_dir_counter = 0
         self.baked_at = 0
         self.has_coordinates = False
         self.coordinates = list()
         self.bake_coordinates = False
+        self.load_baked_stack_into_ram = False
 
     def render(self):
         if super().render_start():
@@ -88,33 +89,38 @@ class BakeStackNode(Node):
 
             if self.has_dataset:
                 imgui.text(f"Output data was baked at: {self.baked_at}")
-                header_expanded, _ = imgui.collapsing_header("Advanced", None)
-                if header_expanded:
-                    self.render_advanced()
+
+            header_expanded, _ = imgui.collapsing_header("Advanced", None)
+            if header_expanded:
+                self.render_advanced()
             super().render_end()
 
-
     def render_advanced(self):
-        _cw = imgui.get_content_region_available_width()
-        imgui.new_line()
-        imgui.same_line(spacing = _cw / 2 - 80 / 2)
-        if imgui.button("Quick save", 80, 25):
-            fpath = filedialog.asksaveasfilename()
-            if fpath is not None:
-                if '.' in fpath[-5:]:
-                    fpath = fpath[:fpath.rfind(".")]
-            # now copy the files from the temp folder to the requested folder
-            if not os.path.isdir(fpath):
-                os.mkdir(fpath)
-            imglist = glob.glob(self.temp_dir_do_not_edit +"/*.tif*")
-            for img in imglist:
-                shutil.copy(img, fpath)
+        _c, self.load_baked_stack_into_ram = imgui.checkbox("Keep in RAM", self.load_baked_stack_into_ram)
+        self.tooltip("Check this box to automatically load entire the baked stack into RAM. Can speed up downstream\n"
+                     "processes a bit, but requires sufficient RAM. If checked but RAM is too low, software can be-\n"
+                     "come slow, as the Python garbage collector is forced to try to delete unused data.")
+        if self.has_dataset:
+            _cw = imgui.get_content_region_available_width()
+            imgui.new_line()
+            imgui.same_line(spacing = _cw / 2 - 80 / 2)
+            if imgui.button("Quick save", 80, 25):
+                fpath = filedialog.asksaveasfilename()
+                if fpath is not None:
+                    if '.' in fpath[-5:]:
+                        fpath = fpath[:fpath.rfind(".")]
+                # now copy the files from the temp folder to the requested folder
+                if not os.path.isdir(fpath):
+                    os.mkdir(fpath)
+                imglist = glob.glob(self.temp_dir +"/*.tif*")
+                for img in imglist:
+                    shutil.copy(img, fpath)
 
     def get_image_and_save(self, idx=None):
         datasource = self.dataset_in.get_incoming_node()
         if datasource:
             pxd = datasource.get_image(idx).load()
-            Image.fromarray(pxd).save(self.temp_dir_do_not_edit + "/0" + str(idx) + ".tif")
+            Image.fromarray(pxd).save(self.temp_dir + "/0" + str(idx) + ".tif")
             if self.bake_coordinates:
                 coordsource = self.coordinates_in.get_incoming_node()
                 coordinates = coordsource.get_coordinates(idx)
@@ -139,12 +145,14 @@ class BakeStackNode(Node):
             return self.coordinates[idx]
 
     def init_bake(self):
+        del self.dataset
         self.dataset = None
-        if os.path.isdir(self.temp_dir_do_not_edit):
-            for f in glob.glob(self.temp_dir_do_not_edit+"/*"):
+        self.temp_dir = self.gen_temp_dir_name()
+        if os.path.isdir(self.temp_dir):
+            for f in glob.glob(self.temp_dir+"/*"):
                 os.remove(f)
         else:
-            os.mkdir(self.temp_dir_do_not_edit)
+            os.mkdir(self.temp_dir)
         self.has_dataset = False
         self.has_coordinates = False
         self.coordinates = list()
@@ -168,13 +176,14 @@ class BakeStackNode(Node):
                         self.n_baked += 1
                         indices.append(self.frames_to_bake[-1])
                         self.frames_to_bake.pop()
-                    coordinates = Parallel(n_jobs=cfg.batch_size, mmap_mode=settings.joblib_mmmode)(delayed(self.get_image_and_save)(index) for index in indices)
+                    coordinates = self.parallel_process(self.get_image_and_save, indices)
                 else:
                     index = self.frames_to_bake[-1]
                     self.frames_to_bake.pop()
                     coordinates = self.get_image_and_save(index)
                     self.n_baked += 1
-                    ## todo fix error where bakestack freezes upon leaving entire node setup intact, changing source data node input to a different stack, then pressing GO on bake stack node.
+                    # todo fix error where bakestack freezes baking a second time.
+                    # 230120 - fixed, maybe. todo: check
                 if self.bake_coordinates:
                     self.coordinates += coordinates  # coordinates is a list of lists. in the end, self.coordinates will be a list of length [amount of frames], with a sublist of xy coords for every img.
                 if cfg.profiling:
@@ -183,11 +192,12 @@ class BakeStackNode(Node):
 
                 if len(self.frames_to_bake) == 0:
                     # Load dataset from temp dir.
-                    self.dataset = Dataset(self.temp_dir_do_not_edit + "/00.tif")
-                    print("Done baking - now loading from disk")
-                    for frame in self.dataset.frames:
-                        frame.load()
-                    print("Done loading")
+                    self.dataset = Dataset(self.temp_dir + "/00.tif")
+                    if self.load_baked_stack_into_ram:
+                        print("Loading baked stack into RAM")
+                        for frame in self.dataset.frames:
+                            frame.load()
+                        print("Done loading baked stack into RAM")
                     self.any_change = True
                     self.baking = False
                     self.play = False

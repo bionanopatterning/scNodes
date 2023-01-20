@@ -314,16 +314,13 @@ class NodeEditor:
                     imgui.end_menu()
                 if imgui.begin_menu('Parallel processing'):
                     imgui.set_next_item_width(26)
-                    _c, cfg.n_cpus = imgui.input_int("batch size", cfg.n_cpus, 0, 0)
-                    if _c:
-                        cfg.batch_size = cfg.n_cpus
+                    _c, cfg.batch_size = imgui.input_int("batch size", cfg.batch_size, 0, 0)
                     NodeEditor.tooltip(
                         "Number of frames to process within one parallel processing batch. Values higher than the amount\n"
                         "of CPUs on the PC are allowed and will result in multiple tasks being dispatched to individual\n"
-                        "CPUs per batch. This can increase processing speed, but reduces GUI responsiveness. For optimal\n"
+                        "CPUs per batch. This increases processing speed, but reduces GUI responsiveness. For optimal\n"
                         "efficiency, set the batch size to an integer multiple of the amount of CPUs on the machine. \n"
-                        f"This PC has: {cfg.n_cpus_max} CPUs.\n"
-                        f"Set to '-1' to force use of all CPUs.")
+                        f"This PC has: {cfg.n_cpus_max} CPUs.\n")
                     imgui.end_menu()
                 imgui.end_menu()
             if imgui.begin_menu('Editor'):

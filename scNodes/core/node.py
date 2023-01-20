@@ -4,7 +4,9 @@ import time
 import datetime
 from scNodes.core.dataset import *
 from scNodes.core import settings
-
+from joblib import Parallel, delayed
+from joblib.externals.loky import set_loky_pickler
+set_loky_pickler("dill")
 
 class Node:
     title = "NullNode"
@@ -92,9 +94,9 @@ class Node:
         self.NODE_GAINED_FOCUS = False
 
     def render_start(self):
-        if self.use_roi == False:
+        if not self.use_roi:
             self.roi = [0, 0, 0, 0]
-        ## render the node window
+        # render the node window
         imgui.set_next_window_position(self.position[0], self.position[1], imgui.ALWAYS)
         imgui.set_next_window_size_constraints((self.size, 50), (self.size, 1000))
         imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *self.colour)
@@ -174,7 +176,7 @@ class Node:
                 imgui.close_current_popup()
             # _duplicate, _ = imgui.menu_item("Duplicate node")
             # if _duplicate:
-            #     duplicate_node = Node.create_node_by_type(self.type) ## TODO FIX
+            #     duplicate_node = Node.create_node_by_type(self.type)
             #     duplicate_node.position = [self.position[0] + 10, self.position[1] + 10]
             #     cfg.set_active_node(duplicate_node)
             _delete, _ = imgui.menu_item("Delete node")
@@ -182,7 +184,7 @@ class Node:
                 self.delete()
             _reset, _ = imgui.menu_item("Reset node")
             # if _reset:
-            #     new_node = Node.create_node_by_type(self.type) ## TODO FIX
+            #     new_node = Node.create_node_by_type(self.type)
             #     new_node.position = self.position
             #     self.delete()
             if imgui.begin_menu("Set node-specific LUT"):
@@ -285,6 +287,17 @@ class Node:
                 attribute.delete()
         except Exception as e:
             cfg.set_error(e, "Problem deleting node\n"+str(e))
+
+    @staticmethod
+    def parallel_process(function, arglist):
+        print(f"Starting parallel process with joblib.\nfn: {function}\nargs: {arglist}")
+        print(f"n_cpus = {cfg.n_cpus}, mmap_mode = {settings.joblib_mmmode}")
+        retvals = Parallel(n_jobs=cfg.n_cpus, mmap_mode=settings.joblib_mmmode)(delayed(function)(i) for i in arglist)
+        return retvals
+
+    @staticmethod
+    def gen_temp_dir_name():
+        return str(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f'))
 
     @staticmethod
     def tooltip(text):
