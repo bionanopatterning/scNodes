@@ -8,6 +8,7 @@ from joblib import Parallel, delayed
 from joblib.externals.loky import set_loky_pickler
 set_loky_pickler("dill")
 
+
 class Node:
     title = "NullNode"
     group = "Ungrouped"
@@ -79,7 +80,6 @@ class Node:
         self.FRAME_REQUESTED_BY_IMAGE_VIEWER = False  # bit of a misc one. when the image viewer is requesting a frame (rather than the processing pipeline asking for one), this flag is temporarily set to True. This is used in e.g. the CropImage node, where the output to the image viewer is different than the output to the next node.
         self.OVERRIDE_AUTOCONTRAST = False
         self.OVERRIDE_AUTOCONTRAST_LIMS = (0, 65535)
-
 
     def __eq__(self, other):
         if isinstance(other, Node):
