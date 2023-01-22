@@ -94,6 +94,7 @@ def set_error(error_object, error_message):
     error_logged = False
 
 def save_project(filename):
+    ## TODO change to work with new json export mode
     if filename[-5:] == '.srnp':
         filename = filename[:-5]
     with open(filename+'.srnp', 'wb') as pickle_file:

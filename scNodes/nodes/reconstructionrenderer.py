@@ -19,12 +19,12 @@ class ReconstructionRendererNode(Node):
     def __init__(self):
         super().__init__()
 
-        self.reconstruction_in = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.INPUT, parent = self)
-        self.image_out = ConnectableAttribute(ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.OUTPUT, parent = self)
+        self.connectable_attributes["reconstruction_in"] = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.INPUT, parent = self)
+        self.connectable_attributes["image_out"] = ConnectableAttribute(ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.OUTPUT, parent = self)
 
-        self.pixel_size = 10.0
-        self.default_sigma = 30.0
-        self.fix_sigma = False
+        self.params["pixel_size"] = 10.0
+        self.params["default_sigma"] = 30.0
+        self.params["fix_sigma"] = False
 
         self.reconstructor = Reconstructor()
         self.latest_image = None
@@ -37,32 +37,32 @@ class ReconstructionRendererNode(Node):
         self.paint_by = 0
         self.paint_applied = False
 
-        self.parameter = 0
+        self.params["parameter"] = 0
         self.available_parameters = ["..."]
         self.colour_min = (0.0, 0.0, 0.0)
         self.colour_max = (1.0, 1.0, 1.0)
         self.histogram_values = np.asarray([0, 0]).astype('float32')
         self.histogram_bins = np.asarray([0, 0]).astype('float32')
         self.histogram_initiated = False
-        self.min = 0
-        self.max = 0
+        self.params["min"] = 0
+        self.params["max"] = 0
         #
         self.does_profiling_time = False
         self.does_profiling_count = False
 
-        self.auto_render = False
-        self.output_mode = 0
+        self.params["auto_render"] = False
+        self.params["output_mode"] = 0
         self.OVERRIDE_AUTOCONTRAST = False
         self.OVERRIDE_AUTOCONTRAST_LIMS = (0, 65535)
 
     def render(self):
         if super().render_start():
-            self.reconstruction_in.render_start()
-            self.image_out.render_start()
-            self.reconstruction_in.render_end()
-            self.image_out.render_end()
+            self.connectable_attributes["reconstruction_in"].render_start()
+            self.connectable_attributes["image_out"].render_start()
+            self.connectable_attributes["reconstruction_in"].render_end()
+            self.connectable_attributes["image_out"].render_end()
 
-            if self.reconstruction_in.check_connect_event() or self.reconstruction_in.check_disconnect_event():
+            if self.connectable_attributes["reconstruction_in"].check_connect_event() or self.connectable_attributes["reconstruction_in"].check_disconnect_event():
                 self.on_gain_focus()
 
             imgui.spacing()
@@ -71,7 +71,7 @@ class ReconstructionRendererNode(Node):
             imgui.push_item_width(90)
             imgui.text("Pixel size:")
             imgui.same_line()
-            _c, self.pixel_size = imgui.input_float("##Pixel size", self.pixel_size, 0.0, 0.0, format='%.2f (nm)')
+            _c, self.params["pixel_size"] = imgui.input_float("##Pixel size", self.params["pixel_size"], 0.0, 0.0, format='%.2f (nm)')
             pxs_changed = _c
             self.any_change = _c or self.any_change
             imgui.text(f"Final image size: {self.reconstruction_image_size[0]} x {self.reconstruction_image_size[1]} px")
@@ -85,11 +85,11 @@ class ReconstructionRendererNode(Node):
             if self.paint_particles:
                 _cw = imgui.get_content_region_available_width()
                 imgui.set_next_item_width(_cw - 80)
-                _c, self.parameter = imgui.combo("Parameter", self.parameter, self.available_parameters)
+                _c, self.params["parameter"] = imgui.combo("Parameter", self.params["parameter"], self.available_parameters)
                 if _c:
                     self.get_histogram_values()
-                    self.min = self.histogram_bins[0]
-                    self.max = self.histogram_bins[-1]
+                    self.params["min"] = self.histogram_bins[0]
+                    self.params["max"] = self.histogram_bins[-1]
                     self.paint_applied = False
                 imgui.set_next_item_width(_cw - 80)
                 _c, self.paint_by = imgui.combo("LUT", self.paint_by, settings.lut_names)
@@ -100,8 +100,8 @@ class ReconstructionRendererNode(Node):
                     imgui.plot_histogram("##hist", self.histogram_values, graph_size=(_cw, 80.0))
                     _l = self.histogram_bins[0]
                     _h = self.histogram_bins[-1]
-                    _max = self.max
-                    _min = self.min
+                    _max = self.params["max"]
+                    _min = self.params["min"]
                     _uv_left = 0.5
                     _uv_right = 0.5
                     if _max != _min:
@@ -110,15 +110,15 @@ class ReconstructionRendererNode(Node):
                     imgui.image(self.reconstructor.lut_texture.renderer_id, _cw, 10.0, (_uv_left, 0.5),
                                 (_uv_right, 0.5), border_color=(0.0, 0.0, 0.0, 1.0))
                     imgui.push_item_width(_cw)
-                    _c, self.min = imgui.slider_float("##min", self.min, self.histogram_bins[0], self.histogram_bins[1],format='min: %.1f')
+                    _c, self.params["min"] = imgui.slider_float("##min", self.params["min"], self.histogram_bins[0], self.histogram_bins[1],format='min: %.1f')
                     if _c: self.paint_applied = False
-                    _c, self.max = imgui.slider_float("##max", self.max, self.histogram_bins[0], self.histogram_bins[1],format='max: %.1f')
+                    _c, self.params["max"] = imgui.slider_float("##max", self.params["max"], self.histogram_bins[0], self.histogram_bins[1],format='max: %.1f')
                     if _c: self.paint_applied = False
                     imgui.pop_item_width()
 
                 # TODO: histogram
 
-            if self.auto_render:
+            if self.params["auto_render"]:
                 if self.any_change:
                     self.build_reconstruction()
             else:
@@ -130,8 +130,8 @@ class ReconstructionRendererNode(Node):
 
             if pxs_changed:
                 roi = self.get_particle_data().reconstruction_roi
-                img_width = int((roi[3] - roi[1]) / self.pixel_size)
-                img_height = int((roi[2] - roi[0]) / self.pixel_size)
+                img_width = int((roi[3] - roi[1]) / self.params["pixel_size"])
+                img_height = int((roi[2] - roi[0]) / self.params["pixel_size"])
                 self.reconstruction_image_size = (img_width, img_height)
 
             header_expanded, _ = imgui.collapsing_header("Advanced", None)
@@ -142,17 +142,17 @@ class ReconstructionRendererNode(Node):
 
 
     def render_advanced(self):
-        _c, self.fix_sigma = imgui.checkbox("Force uncertainty", self.fix_sigma)
+        _c, self.params["fix_sigma"] = imgui.checkbox("Force uncertainty", self.params["fix_sigma"])
 
-        if self.fix_sigma:
+        if self.params["fix_sigma"]:
             imgui.same_line(spacing=10)
             imgui.push_item_width(50)
-            _, self.default_sigma = imgui.input_float(" nm", self.default_sigma, 0, 0, format="%.1f")
+            _, self.params["default_sigma"] = imgui.input_float(" nm", self.params["default_sigma"], 0, 0, format="%.1f")
             imgui.pop_item_width()
 
-        _c, self.output_mode = imgui.combo("Output mode", self.output_mode, ["float", "uint16"])
+        _c, self.params["output_mode"] = imgui.combo("Output mode", self.params["output_mode"], ["float", "uint16"])
         if _c:
-            if self.output_mode == 0:
+            if self.params["output_mode"] == 0:
                 pass
                 self.reconstructor.set_mode("float")
             else:
@@ -163,36 +163,36 @@ class ReconstructionRendererNode(Node):
         #     self.reconstructor.recompile_shader()
 
     def get_histogram_values(self):
-        datasource = self.reconstruction_in.get_incoming_node()
+        datasource = self.connectable_attributes["reconstruction_in"].get_incoming_node()
         if datasource:
             particledata = datasource.get_particle_data()
-            if self.available_parameters[self.parameter] in list(particledata.histogram_counts.keys()):
-                self.histogram_values = particledata.histogram_counts[self.available_parameters[self.parameter]]
-                self.histogram_bins = particledata.histogram_bins[self.available_parameters[self.parameter]]
+            if self.available_parameters[self.params["parameter"]] in list(particledata.histogram_counts.keys()):
+                self.histogram_values = particledata.histogram_counts[self.available_parameters[self.params["parameter"]]]
+                self.histogram_bins = particledata.histogram_bins[self.available_parameters[self.params["parameter"]]]
 
     def init_histogram_values(self):
-        datasource = self.reconstruction_in.get_incoming_node()
+        datasource = self.connectable_attributes["reconstruction_in"].get_incoming_node()
         if datasource:
             self.histogram_initiated = True
             particledata = datasource.get_particle_data()
             if particledata:
                 if particledata.baked:
                     self.available_parameters = list(particledata.histogram_counts.keys())
-                    self.parameter = min([1, len(self.available_parameters)])
-                    self.histogram_values = particledata.histogram_counts[self.available_parameters[self.parameter]]
-                    self.histogram_bins = particledata.histogram_bins[self.available_parameters[self.parameter]]
-                    self.min = self.histogram_bins[0]
-                    self.max = self.histogram_bins[-1]
+                    self.params["parameter"] = min([1, len(self.available_parameters)])
+                    self.histogram_values = particledata.histogram_counts[self.available_parameters[self.params["parameter"]]]
+                    self.histogram_bins = particledata.histogram_bins[self.available_parameters[self.params["parameter"]]]
+                    self.params["min"] = self.histogram_bins[0]
+                    self.params["max"] = self.histogram_bins[-1]
 
 
     def apply_paint(self, particle_data):
         if cfg.profiling:
             time_start = time.time()
 
-        values = particle_data.parameter[self.available_parameters[self.parameter]]
+        values = particle_data.parameter[self.available_parameters[self.params["parameter"]]]
         i = 0
         for particle in particle_data.particles:
-            particle.colour_idx = np.min([np.max([0.0, (values[i] - self.min) / (self.max - self.min)]), 1.0])
+            particle.colour_idx = np.min([np.max([0.0, (values[i] - self.params["min"]) / (self.params["max"] - self.params["min"])]), 1.0])
             i += 1
         self.reconstructor.colours_set = False
         if cfg.profiling:
@@ -201,13 +201,13 @@ class ReconstructionRendererNode(Node):
     def build_reconstruction(self):
         try:
             self.original_pixel_size = Node.get_source_load_data_node(self).dataset.pixel_size
-            self.reconstructor.set_pixel_size(self.pixel_size)
+            self.reconstructor.set_pixel_size(self.params["pixel_size"])
             self.reconstructor.set_image_size(self.reconstruction_image_size)
-            datasource = self.reconstruction_in.get_incoming_node()
+            datasource = self.connectable_attributes["reconstruction_in"].get_incoming_node()
             if datasource:
                 particle_data = datasource.get_particle_data()
                 self.reconstructor.set_particle_data(particle_data)
-                self.reconstructor.set_camera_origin([-particle_data.reconstruction_roi[0] / self.pixel_size, -particle_data.reconstruction_roi[1] / self.pixel_size])
+                self.reconstructor.set_camera_origin([-particle_data.reconstruction_roi[0] / self.params["pixel_size"], -particle_data.reconstruction_roi[1] / self.params["pixel_size"]])
 
                 ## Apply colours
                 ## TODO: add option to output a monochrome channel
@@ -225,7 +225,7 @@ class ReconstructionRendererNode(Node):
                 if self.reconstructor.particle_data.empty:
                     return None
                 else:
-                    self.latest_image = self.reconstructor.render(fixed_uncertainty=(self.default_sigma if self.fix_sigma else None))
+                    self.latest_image = self.reconstructor.render(fixed_uncertainty=(self.params["default_sigma"] if self.params["fix_sigma"] else None))
                     if not self.paint_particles:
                         self.latest_image = self.latest_image[:, :, 0]  # single channel only for non-painted particles
                     self.any_change = True
@@ -251,13 +251,13 @@ class ReconstructionRendererNode(Node):
         if self.latest_image is not None:
             img_wrapper = Frame("super-resolution reconstruction virtual frame")
             img_wrapper.data = self.latest_image
-            img_wrapper.pixel_size = self.pixel_size
+            img_wrapper.pixel_size = self.params["pixel_size"]
             return img_wrapper
         else:
             return None
 
     def get_particle_data_impl(self):
-        datasource = self.reconstruction_in.get_incoming_node()
+        datasource = self.connectable_attributes["reconstruction_in"].get_incoming_node()
         if datasource:
             return datasource.get_particle_data()
         else:
@@ -271,14 +271,14 @@ class ReconstructionRendererNode(Node):
         except Exception as e:
             cfg.set_error(e, f"Couldn't get particle data in {self.title} node.")
         if roi is not None:
-            img_width = int((roi[2] - roi[0]) / self.pixel_size)  # TODO
-            img_height = int((roi[3] - roi[1]) / self.pixel_size)
+            img_width = int((roi[2] - roi[0]) / self.params["pixel_size"])  # TODO
+            img_height = int((roi[3] - roi[1]) / self.params["pixel_size"])
             self.reconstruction_image_size = (img_width, img_height)
 
-    def pre_save_impl(self):
+    def pre_pickle_impl(self):
         cfg.pickle_temp["latest_image"] = self.latest_image
         self.latest_image = None
 
-    def post_save_impl(self):
+    def post_pickle_impl(self):
         self.latest_image = cfg.pickle_temp["latest_image"]
 

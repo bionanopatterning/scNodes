@@ -14,17 +14,17 @@ class InvertNode(Node):
     def __init__(self):
         super().__init__()
 
-        self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self)
-        self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=self)
+        self.connectable_attributes["dataset_in"] = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self)
+        self.connectable_attributes["dataset_out"] = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=self)
 
         self.use_roi = False
 
     def render(self):
         if super().render_start():
-            self.dataset_in.render_start()
-            self.dataset_out.render_start()
-            self.dataset_in.render_end()
-            self.dataset_out.render_end()
+            self.connectable_attributes["dataset_in"].render_start()
+            self.connectable_attributes["dataset_out"].render_start()
+            self.connectable_attributes["dataset_in"].render_end()
+            self.connectable_attributes["dataset_out"].render_end()
 
             imgui.spacing()
             imgui.separator()
@@ -36,7 +36,7 @@ class InvertNode(Node):
             super().render_end()
 
     def get_image_impl(self, idx=None):
-        incoming_node = self.dataset_in.get_incoming_node()
+        incoming_node = self.connectable_attributes["dataset_in"].get_incoming_node()
         if incoming_node:
             incoming_frame = incoming_node.get_image(idx)
             data = incoming_frame.load()

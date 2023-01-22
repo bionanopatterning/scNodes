@@ -14,22 +14,22 @@ class CropImageNode(Node):
     def __init__(self):
         super().__init__()
         self.size = 140
-        self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self, allowed_partner_types=[ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.TYPE_IMAGE])
-        self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=self)
+        self.connectable_attributes["dataset_in"] = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self, allowed_partner_types=[ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.TYPE_IMAGE])
+        self.connectable_attributes["dataset_out"] = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=self)
 
         self.roi = [0, 0, 0, 0]
         self.use_roi = True
 
     def render(self):
         if super().render_start():
-            self.dataset_out.render_start()
-            self.dataset_in.render_start()
-            self.dataset_out.render_end()
-            self.dataset_in.render_end()
+            self.connectable_attributes["dataset_out"].render_start()
+            self.connectable_attributes["dataset_in"].render_start()
+            self.connectable_attributes["dataset_out"].render_end()
+            self.connectable_attributes["dataset_in"].render_end()
             super().render_end()
 
     def get_image_impl(self, idx=None):
-        data_source = self.dataset_in.get_incoming_node()
+        data_source = self.connectable_attributes["dataset_in"].get_incoming_node()
         if data_source:
             if self.FRAME_REQUESTED_BY_IMAGE_VIEWER:
                 return data_source.get_image(idx)

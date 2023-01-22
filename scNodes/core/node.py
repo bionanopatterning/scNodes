@@ -50,13 +50,14 @@ class Node:
         self.position = [0, 0]
         self.last_measured_window_position = [0, 0]
         self.node_height = 100
-        self.connectable_attributes = list()
+        self.connectable_attributes = dict()
         self.play = False
         self.any_change = False
-        self.queued_actions = list()
         self.use_roi = False
         self.roi = [0, 0, 0, 0]
         self.lut = "auto"
+        self.params = dict()
+
         cfg.nodes.append(self)
 
         # some bookkeeping vars - ignore these
@@ -86,7 +87,7 @@ class Node:
         return False
 
     def clear_flags(self):
-        for a in self.connectable_attributes:
+        for a in self.connectable_attributes.values():
             a.clear_flags()
         if self.any_change and not cfg.focused_node == self:
             cfg.any_change = True
@@ -183,10 +184,10 @@ class Node:
             if _delete:
                 self.delete()
             _reset, _ = imgui.menu_item("Reset node")
-            # if _reset:
-            #     new_node = Node.create_node_by_type(self.type)
-            #     new_node.position = self.position
-            #     self.delete()
+            if _reset:
+                new_node = Node.create_node_by_type(self.type)
+                self.params = copy.deepcopy(new_node.params)
+                new_node.delete()
             if imgui.begin_menu("Set node-specific LUT"):
                 for lut in ["auto"] + settings.lut_names:
                     _lut, _ = imgui.menu_item(lut)
@@ -281,12 +282,55 @@ class Node:
                 cfg.set_active_node(None, True)
             if cfg.active_node == self:
                 cfg.set_active_node(None)
+                cfg.active_connector_parent_node = None
+                cfg.active_node = None
+                cfg.active_connector = None
             if self in cfg.nodes:
                 cfg.nodes.remove(self)
-            for attribute in self.connectable_attributes:
+            for attribute in self.connectable_attributes.values():
                 attribute.delete()
         except Exception as e:
             cfg.set_error(e, "Problem deleting node\n"+str(e))
+
+    def to_dict(self):
+        node_dict = dict()
+        node_dict["title"] = self.title
+        node_dict["id"] = self.id
+        node_dict["position"] = self.position
+        node_dict["use_roi"] = self.use_roi
+        node_dict["roi"] = self.roi
+        node_dict["lut"] = self.lut
+        m_attributes = list()
+        for attribute_name in self.connectable_attributes:
+            attribute = self.connectable_attributes[attribute_name]
+            attribute_dict = dict()
+            attribute_dict["name"] = attribute_name
+            attribute_dict["type"] = attribute.type
+            attribute_dict["title"] = attribute.title
+            attribute_dict["direction"] = attribute.direction
+            attribute_dict["allowed_partner_types"] = attribute.allowed_partner_types
+            attribute_dict["id"] = attribute.id
+            m_attributes.append(attribute_dict)
+        node_dict["attributes"] = m_attributes
+        node_dict["params"] = self.params
+        return node_dict
+
+    def from_dict(self, node_dict):
+        if node_dict["title"] != self.title:
+            raise Exception(f'Node of type {self.title} was given a parameter dictionary for a node of type {node_dict["title"]}')
+        self.title = node_dict["title"]
+        self.id = node_dict["id"]
+        self.position = node_dict["position"]
+        self.use_roi = node_dict["use_roi"]
+        self.roi = node_dict["roi"]
+        self.lut = node_dict["lut"]
+        self.params = node_dict["params"]
+        self.connectable_attributes = dict()
+        for attribute_dict in node_dict["attributes"]:
+            attribute = ConnectableAttribute(attribute_dict["type"], attribute_dict["direction"], self, attribute_dict["allowed_partner_types"])
+            attribute.id = attribute_dict["id"]
+            attribute.title = attribute_dict["title"]
+            self.connectable_attributes[attribute_dict["name"]] = attribute
 
     @staticmethod
     def parallel_process(function, arglist):
@@ -328,7 +372,7 @@ class Node:
         :return: node: node with type TYPE_LOAD_DATA
         """
         def get_any_incoming_node(_node):
-            for attribute in _node.connectable_attributes:
+            for attribute in _node.connectable_attributes.values():
                 if attribute.direction == ConnectableAttribute.INPUT:
                     return attribute.get_incoming_node()
 
@@ -386,22 +430,25 @@ class Node:
     def on_gain_focus(self):
         self.NODE_GAINED_FOCUS = True
 
-    def pre_save(self):
+    def pre_pickle(self):
         cfg.pickle_temp = dict()
         self.last_index_requested = -1
         self.last_frame_returned = None
         cfg.pickle_temp["profiler_time"] = self.profiler_time
-        self.pre_save_impl()
+        self.pre_pickle_impl()
 
-    def pre_save_impl(self):
+    def pre_pickle_impl(self):
         pass
 
-    def post_save(self):
+    def post_pickle(self):
         self.profiler_time = cfg.pickle_temp["profiler_time"]
-        self.post_save_impl()
+        self.post_pickle_impl()
         cfg.pickle_temp = dict()
 
-    def post_save_impl(self):
+    def post_pickle_impl(self):
+        pass
+
+    def on_load(self):
         pass
 
 
@@ -476,8 +523,6 @@ class ConnectableAttribute:
         self.current_type = self.type
         if allowed_partner_types is not None:
             self.allowed_partner_types = allowed_partner_types
-
-        parent.connectable_attributes.append(self)
 
     def __eq__(self, other):
         if type(self) is type(other):

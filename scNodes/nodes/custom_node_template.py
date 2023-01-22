@@ -17,28 +17,28 @@ class CustomNode(Node):
     group = ["Tutorial", "Custom nodes"]  # In the 'add node' right-click context menu, nodes are listed in groupes. A node can be in multiple groups as in this example. Any group name can be used here - also groups that are not in the default software.
     colour = (1.0, 0.0, 1.0, 1.0)  # this node will be magenta.
     sortid = 0  # upon initializing software, nodes are loaded in order of increasing sortid value. This determines the order with which they are presented in the editor right click context menu.
-    enabled = False
+    enabled = False  # when False, the node is not available in the Node Editor.
 
     def __init__(self):
         super().__init__()  # In this line the init function of the Node parent class is called (can be found in node.py) - you can ignore it but it must be called.
         self.size = 300  # Set the horizontal size of the node.
 
         # defining in- and output attributes.
-        self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self)  # In this example the node has two 'connectable attributes': a dataset input and output.
-        self.dataset_out = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=self)
+        self.connectable_attributes["dataset_in"] = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self)  # In this example the node has two 'connectable attributes': a dataset input and output.
+        self.connectable_attributes["dataset_out"] = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=self)
         # below we define some variables that are used for the example imgui features.
-        self.noise_stdev = 1.0
-        self.n_button_clicks = 0
+        self.params["noise_stdev"] = 1.0  # the parameter 'noise_stdev' is saved when the Node Editor's node setup is saved
+        self.n_button_clicks = 0  # but the parameter 'n_button_clicks' and the others below it are not saved.
         self.stopwatch = False
         self.stopwatch_start = 0
         self.stopwatch_now = 0
 
     def render(self):
         if super().render_start(): # as in the above __init__ function, the render function must by calling the base class' render_start() function, and end with a matching render_end() - see below.
-            self.dataset_in.render_start()  # calling a ConnectableAttribute's render_start() and render_end() handles the rendering and connection logic for that attribute.
-            self.dataset_out.render_start()
-            self.dataset_in.render_end()
-            self.dataset_out.render_end() # callin start first for both attributes and end afterwards makes the attributes appear on the same line / at the same height.
+            self.connectable_attributes["dataset_in"].render_start()  # calling a ConnectableAttribute's render_start() and render_end() handles the rendering and connection logic for that attribute.
+            self.connectable_attributes["dataset_out"].render_start()
+            self.connectable_attributes["dataset_in"].render_end()
+            self.connectable_attributes["dataset_out"].render_end() # callin start first for both attributes and end afterwards makes the attributes appear on the same line / at the same height.
 
             imgui.spacing()  # add a small vertical whitespace
             imgui.separator()  # draw a line separating the above connectors from the rest of the body of the node. purely visual.
@@ -47,7 +47,7 @@ class CustomNode(Node):
             # THE BELOW SECTION SHOWCASES SOME COMMON IMGUI FEATURES THAT CAN BE USED. For a detailed guide refer to the documentation of pyimgui: https://pyimgui.readthedocs.io/en/latest/
             imgui.text("This custom node generates noise.")
             imgui.set_next_item_width(150)
-            _c, self.noise_stdev = imgui.slider_float("Noise stdev", self.noise_stdev, 0.0, 10.0)
+            _c, self.params["noise_stdev"] = imgui.slider_float("Noise stdev", self.params["noise_stdev"], 0.0, 10.0)
             self.any_change = self.any_change or _c  # Node.any_change is one of various flags; boolean member variables of the Node base class that trigger certain behaviours. See the user manual for more info. This particular flag notifies the image viewer that a change has been made to the settings, and triggers the image viewer to request an updated output image.
 
             imgui.spacing()
@@ -95,15 +95,15 @@ class CustomNode(Node):
             self.stopwatch_now = datetime.datetime.now()
 
     def get_image_impl(self, idx=None):
-        data_source = self.dataset_in.get_incoming_node()  # ask the dataset_in attribute for the node that it has got incoming; i.e., the dataset output attribute it is connected to. If it is not connected, a Node of type NullNode is returned - which eveluates to 'False'
+        data_source = self.connectable_attributes["dataset_in"].get_incoming_node()  # ask the dataset_in attribute for the node that it has got incoming; i.e., the dataset output attribute it is connected to. If it is not connected, a Node of type NullNode is returned - which eveluates to 'False'
         if data_source:
             input_frame = data_source.get_image(idx)  # get the incoming image (a Frame object), and call its .load() method to get the image's pixel data as a numpy array. The .load() method does some internal optimizations to ensure the image is only ever loaded from disk once, but the raw data remains intact as well.
             input_pxd = input_frame.load()
             out_frame = input_frame.clone()
-            out_frame.data = np.random.normal(0, self.noise_stdev, input_pxd.shape)
+            out_frame.data = np.random.normal(0, self.params["noise_stdev"], input_pxd.shape)
             return out_frame
         else:
             out_frame = Frame(path = "virtual frame")  # create a new Frame object. Since it is not part of a raw data source, give it a fake path 'virtual frame'
-            out_frame.data = np.random.normal(0, self.noise_stdev, (512, 512))  # no input image: output a 512 x 512 pixel noise image.
+            out_frame.data = np.random.normal(0, self.params["noise_stdev"], (512, 512))  # no input image: output a 512 x 512 pixel noise image.
             return out_frame
 

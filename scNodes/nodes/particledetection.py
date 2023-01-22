@@ -18,27 +18,26 @@ class ParticleDetectionNode(Node):
         super().__init__()
         self.size = 290
 
-        self.dataset_in = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self)
-        self.localizations_out = ConnectableAttribute(ConnectableAttribute.TYPE_COORDINATES, ConnectableAttribute.OUTPUT, parent=self)
+        self.connectable_attributes["dataset_in"] = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.INPUT, parent=self)
+        self.connectable_attributes["localizations_out"] = ConnectableAttribute(ConnectableAttribute.TYPE_COORDINATES, ConnectableAttribute.OUTPUT, parent=self)
 
 
-        self.method = 0
-        self.thresholding = 1
-        self.threshold = 100
-        self.sigmas = 2.0
-        self.means = 3.0
-        self.n_max = 2500
-        self.d_min = 1
-        self.max_fac = 0.75
-        self.min_fac = 5.0
-        self.roi = [0, 0, 0, 0]
+        self.params["method"] = 0
+        self.params["thresholding"] = 1
+        self.params["threshold"] = 100
+        self.params["sigmas"] = 2.0
+        self.params["means"] = 3.0
+        self.params["n_max"] = 2500
+        self.params["d_min"] = 1
+        self.params["max_fac"] = 0.75
+        self.params["min_fac"] = 5.0
 
     def render(self):
         if super().render_start():
-            self.dataset_in.render_start()
-            self.localizations_out.render_start()
-            self.dataset_in.render_end()
-            self.localizations_out.render_end()
+            self.connectable_attributes["dataset_in"].render_start()
+            self.connectable_attributes["localizations_out"].render_start()
+            self.connectable_attributes["dataset_in"].render_end()
+            self.connectable_attributes["localizations_out"].render_end()
 
             imgui.spacing()
             imgui.separator()
@@ -47,43 +46,43 @@ class ParticleDetectionNode(Node):
             _c, self.use_roi = imgui.checkbox("use ROI", self.use_roi)
             self.any_change = self.any_change or _c
             imgui.push_item_width(160)
-            #_c, self.method = imgui.combo("Detection method", self.method, ParticleDetectionNode.METHODS)
+            #_c, self.params["method"] = imgui.combo("Detection method", self.params["method"], ParticleDetectionNode.METHODS)
             #self.any_change = self.any_change or _c
-            _c, self.thresholding = imgui.combo("Threshold method", self.thresholding, ParticleDetectionNode.THRESHOLD_OPTIONS)
+            _c, self.params["thresholding"] = imgui.combo("Threshold method", self.params["thresholding"], ParticleDetectionNode.THRESHOLD_OPTIONS)
             self.any_change = self.any_change or _c
-            if self.thresholding == 0:
-                _c, self.threshold = imgui.input_int("Value", self.threshold, 0, 0)
+            if self.params["thresholding"] == 0:
+                _c, self.params["threshold"] = imgui.input_int("Value", self.params["threshold"], 0, 0)
                 self.any_change = self.any_change or _c
-            elif self.thresholding == 1:
-                _c, self.sigmas = imgui.slider_float("x Sigma", self.sigmas, 1.0, 5.0, format = "%.2f")
+            elif self.params["thresholding"] == 1:
+                _c, self.params["sigmas"] = imgui.slider_float("x Sigma", self.params["sigmas"], 1.0, 5.0, format = "%.2f")
                 self.any_change = self.any_change or _c
-            elif self.thresholding == 2:
-                _c, self.means = imgui.slider_float("x Mean", self.means, 0.1, 10.0, format = "%.2f")
+            elif self.params["thresholding"] == 2:
+                _c, self.params["means"] = imgui.slider_float("x Mean", self.params["means"], 0.1, 10.0, format = "%.2f")
                 self.any_change = self.any_change or _c
-            elif self.thresholding == 3:
-                _c, self.max_fac = imgui.slider_float("x Max", self.max_fac, 0.0, 1.0, format="%.2f")
+            elif self.params["thresholding"] == 3:
+                _c, self.params["max_fac"] = imgui.slider_float("x Max", self.params["max_fac"], 0.0, 1.0, format="%.2f")
                 self.any_change = self.any_change or _c
-            elif self.thresholding == 4:
-                _c, self.min_fac = imgui.slider_float("x Min", self.min_fac, 1.0, 10.0, format="%.2f")
+            elif self.params["thresholding"] == 4:
+                _c, self.params["min_fac"] = imgui.slider_float("x Min", self.params["min_fac"], 1.0, 10.0, format="%.2f")
                 self.any_change = self.any_change or _c
             Node.tooltip("The final threshold value is determined by this factor x the metric (sigma, mean, etc.)\n"
                          "chosen above. In case of Threshold method 'Value', the value entered here is the final \n"
                          "threshold value. Note that the metric is calculated for the ROI only.")
-            _c, self.n_max = imgui.slider_int("Max particles", self.n_max, 100, 2500)
+            _c, self.params["n_max"] = imgui.slider_int("Max particles", self.params["n_max"], 100, 2500)
             Node.tooltip("Maximum amount of particles output per frame. Ctrl + click to override the slider\n"
                          "and enter a custom value.")
             self.any_change = self.any_change or _c
 
             imgui.pop_item_width()
             imgui.push_item_width(100)
-            _c, self.d_min = imgui.input_int("Minimum distance (px)", self.d_min, 1, 10)
+            _c, self.params["d_min"] = imgui.input_int("Minimum distance (px)", self.params["d_min"], 1, 10)
             self.any_change = self.any_change or _c
-            self.d_min = max([1, self.d_min])
+            self.params["d_min"] = max([1, self.params["d_min"]])
             imgui.pop_item_width()
             super().render_end()
 
     def get_image_impl(self, idx=None):
-        source = self.dataset_in.get_incoming_node()
+        source = self.connectable_attributes["dataset_in"].get_incoming_node()
         if cfg.profiling and self.FRAME_REQUESTED_BY_IMAGE_VIEWER:
             self.profiler_count += 1
         if source:
@@ -92,17 +91,17 @@ class ParticleDetectionNode(Node):
             image = image_obj.load()
             if self.use_roi:
                 image = image[self.roi[1]:self.roi[3], self.roi[0]:self.roi[2]]
-            threshold = self.threshold
-            if self.thresholding == 1:
-                threshold = self.sigmas * np.std(image)
-            elif self.thresholding == 2:
-                threshold = self.means * np.mean(image)
-            elif self.thresholding == 3:
-                threshold = self.max_fac * np.amax(image)
-            elif self.thresholding == 4:
-                threshold = self.min_fac * np.abs(np.amin(image))
+            threshold = self.params["threshold"]
+            if self.params["thresholding"] == 1:
+                threshold = self.params["sigmas"] * np.std(image)
+            elif self.params["thresholding"] == 2:
+                threshold = self.params["means"] * np.mean(image)
+            elif self.params["thresholding"] == 3:
+                threshold = self.params["max_fac"] * np.amax(image)
+            elif self.params["thresholding"] == 4:
+                threshold = self.params["min_fac"] * np.abs(np.amin(image))
             # Perform requested detection method
-            coordinates = peak_local_max(image, threshold_abs = threshold, num_peaks = self.n_max, min_distance = self.d_min)
+            coordinates = peak_local_max(image, threshold_abs = threshold, num_peaks = self.params["n_max"], min_distance = self.params["d_min"])
             if self.use_roi:
                 coordinates += np.asarray([self.roi[1], self.roi[0]])
                 Node.get_source_load_data_node(self).dataset.reconstruction_roi = self.roi

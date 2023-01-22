@@ -11,6 +11,7 @@ import os
 import pyperclip
 import dill as pickle
 from scNodes.core.opengl_classes import Texture
+import json
 tkroot = tk.Tk()
 tkroot.withdraw()
 
@@ -243,61 +244,51 @@ class NodeEditor:
         ## Save node setup.
         if imgui.core.begin_main_menu_bar():
             if imgui.begin_menu('File'):
-                if imgui.menu_item("Save project")[0]:
-                    try:
-                        filename = filedialog.asksaveasfilename(filetypes=[("srNodes project", ".srnp")])
+                if imgui.begin_menu("Project"):
+                    if imgui.menu_item("Save project")[0]:
+                        try:
+                            filename = filedialog.asksaveasfilename(filetypes=[("scNodes project", ".scnp")])
+                            if filename != '':
+                                cfg.save_project(filename)
+                        except Exception as e:
+                            cfg.set_error(e, f"Error saving project\n")
+                    if imgui.menu_item("Load project")[0]:
+                        try:
+                            filename = filedialog.askopenfilename(filetypes=[("scNodes project", ".scnp")])
+                            if filename != '':
+                                cfg.load_project(filename)
+                        except Exception as e:
+                            cfg.set_error(e, f"Error loading project:\n")
+                    imgui.end_menu()
+                if imgui.begin_menu("Node Editor"):
+                    save_setup, _ = imgui.menu_item("Save setup")
+                    if save_setup:
+                        filename = filedialog.asksaveasfilename(filetypes=[("scNodes setup", ".scn")])
                         if filename != '':
-                            cfg.save_project(filename)
-                    except Exception as e:
-                        cfg.set_error(e, f"Error saving project\n")
-                if imgui.menu_item("Load project")[0]:
-                    try:
-                        filename = filedialog.askopenfilename(filetypes=[("srNodes project", ".srnp")])
-                        if filename != '':
-                            cfg.load_project(filename)
-                    except Exception as e:
-                        cfg.set_error(e, f"Error loading project - are you sure you selected a '.srnp' file?\n")
-                load_setup, _ = imgui.menu_item("Load node setup")
-                if load_setup:
-                    try:
-                        filename = filedialog.askopenfilename(filetypes=[("srNodes setup", ".srn")])
-                        if filename != '':
-                            with open(filename, 'rb') as pickle_file:
-                                imported_nodes = pickle.load(pickle_file)
-                                cfg.nodes = imported_nodes
-                                cfg.node_editor_relink = True
-                    except Exception as e:
-                        cfg.set_error(e, f"Error loading node setup - are you sure you selected a '.srn' file?\n"+str(e))
-                import_setup, _ = imgui.menu_item("Append node setup")
-                if import_setup:
-                    try:
-                        filename = filedialog.askopenfilename(filetypes=[("srNodes setup", ".srn")])
-                        if filename != '':
-                            with open(filename, 'rb') as pickle_file:
-                                imported_nodes = pickle.load(pickle_file)
-                                for node in imported_nodes:
-                                    cfg.nodes.append(node)
-                                NodeEditor.relink_after_load()
-                    except Exception as e:
-                        cfg.set_error(e, "Error importing node setup - are you sure you selected a '.srn' file?\n"+str(e))
-                save_setup, _ = imgui.menu_item("Save current setup")
-                if save_setup:
-                    filename = filedialog.asksaveasfilename(filetypes=[("srNodes setup", ".srn")])
-                    if filename != '':
-                        if filename[-4:] == ".srn":
-                            filename = filename[:-4]
-                        with open(filename+".srn", 'wb') as pickle_file:
-                            node_copies = list()
-                            for node in cfg.nodes:
-                                node.pre_save()
-                                node_copies.append(copy.deepcopy(node))
-                                node.post_save()
-                            pickle.dump(node_copies, pickle_file)
-                clear_setup, _ = imgui.menu_item("Clear current setup")
-                if clear_setup:
-                    for i in range(len(cfg.nodes)):
-                        cfg.nodes[0].delete()
-                    cfg.nodes = list()
+                            NodeEditor.save_node_setup(filename + ".scn")
+                    load_setup, _ = imgui.menu_item("Load setup")
+                    if load_setup:
+                        try:
+                            filename = filedialog.askopenfilename(filetypes=[("scNodes setup", ".scn")])
+                            if filename != '':
+                                cfg.nodes = list()
+                                NodeEditor.append_node_setup(filename)
+                        except Exception as e:
+                            cfg.set_error(e, f"Error loading node setup:\n"+str(e))
+                    import_setup, _ = imgui.menu_item("Load setup & append")
+                    if import_setup:
+                        try:
+                            filename = filedialog.askopenfilename(filetypes=[("scNodes setup", ".scn")])
+                            if filename != '':
+                                NodeEditor.append_node_setup(filename)
+                        except Exception as e:
+                            cfg.set_error(e, "Error importing node setup:\n"+str(e))
+                    clear_setup, _ = imgui.menu_item("Clear setup")
+                    if clear_setup:
+                        for i in range(len(cfg.nodes)):
+                            cfg.nodes[0].delete()
+                        cfg.nodes = list()
+                    imgui.end_menu()
                 imgui.end_menu()
             if imgui.begin_menu('Settings'):
                 install_node, _ = imgui.menu_item("Install a node")
@@ -400,6 +391,56 @@ class NodeEditor:
                     NodeEditor.NODE_GROUPS[group].append(_node.title)
 
         NodeEditor.node_group_all = list(NodeEditor.NODE_FACTORY.keys())
+
+    @staticmethod
+    def save_node_setup(path):
+        node_setup = list()
+        for node in cfg.nodes:
+            node_setup.append(node.to_dict())
+        links = list()
+        for node in cfg.nodes:
+            for home_attribute in node.connectable_attributes.values():
+                if home_attribute.direction == ConnectableAttribute.INPUT:
+                    continue
+                for partner_attribute in home_attribute.linked_attributes:
+                    links.append([home_attribute.id, partner_attribute.id])
+
+        full_setup = dict()
+        full_setup["nodes"] = node_setup
+        full_setup["links"] = links
+        with open(path, 'w') as outfile:
+            json.dump(full_setup, outfile, indent=2)
+
+
+    @staticmethod
+    def append_node_setup(path):
+        with open(path, 'r') as infile:
+            full_setup = json.load(infile)
+            # parse the node setup
+            node_setup = full_setup["nodes"]
+            new_nodes = list()
+            for node_dict in node_setup:
+                # generate a node of the right type:
+                title = node_dict["title"]
+                new_node = NodeEditor.NODE_FACTORY[title]()
+                new_node.from_dict(node_dict)
+                new_nodes.append(new_node)
+            # with all the nodes and their attributes added, link up the attributes:
+            all_attributes_by_id = dict()
+            for node in cfg.nodes:
+                for a in node.connectable_attributes.values():
+                    if a.id in node.connectable_attributes:
+                        cfg.set_error(BaseException(), "Error appending node setup - an id was used multiple times.")
+                    all_attributes_by_id[a.id] = a
+            links = full_setup["links"]
+            for link in links:
+                home_attribute = all_attributes_by_id[link[0]]
+                parent_attribute = all_attributes_by_id[link[1]]
+                home_attribute.connect_attributes(parent_attribute)
+            # finally, call all of the new nodes' on_load function
+            for node in new_nodes:
+                node.on_load()
+
 
     @staticmethod
     def relink_after_load():

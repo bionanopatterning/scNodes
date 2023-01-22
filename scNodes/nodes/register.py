@@ -169,7 +169,7 @@ class RegisterNode(Node):
             input_img.bake_transform(interpolation=self.interpolation, edges=RegisterNode.edge_fill_options_scipy_argument[self.edge_fill], preserve_range=self.preserve_range)
             return input_img
 
-    def pre_save_impl(self):
+    def pre_pickle_impl(self):
         self.reference_image = None
 
     def _orb_register(self, ref, img, keep=0.7, confidence=0.99, method=0):

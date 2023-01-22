@@ -11,11 +11,12 @@ class ParticleFilterNode(Node):
     colour = (243 / 255, 0 / 255, 80 / 255, 1.0)
     size = 310
     sortid = 1002
+    
     def __init__(self):
         super().__init__()
 
-        self.reconstruction_in = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.INPUT, parent=self)
-        self.reconstruction_out = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.OUTPUT, parent=self)
+        self.connectable_attributes["reconstruction_in"] = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.INPUT, parent=self)
+        self.connectable_attributes["reconstruction_out"] = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.OUTPUT, parent=self)
 
         self.available_parameters = ["No data available"]
         self.filters = list()
@@ -25,16 +26,16 @@ class ParticleFilterNode(Node):
 
     def render(self):
         if super().render_start():
-            self.reconstruction_in.render_start()
-            self.reconstruction_out.render_start()
-            self.reconstruction_in.render_end()
-            self.reconstruction_out.render_end()
+            self.connectable_attributes["reconstruction_in"].render_start()
+            self.connectable_attributes["reconstruction_out"].render_start()
+            self.connectable_attributes["reconstruction_in"].render_end()
+            self.connectable_attributes["reconstruction_out"].render_end()
 
             imgui.spacing()
             imgui.separator()
             imgui.spacing()
 
-            if self.reconstruction_in.check_connect_event():
+            if self.connectable_attributes["reconstruction_in"].check_connect_event():
                 self.get_histogram_parameters()
 
             i = 0
@@ -74,7 +75,7 @@ class ParticleFilterNode(Node):
         self.get_histogram_parameters()
 
     def get_histogram_vals(self, parameter):
-        datasource = self.reconstruction_in.get_incoming_node()
+        datasource = self.connectable_attributes["reconstruction_in"].get_incoming_node()
         if datasource:
             particledata = datasource.get_particle_data()
             return particledata.histogram_counts[parameter], particledata.histogram_bins[parameter]
@@ -82,7 +83,7 @@ class ParticleFilterNode(Node):
             return np.asarray([0, 0]).astype('float32'), np.asarray([0, 1]).astype('float32')
 
     def get_histogram_parameters(self):
-        datasource = self.reconstruction_in.get_incoming_node()
+        datasource = self.connectable_attributes["reconstruction_in"].get_incoming_node()
         if datasource:
             particledata = datasource.get_particle_data()
             self.available_parameters = list(particledata.histogram_counts.keys())
@@ -90,7 +91,7 @@ class ParticleFilterNode(Node):
     def get_particle_data_impl(self):
         if cfg.profiling:
             time_start = time.time()
-        datasource = self.reconstruction_in.get_incoming_node()
+        datasource = self.connectable_attributes["reconstruction_in"].get_incoming_node()
         if datasource:
             pdata = datasource.get_particle_data()
             for pf in self.filters:
@@ -102,7 +103,10 @@ class ParticleFilterNode(Node):
             if cfg.profiling:
                 self.profiler_time += time.time() - time_start
             return ParticleData()
-
+    
+    def on_load(self):
+        self.on_gain_focus()
+    
     class Filter:
         def __init__(self, parent):
             self.parameter_key = ""
