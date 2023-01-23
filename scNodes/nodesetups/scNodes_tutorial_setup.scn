@@ -1,0 +1,443 @@
+{
+  "nodes": [
+    {
+      "title": "Import dataset",
+      "id": 20230123112510511255022,
+      "position": [
+        -68.0,
+        170.0
+      ],
+      "use_roi": false,
+      "roi": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "lut": "auto",
+      "attributes": [
+        {
+          "name": "dataset_out",
+          "type": 1,
+          "title": "Dataset",
+          "direction": false,
+          "allowed_partner_types": [
+            1
+          ],
+          "id": 1674465956
+        }
+      ],
+      "params": {
+        "path": "C:/Users/mgflast/Desktop/220902_srNodes_test.tif",
+        "pixel_size": 64.0,
+        "load_on_the_fly": true,
+        "file_filter_positive_raw": "",
+        "file_filter_negative_raw": ""
+      }
+    },
+    {
+      "title": "Registration",
+      "id": 20230123112515456013023,
+      "position": [
+        58.0,
+        318.0
+      ],
+      "use_roi": true,
+      "roi": [
+        139,
+        139,
+        417,
+        417
+      ],
+      "lut": "auto",
+      "attributes": [
+        {
+          "name": "dataset_in",
+          "type": 1,
+          "title": "Dataset",
+          "direction": true,
+          "allowed_partner_types": [
+            1
+          ],
+          "id": 1674465962
+        },
+        {
+          "name": "dataset_out",
+          "type": 1,
+          "title": "Dataset",
+          "direction": false,
+          "allowed_partner_types": [
+            1
+          ],
+          "id": 1674465963
+        },
+        {
+          "name": "image_in",
+          "type": 2,
+          "title": "Image",
+          "direction": true,
+          "allowed_partner_types": [
+            2
+          ],
+          "id": 1674465964
+        }
+      ],
+      "params": {
+        "register_method": 0,
+        "reference_method": 1,
+        "orb_n_requested": 500,
+        "orb_keep": 0.7,
+        "orb_confidence": 0.99,
+        "orb_method": 0,
+        "interpolation": 1,
+        "edge_fill": 0,
+        "preserve_range": false
+      }
+    },
+    {
+      "title": "Spatial filter",
+      "id": 20230123112610539228027,
+      "position": [
+        233.0,
+        461.0
+      ],
+      "use_roi": false,
+      "roi": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "lut": "auto",
+      "attributes": [
+        {
+          "name": "dataset_in",
+          "type": 1,
+          "title": "Dataset",
+          "direction": true,
+          "allowed_partner_types": [
+            1
+          ],
+          "id": 1674466020
+        },
+        {
+          "name": "dataset_out",
+          "type": 1,
+          "title": "Dataset",
+          "direction": false,
+          "allowed_partner_types": [
+            1
+          ],
+          "id": 1674466021
+        }
+      ],
+      "params": {
+        "filter": 3,
+        "level": 1,
+        "sigma": 2.0,
+        "kernel": 3,
+        "wavelet": 0,
+        "custom_wavelet": "bior6.8",
+        "dog_s1": 1.0,
+        "dog_s2": 5.0,
+        "deriv_sigma": 2.0,
+        "deriv_order": 1
+      }
+    },
+    {
+      "title": "Particle detection",
+      "id": 20230123112622691887032,
+      "position": [
+        455.0,
+        468.0
+      ],
+      "use_roi": true,
+      "roi": [
+        139,
+        139,
+        417,
+        417
+      ],
+      "lut": "auto",
+      "attributes": [
+        {
+          "name": "dataset_in",
+          "type": 1,
+          "title": "Dataset",
+          "direction": true,
+          "allowed_partner_types": [
+            1
+          ],
+          "id": 1674466034
+        },
+        {
+          "name": "localizations_out",
+          "type": 6,
+          "title": "Coordinates",
+          "direction": false,
+          "allowed_partner_types": [
+            6
+          ],
+          "id": 1674466035
+        }
+      ],
+      "params": {
+        "method": 0,
+        "thresholding": 1,
+        "threshold": 100,
+        "sigmas": 1.0,
+        "means": 3.0,
+        "n_max": 5000,
+        "d_min": 1,
+        "max_fac": 0.75,
+        "min_fac": 5.0
+      }
+    },
+    {
+      "title": "Bake stack",
+      "id": 20230123112649927892035,
+      "position": [
+        506.0,
+        188.0
+      ],
+      "use_roi": false,
+      "roi": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "lut": "auto",
+      "attributes": [
+        {
+          "name": "dataset_in",
+          "type": 1,
+          "title": "Dataset",
+          "direction": true,
+          "allowed_partner_types": [
+            1
+          ],
+          "id": 1674466063
+        },
+        {
+          "name": "dataset_out",
+          "type": 1,
+          "title": "Dataset",
+          "direction": false,
+          "allowed_partner_types": [
+            1
+          ],
+          "id": 1674466064
+        },
+        {
+          "name": "coordinates_in",
+          "type": 6,
+          "title": "Coordinates",
+          "direction": true,
+          "allowed_partner_types": [
+            6
+          ],
+          "id": 1674466065
+        },
+        {
+          "name": "coordinates_out",
+          "type": 6,
+          "title": "Coordinates",
+          "direction": false,
+          "allowed_partner_types": [
+            6
+          ],
+          "id": 1674466066
+        }
+      ],
+      "params": {
+        "parallel": true,
+        "range_option": 0,
+        "custom_range_min": 0,
+        "custom_range_max": 1,
+        "bake_coordinates": true,
+        "load_baked_stack_into_ram": false
+      }
+    },
+    {
+      "title": "PSF fitting",
+      "id": 20230123112701766283040,
+      "position": [
+        770.0,
+        66.0
+      ],
+      "use_roi": false,
+      "roi": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "lut": "auto",
+      "attributes": [
+        {
+          "name": "dataset_in",
+          "type": 1,
+          "title": "Dataset",
+          "direction": true,
+          "allowed_partner_types": [
+            1
+          ],
+          "id": 1674466079
+        },
+        {
+          "name": "localizations_in",
+          "type": 6,
+          "title": "Coordinates",
+          "direction": true,
+          "allowed_partner_types": [
+            6
+          ],
+          "id": 1674466080
+        },
+        {
+          "name": "reconstruction_out",
+          "type": 3,
+          "title": "Reconstruction",
+          "direction": false,
+          "allowed_partner_types": [
+            3
+          ],
+          "id": 1674466081
+        }
+      ],
+      "params": {
+        "range_option": 1,
+        "range_min": 0,
+        "range_max": 1,
+        "estimator": 1,
+        "crop_radius": 3,
+        "initial_sigma": 1.600000023841858,
+        "intensity_min": 100.0,
+        "intensity_max": -1.0,
+        "sigma_min": 1.0,
+        "sigma_max": 10.0,
+        "offset_min": 0.0,
+        "offset_max": -1.0,
+        "custom_bounds": false
+      }
+    },
+    {
+      "title": "Particle filter",
+      "id": 20230123112706501215044,
+      "position": [
+        974.0,
+        275.0
+      ],
+      "use_roi": false,
+      "roi": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "lut": "auto",
+      "attributes": [
+        {
+          "name": "reconstruction_in",
+          "type": 3,
+          "title": "Reconstruction",
+          "direction": true,
+          "allowed_partner_types": [
+            3
+          ],
+          "id": 1674466087
+        },
+        {
+          "name": "reconstruction_out",
+          "type": 3,
+          "title": "Reconstruction",
+          "direction": false,
+          "allowed_partner_types": [
+            3
+          ],
+          "id": 1674466088
+        }
+      ],
+      "params": {}
+    },
+    {
+      "title": "Render reconstruction",
+      "id": 20230123112710635042047,
+      "position": [
+        1149.0,
+        367.0
+      ],
+      "use_roi": false,
+      "roi": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "lut": "auto",
+      "attributes": [
+        {
+          "name": "reconstruction_in",
+          "type": 3,
+          "title": "Reconstruction",
+          "direction": true,
+          "allowed_partner_types": [
+            3
+          ],
+          "id": 1674466093
+        },
+        {
+          "name": "image_out",
+          "type": 2,
+          "title": "Image",
+          "direction": false,
+          "allowed_partner_types": [
+            2
+          ],
+          "id": 1674466094
+        }
+      ],
+      "params": {
+        "pixel_size": 10.0,
+        "default_sigma": 30.0,
+        "fix_sigma": false,
+        "parameter": 0,
+        "min": 0.0,
+        "max": 0.0,
+        "auto_render": false,
+        "output_mode": 0
+      }
+    }
+  ],
+  "links": [
+    [
+      1674465956,
+      1674465962
+    ],
+    [
+      1674465963,
+      1674466020
+    ],
+    [
+      1674465963,
+      1674466063
+    ],
+    [
+      1674466021,
+      1674466034
+    ],
+    [
+      1674466035,
+      1674466065
+    ],
+    [
+      1674466081,
+      1674466087
+    ],
+    [
+      1674466088,
+      1674466093
+    ]
+  ]
+}

@@ -186,6 +186,7 @@ class ImageViewer:
             ImageViewer.MARKER_COLOUR = cfg.active_node.colour
             self.node_blocking_frame_window = cfg.active_node.DISABLE_FRAME_INFO_WINDOW
             if self.previous_active_node is not cfg.active_node or cfg.active_node.any_change or self.new_image_requested:
+                print("IV getting new image")
                 if cfg.active_node.NODE_RETURNS_IMAGE:
                     an = cfg.active_node
                     self.current_dataset = an.get_source_load_data_node(an).dataset

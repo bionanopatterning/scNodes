@@ -11,7 +11,8 @@ a = Analysis(
     datas=[
     ("./icons", "icons"), ("./shaders", "shaders"), ("./nodes", "nodes"), ("./ceplugins", "ceplugins"),
     ("./core/particlefitting.py", "scNodes/core"), ("./nodes/pysofi", "scNodes/nodes/pysofi"),
-    ("../venv/lib/site-packages/pygpufit/Gpufit.dll", "pygpufit")],
+    ("../venv/lib/site-packages/pygpufit/Gpufit.dll", "pygpufit"),
+    ("./nodesetups", "nodesetups")],
     hiddenimports=['pywt', 'scNodes.core.particlefitting', 'pystackreg', 'cv2', 'scNodes.nodes.pysofi', 'pygpufit'],
     hookspath=[],
     hooksconfig={},

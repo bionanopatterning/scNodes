@@ -12,15 +12,15 @@ from setuptools import setup, find_packages
 
 setup(
     name='scNodes',
-    version='1.0.63',
+    version='1.0.64',
     packages=find_packages(),
     url='https://github.com/bionanopatterning/scNodes',
     license='GPL v3',
     author='mgflast',
     author_email='m.g.f.last@lumc.nl',
     description='Correlating super-resolution fluorescence and transmission electron cryo-microscopy\ngithub.com/bionanopatterning/scNodes',
-    package_data={'': ['*.png', '*.glsl', '*.whl', '*.tar.gz', '*.pdf']},
-    include_package_data=False,  # weirdly, the above filetypes are included when this parameter is set to False.
+    package_data={'': ['*.png', '*.glsl', '*.whl', '*.tar.gz', '*.pdf', '*.scn']},
+    include_package_data=False,  # weirdly, the above filetypes _are_ included when this parameter is set to False.
     install_requires=[
         "colorcet>=3.0.0",
         "dill>=0.3.5.1",

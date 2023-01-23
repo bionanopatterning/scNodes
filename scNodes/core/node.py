@@ -372,14 +372,17 @@ class Node:
         :return: node: node with type TYPE_LOAD_DATA
         """
         def get_any_incoming_node(_node):
+            print(_node)
             for attribute in _node.connectable_attributes.values():
                 if attribute.direction == ConnectableAttribute.INPUT:
+                    print("input")
                     return attribute.get_incoming_node()
 
         if node.NODE_IS_DATA_SOURCE:
             return node
         try:
             source = get_any_incoming_node(node)
+            print(source)
             while not isinstance(source, NullNode):
                 if source.NODE_IS_DATA_SOURCE:
                     return source
