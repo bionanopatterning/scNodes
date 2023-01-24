@@ -28,6 +28,7 @@ class ParticleFittingNode(Node):
         self.params["range_min"] = 0
         self.params["range_max"] = 1
         self.params["estimator"] = 1
+        self.params["psf"] = 0
         self.params["crop_radius"] = 3
         self.params["initial_sigma"] = 1.6
         self.fitting = False
@@ -61,8 +62,10 @@ class ParticleFittingNode(Node):
             imgui.spacing()
             imgui.separator()
             imgui.spacing()
-            imgui.set_next_item_width(180)
+            imgui.set_next_item_width(200)
             _c, self.params["estimator"] = imgui.combo("Estimator", self.params["estimator"], ParticleFittingNode.ESTIMATORS)
+            imgui.set_next_item_width(150)
+            _c, self.params["psf"] = imgui.combo("PSF", self.params["psf"], ParticleFittingNode.PSFS)
             if self.params["estimator"] in [0, 1]:
                 imgui.same_line()
                 imgui.button("?", 19, 19)
@@ -101,7 +104,6 @@ class ParticleFittingNode(Node):
                 self.fitting = False
                 self.particle_data.bake()
 
-            ## TODO: add camera offset and ADU per photon (to LOAD DATASET?)
             if not self.particle_data.empty:
                 imgui.text("Reconstruction info")
                 imgui.text(f"particles: {len(self.particle_data.particles)}")
@@ -201,7 +203,24 @@ class ParticleFittingNode(Node):
                 return frame
             particles = list()
             if self.params["estimator"] in [0, 1]:
-                particles = pfit.frame_to_particles(frame, self.params["initial_sigma"], self.params["estimator"], self.params["crop_radius"], constraints=[self.params["intensity_min"], self.params["intensity_max"], -1, -1, -1, -1, self.params["sigma_min"], self.params["sigma_max"], self.params["offset_min"], self.params["offset_max"]])
+                if self.params["psf"] == 0:
+                    particles = pfit.frame_to_particles(frame, self.params["initial_sigma"], self.params["estimator"], self.params["crop_radius"],
+                                                        constraints=[self.params["intensity_min"],
+                                                                     self.params["intensity_max"], -1, -1, -1, -1,
+                                                                     self.params["sigma_min"],
+                                                                     self.params["sigma_max"],
+                                                                     self.params["offset_min"],
+                                                                     self.params["offset_max"]])
+                elif self.params["psf"] == 1:
+                    particles = pfit.frame_to_particles_3d(frame, self.params["initial_sigma"], self.params["estimator"], self.params["crop_radius"],
+                                                        constraints=[self.params["intensity_min"],
+                                                                     self.params["intensity_max"], -1, -1, -1, -1,
+                                                                     self.params["sigma_min"],
+                                                                     self.params["sigma_max"],
+                                                                     self.params["sigma_min"],
+                                                                     self.params["sigma_max"],
+                                                                     self.params["offset_min"],
+                                                                     self.params["offset_max"]])
             elif self.params["estimator"] == 2:
                 particles = list()
                 pxd = frame.load()

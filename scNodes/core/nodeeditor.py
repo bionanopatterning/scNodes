@@ -394,52 +394,61 @@ class NodeEditor:
 
     @staticmethod
     def save_node_setup(path):
-        node_setup = list()
-        for node in cfg.nodes:
-            node_setup.append(node.to_dict())
-        links = list()
-        for node in cfg.nodes:
-            for home_attribute in node.connectable_attributes.values():
-                if home_attribute.direction == ConnectableAttribute.INPUT:
-                    continue
-                for partner_attribute in home_attribute.linked_attributes:
-                    links.append([home_attribute.id, partner_attribute.id])
+        try:
+            node_setup = list()
+            for node in cfg.nodes:
+                node_setup.append(node.to_dict())
+            links = list()
+            for node in cfg.nodes:
+                for home_attribute in node.connectable_attributes.values():
+                    if home_attribute.direction == ConnectableAttribute.INPUT:
+                        continue
+                    for partner_attribute in home_attribute.linked_attributes:
+                        links.append([home_attribute.id, partner_attribute.id])
 
-        full_setup = dict()
-        full_setup["nodes"] = node_setup
-        full_setup["links"] = links
-        with open(path, 'w') as outfile:
-            json.dump(full_setup, outfile, indent=2)
+            full_setup = dict()
+            full_setup["nodes"] = node_setup
+            full_setup["links"] = links
+            print(full_setup)
+            print(node_setup)
+            print(links)
+            with open(path, 'w') as outfile:
+                json.dump(full_setup, outfile, indent=2)
+        except Exception as e:
+            cfg.set_error(e, "Error saving node setup")
 
 
     @staticmethod
     def append_node_setup(path):
-        with open(path, 'r') as infile:
-            full_setup = json.load(infile)
-            # parse the node setup
-            node_setup = full_setup["nodes"]
-            new_nodes = list()
-            for node_dict in node_setup:
-                # generate a node of the right type:
-                title = node_dict["title"]
-                new_node = NodeEditor.NODE_FACTORY[title]()
-                new_node.from_dict(node_dict)
-                new_nodes.append(new_node)
-            # with all the nodes and their attributes added, link up the attributes:
-            all_attributes_by_id = dict()
-            for node in cfg.nodes:
-                for a in node.connectable_attributes.values():
-                    if a.id in node.connectable_attributes:
-                        cfg.set_error(BaseException(), "Error appending node setup - an id was used multiple times.")
-                    all_attributes_by_id[a.id] = a
-            links = full_setup["links"]
-            for link in links:
-                home_attribute = all_attributes_by_id[link[0]]
-                parent_attribute = all_attributes_by_id[link[1]]
-                home_attribute.connect_attributes(parent_attribute)
-            # finally, call all of the new nodes' on_load function
-            for node in new_nodes:
-                node.on_load()
+        try:
+            with open(path, 'r') as infile:
+                full_setup = json.load(infile)
+                # parse the node setup
+                node_setup = full_setup["nodes"]
+                new_nodes = list()
+                for node_dict in node_setup:
+                    # generate a node of the right type:
+                    title = node_dict["title"]
+                    new_node = NodeEditor.NODE_FACTORY[title]()
+                    new_node.from_dict(node_dict)
+                    new_nodes.append(new_node)
+                # with all the nodes and their attributes added, link up the attributes:
+                all_attributes_by_id = dict()
+                for node in cfg.nodes:
+                    for a in node.connectable_attributes.values():
+                        if a.id in node.connectable_attributes:
+                            cfg.set_error(BaseException(), "Error appending node setup - an id was used multiple times.")
+                        all_attributes_by_id[a.id] = a
+                links = full_setup["links"]
+                for link in links:
+                    home_attribute = all_attributes_by_id[link[0]]
+                    parent_attribute = all_attributes_by_id[link[1]]
+                    home_attribute.connect_attributes(parent_attribute)
+                # finally, call all of the new nodes' on_load function
+                for node in new_nodes:
+                    node.on_load()
+        except Exception as e:
+            cfg.set_error(e, "Error appending/loading node setup: ")
 
 
     @staticmethod

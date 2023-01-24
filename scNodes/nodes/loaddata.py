@@ -30,6 +30,7 @@ class LoadDataNode(Node):
         self.dataset = Dataset()
         self.params["path"] = ""
         self.params["pixel_size"] = 64.0
+        self.pixel_size = self.params["pixel_size"]
         self.params["load_on_the_fly"] = True
         self.done_loading = False
         self.to_load_idx = 0
@@ -72,6 +73,7 @@ class LoadDataNode(Node):
             self.any_change = self.any_change or _c
             if _c:
                 self.dataset.pixel_size = self.params["pixel_size"]
+                self.pixel_size = self.params["pixel_size"]
             imgui.pop_item_width()
             imgui.same_line()
             imgui.text("nm")

@@ -1,4 +1,5 @@
 import colorcet as cc
+import numpy as np
 
 n_cpus = -1
 
@@ -22,6 +23,11 @@ luts["Neon"] = cc.linear_worb_100_25_c53
 #luts["Isoluminant hue"] = cc.isoluminant_cgo_80_c38
 luts["Over/under A"] = cc.diverging_linear_bjr_30_55_c53
 luts["Over/under B"] = cc.diverging_gwr_55_95_c38
+luts["GtR"] = np.zeros((256, 3))
+luts["CtY"] = np.zeros((256, 3))
+for i in range(256):
+    luts["GtR"][i, :] = [1.0 - i / 256, i / 256, 0.0]
+    luts["CtY"][i, :] = [1.0 - i / 256, 1.0, i / 256]
 #luts["Glasbey"] = cc.glasbey_bw_minc_20_minl_30
 lut_names = list(luts.keys())
 

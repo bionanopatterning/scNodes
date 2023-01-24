@@ -200,6 +200,10 @@ class ReconstructionRendererNode(Node):
 
     def build_reconstruction(self):
         try:
+            roi = self.get_particle_data().reconstruction_roi
+            img_width = int((roi[3] - roi[1]) / self.params["pixel_size"])
+            img_height = int((roi[2] - roi[0]) / self.params["pixel_size"])
+            self.reconstruction_image_size = (img_width, img_height)
             self.original_pixel_size = Node.get_source_load_data_node(self).dataset.pixel_size
             self.reconstructor.set_pixel_size(self.params["pixel_size"])
             self.reconstructor.set_image_size(self.reconstruction_image_size)
@@ -242,7 +246,7 @@ class ReconstructionRendererNode(Node):
     def compute_contrast_lims(rgb_image):
         max_channel = np.unravel_index(np.argmax(rgb_image), rgb_image.shape)[2]
         img_sorted = np.sort(rgb_image[:, :, max_channel].flatten())
-        n = img_sorted.shape[0] * img_sorted.shape[1]
+        n = img_sorted.shape[0]
         cmin = img_sorted[int(settings.autocontrast_saturation / 100.0 * n)]
         cmax = img_sorted[int((1.0 - settings.autocontrast_saturation / 100.0) * n)]
         return cmin, cmax

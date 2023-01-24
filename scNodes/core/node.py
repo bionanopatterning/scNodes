@@ -2,7 +2,7 @@ from scNodes.core import config as cfg
 import imgui
 import time
 import datetime
-from scNodes.core.dataset import *
+from scNodes.core.datatypes import *
 from scNodes.core import settings
 from joblib import Parallel, delayed
 from joblib.externals.loky import set_loky_pickler
@@ -324,7 +324,8 @@ class Node:
         self.use_roi = node_dict["use_roi"]
         self.roi = node_dict["roi"]
         self.lut = node_dict["lut"]
-        self.params = node_dict["params"]
+        for key in node_dict["params"]:
+            self.params[key] = node_dict["params"][key]
         self.connectable_attributes = dict()
         for attribute_dict in node_dict["attributes"]:
             attribute = ConnectableAttribute(attribute_dict["type"], attribute_dict["direction"], self, attribute_dict["allowed_partner_types"])
@@ -372,17 +373,14 @@ class Node:
         :return: node: node with type TYPE_LOAD_DATA
         """
         def get_any_incoming_node(_node):
-            print(_node)
             for attribute in _node.connectable_attributes.values():
                 if attribute.direction == ConnectableAttribute.INPUT:
-                    print("input")
                     return attribute.get_incoming_node()
 
         if node.NODE_IS_DATA_SOURCE:
             return node
         try:
             source = get_any_incoming_node(node)
-            print(source)
             while not isinstance(source, NullNode):
                 if source.NODE_IS_DATA_SOURCE:
                     return source

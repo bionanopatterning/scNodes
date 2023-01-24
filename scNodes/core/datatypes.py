@@ -245,6 +245,8 @@ class ParticleData:
         offset = list()
         uncertainty = list()
         bkgstd = list()
+        sigma2 = list()
+        z = list()
 
         k1 = self.pixel_size**2 / 12
         k2 = 8 * np.pi / self.pixel_size**2
@@ -264,6 +266,8 @@ class ParticleData:
                     p.uncertainty = np.sqrt(((p.sigma*self.pixel_size)**2 + k1) / p.intensity + k2 * (p.sigma*self.pixel_size)**4 * p.bkgstd**2 / p.intensity**2)
                 uncertainty.append(p.uncertainty)
                 bkgstd.append(p.bkgstd)
+                sigma2.append(p.sigma2)
+                z.append(p.z)
 
         self.parameter['uncertainty [nm]'] = np.asarray(uncertainty)
         self.parameter['intensity [counts]'] = np.asarray(intensity)
@@ -273,6 +277,10 @@ class ParticleData:
         self.parameter['sigma [nm]'] = np.asarray(sigma)
         self.parameter['bkgstd [counts]'] = np.asarray(bkgstd)
         self.parameter['frame'] = np.asarray(frame).astype(np.float32)
+        if self.particles[0].sigma2 != -1:
+            self.parameter['sigma2 [nm]'] = np.asarray(sigma2) * self.pixel_size
+        if self.particles[0].z != -1:
+            self.parameter['z [nm]'] = np.asarray(z) * self.pixel_size
 
         for key in self.parameter:
             self.histogram_counts[key], self.histogram_bins[key] = np.histogram(self.parameter[key], bins=ParticleData.HISTOGRAM_BINS)
@@ -348,17 +356,19 @@ class ParticleData:
 
 
 class Particle:
-    def __init__(self, frame, x, y, sigma, intensity, offset=0, bkgstd=-1, uncertainty=-1, colour_idx=1.0):
+    def __init__(self, frame, x, y, sigma, intensity, offset=0, bkgstd=-1, uncertainty=-1, colour_idx=1.0, sigma2=-1):
         self.frame = frame
         self.x = x
         self.y = y
         self.sigma = sigma
+        self.sigma2 = sigma2
         self.intensity = intensity
         self.offset = offset
         self.bkgstd = bkgstd
         self.uncertainty = uncertainty
         self.colour_idx = colour_idx
         self.visible = True
+        self.z = -1
 
     def __str__(self):
-        return f"f={self.frame}, x={self.x}, y={self.y}, sigma={self.sigma}, i={self.intensity}, offset={self.offset}, bkgstd={self.bkgstd}"
+        return f"f={self.frame}, x={self.x}, y={self.y}, sigma={self.sigma}, i={self.intensity}, offset={self.offset}, bkgstd={self.bkgstd}, sigma2={self.sigma2}"

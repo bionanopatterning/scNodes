@@ -1,5 +1,5 @@
 from scNodes.core.opengl_classes import *
-from scNodes.core.dataset import *
+from scNodes.core.datatypes import *
 from scNodes.core.util import *
 import scNodes.core.settings as settings
 
