@@ -101,7 +101,6 @@ class CorrelationEditor:
 
         renderer = None
 
-
         # export
         export_roi_mode = 1  # 0 for ROI, 1 for Image
         export_roi_obj = None
@@ -332,20 +331,20 @@ class CorrelationEditor:
 
         if imgui.core.begin_main_menu_bar():
             if imgui.begin_menu("File"):
-                if imgui.menu_item("Save project")[0]:
+                if imgui.menu_item("Save scene")[0]:
                     try:
-                        filename = filedialog.asksaveasfilename(filetypes=[("srNodes project", ".srnp")])
+                        filename = filedialog.asksaveasfilename(filetypes=[("scNodes scene", cfg.filetype_scene)])
                         if filename != '':
-                            cfg.save_project(filename)
+                            cfg.save_scene(filename)
                     except Exception as e:
-                        cfg.set_error(e, f"Error saving project?\n")
-                if imgui.menu_item("Load project")[0]:
+                        cfg.set_error(e, "Error saving scene")
+                if imgui.menu_item("Load scene")[0]:
                     try:
-                        filename = filedialog.askopenfilename(filetypes=[("srNodes project", ".srnp")])
+                        filename = filedialog.askopenfilename(filetypes=[("scNodes scene", cfg.filetype_scene)])
                         if filename != '':
-                            cfg.load_project(filename)
+                            cfg.load_scene(filename)
                     except Exception as e:
-                        cfg.set_error(e, f"Error loading project - are you sure you selected a '.srnp' file?\n")
+                        cfg.set_error(e, "Error loading scene")
                 imgui.end_menu()
             if imgui.begin_menu("Settings"):
                 _c, self.window.clear_color = imgui.color_edit4("Background colour", *self.window.clear_color, flags=imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_SIDE_PREVIEW)

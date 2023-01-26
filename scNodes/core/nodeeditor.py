@@ -244,51 +244,33 @@ class NodeEditor:
         ## Save node setup.
         if imgui.core.begin_main_menu_bar():
             if imgui.begin_menu('File'):
-                if imgui.begin_menu("Project"):
-                    if imgui.menu_item("Save project")[0]:
-                        try:
-                            filename = filedialog.asksaveasfilename(filetypes=[("scNodes project", ".scnp")])
-                            if filename != '':
-                                cfg.save_project(filename)
-                        except Exception as e:
-                            cfg.set_error(e, f"Error saving project\n")
-                    if imgui.menu_item("Load project")[0]:
-                        try:
-                            filename = filedialog.askopenfilename(filetypes=[("scNodes project", ".scnp")])
-                            if filename != '':
-                                cfg.load_project(filename)
-                        except Exception as e:
-                            cfg.set_error(e, f"Error loading project:\n")
-                    imgui.end_menu()
-                if imgui.begin_menu("Node Editor"):
-                    save_setup, _ = imgui.menu_item("Save setup")
-                    if save_setup:
-                        filename = filedialog.asksaveasfilename(filetypes=[("scNodes setup", ".scn")])
+                save_setup, _ = imgui.menu_item("Save setup")
+                if save_setup:
+                    filename = filedialog.asksaveasfilename(filetypes=[("scNodes setup", ".scn")])
+                    if filename != '':
+                        NodeEditor.save_node_setup(filename + ".scn")
+                load_setup, _ = imgui.menu_item("Load setup")
+                if load_setup:
+                    try:
+                        filename = filedialog.askopenfilename(filetypes=[("scNodes setup", ".scn")])
                         if filename != '':
-                            NodeEditor.save_node_setup(filename + ".scn")
-                    load_setup, _ = imgui.menu_item("Load setup")
-                    if load_setup:
-                        try:
-                            filename = filedialog.askopenfilename(filetypes=[("scNodes setup", ".scn")])
-                            if filename != '':
-                                cfg.nodes = list()
-                                NodeEditor.append_node_setup(filename)
-                        except Exception as e:
-                            cfg.set_error(e, f"Error loading node setup:\n"+str(e))
-                    import_setup, _ = imgui.menu_item("Load setup & append")
-                    if import_setup:
-                        try:
-                            filename = filedialog.askopenfilename(filetypes=[("scNodes setup", ".scn")])
-                            if filename != '':
-                                NodeEditor.append_node_setup(filename)
-                        except Exception as e:
-                            cfg.set_error(e, "Error importing node setup:\n"+str(e))
-                    clear_setup, _ = imgui.menu_item("Clear setup")
-                    if clear_setup:
-                        for i in range(len(cfg.nodes)):
-                            cfg.nodes[0].delete()
-                        cfg.nodes = list()
-                    imgui.end_menu()
+                            cfg.nodes = list()
+                            NodeEditor.append_node_setup(filename)
+                    except Exception as e:
+                        cfg.set_error(e, f"Error loading node setup:\n"+str(e))
+                import_setup, _ = imgui.menu_item("Append setup")
+                if import_setup:
+                    try:
+                        filename = filedialog.askopenfilename(filetypes=[("scNodes setup", ".scn")])
+                        if filename != '':
+                            NodeEditor.append_node_setup(filename)
+                    except Exception as e:
+                        cfg.set_error(e, "Error importing node setup:\n"+str(e))
+                clear_setup, _ = imgui.menu_item("Clear setup")
+                if clear_setup:
+                    for i in range(len(cfg.nodes)):
+                        cfg.nodes[0].delete()
+                    cfg.nodes = list()
                 imgui.end_menu()
             if imgui.begin_menu('Settings'):
                 install_node, _ = imgui.menu_item("Install a node")

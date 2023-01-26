@@ -32,7 +32,7 @@ class RegisterNode(Node):
         self.params["register_method"] = 0
         self.params["reference_method"] = 1
         self.reference_image = None
-        self.frame = 0
+        self.params["frame"] = 0
         self.roi = [0, 0, 0, 0]
 
         # StackReg vars
@@ -80,7 +80,7 @@ class RegisterNode(Node):
             _frame_changed = False
             if self.params["reference_method"] == 1:
                 imgui.push_item_width(50)
-                _frame_changed, self.frame = imgui.input_int("Template frame", self.frame, 0, 0)
+                _frame_changed, self.params["frame"] = imgui.input_int("Template frame", self.params["frame"], 0, 0)
                 imgui.pop_item_width()
             if self.params["reference_method"] == 0:
                 imgui.new_line()
@@ -140,7 +140,7 @@ class RegisterNode(Node):
                 elif self.params["reference_method"] == 0:
                     self.reference_image = self.connectable_attributes["image_in"].get_incoming_node().get_image(idx=None).load()
                 elif self.params["reference_method"] == 1:
-                    self.reference_image = data_source.get_image(self.frame).load()
+                    self.reference_image = data_source.get_image(self.params["frame"]).load()
 
             # Perform registration according to specified registration method
 

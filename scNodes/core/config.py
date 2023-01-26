@@ -11,6 +11,9 @@ app_name = "scNodes"
 version = "1.0.64"
 license = "GNU GPL v3"
 logpath = "scNodes.log"
+filetype_project = ".scnp"
+filetype_node_setup = ".scn"
+filetype_scene = ".scnscene"
 nodes = list()
 active_node = None
 focused_node = None
@@ -93,24 +96,40 @@ def set_error(error_object, error_message):
     error_new = True
     error_logged = False
 
-def save_project(filename):
-    ## TODO change to work with new json export mode
-    if filename[-5:] == '.srnp':
-        filename = filename[:-5]
-    with open(filename+'.srnp', 'wb') as pickle_file:
-        pickle.dump([nodes, ce_frames], pickle_file)
+# def save_project(filename):
+#     ## TODO change to work with new json export mode
+#     if not filetype_project in filename:
+#         filename += filetype_project
+#     with open(filename, 'wb') as pickle_file:
+#         pickle.dump([nodes, ce_frames], pickle_file)
+#
+# def load_project(filename):
+#     global nodes, ce_frames, correlation_editor_relink, node_editor_relink
+#     try:
+#         with open(filename, 'rb') as pickle_file:
+#             data = pickle.load(pickle_file)
+#             nodes = data[0]
+#             ce_frames = data[1]
+#             node_editor_relink = True
+#             correlation_editor_relink = True
+#     except Exception as e:
+#         set_error(e, "Error loading project")
 
-def load_project(filename):
-    global nodes, ce_frames, correlation_editor_relink, node_editor_relink
+def save_scene(filename):
+    if not filetype_scene in filename:
+        filename += filetype_scene
+    with open(filename, 'wb') as pickle_file:
+        pickle.dump(ce_frames, pickle_file)
+
+def load_scene(filename):
+    global ce_frames, correlation_editor_relink
     try:
         with open(filename, 'rb') as pickle_file:
-            data = pickle.load(pickle_file)
-            nodes = data[0]
-            ce_frames = data[1]
-            node_editor_relink = True
+            ce_frames = pickle.load(pickle_file)
             correlation_editor_relink = True
     except Exception as e:
-        set_error(e, "Error loading project")
+        set_error(e, "Error loading scene")
+
 
 def write_to_log(text):
     with open(root+logpath, "a") as f:

@@ -121,10 +121,10 @@ class Reconstructor:
         self.texture.bind(0)
         self.lut_texture.bind(1)
         # Make empty image
-        W = self.image_size[0]
-        w = self.tile_size[0]
-        H = self.image_size[1]
-        h = self.tile_size[1]
+        W = self.image_size[1]
+        w = self.tile_size[1]
+        H = self.image_size[0]
+        h = self.tile_size[0]
 
         sr_image = np.zeros((H, W, 3), dtype=np.float32)
         tiles_x = int(np.ceil(W / w))

@@ -88,8 +88,8 @@ class ReconstructionRendererNode(Node):
                 _c, self.params["parameter"] = imgui.combo("Parameter", self.params["parameter"], self.available_parameters)
                 if _c:
                     self.get_histogram_values()
-                    self.params["min"] = self.histogram_bins[0]
-                    self.params["max"] = self.histogram_bins[-1]
+                    self.params["min"] = float(self.histogram_bins[0])
+                    self.params["max"] = float(self.histogram_bins[-1])
                     self.paint_applied = False
                 imgui.set_next_item_width(_cw - 80)
                 _c, self.paint_by = imgui.combo("LUT", self.paint_by, settings.lut_names)
@@ -275,8 +275,8 @@ class ReconstructionRendererNode(Node):
         except Exception as e:
             cfg.set_error(e, f"Couldn't get particle data in {self.title} node.")
         if roi is not None:
-            img_width = int((roi[2] - roi[0]) / self.params["pixel_size"])  # TODO
-            img_height = int((roi[3] - roi[1]) / self.params["pixel_size"])
+            img_width = int((roi[3] - roi[1]) / self.params["pixel_size"])
+            img_height = int((roi[2] - roi[0]) / self.params["pixel_size"])
             self.reconstruction_image_size = (img_width, img_height)
 
     def pre_pickle_impl(self):
