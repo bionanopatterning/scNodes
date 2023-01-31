@@ -306,7 +306,7 @@ class CLEMFrame:
                              w, -h,
                              -w, -h]
         indices = [0, 1, 1, 2, 2, 3, 3, 0]
-        self.border_va.update(VertexBuffer(vertex_attributes), IndexBuffer(border_indices))
+        self.border_va.update(VertexBuffer(vertex_attributes), IndexBuffer(indices))
 
     def move_to_front(self):
         cfg.ce_frames.insert(0, cfg.ce_frames.pop(cfg.ce_frames.index(self)))

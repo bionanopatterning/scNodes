@@ -9,7 +9,7 @@ out vec2 fXY;
 
 void main()
 {
-    gl_Position = cameraMatrix * modelMatrix * vec4(xy, 1.0, 1.0);
+    gl_Position = cameraMatrix * modelMatrix * vec4(xy, 0.0, 1.0);
     vec2 fXY = xy;
 }
 
@@ -22,5 +22,5 @@ uniform vec3 lineColour;
 
 void main()
 {
-    fragmentColour = vec4(lineColour, 1.0);  // TODO add an effect to make dashed lines
+    fragmentColour = vec4(lineColour, 1.0);
 }

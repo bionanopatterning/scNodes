@@ -12,7 +12,7 @@ from scNodes.core.ceplugin import *
 class CorrelationEditor:
     if True:
         FRAME_LIST_INDENT_WIDTH = 20.0
-        COLOUR_IMAGE_BORDER = (1.0, 1.0, 1.0, 0.0)
+        COLOUR_IMAGE_BORDER = (1.0, 1.0, 1.0, 1.0)
         THICKNESS_IMAGE_BORDER = GLfloat(3.0)
 
         BLEND_MODES = dict()  # blend mode template: ((glBlendFunc, ARG1, ARG2), (glBlendEquation, ARG1))
@@ -298,10 +298,8 @@ class CorrelationEditor:
         imgui.push_style_color(imgui.COLOR_DRAG_DROP_TARGET, *cfg.COLOUR_DROP_TARGET)
         imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, cfg.WINDOW_ROUNDING)
 
-        first_frame = True
         for frame in reversed(cfg.ce_frames):
-            CorrelationEditor.renderer.render_frame_quad(self.camera, frame, override_blending=False)  # previously: override_blending = first_frame
-            first_frame = False
+            CorrelationEditor.renderer.render_frame_quad(self.camera, frame, override_blending=False)
         if CorrelationEditor.active_frame is not None:
             CorrelationEditor.renderer.render_frame_border(self.camera, CorrelationEditor.active_frame)
         for gizmo in self.gizmos:
