@@ -6,7 +6,7 @@ block_cipher = None
 
 a = Analysis(
     ['__main__.py'],
-    pathex=['../venv/lib/site-packages/glfw', '../venv/lib/site-packages/pygpufit'],
+    pathex=['../venv/lib/site-packages/glfw', '../venv/lib/site-packages/pygpufit', '../venv/lib/site-packages/'],
     binaries=[],
     datas=[
     ("./icons", "icons"), ("./shaders", "shaders"), ("./nodes", "nodes"), ("./ceplugins", "ceplugins"),

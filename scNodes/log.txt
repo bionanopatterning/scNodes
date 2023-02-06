@@ -1,6 +1,0 @@
-scNodes version 1.0.63 GNU GPL v3
-01/20/2023, 12:06:48
-
- ____________________ 
-
-Running as a normal Python process.

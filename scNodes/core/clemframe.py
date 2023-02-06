@@ -1,7 +1,7 @@
 from scNodes.core import settings
 from scNodes.core import config as cfg
 from scNodes.core.opengl_classes import *
-from PIL import Image
+import tifffile
 import mrcfile
 from copy import copy, deepcopy
 import datetime
@@ -117,9 +117,7 @@ class CLEMFrame:
         # else, load slice and update texture.
         self.current_slice = requested_slice
         if self.extension == ".tiff" or self.extension == ".tif":
-            data = Image.open(self.path)
-            data.seek(self.current_slice)
-            self.data = np.asarray(data)
+            self.data = tifffile.imread(self.path, key=self.current_slice).astype(np.float)
             if cfg.ce_flip_on_load:
                 self.data = np.flip(self.data, axis=1)
             if self.flip_h:
@@ -265,18 +263,18 @@ class CLEMFrame:
             # ignore very bright pixels
             mean = np.mean(self.data)
             std = np.std(self.data)
-            self.hist_vals, self.hist_bins = np.histogram(self.data[self.data < (mean + 10 * std)], bins=CLEMFrame.HISTOGRAM_BINS)
+            self.hist_vals, self.hist_bins = np.histogram(self.data[self.data < (mean + 20 * std)], bins=CLEMFrame.HISTOGRAM_BINS)
 
             self.hist_vals = self.hist_vals.astype('float32')
             self.hist_bins = self.hist_bins.astype('float32')
-            self.hist_vals = np.delete(self.hist_vals, 0)
-            self.hist_bins = np.delete(self.hist_bins, 0)
+            #self.hist_vals = np.delete(self.hist_vals, 0)
+            #self.hist_bins = np.delete(self.hist_bins, 0)
             self.hist_vals = np.log(self.hist_vals + 1)
         else:
             for i in range(3):
                 vals, _ = np.histogram(self.data[:, :, i], bins=CLEMFrame.HISTOGRAM_BINS)
                 vals = vals.astype('float32')
-                vals = np.delete(vals, 0)
+                #vals = np.delete(vals, 0)
                 self.rgb_hist_vals.append(vals)
 
     def generate_va(self):

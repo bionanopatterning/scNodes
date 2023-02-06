@@ -4,6 +4,7 @@ from scNodes.core import util
 from tkinter import filedialog
 import pyperclip
 import tifffile
+from PIL import Image
 import glob
 #from clemframe import CLEMFrame, Transform
 from scNodes.core.ceplugin import *
@@ -18,11 +19,11 @@ class CorrelationEditor:
         BLEND_MODES = dict()  # blend mode template: ((glBlendFunc, ARG1, ARG2), (glBlendEquation, ARG1))
         BLEND_MODES[" Transparency"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_FUNC_ADD)
         BLEND_MODES[" Sum"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_ADD)
+        BLEND_MODES[" Multiply"] = (GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA, GL_FUNC_ADD)
         BLEND_MODES[" Subtract"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_REVERSE_SUBTRACT)
         BLEND_MODES[" Subtract (inverted)"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_SUBTRACT)
         BLEND_MODES[" Retain minimum"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_MIN)
         BLEND_MODES[" Retain maximum"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_MAX)
-        BLEND_MODES[" Multiply"] = (GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA, GL_FUNC_ADD)
         BLEND_MODES_LIST = list(BLEND_MODES.keys())
         N_BLEND_MODES = len(BLEND_MODES_LIST)
 
@@ -77,7 +78,7 @@ class CorrelationEditor:
         mouse_left_release_world_pos = [0, 0]
 
         mrc_flip_on_load = False
-        flip_images_on_load = True
+        flip_images_on_load = False
 
         # data
         frames = list()  # order of frames in this list determines the rendering order. Index 0 = front, index -1 = back.
@@ -124,6 +125,7 @@ class CorrelationEditor:
         selected_tool = 0
         location_gizmo = None
         location_gizmo_visible = False
+        incoming_files = list()
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -188,7 +190,7 @@ class CorrelationEditor:
             CorrelationEditor.relink_after_load()
             cfg.correlation_editor_relink = False
 
-        incoming_files = deepcopy(self.window.dropped_files)
+        CorrelationEditor.incoming_files += deepcopy(self.window.dropped_files)
         self.window.on_update()
         if self.window.window_size_changed:
             cfg.window_width = self.window.width
@@ -198,8 +200,8 @@ class CorrelationEditor:
         imgui.new_frame()
 
         # Handle frames sent to CE from external source
-        if incoming_files != list():
-            self.load_externally_dropped_files(incoming_files)
+        if len(CorrelationEditor.incoming_files) > 0:
+            self.load_externally_dropped_files(CorrelationEditor.incoming_files)
 
         # GUI
         self.editor_control()
@@ -247,19 +249,22 @@ class CorrelationEditor:
             CorrelationEditor.active_frame = new_frame
         CorrelationEditor.incoming_frame_buffer = list()
 
-        ## end content
+        # end content
         imgui.render()
         self.imgui_implementation.render(imgui.get_draw_data())
 
     def load_externally_dropped_files(self, paths):
-        for path in paths:
-            incoming = ImportedFrameData(path)
-            clem_frame = incoming.to_CLEMFrame()
-            if clem_frame:
-                pos = deepcopy(self.camera.position)
-                clem_frame.transform.translation = [-pos[0], -pos[1]]
-                cfg.ce_frames.insert(0, clem_frame)
-                CorrelationEditor.active_frame = clem_frame
+        path = paths[0]
+        paths.pop(0)
+        incoming = ImportedFrameData(path)
+        clem_frame = incoming.to_CLEMFrame()
+        if clem_frame:
+            pos = deepcopy(self.camera.position)
+            clem_frame.transform.translation = [-pos[0], -pos[1]]
+            clem_frame.pivot_point = [-pos[0], -pos[1]]
+            cfg.ce_frames.insert(0, clem_frame)
+            CorrelationEditor.active_frame = clem_frame
+
 
     @staticmethod
     def relink_after_load():
@@ -779,7 +784,8 @@ class CorrelationEditor:
             tiff_path = CorrelationEditor.ex_path
             if not (tiff_path[-5:] == ".tiff" or tiff_path[-4:] == ".tif"):
                 tiff_path += ".tif"
-
+            glEnable(GL_DEPTH_TEST)
+            glDepthFunc(GL_ALWAYS)
             with tifffile.TiffWriter(tiff_path) as tiffw:
                 for frame in reversed(cfg.ce_frames):
                     if frame.hide:
@@ -790,18 +796,21 @@ class CorrelationEditor:
                         for j in range(tiles_v):
                             offset_x = (0.5 + i) * tile_size
                             offset_y = (0.5 + j) * tile_size
-                            camera.position[0] = camera_start_position[0] + offset_x
-                            camera.position[1] = camera_start_position[1] - offset_y
+                            camera.position[0] = -(camera_start_position[0] + offset_x)
+                            camera.position[1] = -(camera_start_position[1] - offset_y)
                             camera.on_update()
-                            CorrelationEditor.EXPORT_FBO.clear((0.0, 0.0, 0.0, 0.0))
+                            CorrelationEditor.EXPORT_FBO.clear((0.0, 0.0, 0.0, 1.0))
                             CorrelationEditor.EXPORT_FBO.bind()
+                            glClearDepth(0.0)
+                            glClear(GL_DEPTH_BUFFER_BIT)
                             CorrelationEditor.renderer.render_frame_quad(camera, frame, override_blending=True)
                             tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_RED, GL_FLOAT)
-                            out_img[i * T:min([(i + 1) * T, W]), j * T:min([(j + 1) * T, H])] = np.rot90(tile, 3, (1, 0))[:min([T, W - (i * T)]), :min([T, H - (j * T)])]
-                    out_img = np.rot90(out_img, 3, (0, 1))
+                            out_img[i * T:min([(i + 1) * T, W]), j * T:min([(j + 1) * T, H])] = np.rot90(tile, 1, (1, 0))[:min([T, W - (i * T)]), :min([T, H - (j * T)])]
+                    out_img = np.rot90(out_img, -1, (1, 0))
                     out_img = out_img[::-1, :]
                     tiffw.write(out_img, description=frame.title, resolution=(1./(1e-7 * pixel_size), 1./(1e-7 * pixel_size), 'CENTIMETER'))
                     frame.update_lut()
+            glDisable(GL_DEPTH_TEST)
             CorrelationEditor.EXPORT_FBO.unbind()
 
         if CorrelationEditor.ex_path == "":
@@ -1177,12 +1186,16 @@ class CorrelationEditor:
             if shift: translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION_FAST
             if imgui.is_key_pressed(glfw.KEY_LEFT, repeat=True):
                 CorrelationEditor.active_frame.transform.translation[0] -= translation_step
+                CorrelationEditor.active_frame.pivot_point[0] -= translation_step
             elif imgui.is_key_pressed(glfw.KEY_RIGHT, repeat=True):
                 CorrelationEditor.active_frame.transform.translation[0] += translation_step
+                CorrelationEditor.active_frame.pivot_point[0] += translation_step
             elif imgui.is_key_pressed(glfw.KEY_UP, repeat=True):
                 CorrelationEditor.active_frame.transform.translation[1] += translation_step
+                CorrelationEditor.active_frame.pivot_point[1] += translation_step
             elif imgui.is_key_pressed(glfw.KEY_DOWN, repeat=True):
                 CorrelationEditor.active_frame.transform.translation[1] -= translation_step
+                CorrelationEditor.active_frame.pivot_point[1] -= translation_step
             elif imgui.is_key_pressed(glfw.KEY_DELETE, repeat=True):
                 if CorrelationEditor.active_frame is not None:
                     CorrelationEditor.delete_frame(CorrelationEditor.active_frame)
@@ -1636,12 +1649,12 @@ class ImportedFrameData:
         self.pixel_size = CorrelationEditor.DEFAULT_IMAGE_PIXEL_SIZE
         try:
             if self.extension == ".tiff" or self.extension == ".tif":
-                img = Image.open(path)
-                self.pxd = np.asarray(img)
+                tif = tifffile.TiffFile(self.path)
+                self.n_slices = len(tif.pages)
+                self.pxd = tif.pages[0].asarray()
                 if CorrelationEditor.flip_images_on_load:
                     self.pxd = np.flip(self.pxd, axis=0)
-                self.n_slices = img.n_frames
-            elif self.extension == ".png":
+            elif self.extension in [".png", ".PNG", ".jpg", ".jpeg"]:
                 self.pxd = np.asarray(Image.open(path)) / 255.0
                 if CorrelationEditor.flip_images_on_load:
                     self.pxd = np.flip(self.pxd, axis=0)
@@ -1658,8 +1671,10 @@ class ImportedFrameData:
                     else:
                         self.pxd = mrc.data[0, :, :]
                         self.n_slices = mrc.data.shape[0]
+            else:
+                raise Exception(f"Could not import file with extension '{self.extension}'")
         except Exception as e:
-            pass
+            cfg.set_error(e, f"Could not import {self.path}")
 
     def to_CLEMFrame(self):
         if self.pxd is None:

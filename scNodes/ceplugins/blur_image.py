@@ -37,6 +37,8 @@ class BlurPlugin(CEPlugin):
             img_data[:, :] = gaussian_filter(img_data, self.sigma)
         out_frame.data = img_data
 
-        cfg.ce_frames.append(out_frame)
-        cfg.ce_frames.remove(self.selected_frame)
+        cfg.ce_frames.insert(0, out_frame)
+        cfg.ce_active_frame = out_frame
         out_frame.update()
+        if self.selected_frame in cfg.ce_frames:
+            cfg.ce_frames.remove(self.selected_frame)

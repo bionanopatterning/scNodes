@@ -157,7 +157,7 @@ class Frame:
         if self.data is not None:
             return self.data
         else:
-            # 221202 Note: using tifffile instead of PIL now!
+            # 221202 switched from PIL to tifffile
             if self.index is None:
                 self.data = tifffile.imread(self.path).astype(np.float)
             else:
