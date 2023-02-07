@@ -1,6 +1,7 @@
 from scNodes.core.node import *
 from scNodes.core.reconstruction import *
 
+# TODO: this node is not .json serializable because of a np.float32 in the params, probably.
 
 def create():
     return ReconstructionRendererNode()

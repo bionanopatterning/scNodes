@@ -25,8 +25,6 @@ class ExportDataNode(Node):
         self.roi = [0, 0, 0, 0]
         self.saving = False
         self.params["export_type"] = 0  # 0 for dataset, 1 for image.
-        self.params["export_reconstruction_as_csv"] = True
-        self.params["export_reconstruction_as_pickle"] = False
         self.frames_to_load = list()
         self.n_frames_to_save = 1
         self.n_frames_saved = 0
@@ -71,10 +69,6 @@ class ExportDataNode(Node):
                     self.params["path"] = filename
             if self.params["export_type"] == 0:
                 _c, self.params["parallel"] = imgui.checkbox("Parallel", self.params["parallel"])
-
-            if self.params["export_type"] == 2:
-                _c, self.params["export_reconstruction_as_csv"] = imgui.checkbox("save as .csv", self.params["export_reconstruction_as_csv"])
-                _c, self.params["export_reconstruction_as_pickle"] = imgui.checkbox("as .recon (pickle)", self.params["export_reconstruction_as_pickle"])
             content_width = imgui.get_window_width()
             save_button_width = 85
             save_button_height = 25
@@ -131,11 +125,7 @@ class ExportDataNode(Node):
         elif self.params["export_type"] == 2: # Save particle data
             try:
                 pd = self.connectable_attributes["dataset_in"].get_incoming_node().get_particle_data()
-                if self.params["export_reconstruction_as_csv"]:
-                    pd.save_as_csv(self.params["path"]+".csv")
-                if self.params["export_reconstruction_as_pickle"]:
-                    with open(self.params["path"]+".recon", 'wb') as pickle_file:
-                        pickle.dump(pd, pickle_file)
+                pd.save_as_csv(self.params["path"]+".csv")
             except Exception as e:
                 cfg.set_error(e, "Error saving reconstruction\n"+str(e))
         if cfg.profiling:

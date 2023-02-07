@@ -458,7 +458,7 @@ class NodeEditor:
 
     @staticmethod
     def delete_temporary_files():
-        dirs = glob.glob("_srnodes_temp*/")
+        dirs = glob.glob("_SRNTEMP*/")
         for dir in dirs:
             shutil.rmtree(dir)
 

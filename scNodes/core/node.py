@@ -342,7 +342,7 @@ class Node:
 
     @staticmethod
     def gen_temp_dir_name():
-        return str(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f'))
+        return "_SRNTEMP"+str(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f'))
 
     @staticmethod
     def tooltip(text):

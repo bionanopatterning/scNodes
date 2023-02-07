@@ -25,7 +25,6 @@ class TemporalFilterNode(Node):
 
         self.params["filter"] = 0
         self.params["negative_handling"] = 1
-        self.params["incomplete_group_handling"] = 0
         self.params["skip"] = 1
         self.params["group_size"] = 11
         self.params["group_background_index"] = 1
@@ -58,8 +57,6 @@ class TemporalFilterNode(Node):
                 self.any_change = self.any_change or _c
                 _c, self.params["group_background_index"] = imgui.input_int("Background index", self.params["group_background_index"], 0, 0)
                 self.any_change = self.any_change or _c
-                _c, self.params["incomplete_group_handling"] = imgui.combo("Incomplete groups", self.params["incomplete_group_handling"], TemporalFilterNode.INCOMPLETE_GROUP_MODES)
-                self.any_change = self.any_change or _c
             elif self.params["filter"] == 4:
                 _c, self.params["window"] = imgui.input_int("Window size", self.params["window"], 0, 0)
                 self.any_change = self.any_change or _c
@@ -77,7 +74,7 @@ class TemporalFilterNode(Node):
             elif self.params["filter"] == 2:
                 pxd = data_source.get_image(idx + self.params["skip"]).load() - data_source.get_image(idx - self.params["skip"]).load()
             elif self.params["filter"] == 3:
-                pxd = data_source.get_image(idx // self.params["group_size"]).load() - data_source.get_image(self.params["group_size"] * (idx // self.params["group_size"]) + self.params["group_background_index"]).load()
+                pxd = data_source.get_image(idx).load() - data_source.get_image(self.params["group_size"] * (idx // self.params["group_size"]) + self.params["group_background_index"]).load()
             elif self.params["filter"] == 4:
                 pxd = np.zeros_like(data_source.get_image(idx).load())
                 for i in range(-self.params["window"], self.params["window"] + 1):
