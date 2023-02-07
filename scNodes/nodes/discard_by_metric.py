@@ -10,6 +10,7 @@ class DiscardFramesNode(Node):
     colour = (145/255, 236/255, 54/255, 1.0)
     group = "Image processing"
     sortid = 110
+    enabled = False
 
     def __init__(self):
         super().__init__()
