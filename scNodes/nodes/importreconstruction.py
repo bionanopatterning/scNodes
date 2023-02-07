@@ -43,11 +43,7 @@ class LoadReconstructionNode(Node):
 
     def on_select_file(self):
         try:
-            if self.params["path"][-1] == "v":
-                self.particle_data = ParticleData.from_csv(self.params["path"])
-            else:
-                with open(self.params["path"], 'rb') as pickle_file:
-                    self.particle_data = pickle.load(pickle_file)
+            self.particle_data = ParticleData.from_csv(self.params["path"])
         except Exception as e:
             cfg.set_error(e, "Error importing reconstruction. Reconstruction should be a .csv file.")
 

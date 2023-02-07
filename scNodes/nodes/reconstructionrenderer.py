@@ -108,16 +108,15 @@ class ReconstructionRendererNode(Node):
                     if _max != _min:
                         _uv_left = 1.0 + (_l - _max) / (_max - _min)
                         _uv_right = 1.0 + (_h - _max) / (_max - _min)
-                    imgui.image(self.reconstructor.lut_texture.renderer_id, _cw, 10.0, (_uv_left, 0.5),
-                                (_uv_right, 0.5), border_color=(0.0, 0.0, 0.0, 1.0))
+                    imgui.image(self.reconstructor.lut_texture.renderer_id, _cw, 10.0, (_uv_left, 0.5), (_uv_right, 0.5), border_color=(0.0, 0.0, 0.0, 1.0))
                     imgui.push_item_width(_cw)
                     _c, self.params["min"] = imgui.slider_float("##min", self.params["min"], self.histogram_bins[0], self.histogram_bins[1],format='min: %.1f')
-                    if _c: self.paint_applied = False
+                    if _c:
+                        self.paint_applied = False
                     _c, self.params["max"] = imgui.slider_float("##max", self.params["max"], self.histogram_bins[0], self.histogram_bins[1],format='max: %.1f')
-                    if _c: self.paint_applied = False
+                    if _c:
+                        self.paint_applied = False
                     imgui.pop_item_width()
-
-                # TODO: histogram
 
             if self.params["auto_render"]:
                 if self.any_change:
@@ -185,17 +184,19 @@ class ReconstructionRendererNode(Node):
                     self.params["min"] = self.histogram_bins[0]
                     self.params["max"] = self.histogram_bins[-1]
 
-
     def apply_paint(self, particle_data):
         if cfg.profiling:
             time_start = time.time()
 
-        values = particle_data.parameter[self.available_parameters[self.params["parameter"]]]
-        i = 0
-        for particle in particle_data.particles:
-            particle.colour_idx = np.min([np.max([0.0, (values[i] - self.params["min"]) / (self.params["max"] - self.params["min"])]), 1.0])
-            i += 1
-        self.reconstructor.colours_set = False
+        values = particle_data.parameters[self.available_parameters[self.params["parameter"]]]
+        _min = self.params["min"]
+        _max = self.params["max"]
+        n_particles = particle_data.n_particles
+        _colour_idx = np.zeros(n_particles)
+        for i in range(particle_data.n_particles):
+            _colour_idx[i] = np.min([np.max([0.0, (values[i] - _min) / (_max - _min)]), 1.0])
+        particle_data.parameters["colour_idx"] = _colour_idx
+        self.reconstructor.colours_set = False  # tells the reconstructor to re-upload the particle_data colour array to the gpu.
         if cfg.profiling:
             self.profiler_time += time.time() - time_start
 
@@ -215,7 +216,7 @@ class ReconstructionRendererNode(Node):
                 self.reconstructor.set_camera_origin([-particle_data.reconstruction_roi[0] / self.params["pixel_size"], -particle_data.reconstruction_roi[1] / self.params["pixel_size"]])
 
                 ## Apply colours
-                ## TODO: add option to output a monochrome channel
+                ## TODO: output monochrome images only - but with particle colour lut_idx
                 if self.paint_particles:
                     if not self.paint_applied:
                         self.apply_paint(particle_data)
@@ -223,16 +224,15 @@ class ReconstructionRendererNode(Node):
                         self.reconstructor.colours_set = False
                 else:
                     if not self.paint_applied:
-                        for particle in particle_data.particles:
-                            particle.colour_idx = 1.0
+                        particle_data.parameters["colour_idx"] = np.ones_like(particle_data.parameters["colour_idx"])
                         self.paint_applied = True
                         self.reconstructor.colours_set = False
                 if self.reconstructor.particle_data.empty:
                     return None
                 else:
                     self.latest_image = self.reconstructor.render(fixed_uncertainty=(self.params["default_sigma"] if self.params["fix_sigma"] else None))
-                    if not self.paint_particles:
-                        self.latest_image = self.latest_image[:, :, 0]  # single channel only for non-painted particles
+                    if not self.latest_image.any():
+                        self.latest_image = None
                     self.any_change = True
                     if self.paint_particles:
                         self.OVERRIDE_AUTOCONTRAST = True

@@ -25,7 +25,6 @@ void main()
 
     gl_Position = cameraMatrix * vec4(mesh_xy * quad_pixel_size * uncertainty / quad_uncertainty + vec2(x, y) / pixel_size, 0.0, 1.0);
     fcolour = texture(lut, vec2(colour_idx, 0)).rgb * quad_uncertainty / uncertainty * state;
-    //fcolour = vec3(1.0, 1.0, 1.0) * quad_uncertainty / uncertainty * state;
     fuv = mesh_uv;
 }
 
@@ -41,6 +40,5 @@ in vec2 fuv;
 
 void main()
 {
-
     fragmentColour = vec4(texture(kernel, fuv).r * fcolour, 1.0);
 }

@@ -167,7 +167,9 @@ class Node:
         ## Node context_menu:
         if imgui.begin_popup_context_window():
             self.keep_active = cfg.focused_node == self
+            imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
             _changed, self.keep_active = imgui.checkbox("Focus node", self.keep_active)
+            imgui.pop_style_var(1)
             if _changed:
                 if self.keep_active:
                     cfg.set_active_node(self, True)
@@ -234,16 +236,11 @@ class Node:
             # Draw STOP button
             origin = [window_position[0] + Node.PLAY_BUTTON_SIZE / 2.0,
                       window_position[1] + Node.PLAY_BUTTON_SIZE / 2.0]
-            p1 = (-1.0 * Node.PLAY_BUTTON_ICON_SIZE, 1.5 * Node.PLAY_BUTTON_ICON_SIZE)
-            p2 = (-1.0 * Node.PLAY_BUTTON_ICON_SIZE, -1.5 * Node.PLAY_BUTTON_ICON_SIZE)
-            draw_list.add_polyline([(p1[0] + origin[0], p1[1] + origin[1]),
-                                    (p2[0] + origin[0], p2[1] + origin[1])], imgui.get_color_u32_rgba(*Node.PLAY_BUTTON_ICON_COLOUR), False, Node.PLAY_BUTTON_ICON_LINEWIDTH / 2.0)
-            p1 = (1.0 * Node.PLAY_BUTTON_ICON_SIZE, 1.5 * Node.PLAY_BUTTON_ICON_SIZE)
-            p2 = (1.0 * Node.PLAY_BUTTON_ICON_SIZE, -1.5 * Node.PLAY_BUTTON_ICON_SIZE)
-            draw_list.add_polyline([(p1[0] + origin[0], p1[1] + origin[1]),
-                                    (p2[0] + origin[0], p2[1] + origin[1])],
-                                   imgui.get_color_u32_rgba(*Node.PLAY_BUTTON_ICON_COLOUR), False,
-                                   Node.PLAY_BUTTON_ICON_LINEWIDTH / 2.0)
+            x_min = origin[0] - Node.PLAY_BUTTON_ICON_SIZE * 1.51
+            x_max = origin[0] + Node.PLAY_BUTTON_ICON_SIZE * 1.51
+            y_min = origin[1] - Node.PLAY_BUTTON_ICON_SIZE * 1.51
+            y_max = origin[1] + Node.PLAY_BUTTON_ICON_SIZE * 1.51
+            draw_list.add_rect_filled(x_min, y_min, x_max, y_max, imgui.get_color_u32_rgba(*Node.PLAY_BUTTON_ICON_COLOUR))
         else:
             # Draw PLAY button
             origin = [window_position[0] + Node.PLAY_BUTTON_SIZE / 2.0,

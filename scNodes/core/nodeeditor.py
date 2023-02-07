@@ -248,7 +248,7 @@ class NodeEditor:
                 if save_setup:
                     filename = filedialog.asksaveasfilename(filetypes=[("scNodes setup", ".scn")])
                     if filename != '':
-                        NodeEditor.save_node_setup(filename + ".scn")
+                        NodeEditor.save_node_setup(filename)
                 load_setup, _ = imgui.menu_item("Load setup")
                 if load_setup:
                     try:
@@ -376,6 +376,8 @@ class NodeEditor:
 
     @staticmethod
     def save_node_setup(path):
+        if path[-len(cfg.filetype_node_setup):] != cfg.filetype_node_setup:
+            path+=cfg.filetype_node_setup
         try:
             node_setup = list()
             for node in cfg.nodes:

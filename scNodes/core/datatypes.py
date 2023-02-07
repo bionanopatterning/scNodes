@@ -177,6 +177,7 @@ class Frame:
         return copy.deepcopy(self)
 
     def bake_transform(self, interpolation=1, edges='constant', preserve_range=False):
+        ## TODO fix interpolation options
         tmat = transform.AffineTransform(np.matrix([[1.0, 0.0, self.translation[0]], [0.0, 1.0, self.translation[1]], [0.0, 0.0, 1.0]]))
         self.data = transform.warp(self.data, tmat, order=interpolation, mode=edges, preserve_range=preserve_range)
 
@@ -187,7 +188,7 @@ class Frame:
             return self.load()[roi[1]:roi[3], roi[0]:roi[2]]
 
     def __str__(self):
-        sstr = "Frame: "+ self.title + "\n" \
+        sstr = "Frame: " + self.title + "\n" \
             + ("Discarded frame. " if self.discard else "Frame in use. ") \
             + f"Shift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
         if self.maxima is not []:
@@ -200,9 +201,8 @@ class ParticleData:
 
     def __init__(self, pixel_size=100):
         self.pixel_size = pixel_size
-        self.particles = list()
+        self.parameters = dict()
         self.n_particles = 0
-        self.parameter = dict()
         self.histogram_counts = dict()
         self.histogram_bins = dict()
         self.x_max = 0
@@ -216,21 +216,23 @@ class ParticleData:
         self.reconstruction_roi = [0, 0, 0, 0]
 
     def __add__(self, other):
-        if isinstance(other, list):
-            for p in other:
-                self.particles.append(p)
-            self.baked = False
-            self.baked_by_renderer = False
-            self.empty = False
-            return self
+        for key in other:
+            if key in self.parameters:
+                self.parameters[key] += other[key]
+            else:
+                self.parameters[key] = other[key]
+        self.baked = False
+        self.baked_by_renderer = False
+        self.empty = False
+        return self
 
     def __str__(self):
         r = self.reconstruction_roi
         return f"ParticleData obj. with {self.n_particles} particles.\nx range = ({self.x_min}, {self.x_max}), y range = ({self.y_min}, {self.y_max})\nCorresponding ROI in input source image: x {r[0]} to {r[2]}, y {r[1]} to {r[3]}."
 
     def clean(self):
-        for particle in self.particles:
-            particle.visible = True
+        if 'visible' in self.parameters:
+            self.parameters["visible"] = np.ones_like(self.parameters["visible"])
         self.baked_by_renderer = False
 
     def bake(self, discard_filtered_particles=False):
@@ -238,72 +240,59 @@ class ParticleData:
             return
         self.baked = True
         self.baked_by_renderer = False
-        frame = list()
-        x = list()
-        y = list()
-        sigma = list()
-        intensity = list()
-        offset = list()
-        uncertainty = list()
-        bkgstd = list()
-        sigma2 = list()
-        z = list()
+
+        for key in self.parameters:
+            self.parameters[key] = np.asarray(self.parameters[key])
+
 
         k1 = self.pixel_size**2 / 12
         k2 = 8 * np.pi / self.pixel_size**2
-        self.n_particles = 0
-        for p in self.particles:
-            if p.visible or not discard_filtered_particles:
-                if p.intensity == 0.0:
-                    continue
-                self.n_particles += 1
-                frame.append(p.frame)
-                x.append(p.x)
-                y.append(p.y)
-                sigma.append(p.sigma * self.pixel_size)
-                intensity.append(p.intensity)
-                offset.append(p.offset)
-                if p.uncertainty == -1:
-                    p.uncertainty = np.sqrt(((p.sigma*self.pixel_size)**2 + k1) / p.intensity + k2 * (p.sigma*self.pixel_size)**4 * p.bkgstd**2 / p.intensity**2)
-                uncertainty.append(p.uncertainty)
-                bkgstd.append(p.bkgstd)
-                sigma2.append(p.sigma2)
-                z.append(p.z)
+        self.n_particles = len(self.parameters["x [nm]"])  # parameters_raw will always have key "x [nm]"
+        intensity = self.parameters["intensity [counts]"]
+        sigma = self.parameters["sigma [nm]"]
+        bkgstd = self.parameters["bkgstd [counts]"]
+        discard_mask = np.zeros_like(self.parameters["x [nm]"])
+        uncertainty = np.zeros_like(self.parameters["x [nm]"])
+        for i in range(self.n_particles):
+            if intensity[i] == 0.0:
+                discard_mask[i] = 1
+                continue
+            uncertainty[i] = np.sqrt(((sigma[i]*self.pixel_size)**2 + k1) / intensity[i] + k2 * (sigma[i]*self.pixel_size)**4 * bkgstd[i]**2 / intensity[i]**2)
 
-        self.parameter['uncertainty [nm]'] = np.asarray(uncertainty)
-        self.parameter['intensity [counts]'] = np.asarray(intensity)
-        self.parameter['offset [counts]'] = np.asarray(offset)
-        self.parameter['x [nm]'] = np.asarray(x) * self.pixel_size
-        self.parameter['y [nm]'] = np.asarray(y) * self.pixel_size
-        self.parameter['sigma [nm]'] = np.asarray(sigma)
-        self.parameter['bkgstd [counts]'] = np.asarray(bkgstd)
-        self.parameter['frame'] = np.asarray(frame).astype(np.float32)
-        if self.particles[0].sigma2 != -1:
-            self.parameter['sigma2 [nm]'] = np.asarray(sigma2) * self.pixel_size
-        if self.particles[0].z != -1:
-            self.parameter['z [nm]'] = np.asarray(z) * self.pixel_size
+        discard_indices = discard_mask.nonzero()
+        self.parameters['uncertainty [nm]'] = np.asarray(uncertainty)
 
-        for key in self.parameter:
-            self.histogram_counts[key], self.histogram_bins[key] = np.histogram(self.parameter[key], bins=ParticleData.HISTOGRAM_BINS)
+        self.parameters['x [nm]'] *= self.pixel_size
+        self.parameters['y [nm]'] *= self.pixel_size
+        self.parameters['sigma [nm]'] *= self.pixel_size
+        if 'sigma2 [nm]' in self.parameters.keys():
+            self.parameters['sigma2 [nm]'] *= self.pixel_size
+
+        for key in self.parameters:
+            np.delete(self.parameters[key], discard_indices)
+
+        self.parameters['visible'] = np.ones_like(self.parameters['x [nm]'])
+        self.parameters['colour_idx'] = np.ones_like(self.parameters['x [nm]'])
+        for key in self.parameters:
+            self.histogram_counts[key], self.histogram_bins[key] = np.histogram(self.parameters[key], bins=ParticleData.HISTOGRAM_BINS)
             self.histogram_counts[key] = self.histogram_counts[key].astype(np.float32)
             self.histogram_counts[key] = np.delete(self.histogram_counts[key], 0)
             self.histogram_bins[key] = (self.histogram_bins[key][1], self.histogram_bins[key][-1])
 
-        self.x_min = np.min(self.parameter['x [nm]'])
-        self.y_min = np.min(self.parameter['y [nm]'])
-        self.x_max = np.max(self.parameter['x [nm]'])
-        self.y_max = np.max(self.parameter['y [nm]'])
+        self.x_min = np.min(self.parameters['x [nm]'])
+        self.y_min = np.min(self.parameters['y [nm]'])
+        self.x_max = np.max(self.parameters['x [nm]'])
+        self.y_max = np.max(self.parameters['y [nm]'])
 
-    def apply_filter(self, parameter_key, min_val, max_val, logic_not = False):
-        vals = self.parameter[parameter_key]
+    def apply_filter(self, parameter_key, min_val, max_val, logic_not=False):
+        vals = self.parameters[parameter_key]
+        visible = np.zeros_like(self.parameters['visible'])
+        for i in range(self.n_particles):
+            if min_val < vals[i] < max_val:
+                visible[i] = 1
         if logic_not:
-            for p, v in zip(self.particles, vals):
-                if min_val < v < max_val:
-                    p.visible = False
-        else:
-            for p, v in zip(self.particles, vals):
-                if v < min_val or v > max_val:
-                    p.visible = False
+            visible = 1 - visible
+        self.parameters['visible'] = visible
 
     def set_reconstruction_roi(self, roi):
         """
@@ -320,56 +309,28 @@ class ParticleData:
         :return: a ParticleData object.
         """
         df = pd.read_csv(path)
-        particles = list()
-        _idx_x = df.columns.get_loc("x [nm]")
-        _idx_y = df.columns.get_loc("y [nm]")
-        _idx_u = df.columns.get_loc("uncertainty [nm]")
-        _idx_i = df.columns.get_loc("intensity [counts]")
-        _idx_o = df.columns.get_loc("offset [counts]")
-        _idx_s = df.columns.get_loc("sigma [nm]")
-        _idx_b = df.columns.get_loc("bkgstd [counts]")
-        _idx_f = df.columns.get_loc("frame")
-        for i in range(df.shape[0]):
-            if (i % 100000 == 0):
-                print(i)
-            _data = df.iloc[i]
-            particles.append(Particle(
-                _data[_idx_f],
-                _data[_idx_x],
-                _data[_idx_y],
-                _data[_idx_s],
-                _data[_idx_i],
-                _data[_idx_o],
-                _data[_idx_b],
-                _data[_idx_u],
-            ))
         particle_data_obj = ParticleData()
+        for key in df.keys():
+            particle_data_obj.parameters[key] = df.values[:, df.columns.get_loc(key)]
+
         particle_data_obj.pixel_size = 1
-        particle_data_obj.particles = particles
+        particle_data_obj.n_particles = len(particle_data_obj.parameters['x [nm]'])
+        particle_data_obj.parameters['visible'] = np.ones_like(particle_data_obj.parameters['x [nm]'])
+        particle_data_obj.parameters['colour_idx'] = np.ones_like(particle_data_obj.parameters['x [nm]'])
+        particle_data_obj.x_min = np.min(particle_data_obj.parameters['x [nm]'])
+        particle_data_obj.y_min = np.min(particle_data_obj.parameters['y [nm]'])
+        particle_data_obj.x_max = np.max(particle_data_obj.parameters['x [nm]'])
+        particle_data_obj.y_max = np.max(particle_data_obj.parameters['y [nm]'])
         particle_data_obj.empty = False
-        particle_data_obj.bake()
         particle_data_obj.set_reconstruction_roi([particle_data_obj.x_min, particle_data_obj.y_min, particle_data_obj.x_max, particle_data_obj.y_max])
+
+
 
         return particle_data_obj
 
     def save_as_csv(self, path):
-        pd.DataFrame.from_dict(self.parameter).to_csv(path, index=False)
-
-
-class Particle:
-    def __init__(self, frame, x, y, sigma, intensity, offset=0, bkgstd=-1, uncertainty=-1, colour_idx=1.0, sigma2=-1):
-        self.frame = frame
-        self.x = x
-        self.y = y
-        self.sigma = sigma
-        self.sigma2 = sigma2
-        self.intensity = intensity
-        self.offset = offset
-        self.bkgstd = bkgstd
-        self.uncertainty = uncertainty
-        self.colour_idx = colour_idx
-        self.visible = True
-        self.z = -1
-
-    def __str__(self):
-        return f"f={self.frame}, x={self.x}, y={self.y}, sigma={self.sigma}, i={self.intensity}, offset={self.offset}, bkgstd={self.bkgstd}, sigma2={self.sigma2}"
+        _colour_idx = self.parameters.pop("colour_idx")
+        _visible = self.parameters.pop("visible")
+        pd.DataFrame.from_dict(self.parameters).to_csv(path, index=False)
+        self.parameters["colour_idx"] = _colour_idx
+        self.parameters["visible"] = _visible

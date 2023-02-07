@@ -48,6 +48,7 @@ class ParticleFittingNode(Node):
         self.params["offset_max"] = -1.0
 
         self.params["custom_bounds"] = False
+        self.params["photons_per_count"] = 0.45
 
     def render(self):
         if super().render_start():
@@ -106,7 +107,7 @@ class ParticleFittingNode(Node):
 
             if not self.particle_data.empty:
                 imgui.text("Reconstruction info")
-                imgui.text(f"particles: {len(self.particle_data.particles)}")
+                imgui.text(f"particles: {self.particle_data.n_particles}")
                 if not self.fitting:
                     imgui.text(f"x range: {self.particle_data.x_min / 1000.0:.1f} to {self.particle_data.x_max / 1000.0:.1f} um")
                     imgui.text(f"y range: {self.particle_data.y_min / 1000.0:.1f} to {self.particle_data.y_max / 1000.0:.1f} um")
@@ -118,6 +119,8 @@ class ParticleFittingNode(Node):
             super().render_end()
 
     def render_advanced(self):
+        imgui.set_next_item_width(80)
+        _c, self.params["photons_per_count"] = imgui.input_float("photons per count", self.params["photons_per_count"], 0, 0, "%.2f")
         _c, self.params["custom_bounds"] = imgui.checkbox("Use custom parameter bounds", self.params["custom_bounds"])
         Node.tooltip("Edit the bounds for particle parameters intensity, sigma, and offset.")
         if self.params["custom_bounds"]:
@@ -153,6 +156,7 @@ class ParticleFittingNode(Node):
             self.time_start = time.time()
             dataset_source = Node.get_source_load_data_node(self)
             self.particle_data = ParticleData(dataset_source.pixel_size)
+            print("Setting reconstruction ROI in psffitting node")
             self.particle_data.set_reconstruction_roi(np.asarray(dataset_source.dataset.reconstruction_roi) * dataset_source.pixel_size)
             self.fitting = True
             self.frames_to_fit = list()
@@ -222,17 +226,24 @@ class ParticleFittingNode(Node):
                                                                      self.params["offset_min"],
                                                                      self.params["offset_max"]])
             elif self.params["estimator"] == 2:
-                particles = list()
+                x = np.empty(len(frame.maxima))
+                y = np.empty(len(frame.maxima))
+                intensity = np.empty(len(frame.maxima))
                 pxd = frame.load()
                 for i in range(len(frame.maxima)):
-                    intensity = pxd[frame.maxima[i, 0], frame.maxima[i, 1]]
-                    x = frame.maxima[i, 1]
-                    y = frame.maxima[i, 0]
-                    particles.append(Particle(idx, x, y, 1.0, intensity))
+                    intensity[i] = pxd[frame.maxima[i, 0], frame.maxima[i, 1]]
+                    x[i] = frame.maxima[i, 1]
+                    y[i] = frame.maxima[i, 0]
+                particles = dict()
+                particles["x [nm]"] = x
+                particles["y [nm]"] = y
+                particles["intensity [counts]"] = intensity
             frame.particles = particles
             new_maxima = list()
-            for particle in frame.particles:
-                new_maxima.append([particle.y, particle.x])
+            new_maxima_x = frame.particles["x [nm]"]
+            new_maxima_y = frame.particles["y [nm]"]
+            for _x, _y in zip(new_maxima_x, new_maxima_y):
+                new_maxima.append([_y, _x])
             frame.maxima = new_maxima
             return frame
 

@@ -1,7 +1,5 @@
 import numpy as np
 import pygpufit.gpufit as gf
-from scNodes.core.reconstruction import Particle
-
 
 
 def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constraints=(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1)):
@@ -69,11 +67,25 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
     parameters[:, 2] += xy[:, 0]  # offsetting back into image coordinates
     particles = list()
     converged = states == 0
-    for i in range(n_particles):
-        if converged[i] and parameters[i, 3] != constraint_values[0, 7]:
-            particles.append(Particle(frame=frame.framenr, x=parameters[i, 1], y=parameters[i, 2], sigma=parameters[i, 3], intensity=parameters[i, 0], offset=parameters[i, 4], bkgstd=background_stdev[i]))
 
-    return particles
+    ## 230207
+    frame_particle_data = dict()
+    accepted_particles = np.zeros_like(parameters[:, 3])
+    for i in range(parameters[:, 3].shape[0]):
+        accepted_particles[i] = converged[i] and parameters[i, 3] != constraint_values[0, 7]
+    n_particles = int(accepted_particles.sum(0))
+
+    accepted_particles = accepted_particles.nonzero()
+    frame_particle_data["frame"] = list(np.ones(n_particles, dtype=np.float32) * frame.framenr)
+    frame_particle_data["x [nm]"] = parameters[accepted_particles, 1].squeeze().tolist()
+    frame_particle_data["y [nm]"] = parameters[accepted_particles, 2].squeeze().tolist()
+    frame_particle_data["sigma [nm]"] = parameters[accepted_particles, 3].squeeze().tolist()
+    frame_particle_data["intensity [counts]"] = parameters[accepted_particles, 0].squeeze().tolist()
+    frame_particle_data["offset [counts]"] = parameters[accepted_particles, 4].squeeze().tolist()
+    frame_particle_data["bkgstd [counts]"] = background_stdev[accepted_particles].squeeze().tolist()
+
+    ## END 230207
+    return frame_particle_data
 
 def frame_to_particles_3d(frame, initial_sigma=2.0, method=0, crop_radius=4, constraints=(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1)):
     """
@@ -146,11 +158,25 @@ def frame_to_particles_3d(frame, initial_sigma=2.0, method=0, crop_radius=4, con
     parameters[:, 2] += xy[:, 0]  # offsetting back into image coordinates
     particles = list()
     converged = states == 0
-    for i in range(n_particles):
-        if converged[i] and parameters[i, 3] != constraint_values[0, 7]:
-            particles.append(Particle(frame=frame.framenr, x=parameters[i, 1], y=parameters[i, 2], sigma=parameters[i, 3], intensity=parameters[i, 0], offset=parameters[i, 5], bkgstd=background_stdev[i], sigma2=parameters[i, 4]))
-            # TODO: z coordinate
-    return particles
+
+    ## 230207
+    frame_particle_data = dict()
+    accepted_particles = np.zeros_like(parameters[:, 3])
+    for i in range(parameters[:, 3].shape[0]):
+        accepted_particles[i] = converged[i] and parameters[i, 3] != constraint_values[0, 7]
+    n_particles = int(accepted_particles.sum(0))
+
+    frame_particle_data["frame"] = list(np.ones(n_particles, dtype=np.float32) * frame.framenr)
+    frame_particle_data["x [nm]"] = parameters[accepted_particles, 1].squeeze().tolist()
+    frame_particle_data["y [nm]"] = parameters[accepted_particles, 2].squeeze().tolist()
+    frame_particle_data["sigma [nm]"] = parameters[accepted_particles, 3].squeeze().tolist()
+    frame_particle_data["intensity [counts]"] = parameters[accepted_particles, 0].squeeze().tolist()
+    frame_particle_data["offset [counts]"] = parameters[accepted_particles, 5].squeeze().tolist()
+    frame_particle_data["bkgstd [counts]"] = background_stdev[accepted_particles].squeeze().tolist()
+    frame_particle_data["sigma2 [nm]"] = parameters[accepted_particles, 4].squeeze().tolist()
+    ## END 230207
+
+    return frame_particle_data
 
 
 constraint_type_dict = dict()

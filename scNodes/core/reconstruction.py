@@ -69,7 +69,7 @@ class Reconstructor:
         self.texture.update(default_gaussian)
 
     def set_image_size(self, image_size):
-        self.image_size = [image_size[0] // 2 * 2, image_size[1] // 2 * 2]
+        self.image_size = [image_size[1] // 2 * 2, image_size[0] // 2 * 2]
 
     def set_particle_data(self, particle_data):
         """
@@ -171,16 +171,15 @@ class Reconstructor:
         """
         self.vao.bind()
 
-        self.instance_vbos["x"] = VertexBuffer(self.particle_data.parameter['x [nm]'])
+        self.instance_vbos["x"] = VertexBuffer(self.particle_data.parameters['x [nm]'])
         self.instance_vbos["x"].set_location_and_stride(2, 1)
         self.instance_vbos["x"].set_divisor_to_per_instance()
 
-        self.instance_vbos["y"] = VertexBuffer(self.particle_data.parameter['y [nm]'])
+        self.instance_vbos["y"] = VertexBuffer(self.particle_data.parameters['y [nm]'])
         self.instance_vbos["y"].set_location_and_stride(3, 1)
         self.instance_vbos["y"].set_divisor_to_per_instance()
 
-        print(self.particle_data.parameter['uncertainty [nm]'])
-        self.instance_vbos["uncertainty"] = VertexBuffer(self.particle_data.parameter['uncertainty [nm]'])
+        self.instance_vbos["uncertainty"] = VertexBuffer(self.particle_data.parameters['uncertainty [nm]'])
         self.instance_vbos["uncertainty"].set_location_and_stride(4, 1)
         self.instance_vbos["uncertainty"].set_divisor_to_per_instance()
 
@@ -202,23 +201,19 @@ class Reconstructor:
 
     def undo_fixed_uncertainty_value(self):
         self.vao.bind()
-        self.instance_vbos["uncertainty"].update(self.particle_data.parameter['uncertainty [nm]'])
+        self.instance_vbos["uncertainty"].update(self.particle_data.parameters['uncertainty [nm]'])
         self.vao.unbind()
 
     def update_particle_colours(self):
         self.vao.bind()
-        _colours_idx = list()
-        for particle in self.particle_data.particles:
-            _colours_idx.append(particle.colour_idx)
-        self.instance_vbos["colour_idx"].update(np.asarray(_colours_idx).flatten(order = "C"))
+        _colours_idx = self.particle_data.parameters["colour_idx"]
+        self.instance_vbos["colour_idx"].update(_colours_idx.flatten(order = "C"))
         self.vao.unbind()
         self.colours_set = True
 
     def update_particle_states(self):
         self.vao.bind()
-        _states = list()
-        for particle in self.particle_data.particles:
-            _states.append(particle.visible * 1.0)
+        _states = self.particle_data.parameters["visible"]
         self.instance_vbos["state"].update(np.asarray(_states).flatten(order = "C"))
         self.vao.unbind()
 
