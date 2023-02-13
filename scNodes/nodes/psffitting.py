@@ -1,7 +1,6 @@
 from scNodes.core.node import *
 from scNodes.core import particlefitting as pfit
 
-
 def create():
     return ParticleFittingNode()
 
@@ -12,7 +11,7 @@ class ParticleFittingNode(Node):
     colour = (230 / 255, 98 / 255, 13 / 255, 1.0)
     size = 300
     sortid = 1001
-    RANGE_OPTIONS = ["All frames", "Current frame only", "Custom range"]
+    RANGE_OPTIONS = ["All frames", "Current frame only", "Custom range", "Random subset"]
     ESTIMATORS = ["Least squares (GPU)", "Maximum likelihood (GPU)", "No estimator (CPU)"]
     PSFS = ["Gaussian", "Elliptical Gaussian"]
 
@@ -27,6 +26,7 @@ class ParticleFittingNode(Node):
         self.params["range_option"] = 1
         self.params["range_min"] = 0
         self.params["range_max"] = 1
+        self.params["subset_size"] = 50
         self.params["estimator"] = 1
         self.params["psf"] = 0
         self.params["crop_radius"] = 3
@@ -65,7 +65,7 @@ class ParticleFittingNode(Node):
             imgui.spacing()
             imgui.set_next_item_width(200)
             _c, self.params["estimator"] = imgui.combo("Estimator", self.params["estimator"], ParticleFittingNode.ESTIMATORS)
-            imgui.set_next_item_width(150)
+            imgui.set_next_item_width(148)
             _c, self.params["psf"] = imgui.combo("PSF", self.params["psf"], ParticleFittingNode.PSFS)
             if self.params["estimator"] in [0, 1]:
                 imgui.same_line()
@@ -90,6 +90,9 @@ class ParticleFittingNode(Node):
                 _c, (self.params["range_min"], self.params["range_max"]) = imgui.input_int2('[start, stop) index', self.params["range_min"],
                                                                         self.params["range_max"])
                 imgui.pop_item_width()
+            if self.params["range_option"] == 3:
+                imgui.push_item_width(80)
+                _c, self.params["subset_size"] = imgui.input_int("# frames", self.params["subset_size"], 0, 0)
             imgui.spacing()
             if self.fitting:
                 self.progress_bar(self.n_fitted / self.n_to_fit)
@@ -156,19 +159,19 @@ class ParticleFittingNode(Node):
             self.time_start = time.time()
             dataset_source = Node.get_source_load_data_node(self)
             self.particle_data = ParticleData(dataset_source.pixel_size)
-            print("Setting reconstruction ROI in psffitting node")
             self.particle_data.set_reconstruction_roi(np.asarray(dataset_source.dataset.reconstruction_roi) * dataset_source.pixel_size)
             self.fitting = True
             self.frames_to_fit = list()
+            dataset = dataset_source.dataset
+            n_frames = dataset.n_frames
             if self.params["range_option"] == 0:
-                dataset = dataset_source.dataset
-                n_frames = dataset.n_frames
                 self.frames_to_fit = list(range(0, n_frames))
             elif self.params["range_option"] == 2:
                 self.frames_to_fit = list(range(self.params["range_min"], self.params["range_max"]))
             elif self.params["range_option"] == 1:
-                dataset = dataset_source.dataset
                 self.frames_to_fit = [dataset.current_frame]
+            elif self.params["range_option"] == 3:
+                self.frames_to_fit = np.random.choice(n_frames, size=min([n_frames, self.params["subset_size"]]), replace=False).tolist()
             self.n_to_fit = len(self.frames_to_fit)
             self.n_fitted = 0
         except Exception as e:

@@ -3,6 +3,7 @@ import imgui
 import time
 import datetime
 from scNodes.core.datatypes import *
+import matplotlib.pyplot as plt
 from scNodes.core import settings
 from joblib import Parallel, delayed
 from joblib.externals.loky import set_loky_pickler

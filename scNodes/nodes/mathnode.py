@@ -11,7 +11,7 @@ class MathNode(Node):
     group = "Converters"
     sortid = 2000
 
-    OPERATIONS = ["Power", "Log", "Invert", "Threshold", "Add constant", "Multiply"]
+    OPERATIONS = ["Power", "Log", "Invert", "Threshold", "Add constant", "Multiply", "Absolute"]
 
     def __init__(self):
         super().__init__()
@@ -28,6 +28,7 @@ class MathNode(Node):
         self.params["threshold"] = 100
         self.params["threshold_keep_high"] = True
         self.params["threshold_fill_value"] = 0
+        self.params["threshold_make_mask"] = True
         self.params["constant"] = 100
         self.params["factor"] = 2.0
 
@@ -60,12 +61,15 @@ class MathNode(Node):
             elif self.params["operation"] == 3:
                 _c, self.params["threshold"] = imgui.slider_float("threshold", self.params["threshold"], self.params["last_image_min"], self.params["last_image_max"], format = "%.0f")
                 self.any_change = self.any_change or _c
-                _c, self.params["threshold_fill_value"] = imgui.slider_float("fill", self.params["threshold_fill_value"], self.params["last_image_min"], self.params["last_image_max"], format = "%.0f")
+                _c, self.params["threshold_make_mask"] = imgui.checkbox("output mask", self.params["threshold_make_mask"])
                 self.any_change = self.any_change or _c
+                if not self.params["threshold_make_mask"]:
+                    _c, self.params["threshold_fill_value"] = imgui.slider_float("fill", self.params["threshold_fill_value"], self.params["last_image_min"], self.params["last_image_max"], format = "%.0f")
+                    self.any_change = self.any_change or _c
                 _c, self.params["threshold_keep_high"] = imgui.checkbox("keep low", self.params["threshold_keep_high"])
-                Node.tooltip("By default, values lower than the threshold value are replaced.\n"
-                             "Check this box to invert the behaviour: values higher than the\n"
-                             "threshold are replaced instead.")
+                Node.tooltip("By default, values lower than the threshold value are replaced/masked.\n"
+                             "Check this box to invert the behaviour: values higher than the treshold\n"
+                             "are replaced/masked instead.")
                 self.any_change = self.any_change or _c
             elif self.params["operation"] == 4:
                 _c, self.params["constant"] = imgui.slider_float("value", self.params["constant"], -1000, 1000, format = "%.0f")
@@ -111,13 +115,21 @@ class MathNode(Node):
                     self.params["last_image_min"] = np.amin(pxd)
                     self.params["last_image_max"] = np.amax(pxd)
                 if self.params["threshold_keep_high"]:
-                    pxd[pxd < self.params["threshold"]] = self.params["threshold_fill_value"]
+                    if self.params["threshold_make_mask"]:
+                        pxd = pxd < self.params["threshold"]
+                    else:
+                        pxd[pxd < self.params["threshold"]] = self.params["threshold_fill_value"]
                 else:
-                    pxd[pxd >= self.params["threshold"]] = self.params["threshold_fill_value"]
+                    if self.params["threshold_make_mask"]:
+                        pxd = pxd >= self.params["threshold"]
+                    else:
+                        pxd[pxd >= self.params["threshold"]] = self.params["threshold_fill_value"]
             elif self.params["operation"] == 4:
                 pxd += self.params["constant"]
             elif self.params["operation"] == 5:
                 pxd *= self.params["factor"]
+            elif self.params["operation"] == 6:
+                pxd = np.abs(pxd)
 
             # replace nan and inf
             _inf_val = self.params["replace_inf_by"] if self.params["replace_inf"] else None

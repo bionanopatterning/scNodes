@@ -156,7 +156,6 @@ def frame_to_particles_3d(frame, initial_sigma=2.0, method=0, crop_radius=4, con
 
     parameters[:, 1] += xy[:, 1]  # offsetting back into image coordinates (rather than crop coordinates)
     parameters[:, 2] += xy[:, 0]  # offsetting back into image coordinates
-    particles = list()
     converged = states == 0
 
     ## 230207

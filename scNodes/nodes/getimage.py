@@ -39,14 +39,14 @@ class GetImageNode(Node):
             imgui.separator()
             imgui.spacing()
             imgui.push_item_width(140)
-            _c, self.params["mode"]= imgui.combo("Mode", self.mode, GetImageNode.IMAGE_MODES)
+            _c, self.params["mode"] = imgui.combo("Mode", self.params["mode"], GetImageNode.IMAGE_MODES)
             self.any_change = self.any_change or _c
             imgui.pop_item_width()
             imgui.push_item_width(80)
-            if self.params["mode"]== 0:
+            if self.params["mode"] == 0:
                 _c, self.params["frame"] = imgui.input_int("Frame nr.", self.params["frame"], 0, 0)
                 self.any_change = self.any_change or _c
-            elif self.params["mode"]== 1:
+            elif self.params["mode"] == 1:
                 _c, self.params["projection"] = imgui.combo("Projection", self.params["projection"], GetImageNode.PROJECTIONS)
                 if _c:
                     self.image = None
@@ -80,11 +80,11 @@ class GetImageNode(Node):
 
     def on_update(self):
         if self.params["mode"]== 1 and self.image is None:
-            if self.load_data_source is not None:
-                if self.load_data_source.done_loading:
-                    self.generate_projection()
+                self.generate_projection()
 
     def generate_projection(self):
+        print(self)
+        print('generating projection')
         data_source = self.connectable_attributes["dataset_in"].get_incoming_node()
         frame = data_source.get_image(0)
         n_frames = Node.get_source_load_data_node(self).dataset.n_frames
@@ -92,13 +92,13 @@ class GetImageNode(Node):
         for i in range(n_frames):
             projection_image[:, :, i] = data_source.get_image(i).load()
         if self.params["projection"] == 0:
-            self.image = np.average(projection_image, axis = 2)
+            self.image = np.average(projection_image, axis=2)
         elif self.params["projection"] == 1:
-            self.image = np.min(projection_image, axis = 2)
+            self.image = np.min(projection_image, axis=2)
         elif self.params["projection"] == 2:
-            self.image = np.max(projection_image, axis = 2)
+            self.image = np.max(projection_image, axis=2)
         elif self.params["projection"] == 3:
-            self.image = np.std(projection_image, axis = 2)
+            self.image = np.std(projection_image, axis=2)
         self.any_change = True
 
     def get_image_impl(self, idx=None):
