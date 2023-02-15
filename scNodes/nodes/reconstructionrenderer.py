@@ -216,7 +216,6 @@ class ReconstructionRendererNode(Node):
                 self.reconstructor.set_camera_origin([-particle_data.reconstruction_roi[0] / self.params["pixel_size"], -particle_data.reconstruction_roi[1] / self.params["pixel_size"]])
 
                 ## Apply colours
-                ## TODO: output monochrome images only - but with particle colour lut_idx
                 if self.paint_particles:
                     if not self.paint_applied:
                         self.apply_paint(particle_data)
@@ -238,6 +237,8 @@ class ReconstructionRendererNode(Node):
                         self.OVERRIDE_AUTOCONTRAST = True
                         clims = self.compute_contrast_lims(self.latest_image)
                         self.OVERRIDE_AUTOCONTRAST_LIMS = (clims[0], clims[1])
+                    else:
+                        self.latest_image = self.latest_image[:, :, 0]
             else:
                 self.latest_image = None
         except Exception as e:

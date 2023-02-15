@@ -83,23 +83,22 @@ class GetImageNode(Node):
                 self.generate_projection()
 
     def generate_projection(self):
-        print(self)
-        print('generating projection')
         data_source = self.connectable_attributes["dataset_in"].get_incoming_node()
-        frame = data_source.get_image(0)
-        n_frames = Node.get_source_load_data_node(self).dataset.n_frames
-        projection_image = np.zeros((frame.width, frame.height, n_frames))
-        for i in range(n_frames):
-            projection_image[:, :, i] = data_source.get_image(i).load()
-        if self.params["projection"] == 0:
-            self.image = np.average(projection_image, axis=2)
-        elif self.params["projection"] == 1:
-            self.image = np.min(projection_image, axis=2)
-        elif self.params["projection"] == 2:
-            self.image = np.max(projection_image, axis=2)
-        elif self.params["projection"] == 3:
-            self.image = np.std(projection_image, axis=2)
-        self.any_change = True
+        if data_source:
+            frame = data_source.get_image(0)
+            n_frames = Node.get_source_load_data_node(self).dataset.n_frames
+            projection_image = np.zeros((frame.width, frame.height, n_frames))
+            for i in range(n_frames):
+                projection_image[:, :, i] = data_source.get_image(i).load()
+            if self.params["projection"] == 0:
+                self.image = np.average(projection_image, axis=2)
+            elif self.params["projection"] == 1:
+                self.image = np.min(projection_image, axis=2)
+            elif self.params["projection"] == 2:
+                self.image = np.max(projection_image, axis=2)
+            elif self.params["projection"] == 3:
+                self.image = np.std(projection_image, axis=2)
+            self.any_change = True
 
     def get_image_impl(self, idx=None):
         if cfg.profiling:

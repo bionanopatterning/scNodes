@@ -13,6 +13,7 @@ set_loky_pickler("dill")
 class Node:
     title = "NullNode"
     group = "Ungrouped"
+    compatibility = "not versioned"
     colour = (1.0, 1.0, 1.0, 1.0)
     id_generator = count(0)
     size = 200

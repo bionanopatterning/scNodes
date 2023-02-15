@@ -46,8 +46,6 @@ class Dataset:
         img = Image.open(self.path)
         tif = tifffile.TiffFile(self.path)
         n_frames = len(tif.pages)
-        print(n_frames)
-        print(img.n_frames)
         if img.n_frames > 1:
             for i in range(img.n_frames):
                 self.n_frames += 1
@@ -147,7 +145,7 @@ class Frame:
         self.translation = [0.0, 0.0]
         self.maxima = list()
         self.particles = list()
-        self.pixel_size = 1
+        self.pixel_size = 100
         self.gpu_data_buffer = None
         self.gpu_params_buffer = None
         self.gpu_crop_xy_buffer = None
@@ -224,6 +222,7 @@ class ParticleData:
         self.baked = False
         self.baked_by_renderer = False
         self.empty = False
+        self.n_particles = len(next(iter(self.parameters.values())))
         return self
 
     def __str__(self):
@@ -235,7 +234,7 @@ class ParticleData:
             self.parameters["visible"] = np.ones_like(self.parameters["visible"])
         self.baked_by_renderer = False
 
-    def bake(self, discard_filtered_particles=False):
+    def bake(self):
         if self.empty:
             return
         self.baked = True
