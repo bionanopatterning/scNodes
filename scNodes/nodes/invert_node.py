@@ -50,6 +50,6 @@ class InvertNode(Node):
             inverted_data = max_val + min_val - roi_data
             output_frame = incoming_frame.clone()
             output_frame.data = data
-            output_frame.data[_roi[1]:_roi[3], _roi[0]:_roi[2]] = inverted_data
+            output_frame.write_roi(_roi, inverted_data)
             return output_frame
 

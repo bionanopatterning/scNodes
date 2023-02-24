@@ -156,7 +156,6 @@ class Frame:
         if self.data is not None:
             return self.data
         else:
-            # 221202 switched from PIL to tifffile
             if self.index is None:
                 self.data = tifffile.imread(self.path).astype(np.float)
             else:
@@ -184,6 +183,10 @@ class Frame:
             return self.load()
         else:
             return self.load()[roi[1]:roi[3], roi[0]:roi[2]]
+
+    def write_roi(self, roi, data):
+        self.data[roi[1]:roi[3], roi[0]:roi[2]] = data
+
 
     def __str__(self):
         sstr = "Frame: " + self.title + "\n" \

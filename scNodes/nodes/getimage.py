@@ -79,7 +79,7 @@ class GetImageNode(Node):
         self.any_change = True
 
     def on_update(self):
-        if self.params["mode"]== 1 and self.image is None:
+        if self.params["mode"] == 1 and self.image is None:
                 self.generate_projection()
 
     def generate_projection(self):

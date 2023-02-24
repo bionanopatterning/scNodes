@@ -14,7 +14,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='scNodes',
-    version='1.0.65',
+    version='1.0.66',
     packages=find_packages(),
     url='https://github.com/bionanopatterning/scNodes',
     license='GPL v3',
