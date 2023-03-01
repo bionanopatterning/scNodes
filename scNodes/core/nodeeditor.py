@@ -113,8 +113,8 @@ class NodeEditor:
         # Render nodes  - render active_connector_parent_node first, to enable all other connectors' drop targets.
         source_node_id = -1
         if cfg.active_connector_parent_node is not None:
-            cfg.active_connector_parent_node.render()
             source_node_id = cfg.active_connector_parent_node.id
+            cfg.active_connector_parent_node.render()
         for node in cfg.nodes:
             if node.id is not source_node_id:
                 node.render()

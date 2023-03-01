@@ -52,7 +52,6 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
                                                                                             max_number_iterations=100,
                                                                                             constraint_types=constraint_type,
                                                                                             constraints=constraint_values)
-    # TODO: 3d fitting.
     xy = np.asarray(xy)
     parameters[:, 0] *= 2 * np.pi * parameters[:, 3]**2  # scaling from (maximum value of gaussian) to (number of photons)
     parameters[:, 1:3] -= crop_radius

@@ -6,7 +6,6 @@ import pyperclip
 import tifffile
 from PIL import Image
 import glob
-#from clemframe import CLEMFrame, Transform
 from scNodes.core.ceplugin import *
 
 
@@ -57,7 +56,7 @@ class CorrelationEditor:
         BLEND_COMBO_WIDTH = 150
         VISUALS_CTRL_ALPHA = 0.8
 
-        CAMERA_MAX_ZOOM = 10.0
+        CAMERA_MAX_ZOOM = 100.0
 
         SCALE_BAR_HEIGHT = 6.0
         SCALE_BAR_WINDOW_MARGIN = 5.0
@@ -175,7 +174,6 @@ class CorrelationEditor:
             self.icon_close.update(pxd_icon_close)
             self.icon_close.set_linear_interpolation()
 
-
     def on_update(self):
         imgui.set_current_context(self.imgui_context)
         self.window.make_current()
@@ -264,7 +262,6 @@ class CorrelationEditor:
             clem_frame.pivot_point = [-pos[0], -pos[1]]
             cfg.ce_frames.insert(0, clem_frame)
             CorrelationEditor.active_frame = clem_frame
-
 
     @staticmethod
     def relink_after_load():
@@ -380,27 +377,36 @@ class CorrelationEditor:
         #  Transform info
         expanded, _ = imgui.collapsing_header("Transform", None)
         if expanded and af is not None:
-            _t = af.transform
+            _t = deepcopy(af.transform)
             imgui.push_item_width(90)
             imgui.text("         X: ")
             imgui.same_line()
             dx = _t.translation[0]
-            _, _t.translation[0] = imgui.drag_float("##X", _t.translation[0], CorrelationEditor.TRANSLATION_SPEED, 0.0, 0.0, f"{_t.translation[0]:.1f} nm")
+            x_changed, _t.translation[0] = imgui.drag_float("##X", _t.translation[0], CorrelationEditor.TRANSLATION_SPEED, 0.0, 0.0, f"{_t.translation[0]:.1f} nm")
             dx -= _t.translation[0]
+            if x_changed:
+                af.translate([-dx, 0.0])
             imgui.text("         Y: ")
             imgui.same_line()
             dy = _t.translation[1]
-            _, _t.translation[1] = imgui.drag_float("##Y", _t.translation[1], CorrelationEditor.TRANSLATION_SPEED, 0.0, 0.0, f"{_t.translation[1]:.1f} nm")
+            y_changed, _t.translation[1] = imgui.drag_float("##Y", _t.translation[1], CorrelationEditor.TRANSLATION_SPEED, 0.0, 0.0, f"{_t.translation[1]:.1f} nm")
             dy -= _t.translation[1]
+            if y_changed:
+                af.translate([0.0, -dy])
             imgui.text("     Angle: ")
             imgui.same_line()
-            _, _t.rotation = imgui.drag_float("##Angle", _t.rotation, CorrelationEditor.ROTATION_SPEED, 0.0, 0.0, '%.2f°')
+            dr = _t.rotation
+            rotation_changed, _t.rotation = imgui.drag_float("##Angle", _t.rotation, CorrelationEditor.ROTATION_SPEED, 0.0, 0.0, '%.2f°')
+            dr -= _t.rotation
+            if rotation_changed:
+                af.pivoted_rotation(af.pivot_point, dr)
             imgui.text("Pixel size: ")
             imgui.same_line()
-            _, af.pixel_size = imgui.drag_float("##Pixel size", af.pixel_size, CorrelationEditor.SCALE_SPEED, 0.0, 0.0, '%.3f nm')
-            af.pixel_size = max([af.pixel_size, 0.1])
-            af.pivot_point[0] += dx
-            af.pivot_point[1] += dy
+            pxsi = af.pixel_size
+            pixel_size_changed, pxsf = imgui.drag_float("##Pixel size", af.pixel_size, CorrelationEditor.SCALE_SPEED, 0.0, 0.0, '%.3f nm')
+            if pixel_size_changed:
+                af.pivoted_scale(af.pivot_point, pxsf/pxsi)
+            af.pixel_size = max([af.pixel_size, 0.01])
             imgui.spacing()
 
         # Visuals info
@@ -1015,7 +1021,7 @@ class CorrelationEditor:
         if CorrelationEditor.active_frame is not None:
             if CorrelationEditor.active_frame.has_slices:
                 imgui.set_next_item_width(CorrelationEditor.ALPHA_SLIDER_WIDTH + CorrelationEditor.BLEND_COMBO_WIDTH + 35.0)
-                _c, requested_slice = imgui.slider_int("##slicer", CorrelationEditor.active_frame.current_slice, 0, CorrelationEditor.active_frame.n_slices, format=f"slice {CorrelationEditor.active_frame.current_slice+1:.0f}/{CorrelationEditor.active_frame.n_slices:.0f}")
+                _c, requested_slice = imgui.slider_int("##slicer", CorrelationEditor.active_frame.current_slice, 0, CorrelationEditor.active_frame.n_slices - 1, format=f"slice {CorrelationEditor.active_frame.current_slice+1:.0f}/{CorrelationEditor.active_frame.n_slices:.0f}")
                 if _c:
                     CorrelationEditor.active_frame.set_slice(requested_slice)
             else:
@@ -1140,8 +1146,7 @@ class CorrelationEditor:
                     if not snap:
                         delta_x = cursor_world_pos_now[0] - cursor_world_pos_prev[0]
                         delta_y = cursor_world_pos_now[1] - cursor_world_pos_prev[1]
-                    for frame in CorrelationEditor.active_frame.list_all_children(include_self=True):
-                        frame.translate([delta_x, delta_y])
+                        CorrelationEditor.active_frame.translate([delta_x, delta_y])
             elif CorrelationEditor.active_frame is not None:
                 pivot = CorrelationEditor.active_frame.pivot_point
                 if self.window.get_key(glfw.KEY_LEFT_SHIFT):  # if LEFT_SHIFT pressed, rotate/scale is around center of image instead of around pivot.
@@ -1157,8 +1162,7 @@ class CorrelationEditor:
                     angle_i = np.arctan2(cursor_world_pos_prev[0] - pivot[0], cursor_world_pos_prev[1] - pivot[1])
                     angle_f = np.arctan2(cursor_world_pos_now[0] - pivot[0], cursor_world_pos_now[1] - pivot[1])
                     delta_angle = (angle_f - angle_i) / np.pi * 180.0
-                    for frame in CorrelationEditor.active_frame.list_all_children(include_self=True):
-                        frame.pivoted_rotation(pivot, -delta_angle)
+                    CorrelationEditor.active_frame.pivoted_rotation(pivot, -delta_angle)
                 elif CorrelationEditor.active_gizmo.gizmo_type == EditorGizmo.TYPE_SCALE:
                     # Find the scaling
                     offset_vec_i = [pivot[0] - cursor_world_pos_prev[0], pivot[1] - cursor_world_pos_prev[1]]
@@ -1168,8 +1172,7 @@ class CorrelationEditor:
                     relative_scale = 1.0
                     if scale_i != 0.0:
                         relative_scale = scale_f / scale_i
-                    for frame in CorrelationEditor.active_frame.list_all_children(include_self=True):
-                        frame.pivoted_scale(pivot, relative_scale)
+                    CorrelationEditor.active_frame.pivoted_scale(pivot, relative_scale)
 
         # Editor mouse input - right-click options menu
         if self.window.get_mouse_event(glfw.MOUSE_BUTTON_RIGHT, glfw.PRESS):

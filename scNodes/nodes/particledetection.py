@@ -106,7 +106,7 @@ class ParticleDetectionNode(Node):
                 coordinates += np.asarray([self.roi[1], self.roi[0]])
                 Node.get_source_load_data_node(self).dataset.reconstruction_roi = self.roi
             else:
-                Node.get_source_load_data_node(self).dataset.reconstruction_roi = [0, 0, image.shape[0], image.shape[1]] ## todo check
+                Node.get_source_load_data_node(self).dataset.reconstruction_roi = [0, 0, image.shape[0], image.shape[1]]
             image_obj.maxima = coordinates
 
             return image_obj

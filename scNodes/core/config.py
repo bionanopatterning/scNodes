@@ -96,25 +96,6 @@ def set_error(error_object, error_message):
     error_new = True
     error_logged = False
 
-# def save_project(filename):
-#     ## TODO change to work with new json export mode
-#     if not filetype_project in filename:
-#         filename += filetype_project
-#     with open(filename, 'wb') as pickle_file:
-#         pickle.dump([nodes, ce_frames], pickle_file)
-#
-# def load_project(filename):
-#     global nodes, ce_frames, correlation_editor_relink, node_editor_relink
-#     try:
-#         with open(filename, 'rb') as pickle_file:
-#             data = pickle.load(pickle_file)
-#             nodes = data[0]
-#             ce_frames = data[1]
-#             node_editor_relink = True
-#             correlation_editor_relink = True
-#     except Exception as e:
-#         set_error(e, "Error loading project")
-
 def save_scene(filename):
     if not filetype_scene in filename:
         filename += filetype_scene

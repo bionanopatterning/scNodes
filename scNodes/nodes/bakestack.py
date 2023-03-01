@@ -18,7 +18,6 @@ class BakeStackNode(Node):
 
     RANGE_OPTIONS = ["All frames", "Custom range"]
 
-    ## todo fix error where bakestack freezes upon leaving entire node setup intact, changing source data node input to a different stack, then pressing GO on bake stack node.
     def __init__(self):
         super().__init__()
         self.size = 230

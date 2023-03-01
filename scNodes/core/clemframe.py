@@ -140,31 +140,36 @@ class CLEMFrame:
             self.update_image_texture()
 
     def translate(self, translation):
-        self.pivot_point[0] += translation[0]
-        self.pivot_point[1] += translation[1]
-        self.transform.translation[0] += translation[0]
-        self.transform.translation[1] += translation[1]
+        for frame in self.list_all_children(include_self=True):
+            frame.pivot_point[0] += translation[0]
+            frame.pivot_point[1] += translation[1]
+            frame.transform.translation[0] += translation[0]
+            frame.transform.translation[1] += translation[1]
 
     def pivoted_rotation(self, pivot, angle):
-        self.transform.rotation += angle
-        p = np.matrix([self.transform.translation[0] - pivot[0], self.transform.translation[1] - pivot[1]]).T
-        rotation_mat = np.identity(2)
-        _cos = np.cos(angle / 180.0 * np.pi)
-        _sin = np.sin(angle / 180.0 * np.pi)
-        rotation_mat[0, 0] = _cos
-        rotation_mat[1, 0] = _sin
-        rotation_mat[0, 1] = -_sin
-        rotation_mat[1, 1] = _cos
-        delta_translation = rotation_mat * p - p
-        delta_translation = [float(delta_translation[0]), float(delta_translation[1])]
-        self.transform.translation[0] += delta_translation[0]
-        self.transform.translation[1] += delta_translation[1]
+        for frame in self.list_all_children(include_self=True):
+            frame.transform.rotation += angle
+            p = np.matrix([frame.transform.translation[0] - pivot[0], frame.transform.translation[1] - pivot[1]]).T
+            rotation_mat = np.identity(2)
+            _cos = np.cos(angle / 180.0 * np.pi)
+            _sin = np.sin(angle / 180.0 * np.pi)
+            rotation_mat[0, 0] = _cos
+            rotation_mat[1, 0] = _sin
+            rotation_mat[0, 1] = -_sin
+            rotation_mat[1, 1] = _cos
+            delta_translation = rotation_mat * p - p
+            delta_translation = [float(delta_translation[0]), float(delta_translation[1])]
+            frame.transform.translation[0] += delta_translation[0]
+            frame.transform.translation[1] += delta_translation[1]
 
     def pivoted_scale(self, pivot, scale):
-        offset = [pivot[0] - self.transform.translation[0], pivot[1] - self.transform.translation[1]]
-        self.transform.translation[0] += offset[0] * (1.0 - scale)
-        self.transform.translation[1] += offset[1] * (1.0 - scale)
-        self.pixel_size *= scale
+        for frame in self.list_all_children(include_self=True):
+            offset = [pivot[0] - frame.transform.translation[0], pivot[1] - frame.transform.translation[1]]
+            frame.transform.translation[0] += offset[0] * (1.0 - scale)
+            frame.transform.translation[1] += offset[1] * (1.0 - scale)
+            frame.pivot_point[0] += offset[0] * (1.0 - scale)
+            frame.pivot_point[1] += offset[1] * (1.0 - scale)
+            frame.pixel_size *= scale
 
     def update_model_matrix(self):
         self.transform.scale = self.pixel_size
