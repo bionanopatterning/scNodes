@@ -117,7 +117,7 @@ class CLEMFrame:
         # else, load slice and update texture.
         self.current_slice = requested_slice
         if self.extension == ".tiff" or self.extension == ".tif":
-            self.data = tifffile.imread(self.path, key=self.current_slice).astype(np.float)
+            self.data = tifffile.imread(self.path, key=self.current_slice).astype(float)
             if cfg.ce_flip_on_load:
                 self.data = np.flip(self.data, axis=1)
             if self.flip_h:

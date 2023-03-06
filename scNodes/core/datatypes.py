@@ -159,9 +159,9 @@ class Frame:
             return self.data
         else:
             if self.index is None:
-                self.data = tifffile.imread(self.path).astype(np.float)
+                self.data = tifffile.imread(self.path).astype(float)
             else:
-                self.data = tifffile.imread(self.path, key=self.index).astype(np.float)
+                self.data = tifffile.imread(self.path, key=self.index).astype(float)
             self.width = self.data.shape[0]
             self.height = self.data.shape[1]
             return self.data

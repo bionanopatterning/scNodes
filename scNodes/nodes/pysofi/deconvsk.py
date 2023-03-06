@@ -9,8 +9,8 @@ def _prep_img_and_psf(image, psf):
     Do basic data checking, convert data to float, normalize psf and make sure
     data are positive.
     """
-    image = image.astype(np.float)
-    psf = psf.astype(np.float)
+    image = image.astype(float)
+    psf = psf.astype(float)
     # need to make sure both image and PSF are totally positive.
     image = _ensure_positive(image)
     psf = _ensure_positive(psf)
