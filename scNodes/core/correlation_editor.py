@@ -328,7 +328,7 @@ class CorrelationEditor:
         imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_MAIN_MENU_BAR_HILIGHT)
         imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_MAIN_MENU_BAR_HILIGHT)
         imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_MENU_WINDOW_BACKGROUND)
-
+        imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (2.0, 2.0))
         if imgui.core.begin_main_menu_bar():
             if imgui.begin_menu("File"):
                 if imgui.menu_item("Save scene")[0]:
@@ -355,7 +355,10 @@ class CorrelationEditor:
                 _c, cfg.ce_flip_mrc_on_load = imgui.checkbox("Flip .mrc volumes when loading", cfg.ce_flip_mrc_on_load)
                 _c, cfg.ce_flip_on_load = imgui.checkbox("Flip images when loading", cfg.ce_flip_on_load)
                 imgui.end_menu()
-
+            if imgui.begin_menu("View"):
+                for tool_menu_name in cfg.ce_tool_menu_names:
+                    _c, cfg.ce_tool_menu_names[tool_menu_name] = imgui.checkbox(tool_menu_name, cfg.ce_tool_menu_names[tool_menu_name])
+                imgui.end_menu()
             if imgui.begin_menu("Editor"):
                 select_node_editor, _ = imgui.menu_item("Node Editor", None, False)
                 select_correlation_editor, _ = imgui.menu_item("Correlation", None, True)
@@ -364,6 +367,7 @@ class CorrelationEditor:
                 imgui.end_menu()
             imgui.end_main_menu_bar()
         imgui.pop_style_color(6)
+        imgui.pop_style_var(1)
 
     def tool_info_window(self):
         af = CorrelationEditor.active_frame
@@ -375,304 +379,309 @@ class CorrelationEditor:
         imgui.begin("Tools", False, imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_TITLE_BAR)
 
         #  Transform info
-        expanded, _ = imgui.collapsing_header("Transform", None)
-        if expanded and af is not None:
-            _t = deepcopy(af.transform)
-            imgui.push_item_width(90)
-            imgui.text("         X: ")
-            imgui.same_line()
-            dx = _t.translation[0]
-            x_changed, _t.translation[0] = imgui.drag_float("##X", _t.translation[0], CorrelationEditor.TRANSLATION_SPEED, 0.0, 0.0, f"{_t.translation[0]:.1f} nm")
-            dx -= _t.translation[0]
-            if x_changed:
-                af.translate([-dx, 0.0])
-            imgui.text("         Y: ")
-            imgui.same_line()
-            dy = _t.translation[1]
-            y_changed, _t.translation[1] = imgui.drag_float("##Y", _t.translation[1], CorrelationEditor.TRANSLATION_SPEED, 0.0, 0.0, f"{_t.translation[1]:.1f} nm")
-            dy -= _t.translation[1]
-            if y_changed:
-                af.translate([0.0, -dy])
-            imgui.text("     Angle: ")
-            imgui.same_line()
-            dr = _t.rotation
-            rotation_changed, _t.rotation = imgui.drag_float("##Angle", _t.rotation, CorrelationEditor.ROTATION_SPEED, 0.0, 0.0, '%.2f°')
-            dr -= _t.rotation
-            if rotation_changed:
-                af.pivoted_rotation(af.pivot_point, dr)
-            imgui.text("Pixel size: ")
-            imgui.same_line()
-            pxsi = af.pixel_size
-            pixel_size_changed, pxsf = imgui.drag_float("##Pixel size", af.pixel_size, CorrelationEditor.SCALE_SPEED, 0.0, 0.0, '%.3f nm')
-            if pixel_size_changed:
-                af.pivoted_scale(af.pivot_point, pxsf/pxsi)
-            af.pixel_size = max([af.pixel_size, 0.01])
-            imgui.spacing()
-
-        # Visuals info
-        expanded, _ = imgui.collapsing_header("Visuals", None)
-        if expanded and af is not None:
-            if af.is_rgb:  # rgb histograms
-                _cw = imgui.get_content_region_available_width()
-                imgui.push_item_width(_cw)
-                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0.0, 0.0))
-                imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 5.0)
-                # Red histogram
-                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *(0.8, 0.1, 0.1, 1.0))
-                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *(0.8, 0.1, 0.1, 1.0))
-                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *(0.9, 0.1, 0.1, 1.0))
-                imgui.plot_histogram("##histR", af.rgb_hist_vals[0],
-                                     graph_size=(_cw, CorrelationEditor.INFO_HISTOGRAM_HEIGHT // 2))
-                _c, af.rgb_contrast_lims[0] = imgui.slider_float("#minr", af.rgb_contrast_lims[0], 0, 255,
-                                                                 format='min %.0f')
-                _c, af.rgb_contrast_lims[1] = imgui.slider_float("#maxr", af.rgb_contrast_lims[1], 0, 255,
-                                                                 format='max %.0f')
-                imgui.pop_style_color(3)
-
-                # Green histogram
-                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *(0.1, 0.8, 0.1, 1.0))
-                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *(0.1, 0.8, 0.1, 1.0))
-                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *(0.1, 0.9, 0.1, 1.0))
-                imgui.plot_histogram("##histG", af.rgb_hist_vals[1],
-                                     graph_size=(_cw, CorrelationEditor.INFO_HISTOGRAM_HEIGHT // 2))
-                _c, af.rgb_contrast_lims[2] = imgui.slider_float("#ming", af.rgb_contrast_lims[2], 0, 255,
-                                                                 format='min %.0f')
-                _c, af.rgb_contrast_lims[3] = imgui.slider_float("#maxg", af.rgb_contrast_lims[3], 0, 255,
-                                                                 format='max %.0f')
-                imgui.pop_style_color(3)
-
-                # Blue histogram
-                imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *(0.1, 0.1, 0.8, 1.0))
-                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *(0.1, 0.1, 0.9, 1.0))
-                imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *(0.1, 0.1, 0.8, 1.0))
-                imgui.plot_histogram("##histB", af.rgb_hist_vals[2],
-                                     graph_size=(_cw, CorrelationEditor.INFO_HISTOGRAM_HEIGHT // 2))
-                _c, af.rgb_contrast_lims[4] = imgui.slider_float("#minb", af.rgb_contrast_lims[4], 0, 255,
-                                                                 format='min %.0f')
-                _c, af.rgb_contrast_lims[5] = imgui.slider_float("#maxb", af.rgb_contrast_lims[5], 0, 255,
-                                                                 format='max %.0f')
-                imgui.pop_style_color(3)
-
-                imgui.pop_item_width()
-                imgui.pop_style_var(2)
-            else:
-                # LUT
-                imgui.text("Look-up table")
-                imgui.set_next_item_width(129 + (27 if af.lut != 0 else 0.0))
-                _clut, af.lut = imgui.combo("##LUT", af.lut, ["Custom colour"] + settings.lut_names, len(
-                    settings.lut_names) + 1)
-                if af.lut == 0:
-                    imgui.same_line()
-                    _c, af.colour = imgui.color_edit4("##lutclr", *af.colour, imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
-                    _clut = _clut or _c
-                if _clut:
-                    af.update_lut()
-                imgui.same_line(spacing=-1)
-                if imgui.button("A", 19, 19):
-                    af.compute_autocontrast()
-                CorrelationEditor.tooltip("Click to autocompute contrast limits.")
-
-                # HISTOGRAM
-                _cw = imgui.get_content_region_available_width()
-                imgui.plot_histogram("##hist", af.hist_vals, graph_size=(_cw, CorrelationEditor.INFO_HISTOGRAM_HEIGHT))
-                _l = af.hist_bins[0]
-                _h = af.hist_bins[-1]
-                _max = af.contrast_lims[1]
-                _min = af.contrast_lims[0]
-                _uv_left = 0.5
-                _uv_right = 0.5
-                if _max != _min:
-                    _uv_left = 1.0 + (_l - _max) / (_max - _min)
-                    _uv_right = 1.0 + (_h - _max) / (_max - _min)
-                imgui.image(af.lut_texture.renderer_id, _cw - 1, CorrelationEditor.INFO_LUT_PREVIEW_HEIGHT, (_uv_left, 0.5), (_uv_right, 0.5), border_color=cfg.COLOUR_FRAME_BACKGROUND)
-                imgui.push_item_width(_cw)
-                _c, af.contrast_lims[0] = imgui.slider_float("min", af.contrast_lims[0], af.hist_bins[0], af.hist_bins[-1], format='min %.1f')
-                _c, af.contrast_lims[1] = imgui.slider_float("max", af.contrast_lims[1], af.hist_bins[0], af.hist_bins[-1], format='max %.1f')
-                imgui.pop_item_width()
-                imgui.text("Saturation:")
+        if cfg.ce_tool_menu_names["Transform"]:
+            expanded, _ = imgui.collapsing_header("Transform", None)
+            if expanded and af is not None:
+                _t = deepcopy(af.transform)
+                imgui.push_item_width(90)
+                imgui.text("         X: ")
                 imgui.same_line()
-                _cw = imgui.get_content_region_available_width()
-                imgui.set_next_item_width(_cw)
-                _c, af.lut_clamp_mode = imgui.combo("##clamping", af.lut_clamp_mode, ["Clamp", "Discard", "Discard min"])
-                if _c:
-                    af.update_lut()
-                CorrelationEditor.tooltip("Set whether saturated pixels (with intensities outside of the min/max range)\n"
-                                          "are clamped to the min/max value, or discarded (alpha set to 0.0)")
+                dx = _t.translation[0]
+                x_changed, _t.translation[0] = imgui.drag_float("##X", _t.translation[0], CorrelationEditor.TRANSLATION_SPEED, 0.0, 0.0, f"{_t.translation[0]:.1f} nm")
+                dx -= _t.translation[0]
+                if x_changed:
+                    af.translate([-dx, 0.0])
+                imgui.text("         Y: ")
+                imgui.same_line()
+                dy = _t.translation[1]
+                y_changed, _t.translation[1] = imgui.drag_float("##Y", _t.translation[1], CorrelationEditor.TRANSLATION_SPEED, 0.0, 0.0, f"{_t.translation[1]:.1f} nm")
+                dy -= _t.translation[1]
+                if y_changed:
+                    af.translate([0.0, -dy])
+                imgui.text("     Angle: ")
+                imgui.same_line()
+                dr = _t.rotation
+                rotation_changed, _t.rotation = imgui.drag_float("##Angle", _t.rotation, CorrelationEditor.ROTATION_SPEED, 0.0, 0.0, '%.2f°')
+                dr -= _t.rotation
+                if rotation_changed:
+                    af.pivoted_rotation(af.pivot_point, dr)
+                imgui.text("Pixel size: ")
+                imgui.same_line()
+                pxsi = af.pixel_size
+                pixel_size_changed, pxsf = imgui.drag_float("##Pixel size", af.pixel_size, CorrelationEditor.SCALE_SPEED, 0.0, 0.0, '%.3f nm')
+                if pixel_size_changed:
+                    af.pivoted_scale(af.pivot_point, pxsf/pxsi)
+                af.pixel_size = max([af.pixel_size, 0.01])
                 imgui.spacing()
 
+        # Visuals info
+        if cfg.ce_tool_menu_names["Visuals"]:
+            expanded, _ = imgui.collapsing_header("Visuals", None)
+            if expanded and af is not None:
+                if af.is_rgb:  # rgb histograms
+                    _cw = imgui.get_content_region_available_width()
+                    imgui.push_item_width(_cw)
+                    imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0.0, 0.0))
+                    imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 5.0)
+                    # Red histogram
+                    imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *(0.8, 0.1, 0.1, 1.0))
+                    imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *(0.8, 0.1, 0.1, 1.0))
+                    imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *(0.9, 0.1, 0.1, 1.0))
+                    imgui.plot_histogram("##histR", af.rgb_hist_vals[0],
+                                         graph_size=(_cw, CorrelationEditor.INFO_HISTOGRAM_HEIGHT // 2))
+                    _c, af.rgb_contrast_lims[0] = imgui.slider_float("#minr", af.rgb_contrast_lims[0], 0, 255,
+                                                                     format='min %.0f')
+                    _c, af.rgb_contrast_lims[1] = imgui.slider_float("#maxr", af.rgb_contrast_lims[1], 0, 255,
+                                                                     format='max %.0f')
+                    imgui.pop_style_color(3)
+
+                    # Green histogram
+                    imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *(0.1, 0.8, 0.1, 1.0))
+                    imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *(0.1, 0.8, 0.1, 1.0))
+                    imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *(0.1, 0.9, 0.1, 1.0))
+                    imgui.plot_histogram("##histG", af.rgb_hist_vals[1],
+                                         graph_size=(_cw, CorrelationEditor.INFO_HISTOGRAM_HEIGHT // 2))
+                    _c, af.rgb_contrast_lims[2] = imgui.slider_float("#ming", af.rgb_contrast_lims[2], 0, 255,
+                                                                     format='min %.0f')
+                    _c, af.rgb_contrast_lims[3] = imgui.slider_float("#maxg", af.rgb_contrast_lims[3], 0, 255,
+                                                                     format='max %.0f')
+                    imgui.pop_style_color(3)
+
+                    # Blue histogram
+                    imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *(0.1, 0.1, 0.8, 1.0))
+                    imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *(0.1, 0.1, 0.9, 1.0))
+                    imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *(0.1, 0.1, 0.8, 1.0))
+                    imgui.plot_histogram("##histB", af.rgb_hist_vals[2],
+                                         graph_size=(_cw, CorrelationEditor.INFO_HISTOGRAM_HEIGHT // 2))
+                    _c, af.rgb_contrast_lims[4] = imgui.slider_float("#minb", af.rgb_contrast_lims[4], 0, 255,
+                                                                     format='min %.0f')
+                    _c, af.rgb_contrast_lims[5] = imgui.slider_float("#maxb", af.rgb_contrast_lims[5], 0, 255,
+                                                                     format='max %.0f')
+                    imgui.pop_style_color(3)
+
+                    imgui.pop_item_width()
+                    imgui.pop_style_var(2)
+                else:
+                    # LUT
+                    imgui.text("Look-up table")
+                    imgui.set_next_item_width(129 + (27 if af.lut != 0 else 0.0))
+                    _clut, af.lut = imgui.combo("##LUT", af.lut, ["Custom colour"] + settings.lut_names, len(
+                        settings.lut_names) + 1)
+                    if af.lut == 0:
+                        imgui.same_line()
+                        _c, af.colour = imgui.color_edit4("##lutclr", *af.colour, imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
+                        _clut = _clut or _c
+                    if _clut:
+                        af.update_lut()
+                    imgui.same_line(spacing=-1)
+                    if imgui.button("A", 19, 19):
+                        af.compute_autocontrast()
+                    CorrelationEditor.tooltip("Click to autocompute contrast limits.")
+
+                    # HISTOGRAM
+                    _cw = imgui.get_content_region_available_width()
+                    imgui.plot_histogram("##hist", af.hist_vals, graph_size=(_cw, CorrelationEditor.INFO_HISTOGRAM_HEIGHT))
+                    _l = af.hist_bins[0]
+                    _h = af.hist_bins[-1]
+                    _max = af.contrast_lims[1]
+                    _min = af.contrast_lims[0]
+                    _uv_left = 0.5
+                    _uv_right = 0.5
+                    if _max != _min:
+                        _uv_left = 1.0 + (_l - _max) / (_max - _min)
+                        _uv_right = 1.0 + (_h - _max) / (_max - _min)
+                    imgui.image(af.lut_texture.renderer_id, _cw - 1, CorrelationEditor.INFO_LUT_PREVIEW_HEIGHT, (_uv_left, 0.5), (_uv_right, 0.5), border_color=cfg.COLOUR_FRAME_BACKGROUND)
+                    imgui.push_item_width(_cw)
+                    _c, af.contrast_lims[0] = imgui.slider_float("min", af.contrast_lims[0], af.hist_bins[0], af.hist_bins[-1], format='min %.1f')
+                    _c, af.contrast_lims[1] = imgui.slider_float("max", af.contrast_lims[1], af.hist_bins[0], af.hist_bins[-1], format='max %.1f')
+                    imgui.pop_item_width()
+                    imgui.text("Saturation:")
+                    imgui.same_line()
+                    _cw = imgui.get_content_region_available_width()
+                    imgui.set_next_item_width(_cw)
+                    _c, af.lut_clamp_mode = imgui.combo("##clamping", af.lut_clamp_mode, ["Clamp", "Discard", "Discard min"])
+                    if _c:
+                        af.update_lut()
+                    CorrelationEditor.tooltip("Set whether saturated pixels (with intensities outside of the min/max range)\n"
+                                              "are clamped to the min/max value, or discarded (alpha set to 0.0)")
+                    imgui.spacing()
+
         CorrelationEditor.export_roi_render = False
-        if imgui.collapsing_header("Export", None)[0]:
-            CorrelationEditor.export_roi_render = True
-            # Export mode selection buttons
-            _cw = imgui.get_content_region_available_width()
-            _button_width = (_cw - 10) / 2
-            _button_height = 20
-            imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, cfg.CE_WIDGET_ROUNDING)
-            if CorrelationEditor.export_roi_mode == 0:
-                imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_DARK)
-            else:
-                imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_BACKGROUND)
-            if imgui.button("ROI", _button_width, _button_height): CorrelationEditor.export_roi_mode = 0
-            imgui.pop_style_color()
-            if CorrelationEditor.export_roi_mode == 1:
-                imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_DARK)
-            else:
-                imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_BACKGROUND)
-            imgui.same_line()
-            if imgui.button("Selection", _button_width, _button_height): CorrelationEditor.export_roi_mode = 1
-            imgui.pop_style_color()
-            imgui.pop_style_var(1)
-            imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (2.0, 1.0))
-            # X/Y limit widget
-            imgui.spacing()
-            imgui.push_item_width(50)
-            lims = np.asarray(CorrelationEditor.ex_lims) / 1000.0
-            imgui.text(" X:")
-            imgui.same_line()
-            _a, lims[0] = imgui.drag_float("##export_xmin", lims[0], CorrelationEditor.EXPORT_SIZE_CHANGE_SPEED, format = f'{lims[0]:.2f}')
-            imgui.same_line()
-            imgui.text("to")
-            imgui.same_line()
-            _b, lims[2] = imgui.drag_float("##export_xmax", lims[2], CorrelationEditor.EXPORT_SIZE_CHANGE_SPEED, format = f'{lims[2]:.2f}')
-            imgui.same_line()
-            imgui.text("um")
-            imgui.text(" Y:")
-            imgui.same_line()
-            _c, lims[1] = imgui.drag_float("##export_ymin", lims[1], CorrelationEditor.EXPORT_SIZE_CHANGE_SPEED, format = f'{lims[1]:.2f}')
-            imgui.same_line()
-            imgui.text("to")
-            imgui.same_line()
-            _d, lims[3] = imgui.drag_float("##export_ymax", lims[3], CorrelationEditor.EXPORT_SIZE_CHANGE_SPEED, format = f'{lims[3]:.2f}')
-            if _a or _b or _c or _d:
-                CorrelationEditor.export_roi_mode = 0
-            imgui.same_line()
-            imgui.text("um")
-            CorrelationEditor.ex_lims = lims * 1000.0
-            CorrelationEditor.export_roi_obj.set_roi(CorrelationEditor.ex_lims)
-            imgui.spacing()
-            # Pixels per nm + width/height
-            imgui.text("Resolution:")
-            imgui.same_line()
-            imgui.push_item_width(40)
-            _c, CorrelationEditor.ex_pxnm = imgui.drag_float("##export_pxnm", CorrelationEditor.ex_pxnm, CorrelationEditor.EXPORT_RESOLUTION_CHANGE_SPEED, format = f'%.1f')
-            imgui.pop_style_var()
-            CorrelationEditor.ex_pxnm = max([0.001, CorrelationEditor.ex_pxnm])
-            CorrelationEditor.tooltip(f"equals {CorrelationEditor.ex_pxnm * 25400000:.0f} dpi :)")
-            imgui.same_line()
-            imgui.text("nm / px")
-            if CorrelationEditor.export_roi_mode == 1:  # export by selection
-                af = CorrelationEditor.active_frame
-                if af is not None:
-                    corners = np.asarray(af.corner_positions)
-                    left = np.amin(corners[:, 0])
-                    right = np.amax(corners[:, 0])
-                    top = np.amin(corners[:, 1])
-                    bottom = np.amax(corners[:, 1])
-                    CorrelationEditor.ex_lims = [left, top, right, bottom]
-            else:
-                imgui.push_style_var(imgui.STYLE_WINDOW_PADDING, (0.0, 0.0))
-                imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 0.0)
-                imgui.push_style_var(imgui.STYLE_WINDOW_MIN_SIZE, (0.0, 0.0))
-                imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *CorrelationEditor.EXPORT_ROI_LINE_COLOUR)
-                CorrelationEditor.EXPORT_ROI_HANDLE_SIZE = 7
-                force_square = False
-                # Top left marker
-                roi = CorrelationEditor.ex_lims
-                s = CorrelationEditor.EXPORT_ROI_HANDLE_SIZE
-                screen_pos = self.camera.world_to_screen_position([roi[0], roi[3]])
-                imgui.set_next_window_position(screen_pos[0] - s // 2, screen_pos[1] - s // 2)
-                imgui.set_next_window_size(s, s)
-                imgui.begin("##roi_top_left", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_SCROLLBAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_SAVED_SETTINGS | imgui.WINDOW_NO_BRING_TO_FRONT_ON_FOCUS)
-                if imgui.is_mouse_down(glfw.MOUSE_BUTTON_LEFT) and imgui.is_window_focused():
-                    cursor_world_pos_prev = self.camera.cursor_to_world_position(self.window.cursor_pos_previous_frame)
-                    cursor_world_pos_current = self.camera.cursor_to_world_position(self.window.cursor_pos)
-                    delta_x = cursor_world_pos_current[0] - cursor_world_pos_prev[0]
-                    delta_y = cursor_world_pos_current[1] - cursor_world_pos_prev[1]
-                    CorrelationEditor.ex_lims[0] += delta_x
-                    CorrelationEditor.ex_lims[3] += delta_y
-                    if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
-                        force_square = True
-                imgui.end()
-
-                # Bottom right marker
-                screen_pos = self.camera.world_to_screen_position([roi[2], roi[1]])
-                imgui.set_next_window_position(screen_pos[0] - s // 2, screen_pos[1] - s // 2)
-                imgui.set_next_window_size(s, s)
-                imgui.begin("##roi_bottom_right", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_SCROLLBAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_SAVED_SETTINGS | imgui.WINDOW_NO_BRING_TO_FRONT_ON_FOCUS)
-                if imgui.is_mouse_down(glfw.MOUSE_BUTTON_LEFT) and imgui.is_window_focused():
-                    cursor_world_pos_prev = self.camera.cursor_to_world_position(self.window.cursor_pos_previous_frame)
-                    cursor_world_pos_current = self.camera.cursor_to_world_position(self.window.cursor_pos)
-                    delta_x = cursor_world_pos_current[0] - cursor_world_pos_prev[0]
-                    delta_y = cursor_world_pos_current[1] - cursor_world_pos_prev[1]
-                    CorrelationEditor.ex_lims[2] += delta_x
-                    CorrelationEditor.ex_lims[1] += delta_y
-                    if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
-                        force_square = True
-                imgui.end()
-
-                if force_square:
-                    ex_width = CorrelationEditor.ex_lims[2] - CorrelationEditor.ex_lims[0]
-                    ex_height = CorrelationEditor.ex_lims[3] - CorrelationEditor.ex_lims[1]
-                    if ex_width > ex_height:
-                        delta = ex_width - ex_height
-                        CorrelationEditor.ex_lims[2] -= delta / 2
-                        CorrelationEditor.ex_lims[0] += delta / 2
-                    else:
-                        delta = ex_height - ex_width
-                        CorrelationEditor.ex_lims[3] -= delta / 2
-                        CorrelationEditor.ex_lims[1] += delta / 2
-
+        if cfg.ce_tool_menu_names["Export"]:
+            if imgui.collapsing_header("Export", None)[0]:
+                CorrelationEditor.export_roi_render = True
+                # Export mode selection buttons
+                _cw = imgui.get_content_region_available_width()
+                _button_width = (_cw - 10) / 2
+                _button_height = 20
+                imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, cfg.CE_WIDGET_ROUNDING)
+                if CorrelationEditor.export_roi_mode == 0:
+                    imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_DARK)
+                else:
+                    imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_BACKGROUND)
+                if imgui.button("ROI", _button_width, _button_height): CorrelationEditor.export_roi_mode = 0
                 imgui.pop_style_color()
-                imgui.pop_style_var(3)
-            CorrelationEditor.ex_img_size = [int(1000.0 * (lims[2] - lims[0]) / CorrelationEditor.ex_pxnm), int(1000.0 * (lims[3] - lims[1]) / CorrelationEditor.ex_pxnm)]
-            imgui.text(f"Output size: {CorrelationEditor.ex_img_size[0]} x {CorrelationEditor.ex_img_size[1]}")
-            imgui.text("Export as:")
-            imgui.text(" ")
-            imgui.same_line()
-            if imgui.radio_button(".png", CorrelationEditor.ex_png):
-                CorrelationEditor.ex_png = not CorrelationEditor.ex_png
-            imgui.same_line(spacing = 20)
-            if imgui.radio_button(".tif stack", not CorrelationEditor.ex_png):
-                CorrelationEditor.ex_png = not CorrelationEditor.ex_png
-            imgui.text("Filename:")
-            imgui.set_next_item_width(150)
-            _c, CorrelationEditor.ex_path = imgui.input_text("##outpath", CorrelationEditor.ex_path, 256)
-            CorrelationEditor.tooltip(CorrelationEditor.ex_path)
-            imgui.same_line()
-            if imgui.button("...", 26, 19):
-                selected_file = filedialog.asksaveasfilename()
-                if selected_file is not None:
-                    CorrelationEditor.ex_path = selected_file
-            imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, CorrelationEditor.ALPHA_SLIDER_ROUNDING)
-            imgui.new_line()
-            imgui.same_line(spacing=(_cw - _button_width) / 2.0)
-            if imgui.button("Export##button", _button_width, _button_height):
-                self.export_image()
-            imgui.pop_style_var()
-            imgui.spacing()
+                if CorrelationEditor.export_roi_mode == 1:
+                    imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_DARK)
+                else:
+                    imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_BACKGROUND)
+                imgui.same_line()
+                if imgui.button("Selection", _button_width, _button_height): CorrelationEditor.export_roi_mode = 1
+                imgui.pop_style_color()
+                imgui.pop_style_var(1)
+                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (2.0, 1.0))
+                # X/Y limit widget
+                imgui.spacing()
+                imgui.push_item_width(50)
+                lims = np.asarray(CorrelationEditor.ex_lims) / 1000.0
+                imgui.text(" X:")
+                imgui.same_line()
+                _a, lims[0] = imgui.drag_float("##export_xmin", lims[0], CorrelationEditor.EXPORT_SIZE_CHANGE_SPEED, format = f'{lims[0]:.2f}')
+                imgui.same_line()
+                imgui.text("to")
+                imgui.same_line()
+                _b, lims[2] = imgui.drag_float("##export_xmax", lims[2], CorrelationEditor.EXPORT_SIZE_CHANGE_SPEED, format = f'{lims[2]:.2f}')
+                imgui.same_line()
+                imgui.text("um")
+                imgui.text(" Y:")
+                imgui.same_line()
+                _c, lims[1] = imgui.drag_float("##export_ymin", lims[1], CorrelationEditor.EXPORT_SIZE_CHANGE_SPEED, format = f'{lims[1]:.2f}')
+                imgui.same_line()
+                imgui.text("to")
+                imgui.same_line()
+                _d, lims[3] = imgui.drag_float("##export_ymax", lims[3], CorrelationEditor.EXPORT_SIZE_CHANGE_SPEED, format = f'{lims[3]:.2f}')
+                if _a or _b or _c or _d:
+                    CorrelationEditor.export_roi_mode = 0
+                imgui.same_line()
+                imgui.text("um")
+                CorrelationEditor.ex_lims = lims * 1000.0
+                CorrelationEditor.export_roi_obj.set_roi(CorrelationEditor.ex_lims)
+                imgui.spacing()
+                # Pixels per nm + width/height
+                imgui.text("Resolution:")
+                imgui.same_line()
+                imgui.push_item_width(40)
+                _c, CorrelationEditor.ex_pxnm = imgui.drag_float("##export_pxnm", CorrelationEditor.ex_pxnm, CorrelationEditor.EXPORT_RESOLUTION_CHANGE_SPEED, format = f'%.1f')
+                imgui.pop_style_var()
+                CorrelationEditor.ex_pxnm = max([0.001, CorrelationEditor.ex_pxnm])
+                CorrelationEditor.tooltip(f"equals {CorrelationEditor.ex_pxnm * 25400000:.0f} dpi :)")
+                imgui.same_line()
+                imgui.text("nm / px")
+                if CorrelationEditor.export_roi_mode == 1:  # export by selection
+                    af = CorrelationEditor.active_frame
+                    if af is not None:
+                        corners = np.asarray(af.corner_positions)
+                        left = np.amin(corners[:, 0])
+                        right = np.amax(corners[:, 0])
+                        top = np.amin(corners[:, 1])
+                        bottom = np.amax(corners[:, 1])
+                        CorrelationEditor.ex_lims = [left, top, right, bottom]
+                else:
+                    imgui.push_style_var(imgui.STYLE_WINDOW_PADDING, (0.0, 0.0))
+                    imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 0.0)
+                    imgui.push_style_var(imgui.STYLE_WINDOW_MIN_SIZE, (0.0, 0.0))
+                    imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *CorrelationEditor.EXPORT_ROI_LINE_COLOUR)
+                    CorrelationEditor.EXPORT_ROI_HANDLE_SIZE = 7
+                    force_square = False
+                    # Top left marker
+                    roi = CorrelationEditor.ex_lims
+                    s = CorrelationEditor.EXPORT_ROI_HANDLE_SIZE
+                    screen_pos = self.camera.world_to_screen_position([roi[0], roi[3]])
+                    imgui.set_next_window_position(screen_pos[0] - s // 2, screen_pos[1] - s // 2)
+                    imgui.set_next_window_size(s, s)
+                    imgui.begin("##roi_top_left", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_SCROLLBAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_SAVED_SETTINGS | imgui.WINDOW_NO_BRING_TO_FRONT_ON_FOCUS)
+                    if imgui.is_mouse_down(glfw.MOUSE_BUTTON_LEFT) and imgui.is_window_focused():
+                        cursor_world_pos_prev = self.camera.cursor_to_world_position(self.window.cursor_pos_previous_frame)
+                        cursor_world_pos_current = self.camera.cursor_to_world_position(self.window.cursor_pos)
+                        delta_x = cursor_world_pos_current[0] - cursor_world_pos_prev[0]
+                        delta_y = cursor_world_pos_current[1] - cursor_world_pos_prev[1]
+                        CorrelationEditor.ex_lims[0] += delta_x
+                        CorrelationEditor.ex_lims[3] += delta_y
+                        if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
+                            force_square = True
+                    imgui.end()
 
-        if imgui.collapsing_header("Measure", None)[0]:
-            imgui.text("Active widgets:")
-            imgui.new_line()
-            imgui.same_line(spacing=5.0)
-            _c, CorrelationEditor.show_scale_bar = imgui.checkbox("Scalebar"+(":" if CorrelationEditor.show_scale_bar else ""), CorrelationEditor.show_scale_bar)
-            if CorrelationEditor.show_scale_bar:
-                imgui.set_next_item_width(80)
+                    # Bottom right marker
+                    screen_pos = self.camera.world_to_screen_position([roi[2], roi[1]])
+                    imgui.set_next_window_position(screen_pos[0] - s // 2, screen_pos[1] - s // 2)
+                    imgui.set_next_window_size(s, s)
+                    imgui.begin("##roi_bottom_right", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_SCROLLBAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_SAVED_SETTINGS | imgui.WINDOW_NO_BRING_TO_FRONT_ON_FOCUS)
+                    if imgui.is_mouse_down(glfw.MOUSE_BUTTON_LEFT) and imgui.is_window_focused():
+                        cursor_world_pos_prev = self.camera.cursor_to_world_position(self.window.cursor_pos_previous_frame)
+                        cursor_world_pos_current = self.camera.cursor_to_world_position(self.window.cursor_pos)
+                        delta_x = cursor_world_pos_current[0] - cursor_world_pos_prev[0]
+                        delta_y = cursor_world_pos_current[1] - cursor_world_pos_prev[1]
+                        CorrelationEditor.ex_lims[2] += delta_x
+                        CorrelationEditor.ex_lims[1] += delta_y
+                        if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
+                            force_square = True
+                    imgui.end()
+
+                    if force_square:
+                        ex_width = CorrelationEditor.ex_lims[2] - CorrelationEditor.ex_lims[0]
+                        ex_height = CorrelationEditor.ex_lims[3] - CorrelationEditor.ex_lims[1]
+                        if ex_width > ex_height:
+                            delta = ex_width - ex_height
+                            CorrelationEditor.ex_lims[2] -= delta / 2
+                            CorrelationEditor.ex_lims[0] += delta / 2
+                        else:
+                            delta = ex_height - ex_width
+                            CorrelationEditor.ex_lims[3] -= delta / 2
+                            CorrelationEditor.ex_lims[1] += delta / 2
+
+                    imgui.pop_style_color()
+                    imgui.pop_style_var(3)
+                CorrelationEditor.ex_img_size = [int(1000.0 * (lims[2] - lims[0]) / CorrelationEditor.ex_pxnm), int(1000.0 * (lims[3] - lims[1]) / CorrelationEditor.ex_pxnm)]
+                imgui.text(f"Output size: {CorrelationEditor.ex_img_size[0]} x {CorrelationEditor.ex_img_size[1]}")
+                imgui.text("Export as:")
+                imgui.text(" ")
                 imgui.same_line()
-                _c, CorrelationEditor.scale_bar_size = imgui.drag_float("##scalebarlength", CorrelationEditor.scale_bar_size, 1.0, 0.0, 0.0, format='%.0f nm')
-                if imgui.begin_popup_context_item():
-                    _c, CorrelationEditor.SCALE_BAR_HEIGHT = imgui.drag_int("##Scale bar thickness", CorrelationEditor.SCALE_BAR_HEIGHT, 1.0, 1.0, 0.0, format = 'Drag me to change scale bar thickness: %i px')
-                    CorrelationEditor.SCALE_BAR_HEIGHT = max([1, CorrelationEditor.SCALE_BAR_HEIGHT])
-                    imgui.end_popup()
-            imgui.new_line()
-            imgui.same_line(spacing=5.0)
-            _c, CorrelationEditor.measure_active = imgui.checkbox("Measure tool", CorrelationEditor.measure_active)
-            if _c:
-                CorrelationEditor.measure_tool.reset()
-            if CorrelationEditor.measure_active:
+                if imgui.radio_button(".png", CorrelationEditor.ex_png):
+                    CorrelationEditor.ex_png = not CorrelationEditor.ex_png
+                imgui.same_line(spacing = 20)
+                if imgui.radio_button(".tif stack", not CorrelationEditor.ex_png):
+                    CorrelationEditor.ex_png = not CorrelationEditor.ex_png
+                imgui.text("Filename:")
+                imgui.set_next_item_width(150)
+                _c, CorrelationEditor.ex_path = imgui.input_text("##outpath", CorrelationEditor.ex_path, 256)
+                CorrelationEditor.tooltip(CorrelationEditor.ex_path)
                 imgui.same_line()
-                _c, CorrelationEditor.measure_tool_colour = imgui.color_edit4("##text colour", *CorrelationEditor.measure_tool_colour, flags=imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
-        # draw the measure image
+                if imgui.button("...", 26, 19):
+                    selected_file = filedialog.asksaveasfilename()
+                    if selected_file is not None:
+                        CorrelationEditor.ex_path = selected_file
+                imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, CorrelationEditor.ALPHA_SLIDER_ROUNDING)
+                imgui.new_line()
+                imgui.same_line(spacing=(_cw - _button_width) / 2.0)
+                if imgui.button("Export##button", _button_width, _button_height):
+                    self.export_image()
+                imgui.pop_style_var()
+                imgui.spacing()
+
+        if cfg.ce_tool_menu_names["Measure"]:
+            if imgui.collapsing_header("Measure", None)[0]:
+                imgui.text("Active widgets:")
+                imgui.new_line()
+                imgui.same_line(spacing=5.0)
+                _c, CorrelationEditor.show_scale_bar = imgui.checkbox("Scalebar"+(":" if CorrelationEditor.show_scale_bar else ""), CorrelationEditor.show_scale_bar)
+                if CorrelationEditor.show_scale_bar:
+                    imgui.set_next_item_width(80)
+                    imgui.same_line()
+                    _c, CorrelationEditor.scale_bar_size = imgui.drag_float("##scalebarlength", CorrelationEditor.scale_bar_size, 1.0, 0.0, 0.0, format='%.0f nm')
+                    if imgui.begin_popup_context_item():
+                        _c, CorrelationEditor.SCALE_BAR_HEIGHT = imgui.drag_int("##Scale bar thickness", CorrelationEditor.SCALE_BAR_HEIGHT, 1.0, 1.0, 0.0, format = 'Drag me to change scale bar thickness: %i px')
+                        CorrelationEditor.SCALE_BAR_HEIGHT = max([1, CorrelationEditor.SCALE_BAR_HEIGHT])
+                        imgui.end_popup()
+                imgui.new_line()
+                imgui.same_line(spacing=5.0)
+                _c, CorrelationEditor.measure_active = imgui.checkbox("Measure tool", CorrelationEditor.measure_active)
+                if _c:
+                    CorrelationEditor.measure_tool.reset()
+                if CorrelationEditor.measure_active:
+                    imgui.same_line()
+                    _c, CorrelationEditor.measure_tool_colour = imgui.color_edit4("##text colour", *CorrelationEditor.measure_tool_colour, flags=imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
+
+        # Rendering the measure tool
         if CorrelationEditor.measure_active and CorrelationEditor.measure_tool.p_set:
             if CorrelationEditor.measure_tool.q_set:
                 window_pos = self.camera.world_to_screen_position(CorrelationEditor.measure_tool.q)
@@ -691,29 +700,34 @@ class CorrelationEditor:
             imgui.pop_style_color(1)
             imgui.end()
 
-        if imgui.collapsing_header("Plugins", None)[0]:
-            cfg.ce_active_frame = CorrelationEditor.active_frame
-            _cw = imgui.get_content_region_available_width()
-            imgui.set_next_item_width(_cw - 25)
-            _c, CorrelationEditor.selected_tool = imgui.combo("##tools", CorrelationEditor.selected_tool, ["Select plugin..."] + CorrelationEditor.tools_list)
-            if _c:
+        if cfg.ce_tool_menu_names["Plugins"]:
+            if imgui.collapsing_header("Plugins", None)[0]:
+                cfg.ce_active_frame = CorrelationEditor.active_frame
+                _cw = imgui.get_content_region_available_width()
+                imgui.set_next_item_width(_cw - 25)
+                _c, CorrelationEditor.selected_tool = imgui.combo("##tools", CorrelationEditor.selected_tool, ["Select plugin..."] + CorrelationEditor.tools_list)
+                if _c:
+                    if CorrelationEditor.selected_tool > 0:
+                        CorrelationEditor.current_tool = CorrelationEditor.tool_factory[CorrelationEditor.tools_list[CorrelationEditor.selected_tool - 1]]()
+                    else:
+                        CorrelationEditor.current_tool = CEPlugin()
                 if CorrelationEditor.selected_tool > 0:
-                    CorrelationEditor.current_tool = CorrelationEditor.tool_factory[CorrelationEditor.tools_list[CorrelationEditor.selected_tool - 1]]()
-                else:
-                    CorrelationEditor.current_tool = CEPlugin()
-            if CorrelationEditor.selected_tool > 0:
-                imgui.same_line()
-                imgui.button("?", 19, 19)
-                CorrelationEditor.tooltip(CorrelationEditor.tool_descriptions[CorrelationEditor.selected_tool - 1])
-            if CorrelationEditor.current_tool is not None:
-                imgui.separator()
-                try:
-                    cfg.ce_selected_position = CorrelationEditor.location_gizmo.transform.translation
-                    CorrelationEditor.current_tool.on_update()
-                    CorrelationEditor.current_tool.render()
-                    CorrelationEditor.location_gizmo_visible = CorrelationEditor.current_tool.FLAG_SHOW_LOCATION_PICKER
-                except Exception as e:
-                    cfg.set_error(e, f"Plugin '{CorrelationEditor.tools_list[CorrelationEditor.selected_tool - 1]}' caused an error:")
+                    imgui.same_line()
+                    imgui.button("?", 19, 19)
+                    CorrelationEditor.tooltip(CorrelationEditor.tool_descriptions[CorrelationEditor.selected_tool - 1])
+                if CorrelationEditor.current_tool is not None:
+                    imgui.separator()
+                    try:
+                        cfg.ce_selected_position = CorrelationEditor.location_gizmo.transform.translation
+                        CorrelationEditor.current_tool.on_update()
+                        CorrelationEditor.current_tool.render()
+                        CorrelationEditor.location_gizmo_visible = CorrelationEditor.current_tool.FLAG_SHOW_LOCATION_PICKER
+                    except Exception as e:
+                        cfg.set_error(e, f"Plugin '{CorrelationEditor.tools_list[CorrelationEditor.selected_tool - 1]}' caused an error:")
+
+        if cfg.ce_tool_menu_names["Particle picking"]:
+            if imgui.collapsing_header("Particle picking", None)[0]:
+                pass # TODO
 
         imgui.end()
         imgui.pop_style_color(3)
@@ -763,10 +777,17 @@ class CorrelationEditor:
             out_img[:, :, 3] = alpha_mask
             out_img = np.rot90(out_img, -1, (1, 0))
             out_img = out_img[::-1, :]
+            import matplotlib.pyplot as plt
+            plt.imshow(out_img[:, :, 0:3])
+            plt.show()
             out_img *= 255
             out_img[out_img < 0] = 0
             out_img[out_img > 255] = 255
+            plt.imshow(out_img[:, :, 0:3])
+            plt.show()
             out_img = out_img.astype(np.uint8)
+            plt.imshow(out_img[:, :, 0:3])
+            plt.show()
             util.save_png(out_img, CorrelationEditor.ex_path, alpha=True)
 
         def export_tiff_stack():

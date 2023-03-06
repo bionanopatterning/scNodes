@@ -47,6 +47,7 @@ batch_size = n_cpus_max
 image_viewer = None
 node_editor = None
 correlation_editor = None
+ce_tool_menu_names = {'Transform': True, 'Visuals': True, 'Export': False, 'Measure': False, 'Plugins': False, 'Particle picking': True}
 node_editor_relink = False
 correlation_editor_relink = False
 pickle_temp = dict()
