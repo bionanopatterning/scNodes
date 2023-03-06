@@ -129,9 +129,9 @@ class LoadDataNode(Node):
         except Exception as e:
             cfg.set_error(e, f"Error importing '{self.params['path']}' as tif stack. Are you sure the data is .tif and at most 3 dimensional (x, y, z/t)?")
 
-    def get_image_impl(self, idx):
+    def get_image_impl(self, idx=None):
         if self.dataset.n_frames > 0:
-            retimg = copy.deepcopy(self.dataset.get_indexed_image(idx))
+            retimg = copy.deepcopy(self.dataset.get_indexed_image(idx=None))
             retimg.pixel_size = self.params["pixel_size"]
             retimg.clean()
             return retimg

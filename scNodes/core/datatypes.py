@@ -59,6 +59,8 @@ class Dataset:
                 self.frames.append(Frame(file, 0, framenr=self.n_frames - 1))
 
     def get_indexed_image(self, index):
+        if index is None:
+            index = self.current_frame
         if 0 <= index < self.n_frames:
             self.frames[index].pixel_size = self.pixel_size
             return self.frames[index]
