@@ -533,7 +533,7 @@ class ImageViewer:
                                  width, height, 1.0, 1.0, 1.0]
             indices = [0, 1, 2, 2, 0, 3]
             self.va.update(VertexBuffer(vertex_attributes), IndexBuffer(indices))
-        self.texture.update(self.image_pxd.astype(np.float))
+        self.texture.update(self.image_pxd.astype(float))
 
         self.hist_counts[0], self.hist_bins[0] = np.histogram(self.image_pxd[:, :, 0], bins=ImageViewer.HISTOGRAM_BINS)
         self.hist_counts[0] = self.hist_counts[0].astype('float32')

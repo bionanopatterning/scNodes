@@ -1783,10 +1783,10 @@ class EditorGizmo:
 
     @staticmethod
     def init_textures():
-        icon_scale = np.asarray(Image.open(cfg.root+"icons/icon_scale_256.png")).astype(np.float) / 255.0
-        icon_rotate = np.asarray(Image.open(cfg.root+"icons/icon_rotate_256.png")).astype(np.float) / 255.0
-        icon_pivot = np.asarray(Image.open(cfg.root+"icons/icon_pivot_256.png")).astype(np.float) / 255.0
-        icon_location = np.asarray(Image.open(cfg.root+"icons/icon_location_256.png")).astype(np.float) / 255.0
+        icon_scale = np.asarray(Image.open(cfg.root+"icons/icon_scale_256.png")).astype(float) / 255.0
+        icon_rotate = np.asarray(Image.open(cfg.root+"icons/icon_rotate_256.png")).astype(float) / 255.0
+        icon_pivot = np.asarray(Image.open(cfg.root+"icons/icon_pivot_256.png")).astype(float) / 255.0
+        icon_location = np.asarray(Image.open(cfg.root+"icons/icon_location_256.png")).astype(float) / 255.0
         icon_scale[:, :, 0:2] = 1.0
         icon_rotate[:, :, 0:2] = 1.0
         icon_pivot[:, :, 0:2] = 1.0
