@@ -836,7 +836,10 @@ class CorrelationEditor:
                                 for group in af.particle_groups:
                                     file.write(f"# {group.name}\n")
                                     for xyz in group.coordinates:
-                                        file.write(f"{xyz[0]:.0f}\t{-xyz[1]:.0f}\t{xyz[2]:.0f}\n")
+                                        x = xyz[0] if not af.flip_h else af.width - xyz[0]
+                                        y = -xyz[1] if not af.flip_v else af.height + xyz[1]
+                                        z = xyz[2]
+                                        file.write(f"{x:.0f}\t{y:.0f}\t{z:.0f}\n")
 
                     imgui.pop_style_var(1)
         imgui.end()

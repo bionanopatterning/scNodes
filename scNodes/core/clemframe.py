@@ -88,9 +88,16 @@ class CLEMFrame:
         if horizontally:
             self.flip_h = not self.flip_h
             self.data = np.flip(self.data, axis=1)
+            # flip particles
+            for group in self.particle_groups:
+                for i in range(len(group.coordinates)):
+                    group.coordinates[i][0] = self.width - group.coordinates[i][0]
         else:
             self.flip_v = not self.flip_v
             self.data = np.flip(self.data, axis=0)
+            for group in self.particle_groups:
+                for i in range(len(group.coordinates)):
+                    group.coordinates[i][1] = -(self.height + group.coordinates[i][1])
         self.update_image_texture(compute_histogram=False)
 
     def setup_opengl_objects(self):
