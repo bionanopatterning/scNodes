@@ -236,7 +236,8 @@ class ReconstructionRendererNode(Node):
                         clims = self.compute_contrast_lims(self.latest_image)
                         self.OVERRIDE_AUTOCONTRAST_LIMS = (clims[0], clims[1])
                     else:
-                        self.latest_image = self.latest_image[:, :, 0]
+                        if self.latest_image is not None:
+                            self.latest_image = self.latest_image[:, :, 0]
             else:
                 self.latest_image = None
         except Exception as e:

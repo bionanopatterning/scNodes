@@ -131,7 +131,7 @@ class LoadDataNode(Node):
 
     def get_image_impl(self, idx=None):
         if self.dataset.n_frames > 0:
-            retimg = copy.deepcopy(self.dataset.get_indexed_image(idx=None))
+            retimg = copy.deepcopy(self.dataset.get_indexed_image(idx))
             retimg.pixel_size = self.params["pixel_size"]
             retimg.clean()
             return retimg

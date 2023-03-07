@@ -28,7 +28,7 @@ class CorrelationEditor:
 
         TRANSLATION_SPEED = 1.0
         ROTATION_SPEED = 1.0
-        SCALE_SPEED = 1.0
+        SCALE_SPEED = 0.25
 
         SNAPPING_DISTANCE = 1000.0
         SNAPPING_ACTIVATION_DISTANCE = 5000.0
@@ -126,6 +126,11 @@ class CorrelationEditor:
         location_gizmo_visible = False
         incoming_files = list()
 
+        # particle picking
+        picking_enabled = False
+        picking_show = True
+        picking_va = None
+
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
         self.window.clear_color = cfg.COLOUR_WINDOW_BACKGROUND
@@ -159,7 +164,7 @@ class CorrelationEditor:
         CorrelationEditor.init_toolkit()
         # Export FBO
         CorrelationEditor.EXPORT_FBO = FrameBuffer(CorrelationEditor.EXPORT_TILE_SIZE, CorrelationEditor.EXPORT_TILE_SIZE, texture_format="rgba32f")
-        # load icons
+        # Load icons and set up particle picking ROI VA
         if True:
             self.icon_no_interp = Texture(format="rgba32f")
             pxd_icon_no_interp = np.asarray(Image.open(cfg.root+"icons/icon_ninterp_256.png")).astype(np.float32) / 255.0
@@ -173,6 +178,18 @@ class CorrelationEditor:
             pxd_icon_close = np.asarray(Image.open(cfg.root+"icons/icon_close_256.png")).astype(np.float32) / 255.0
             self.icon_close.update(pxd_icon_close)
             self.icon_close.set_linear_interpolation()
+
+            # Particle picking ROI va
+            n_segments = 32
+            vertices = list()
+            indices = list()
+            for i in range(n_segments):
+                x = np.sin(2 * np.pi * i / (n_segments - 1)) / 2.0
+                y = np.cos(2 * np.pi * i / (n_segments - 1)) / 2.0
+                vertices.extend((x, y))
+            for i in range(n_segments-1):
+                indices.extend((i, i + 1))
+            CorrelationEditor.picking_va = VertexArray(VertexBuffer(vertices), IndexBuffer(indices), attribute_format="xy")
 
     def on_update(self):
         imgui.set_current_context(self.imgui_context)
@@ -188,6 +205,7 @@ class CorrelationEditor:
             CorrelationEditor.relink_after_load()
             cfg.correlation_editor_relink = False
 
+        cfg.ce_active_frame = CorrelationEditor.active_frame
         CorrelationEditor.incoming_files += deepcopy(self.window.dropped_files)
         self.window.on_update()
         if self.window.window_size_changed:
@@ -310,6 +328,9 @@ class CorrelationEditor:
             CorrelationEditor.renderer.render_measure_tool(self.camera, CorrelationEditor.measure_tool)
         if CorrelationEditor.export_roi_render:
             CorrelationEditor.renderer.render_roi(self.camera, CorrelationEditor.export_roi_obj)
+        if CorrelationEditor.picking_show:
+            if CorrelationEditor.active_frame is not None:
+                CorrelationEditor.renderer.render_particle_rois(self.camera, self.active_frame, CorrelationEditor.picking_va, all_groups=True)
         self.menu_bar()
         self.context_menu()
         self.tool_info_window()
@@ -384,6 +405,7 @@ class CorrelationEditor:
             if expanded and af is not None:
                 _t = deepcopy(af.transform)
                 imgui.push_item_width(90)
+
                 imgui.text("         X: ")
                 imgui.same_line()
                 dx = _t.translation[0]
@@ -391,6 +413,7 @@ class CorrelationEditor:
                 dx -= _t.translation[0]
                 if x_changed:
                     af.translate([-dx, 0.0])
+
                 imgui.text("         Y: ")
                 imgui.same_line()
                 dy = _t.translation[1]
@@ -398,13 +421,15 @@ class CorrelationEditor:
                 dy -= _t.translation[1]
                 if y_changed:
                     af.translate([0.0, -dy])
+
                 imgui.text("     Angle: ")
                 imgui.same_line()
                 dr = _t.rotation
-                rotation_changed, _t.rotation = imgui.drag_float("##Angle", _t.rotation, CorrelationEditor.ROTATION_SPEED, 0.0, 0.0, '%.2f°')
+                r_changed, _t.rotation = imgui.drag_float("##R", _t.rotation, CorrelationEditor.ROTATION_SPEED, 0.0, 0.0, f"{_t.rotation:.2f}°")
                 dr -= _t.rotation
-                if rotation_changed:
-                    af.pivoted_rotation(af.pivot_point, dr)
+                if r_changed:
+                    af.pivoted_rotation(af.pivot_point, -dr)
+
                 imgui.text("Pixel size: ")
                 imgui.same_line()
                 pxsi = af.pixel_size
@@ -669,6 +694,8 @@ class CorrelationEditor:
                     imgui.same_line()
                     _c, CorrelationEditor.scale_bar_size = imgui.drag_float("##scalebarlength", CorrelationEditor.scale_bar_size, 1.0, 0.0, 0.0, format='%.0f nm')
                     if imgui.begin_popup_context_item():
+                        _cw = imgui.get_content_region_available_width()
+                        imgui.set_next_item_width(_cw)
                         _c, CorrelationEditor.SCALE_BAR_HEIGHT = imgui.drag_int("##Scale bar thickness", CorrelationEditor.SCALE_BAR_HEIGHT, 1.0, 1.0, 0.0, format = 'Drag me to change scale bar thickness: %i px')
                         CorrelationEditor.SCALE_BAR_HEIGHT = max([1, CorrelationEditor.SCALE_BAR_HEIGHT])
                         imgui.end_popup()
@@ -702,7 +729,6 @@ class CorrelationEditor:
 
         if cfg.ce_tool_menu_names["Plugins"]:
             if imgui.collapsing_header("Plugins", None)[0]:
-                cfg.ce_active_frame = CorrelationEditor.active_frame
                 _cw = imgui.get_content_region_available_width()
                 imgui.set_next_item_width(_cw - 25)
                 _c, CorrelationEditor.selected_tool = imgui.combo("##tools", CorrelationEditor.selected_tool, ["Select plugin..."] + CorrelationEditor.tools_list)
@@ -727,8 +753,90 @@ class CorrelationEditor:
 
         if cfg.ce_tool_menu_names["Particle picking"]:
             if imgui.collapsing_header("Particle picking", None)[0]:
-                pass # TODO
+                af = cfg.ce_active_frame
 
+                # Show subject frame name
+                imgui.text("Picking for frame:")
+                if af is not None:
+                    imgui.text(af.title)
+                    CorrelationEditor.tooltip(af.title)
+                else:
+                    imgui.text("<no frame selected>")
+
+                imgui.spacing()
+
+                # Enable / disable picking
+                _c, CorrelationEditor.picking_enabled = imgui.checkbox("Enable picking", CorrelationEditor.picking_enabled)
+                if not CorrelationEditor.picking_enabled:
+                    _c, CorrelationEditor.picking_show = imgui.checkbox("Show particles", CorrelationEditor.picking_show)
+                else:
+                    CorrelationEditor.picking_show = True
+                # Draw picking GUI
+                if CorrelationEditor.picking_enabled and af is not None:
+                    # select group
+                    _cw = imgui.get_content_region_available_width()
+
+                    for group in af.particle_groups:
+                        imgui.push_id(f"##pgroup_{group.id}")
+                        # edit group colour
+                        _c, group.colour = imgui.color_edit4("##Background colour", *group.colour, flags=imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP | imgui.COLOR_EDIT_DISPLAY_HEX | imgui.COLOR_EDIT_DISPLAY_RGB)
+                        imgui.same_line()
+
+                        if group == af.current_particle_group:
+                            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_TITLE_BACKGROUND)
+                            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_TITLE_BACKGROUND)
+                        else:
+                            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND)
+                            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_WINDOW_BACKGROUND)
+                        _cw = imgui.get_content_region_available_width()
+                        imgui.set_next_item_width(_cw - 52)
+                        _c, group.name = imgui.input_text("##groupname", group.name, 128)
+
+
+                        imgui.same_line()
+                        imgui.text(f"n = {len(group.coordinates)}")
+                        imgui.pop_style_color(2)
+                        imgui.pop_id()
+
+                    _cw = imgui.get_content_region_available_width()
+                    imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, cfg.CE_WIDGET_ROUNDING)
+                    imgui.new_line()
+                    imgui.same_line((_cw - 40) / 2)
+                    if imgui.button("+", width=40, height=20):
+                        af.particle_groups.append(ParticleGroup())
+                        af.current_particle_group = af.particle_groups[-1]
+                    imgui.separator()
+
+                    imgui.text("Currently editing:")
+                    _cw = imgui.get_content_region_available_width()
+                    imgui.set_next_item_width(_cw)
+                    _c, selected_group = imgui.combo("##ptclgroup", af.particle_groups.index(af.current_particle_group),
+                                                     [g.name for g in af.particle_groups])
+                    af.current_particle_group = af.particle_groups[selected_group]
+                    imgui.set_next_item_width(_cw)
+                    _c, af.current_particle_group.diameter = imgui.slider_float("##Size (A)", af.current_particle_group.diameter, 20.0, 800.0, format="size: %.1f A")
+
+
+                    # delete button
+                    imgui.new_line()
+                    imgui.same_line(spacing=0)
+                    if imgui.button("delete", width=(_cw - 3 * 0) / 2, height=20):
+                        af.particle_groups.remove(af.current_particle_group)
+                        if len(af.particle_groups) == 0:
+                            af.particle_groups.append(ParticleGroup())
+                        af.current_particle_group = af.particle_groups[-1]
+                    imgui.same_line(spacing=0)
+                    if imgui.button("export", width=(_cw - 3 * 0) / 2, height=20):
+                        # export files.
+                        filename = filedialog.asksaveasfilename(filetypes=[("scNodes scene", cfg.filetype_scene)])
+                        if filename is not None:
+                            with open(filename, 'w') as file:
+                                for group in af.particle_groups:
+                                    file.write(f"# {group.name}\n")
+                                    for xyz in group.coordinates:
+                                        file.write(f"{xyz[0]:.0f}\t{xyz[1]:.0f}\t{xyz[2]:.0f}\n")
+
+                    imgui.pop_style_var(1)
         imgui.end()
         imgui.pop_style_color(3)
 
@@ -992,6 +1100,9 @@ class CorrelationEditor:
         imgui.pop_style_var(1)
 
     def measure_tools(self):
+        if CorrelationEditor.measure_active:
+            if self.window.get_key_event(glfw.KEY_ESCAPE, glfw.PRESS):
+                CorrelationEditor.measure_active = False
         if CorrelationEditor.show_scale_bar:
             imgui.push_style_var(imgui.STYLE_WINDOW_PADDING, (0.0, 0.0))
             imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 0.0)
@@ -1110,16 +1221,20 @@ class CorrelationEditor:
         return False, 0, 0
 
     def editor_control(self):
+        # Enforce imgui input taking precedence over all other input
         if imgui.get_io().want_capture_mouse:
             self.window.mouse_event = None
         if imgui.get_io().want_capture_keyboard:
             self.window.mouse_event = None
             self.window.key_event = None
             return
+
         if not self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT):
             CorrelationEditor.active_gizmo = None
-        if CorrelationEditor.frames_dropped:
+        if CorrelationEditor.frames_dropped: # no input during an application frame where new CLEMFrame objects were generated
             return
+
+        # measure tool, if active, takes precedence over other input
         if CorrelationEditor.measure_active:
             CorrelationEditor.measure_tool.on_update()
             # measure tool input
@@ -1129,7 +1244,56 @@ class CorrelationEditor:
             else:
                 CorrelationEditor.measure_tool.hover_pos = world_point
             return
-        # Editor mouse input - selecting frames and changing frame gizmo mode
+
+        # particle picking, if active, takes precedence over other input
+        if CorrelationEditor.picking_enabled and CorrelationEditor.active_frame is not None:
+            # if clicked, figure out what the corresponding image coordinates are
+            # adding a particle: #TODO take in to account the rotation of the image.
+            if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
+                world_pos = self.camera.cursor_to_world_position(self.window.cursor_pos)
+                frame = CorrelationEditor.active_frame
+                frame_pos = frame.transform.translation
+                # click position relative to top-left image corner:
+                frame_top_left = [frame_pos[0] - frame.width // 2 * frame.pixel_size,
+                                  frame_pos[1] + frame.height // 2 * frame.pixel_size]
+                px_coordinates = [(world_pos[0] - frame_top_left[0]) / frame.pixel_size,
+                                  (world_pos[1] - frame_top_left[1]) / frame.pixel_size,
+                                  0]
+                if frame.has_slices:
+                    px_coordinates[2] = frame.current_slice
+                frame.current_particle_group.coordinates.append(px_coordinates)
+                return
+            # removing a particle:
+            if self.window.get_mouse_event(glfw.MOUSE_BUTTON_RIGHT, glfw.PRESS):
+                world_pos = self.camera.cursor_to_world_position(self.window.cursor_pos)
+                frame = CorrelationEditor.active_frame
+                frame_pos = frame.transform.translation
+                # click position relative to top-left image corner:
+                frame_top_left = [frame_pos[0] - frame.width // 2 * frame.pixel_size,
+                                  frame_pos[1] + frame.height // 2 * frame.pixel_size]
+                click_xy = [(world_pos[0] - frame_top_left[0]) / frame.pixel_size,
+                                  (world_pos[1] - frame_top_left[1]) / frame.pixel_size]
+                # remove particle closest to xy:
+                p_group = frame.current_particle_group
+                remove_idx = None
+                dist = np.inf
+                for i in range(len(p_group.coordinates)):
+                    particle_xy = p_group.coordinates[i]
+                    _dist = (click_xy[0] - particle_xy[0])**2 + (click_xy[1] - particle_xy[1])**2
+                    if _dist < dist:
+                        remove_idx = i
+                        dist = _dist
+                if remove_idx is not None:
+                    p_group.coordinates.pop(remove_idx)
+                return
+            # scroll to move through slices
+            if self.window.scroll_delta[1] != 0 and not self.window.get_key(glfw.KEY_LEFT_SHIFT):
+                CorrelationEditor.active_frame.set_slice(CorrelationEditor.active_frame.current_slice + int(self.window.scroll_delta[1]))
+                return
+            if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.RELEASE) or self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT):
+                return
+
+        # Scene editor: mouse input - selecting frames and changing gizmo mode
         if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
             # check which object should be active (if any)
             clicked_object = self.get_object_under_cursor(self.window.cursor_pos)
@@ -1163,7 +1327,7 @@ class CorrelationEditor:
                 CorrelationEditor.active_gizmo.transform.translation[1] += delta_y
             elif CorrelationEditor.active_gizmo is None and CorrelationEditor.active_frame is not None:
                 if self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT):  # user is dragging the active frame
-                    snap, delta_x, delta_y = self.snap_frame(cursor_world_pos_now)
+                    snap, delta_x, delta_y = self.snap_frame(cursor_world_pos_now) # TODO fix snapping
                     if not snap:
                         delta_x = cursor_world_pos_now[0] - cursor_world_pos_prev[0]
                         delta_y = cursor_world_pos_now[1] - cursor_world_pos_prev[1]
@@ -1231,6 +1395,12 @@ class CorrelationEditor:
             if imgui.is_key_down(glfw.KEY_SPACE):
                 self.camera.position[0] = -CorrelationEditor.active_frame.transform.translation[0]
                 self.camera.position[1] = -CorrelationEditor.active_frame.transform.translation[1]
+                # set zoom as well:
+                af = CorrelationEditor.active_frame
+                img_width = af.width * af.pixel_size
+                img_height = af.height * af.pixel_size
+                size = max([img_width, img_height])
+                self.camera.zoom = CorrelationEditor.DEFAULT_ZOOM * CorrelationEditor.DEFAULT_HORIZONTAL_FOV_WIDTH / size
 
     def _warning_window(self):
         def ww_context_menu():
@@ -1512,6 +1682,33 @@ class Renderer:
             gizmo.va.unbind()
             glActiveTexture(GL_TEXTURE0)
 
+    def render_particle_rois(self, camera, parent_frame, va, all_groups=False):
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendEquation(GL_FUNC_ADD)
+        self.border_shader.bind()
+        va.bind()
+        self.border_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
+        groups = parent_frame.current_particle_group if not all_groups else parent_frame.particle_groups
+        for p_group in groups:
+            self.border_shader.uniform3f("lineColour", p_group.colour)
+            for coords in p_group.coordinates:
+                # coords to local coordinates
+                z_offset = (coords[2] - parent_frame.current_slice) * parent_frame.pixel_size_z / 10.0
+                size_scaling = (max([0.0, p_group.diameter ** 2 - z_offset ** 2]))**0.5 * 0.1
+                size_scaling = max([size_scaling, 5.0])
+                local_mat = np.matrix([
+                    [size_scaling, 0.0, 0.0, (coords[0] - parent_frame.width // 2) * parent_frame.pixel_size],
+                    [0.0, size_scaling, 0.0, (coords[1] + parent_frame.height // 2) * parent_frame.pixel_size],
+                    [0.0, 0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0],
+                ])
+                # now apply parent matrix
+                self.border_shader.uniformmat4("modelMatrix", np.matmul(parent_frame.transform.matrix_no_scale, local_mat))
+                glDrawElements(GL_LINES, va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        self.border_shader.unbind()
+        va.unbind()
+
+
 
 class Camera:
     def __init__(self):
@@ -1525,7 +1722,11 @@ class Camera:
         self.set_projection_matrix(cfg.window_width, cfg.window_height)
 
     def cursor_to_world_position(self, cursor_pos):
-        """Converts an input cursor position to corresponding world position. Assuming orthographic projection matrix."""
+        """
+        cursor_pus: list, [x, y]
+        returns: [world_pos_x, world_pos_y]
+        Converts an input cursor position to corresponding world position. Assuming orthographic projection matrix.
+        """
         inverse_matrix = np.linalg.inv(self.view_projection_matrix)
         window_coordinates = (2 * cursor_pos[0] / cfg.window_width - 1, 1 - 2 * cursor_pos[1] / cfg.window_height)
         window_vec = np.matrix([*window_coordinates, 1.0, 1.0]).T
@@ -1671,6 +1872,7 @@ class ImportedFrameData:
         self.pxd = None
         self.n_slices = 1
         self.pixel_size = CorrelationEditor.DEFAULT_IMAGE_PIXEL_SIZE
+        self.pixel_size_z = CorrelationEditor.DEFAULT_IMAGE_PIXEL_SIZE
         try:
             if self.extension == ".tiff" or self.extension == ".tif":
                 tif = tifffile.TiffFile(self.path)
@@ -1685,6 +1887,7 @@ class ImportedFrameData:
             elif self.extension == ".mrc":
                 with mrcfile.open(self.path) as mrc:
                     self.pixel_size = float(mrc.voxel_size.x / 10.0)
+                    self.pixel_size_z = float(mrc.voxel_size.z / 10.0)
                 mrc = mrcfile.mmap(self.path, mode="r")
                 if len(mrc.data.shape) == 2:
                     self.pxd = mrc.data
@@ -1708,6 +1911,7 @@ class ImportedFrameData:
         clem_frame.path = self.path
         clem_frame.extension = self.extension
         clem_frame.pixel_size = self.pixel_size
+        clem_frame.pixel_size_z = self.pixel_size_z
         if self.n_slices > 1:
             clem_frame.has_slices = True
             clem_frame.n_slices = self.n_slices

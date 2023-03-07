@@ -35,8 +35,12 @@ class CLEMFrame:
         self.n_slices = 1
         self.current_slice = 0
         self.extension = ""
+        self.particle_groups = list()
+        self.particle_groups.append(ParticleGroup())
+        self.current_particle_group = self.particle_groups[0]
         # transform parameters
         self.pixel_size = cfg.ce_default_pixel_size  # pixel size in nm
+        self.pixel_size_z = cfg.ce_default_pixel_size
         self.pivot_point = np.zeros(2)  # pivot point for rotation and scaling of this particular image. can be moved by the user. In _local coordinates_, i.e. relative to where the frame itself is positioned.
         self.transform = Transform()
         self.flip_h = False
@@ -342,6 +346,7 @@ class Transform:
         self.rotation = 0.0
         self.scale = 1.0
         self.matrix = np.identity(4)
+        self.matrix_no_scale = np.identity(4)
 
     def compute_matrix(self):
         scale_mat = np.identity(4) * self.scale
@@ -360,6 +365,7 @@ class Transform:
         translation_mat[1, 3] = self.translation[1]
 
         self.matrix = np.matmul(translation_mat, np.matmul(rotation_mat, scale_mat))
+        self.matrix_no_scale = np.matmul(translation_mat, rotation_mat)
 
     def __add__(self, other):
         out = Transform()
@@ -377,3 +383,20 @@ class Transform:
         out.translation[1] = self.translation[1] - other.translation[1]
         out.rotation = self.rotation - other.rotation
         return out
+
+
+class ParticleGroup:
+    idgen = count(0)
+
+    def __init__(self, name="New group"):
+        self.id = next(ParticleGroup.idgen)
+        self.name = name
+        self.colour = (0.1, 0.2, 1.0, 1.0)
+        self.diameter = 200.0  # Angstrom
+        self.coordinates = list()
+
+    def __eq__(self, other):
+        if isinstance(other, ParticleGroup):
+            return self.id == other.id
+        return False
+
