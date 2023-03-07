@@ -319,7 +319,6 @@ class ImageViewer:
             self.marker.render_end(self.roi_shader)
 
     def _frame_info_window(self):
-
         imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 0.0)
         imgui.set_next_window_position(0, self.window.height - ImageViewer.INFO_BAR_HEIGHT + (cfg.window_height - self.window.height), imgui.ALWAYS)
         imgui.set_next_window_size(self.window.width, ImageViewer.INFO_BAR_HEIGHT)

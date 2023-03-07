@@ -204,6 +204,7 @@ class CorrelationEditor:
         if cfg.correlation_editor_relink:
             CorrelationEditor.relink_after_load()
             cfg.correlation_editor_relink = False
+            self.camera.focus_on_frame(cfg.ce_frames[0])
 
         cfg.ce_active_frame = CorrelationEditor.active_frame
         CorrelationEditor.incoming_files += deepcopy(self.window.dropped_files)
@@ -322,8 +323,9 @@ class CorrelationEditor:
             CorrelationEditor.renderer.render_frame_quad(self.camera, frame, override_blending=False)
         if CorrelationEditor.active_frame is not None:
             CorrelationEditor.renderer.render_frame_border(self.camera, CorrelationEditor.active_frame)
-        for gizmo in self.gizmos:
-            CorrelationEditor.renderer.render_gizmo(self.camera, gizmo)
+        if not CorrelationEditor.picking_enabled:
+            for gizmo in self.gizmos:
+                CorrelationEditor.renderer.render_gizmo(self.camera, gizmo)
         if CorrelationEditor.measure_tool:
             CorrelationEditor.renderer.render_measure_tool(self.camera, CorrelationEditor.measure_tool)
         if CorrelationEditor.export_roi_render:
@@ -820,21 +822,21 @@ class CorrelationEditor:
                     # delete button
                     imgui.new_line()
                     imgui.same_line(spacing=0)
-                    if imgui.button("delete", width=(_cw - 3 * 0) / 2, height=20):
+                    if imgui.button("delete", width=(_cw - 10) / 2, height=20):
                         af.particle_groups.remove(af.current_particle_group)
                         if len(af.particle_groups) == 0:
                             af.particle_groups.append(ParticleGroup())
                         af.current_particle_group = af.particle_groups[-1]
-                    imgui.same_line(spacing=0)
-                    if imgui.button("export", width=(_cw - 3 * 0) / 2, height=20):
+                    imgui.same_line(spacing=10)
+                    if imgui.button("export", width=(_cw - 10) / 2, height=20):
                         # export files.
-                        filename = filedialog.asksaveasfilename(filetypes=[("scNodes scene", cfg.filetype_scene)])
+                        filename = filedialog.asksaveasfilename()
                         if filename is not None:
-                            with open(filename, 'w') as file:
+                            with open(filename+".txt", 'w') as file:
                                 for group in af.particle_groups:
                                     file.write(f"# {group.name}\n")
                                     for xyz in group.coordinates:
-                                        file.write(f"{xyz[0]:.0f}\t{xyz[1]:.0f}\t{xyz[2]:.0f}\n")
+                                        file.write(f"{xyz[0]:.0f}\t{-xyz[1]:.0f}\t{xyz[2]:.0f}\n")
 
                     imgui.pop_style_var(1)
         imgui.end()
@@ -1247,21 +1249,22 @@ class CorrelationEditor:
 
         # particle picking, if active, takes precedence over other input
         if CorrelationEditor.picking_enabled and CorrelationEditor.active_frame is not None:
+            if self.window.get_key(glfw.KEY_ESCAPE):
+                CorrelationEditor.picking_enabled = False
+                return
             # if clicked, figure out what the corresponding image coordinates are
-            # adding a particle: #TODO take in to account the rotation of the image.
+            # adding a particle:
             if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
-                world_pos = self.camera.cursor_to_world_position(self.window.cursor_pos)
                 frame = CorrelationEditor.active_frame
-                frame_pos = frame.transform.translation
-                # click position relative to top-left image corner:
-                frame_top_left = [frame_pos[0] - frame.width // 2 * frame.pixel_size,
-                                  frame_pos[1] + frame.height // 2 * frame.pixel_size]
-                px_coordinates = [(world_pos[0] - frame_top_left[0]) / frame.pixel_size,
-                                  (world_pos[1] - frame_top_left[1]) / frame.pixel_size,
-                                  0]
+                world_pos = self.camera.cursor_to_world_position(self.window.cursor_pos)
+                model_mat = frame.transform.matrix
+                pixel_pos = np.matmul(np.linalg.inv(model_mat), np.matrix([world_pos[0], world_pos[1], 0.0, 1.0]).T)
+                particle_coordinates = [float(pixel_pos[0] + frame.width // 2), float(pixel_pos[1] - frame.height // 2), 0]
+
                 if frame.has_slices:
-                    px_coordinates[2] = frame.current_slice
-                frame.current_particle_group.coordinates.append(px_coordinates)
+                    particle_coordinates[2] = frame.current_slice
+                frame.current_particle_group.coordinates.append(particle_coordinates)
+                print(particle_coordinates)
                 return
             # removing a particle:
             if self.window.get_mouse_event(glfw.MOUSE_BUTTON_RIGHT, glfw.PRESS):
@@ -1393,14 +1396,7 @@ class CorrelationEditor:
             if imgui.is_key_down(glfw.KEY_A):
                 CorrelationEditor.active_frame.compute_autocontrast()
             if imgui.is_key_down(glfw.KEY_SPACE):
-                self.camera.position[0] = -CorrelationEditor.active_frame.transform.translation[0]
-                self.camera.position[1] = -CorrelationEditor.active_frame.transform.translation[1]
-                # set zoom as well:
-                af = CorrelationEditor.active_frame
-                img_width = af.width * af.pixel_size
-                img_height = af.height * af.pixel_size
-                size = max([img_width, img_height])
-                self.camera.zoom = CorrelationEditor.DEFAULT_ZOOM * CorrelationEditor.DEFAULT_HORIZONTAL_FOV_WIDTH / size
+                self.camera.focus_on_frame(CorrelationEditor.active_frame)
 
     def _warning_window(self):
         def ww_context_menu():
@@ -1759,6 +1755,14 @@ class Camera:
         ])
         self.view_projection_matrix = np.matmul(self.projection_matrix, self.view_matrix)
 
+    def focus_on_frame(self, clemframe):
+        self.position[0] = clemframe.transform.translation[0]
+        self.position[1] = clemframe.transform.translation[1]
+        # set zoom as well:
+        img_width = clemframe.width * clemframe.pixel_size
+        img_height = clemframe.height * clemframe.pixel_size
+        size = max([img_width, img_height])
+        self.zoom = CorrelationEditor.DEFAULT_ZOOM * CorrelationEditor.DEFAULT_HORIZONTAL_FOV_WIDTH / size
 
 class EditorGizmo:
     idgen = count(0)
