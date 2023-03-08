@@ -3,13 +3,13 @@
 ### scNodes: correlating super-resolution fluorescence & transmission electron cryomicroscopy
 
 #### About
-scNodes is a software suite for super-resolution cryo-fluorescence and correlated cryoelectron microscopy (SR-cryoCLEM). We designed the program for use in our own SRcryoCLEM workflow, but we anticipate that scNodes as a whole or parts of the software may 
+scNodes is a software suite for correlated super-resolution fluorescence and cryoEM (SR-cryoCLEM). We designed the program for use in our own SRcryoCLEM workflow, but we anticipate that scNodes as a whole or parts of the software may 
 also find use outside of this field. 
 scNodes consists of two main parts: the Node Editor, for fluorescence microscopy image 
 processing, and the Correlation Editor, for correlation of images. This manual consists of two 
 corresponding parts: an introduction to the Node Editor, in which we demonstrate how to 
 create super-resolution reconstructions with scNodes, and an introduction to the 
-Correlation Editor that outlines a method to correlate super-resolution data with cryoelectron tomograms. 
+Correlation Editor that outlines a method to correlate super-resolution data with cryo-electron tomograms. 
 While the first public release of scNodes comprises a fully functional program, there are 
 numerous features, processing modules, or correlation methods that one could think of to 
 improve the software. For this reason, scNodes was designed to be extensible. This manual 
