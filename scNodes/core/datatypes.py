@@ -176,7 +176,6 @@ class Frame:
         return copy.deepcopy(self)
 
     def bake_transform(self, interpolation=1, edges='constant', preserve_range=False):
-        ## TODO fix interpolation options
         tmat = transform.AffineTransform(np.matrix([[1.0, 0.0, self.translation[0]], [0.0, 1.0, self.translation[1]], [0.0, 0.0, 1.0]]))
         self.data = transform.warp(self.data, tmat, order=interpolation, mode=edges, preserve_range=preserve_range)
 

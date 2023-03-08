@@ -69,6 +69,12 @@ class Texture:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
+    def set_linear_mipmap_interpolation(self):
+        glBindTexture(GL_TEXTURE_2D, self.renderer_id)
+        glGenerateMipmap(GL_TEXTURE_2D)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+
     def set_no_interpolation(self):
         glBindTexture(GL_TEXTURE_2D, self.renderer_id)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)

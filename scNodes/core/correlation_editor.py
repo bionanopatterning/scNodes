@@ -163,7 +163,7 @@ class CorrelationEditor:
 
         CorrelationEditor.init_toolkit()
         # Export FBO
-        CorrelationEditor.EXPORT_FBO = FrameBuffer(CorrelationEditor.EXPORT_TILE_SIZE, CorrelationEditor.EXPORT_TILE_SIZE, texture_format="rgba32f")
+        CorrelationEditor.EXPORT_FBO = FrameBuffer(CorrelationEditor.EXPORT_TILE_SIZE, CorrelationEditor.EXPORT_TILE_SIZE, texture_format="rgb32f")
         # Load icons and set up particle picking ROI VA
         if True:
             self.icon_no_interp = Texture(format="rgba32f")
@@ -591,7 +591,7 @@ class CorrelationEditor:
                 _c, CorrelationEditor.ex_pxnm = imgui.drag_float("##export_pxnm", CorrelationEditor.ex_pxnm, CorrelationEditor.EXPORT_RESOLUTION_CHANGE_SPEED, format = f'%.1f')
                 imgui.pop_style_var()
                 CorrelationEditor.ex_pxnm = max([0.001, CorrelationEditor.ex_pxnm])
-                CorrelationEditor.tooltip(f"equals {CorrelationEditor.ex_pxnm * 25400000:.0f} dpi :)")
+                CorrelationEditor.tooltip(f"or: {CorrelationEditor.ex_pxnm * 25400000:.0f} dpi")
                 imgui.same_line()
                 imgui.text("nm / px")
                 if CorrelationEditor.export_roi_mode == 1:  # export by selection
@@ -762,6 +762,8 @@ class CorrelationEditor:
                 if af is not None:
                     imgui.text(af.title)
                     CorrelationEditor.tooltip(af.title)
+                    imgui.set_next_item_width(70)
+                    _c, af.pixel_size_z = imgui.input_float("Voxel depth", af.pixel_size_z, 0.0, 0.0, format='%.2f nm')
                 else:
                     imgui.text("<no frame selected>")
 
@@ -866,6 +868,8 @@ class CorrelationEditor:
             out_img = np.zeros((out_size_pixels[0], out_size_pixels[1], 4))
             alpha_mask = np.zeros((out_size_pixels[0], out_size_pixels[1]))
             glEnable(GL_DEPTH_TEST)
+
+            import matplotlib.pyplot as plt
             glDepthFunc(GL_ALWAYS)
             for i in range(tiles_h):
                 for j in range(tiles_v):
@@ -881,7 +885,9 @@ class CorrelationEditor:
                     for frame in reversed(cfg.ce_frames):
                         CorrelationEditor.renderer.render_frame_quad(camera, frame)
                     tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_RGB, GL_FLOAT)
-                    out_img[i*T:min([(i+1)*T, W]), j*T:min([(j+1)*T, H]), 0:3] = np.rot90(tile, 1, (1, 0))[:min([T, W-(i*T)]), :min([T, H-(j*T)]), :]
+                    out_img[i*T:min([(i+1)*T, W]), j*T:min([(j+1)*T, H]), 0:3] = np.rot90(tile, 1, (1, 0))[:min([T, W-(i*T)]), :min([T, H-(j*T)])]
+                    plt.imshow(np.rot90(tile, 1, (1, 0))[:min([T, W-(i*T)]), :min([T, H-(j*T)]), :])
+                    plt.show()
                     depth_tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_DEPTH_COMPONENT, GL_FLOAT)
                     alpha_mask[i*T:min([(i+1)*T, W]), j*T:min([(j+1)*T, H])] = np.rot90(depth_tile, 1, (1, 0))[:min([T, W-(i*T)]), :min([T, H-(j*T)])]
             glDisable(GL_DEPTH_TEST)
@@ -890,7 +896,6 @@ class CorrelationEditor:
             out_img[:, :, 3] = alpha_mask
             out_img = np.rot90(out_img, -1, (1, 0))
             out_img = out_img[::-1, :]
-            import matplotlib.pyplot as plt
             plt.imshow(out_img[:, :, 0:3])
             plt.show()
             out_img *= 255
@@ -1333,7 +1338,7 @@ class CorrelationEditor:
                 CorrelationEditor.active_gizmo.transform.translation[1] += delta_y
             elif CorrelationEditor.active_gizmo is None and CorrelationEditor.active_frame is not None:
                 if self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT):  # user is dragging the active frame
-                    snap, delta_x, delta_y = self.snap_frame(cursor_world_pos_now) # TODO fix snapping
+                    snap, delta_x, delta_y = self.snap_frame(cursor_world_pos_now)
                     if not snap:
                         delta_x = cursor_world_pos_now[0] - cursor_world_pos_prev[0]
                         delta_y = cursor_world_pos_now[1] - cursor_world_pos_prev[1]

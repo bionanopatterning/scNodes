@@ -239,7 +239,7 @@ class CLEMFrame:
     def toggle_interpolation(self):
         self.interpolate = not self.interpolate
         if self.interpolate:
-            self.texture.set_linear_interpolation()
+            self.texture.set_linear_mipmap_interpolation()
         else:
             self.texture.set_no_interpolation()
 

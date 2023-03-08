@@ -5,6 +5,13 @@ import os
 from datetime import datetime
 # This file defines variables that can be accessed globally.
 
+
+# TODO: fix type conversion upon importing uint8 .mrc file
+# TODO: make loading .mrc faster
+# TODO: fix .mrc flip upon loading
+# todo fix error where bakestack freezes baking a second time. 230120 - fixed, maybe?
+# TODO: fix snapping in editor input
+
 frozen = False
 root = ""
 app_name = "scNodes"

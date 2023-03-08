@@ -14,7 +14,7 @@ class RegisterNode(Node):
     sortid = 100
     METHODS = ["TurboReg", "ORB"]
     REFERENCES = ["Input image", "Template frame", "Consecutive pairing"]
-    INTERPOLATION_OPTIONS = ["Nearest neighbour", "Bilinear", "Biquadratic", "Bicubic", "Biquartic", "Biquintic"]
+    INTERPOLATION_OPTIONS = ["Linear", "Cubic"]
     EDGE_FILL_OPTIONS = ["Zero", "Repeat", "Reflect"]
     edge_fill_options_scipy_argument = ['constant', 'edge', 'reflect']
 
@@ -165,7 +165,7 @@ class RegisterNode(Node):
 
             if self.params["reference_method"] == 2:
                 self.reference_image = None
-            input_img.bake_transform(interpolation=self.params["interpolation"], edges=RegisterNode.edge_fill_options_scipy_argument[self.params["edge_fill"]], preserve_range=self.params["preserve_range"])
+            input_img.bake_transform(interpolation=1 if self.params["interpolation"]==0 else 3, edges=RegisterNode.edge_fill_options_scipy_argument[self.params["edge_fill"]], preserve_range=self.params["preserve_range"])
             return input_img
 
     def pre_pickle_impl(self):
