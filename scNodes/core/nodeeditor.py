@@ -309,11 +309,11 @@ class NodeEditor:
         try:
             filename = filedialog.askopenfilename(filetypes=[("Python file", ".py")])
             if filename != '':
-                node_dir = __file__[:__file__.rfind("\\")]+"/nodes/"
+                node_dir = os.getcwd()+"/nodes/"
                 node_dir = node_dir.replace('\\', '/')
                 node_name = filename[filename.rfind("/")+1:]
                 shutil.copyfile(filename, node_dir+node_name)
-            cfg.set_error(Exception(), "Node installed! Restarting the software is required for it to become available.\n\n\n")
+            cfg.set_error(Exception(), "Node installed! Software restart is required for it to become available.\n\n\n")
         except Exception as e:
             cfg.set_error(e, "Error upon installing node. Are you sure you selected the right file?")
 
