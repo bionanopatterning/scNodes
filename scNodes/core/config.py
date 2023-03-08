@@ -13,7 +13,7 @@ from datetime import datetime
 frozen = False
 root = ""
 app_name = "scNodes"
-version = "1.1.2"
+version = "1.1.3"
 license = "GNU GPL v3"
 logpath = "scNodes.log"
 filetype_project = ".scnp"

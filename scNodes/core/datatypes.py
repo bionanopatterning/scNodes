@@ -153,6 +153,7 @@ class Frame:
         self.gpu_crop_xy_buffer = None
         self._ce_lut = 0
         self._ce_clims = [0, 1]
+        self.scalar_metrics = dict()
 
     def load(self):
         if self.data is not None:
@@ -190,9 +191,9 @@ class Frame:
 
 
     def __str__(self):
-        sstr = "Frame: " + self.title + "\n" \
+        sstr = "Frame: ..." + self.title + "\n" \
             + ("Discarded frame. " if self.discard else "Frame in use. ") \
-            + f"Shift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
+            + f"\nShift of ({self.translation[0]:.2f}, {self.translation[1]:.2f}) pixels detected."
         if self.maxima is not []:
             sstr += f"\n{len(self.maxima)} particles found."
         return sstr
@@ -300,9 +301,7 @@ class ParticleData:
     def set_reconstruction_roi(self, roi):
         """
         :param roi: The ROI used in the initial particle position estimation (e.g. ParticleDetectionNode). It can be saved in ParticleData in order to facilitate overlaying the final reconstruction with the corresponding region of the widefield image.
-        :return:
         """
-        print("Setting reconstruction ROI to: ", roi[0], roi[1], roi[2], roi[3]) ## 0213, 1032
         self.reconstruction_roi = roi
 
     @staticmethod

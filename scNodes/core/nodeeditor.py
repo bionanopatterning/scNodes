@@ -94,7 +94,7 @@ class NodeEditor:
         cfg.node_move_requested = [0, 0]
         cfg.camera_move_requested = [0, 0]
         imgui_want_mouse = imgui.get_io().want_capture_mouse
-
+        imgui.is_any_item_active()
         if self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT) and imgui_want_mouse:
             cfg.node_move_requested = self.window.cursor_delta
         elif self.window.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE) and not imgui_want_mouse:
@@ -427,9 +427,10 @@ class NodeEditor:
                     home_attribute = all_attributes_by_id[link[0]]
                     parent_attribute = all_attributes_by_id[link[1]]
                     home_attribute.connect_attributes(parent_attribute)
-                # finally, call all of the new nodes' on_load function
+                # finally, call all of the new nodes' on_load function, AND: change their ids (in case the same setup is imported more than once!)
                 for node in new_nodes:
                     node.on_load()
+                    node.id *= int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f'))
         except Exception as e:
             cfg.set_error(e, "Error appending/loading node setup: ")
 

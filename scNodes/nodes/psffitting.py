@@ -31,9 +31,11 @@ class ParticleFittingNode(Node):
         self.params["psf"] = 0
         self.params["crop_radius"] = 3
         self.params["initial_sigma"] = 1.6
+        self.params["skip_discard"] = True
         self.fitting = False
         self.n_to_fit = 1
         self.n_fitted = 0
+        self.n_frames_discarded = 0
         self.frames_to_fit = list()
         self.particle_data = ParticleData()
 
@@ -49,6 +51,8 @@ class ParticleFittingNode(Node):
 
         self.params["custom_bounds"] = False
         self.params["photons_per_count"] = 0.45
+
+        self.detection_roi = [0, 0, 1, 1]
 
     def render(self):
         if super().render_start():
@@ -108,12 +112,16 @@ class ParticleFittingNode(Node):
                 self.fitting = False
                 self.particle_data.bake()
 
+            imgui.text("Reconstruction info:")
             if not self.particle_data.empty:
-                imgui.text("Reconstruction info")
-                imgui.text(f"particles: {self.particle_data.n_particles}")
+                imgui.text(f"\tparticles: {self.particle_data.n_particles}")
+                imgui.text(f"\tframes discarded: {self.n_frames_discarded}")
                 if not self.fitting:
-                    imgui.text(f"x range: {self.particle_data.x_min / 1000.0:.1f} to {self.particle_data.x_max / 1000.0:.1f} um")
-                    imgui.text(f"y range: {self.particle_data.y_min / 1000.0:.1f} to {self.particle_data.y_max / 1000.0:.1f} um")
+                    imgui.text(f"\tx range: {self.particle_data.x_min / 1000.0:.1f} to {self.particle_data.x_max / 1000.0:.1f} um")
+                    imgui.text(f"\ty range: {self.particle_data.y_min / 1000.0:.1f} to {self.particle_data.y_max / 1000.0:.1f} um")
+            else:
+                imgui.text("\tno particles detected")
+                imgui.text(f"\tframes discarded: {self.n_frames_discarded}")
             imgui.spacing()
             header_expanded, _ = imgui.collapsing_header("Advanced", None)
             if header_expanded:
@@ -154,12 +162,13 @@ class ParticleFittingNode(Node):
 
             imgui.pop_item_width()
 
+        _c, self.params["skip_discard"] = imgui.checkbox("Skip 'discarded' frames", self.params["skip_discard"])
+
     def init_fit(self):
         try:
             self.time_start = time.time()
             dataset_source = Node.get_source_load_data_node(self)
             self.particle_data = ParticleData(dataset_source.pixel_size)
-            self.particle_data.set_reconstruction_roi(np.asarray(dataset_source.dataset.reconstruction_roi) * dataset_source.pixel_size)
             self.fitting = True
             self.frames_to_fit = list()
             dataset = dataset_source.dataset
@@ -174,6 +183,7 @@ class ParticleFittingNode(Node):
                 self.frames_to_fit = np.random.choice(n_frames, size=min([n_frames, self.params["subset_size"]]), replace=False).tolist()
             self.n_to_fit = len(self.frames_to_fit)
             self.n_fitted = 0
+            self.n_frames_discarded = 0
         except Exception as e:
             self.fitting = False
             cfg.set_error(e, "Error in init_fit: "+str(e))
@@ -184,6 +194,7 @@ class ParticleFittingNode(Node):
                 if len(self.frames_to_fit) == 0:
                     self.fitting = False
                     self.play = False
+                    self.particle_data.set_reconstruction_roi(np.asarray(self.detection_roi) * self.particle_data.pixel_size)
                     self.particle_data.bake()
                 else:
                     fitted_frame = self.get_image(self.frames_to_fit[-1])
@@ -203,11 +214,13 @@ class ParticleFittingNode(Node):
         coord_source = self.connectable_attributes["localizations_in"].get_incoming_node()
         if data_source and coord_source:
             frame = data_source.get_image(idx)
-            coordinates = coord_source.get_coordinates(idx)
-            frame.maxima = coordinates
-            if frame.discard:
+            if self.params["skip_discard"] and frame.discard:
                 frame.particles = None
+                self.n_frames_discarded += 1
                 return frame
+            coordinates = coord_source.get_coordinates(idx)
+            self.detection_roi = coord_source.get_roi()
+            frame.maxima = coordinates
             particles = list()
             if self.params["estimator"] in [0, 1]:
                 if self.params["psf"] == 0:

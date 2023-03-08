@@ -32,6 +32,8 @@ class ParticleDetectionNode(Node):
         self.params["max_fac"] = 0.75
         self.params["min_fac"] = 5.0
 
+        self.active_roi = [0, 0, 1, 1]
+
     def render(self):
         if super().render_start():
             self.connectable_attributes["dataset_in"].render_start()
@@ -105,11 +107,15 @@ class ParticleDetectionNode(Node):
             if self.use_roi:
                 coordinates += np.asarray([self.roi[1], self.roi[0]])
                 Node.get_source_load_data_node(self).dataset.reconstruction_roi = self.roi
+                self.active_roi = self.roi
             else:
                 Node.get_source_load_data_node(self).dataset.reconstruction_roi = [0, 0, image.shape[0], image.shape[1]]
+                self.active_roi = [0, 0, image.shape[0], image.shape[1]]
             image_obj.maxima = coordinates
-
             return image_obj
+
+    def get_roi(self):
+        return self.active_roi
 
     def get_coordinates(self, idx=None):
         try:

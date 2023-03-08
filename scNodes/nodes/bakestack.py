@@ -121,6 +121,7 @@ class BakeStackNode(Node):
         if datasource:
             pxd = datasource.get_image(idx).load()
             Image.fromarray(pxd).save(self.temp_dir + "/0" + str(idx) + ".tif")
+            # todo: save metadata!
             if self.params["bake_coordinates"]:
                 coordsource = self.connectable_attributes["coordinates_in"].get_incoming_node()
                 coordinates = coordsource.get_coordinates(idx)
@@ -134,6 +135,7 @@ class BakeStackNode(Node):
             retimg.clean()
             if self.has_coordinates:
                 retimg.maxima = self.coordinates[idx]
+            # todo: load metadata!
             return retimg
         else:
             datasource = self.connectable_attributes["dataset_in"].get_incoming_node()

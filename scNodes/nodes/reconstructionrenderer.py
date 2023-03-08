@@ -130,7 +130,7 @@ class ReconstructionRendererNode(Node):
                 roi = self.get_particle_data().reconstruction_roi
                 img_width = int((roi[3] - roi[1]) / self.params["pixel_size"])
                 img_height = int((roi[2] - roi[0]) / self.params["pixel_size"])
-                self.reconstruction_image_size = (img_width, img_height)
+                self.reconstruction_image_size = (img_height, img_width)
 
             header_expanded, _ = imgui.collapsing_header("Advanced", None)
             if header_expanded:
@@ -203,7 +203,7 @@ class ReconstructionRendererNode(Node):
             roi = self.get_particle_data().reconstruction_roi
             img_width = int((roi[3] - roi[1]) / self.params["pixel_size"])
             img_height = int((roi[2] - roi[0]) / self.params["pixel_size"])
-            self.reconstruction_image_size = (img_width, img_height)
+            self.reconstruction_image_size = (img_height, img_width)
             self.original_pixel_size = Node.get_source_load_data_node(self).dataset.pixel_size
             self.reconstructor.set_pixel_size(self.params["pixel_size"])
             self.reconstructor.set_image_size(self.reconstruction_image_size)
@@ -228,8 +228,6 @@ class ReconstructionRendererNode(Node):
                     return None
                 else:
                     self.latest_image = self.reconstructor.render(fixed_uncertainty=(self.params["default_sigma"] if self.params["fix_sigma"] else None))
-                    if not self.latest_image.any():
-                        self.latest_image = None
                     self.any_change = True
                     if self.paint_particles:
                         self.OVERRIDE_AUTOCONTRAST = True
@@ -278,7 +276,7 @@ class ReconstructionRendererNode(Node):
         if roi is not None:
             img_width = int((roi[3] - roi[1]) / self.params["pixel_size"])
             img_height = int((roi[2] - roi[0]) / self.params["pixel_size"])
-            self.reconstruction_image_size = (img_width, img_height)
+            self.reconstruction_image_size = (img_height, img_width)
 
     def pre_pickle_impl(self):
         cfg.pickle_temp["latest_image"] = self.latest_image

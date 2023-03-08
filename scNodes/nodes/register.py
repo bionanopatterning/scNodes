@@ -48,7 +48,7 @@ class RegisterNode(Node):
 
         # Advanced
         self.params["interpolation"] = 1
-        self.params["edge_fill"] = 0
+        self.params["edge_fill"] = 1
         self.params["preserve_range"] = False
 
     def render(self):
@@ -165,6 +165,12 @@ class RegisterNode(Node):
 
             if self.params["reference_method"] == 2:
                 self.reference_image = None
+            input_img.scalar_metrics["drift (nm)"] = (input_img.translation[0]**2 + input_img.translation[1]**2)**0.5 * input_img.pixel_size
+            input_img.scalar_metrics["x drift (nm)"] = input_img.translation[0] * input_img.pixel_size
+            input_img.scalar_metrics["y drift (nm)"] = input_img.translation[1] * input_img.pixel_size
+            input_img.scalar_metrics["drift (px)"] = (input_img.translation[0] ** 2 + input_img.translation[1] ** 2) ** 0.5
+            input_img.scalar_metrics["x drift (px)"] = input_img.translation[0]
+            input_img.scalar_metrics["y drift (px)"] = input_img.translation[1]
             input_img.bake_transform(interpolation=1 if self.params["interpolation"]==0 else 3, edges=RegisterNode.edge_fill_options_scipy_argument[self.params["edge_fill"]], preserve_range=self.params["preserve_range"])
             return input_img
 

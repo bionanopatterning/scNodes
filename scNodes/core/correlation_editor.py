@@ -1271,7 +1271,6 @@ class CorrelationEditor:
                 if frame.has_slices:
                     particle_coordinates[2] = frame.current_slice
                 frame.current_particle_group.coordinates.append(particle_coordinates)
-                print(particle_coordinates)
                 return
             # removing a particle:
             if self.window.get_mouse_event(glfw.MOUSE_BUTTON_RIGHT, glfw.PRESS):
@@ -1695,7 +1694,6 @@ class Renderer:
                 # coords to local coordinates
                 z_offset = (coords[2] - parent_frame.current_slice) * parent_frame.pixel_size_z * 10.0
                 size_scaling = (max([0.0, p_group.diameter ** 2 - z_offset ** 2]))**0.5 * 0.1
-                print(size_scaling)
                 #size_scaling = max([size_scaling, 5.0])
                 local_mat = np.matrix([
                     [size_scaling, 0.0, 0.0, (coords[0] - parent_frame.width // 2) * parent_frame.pixel_size],

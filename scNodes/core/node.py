@@ -96,6 +96,13 @@ class Node:
         self.any_change = False
         self.NODE_GAINED_FOCUS = False
 
+    def mark_change(self, bool_val):
+        """Set the change flag self.any_change to True, if bool_val is True. The image viewer
+        monitors this flag, and requests a new image whenever the flag is True. Use this function
+        in combination with the 'changed' value returned by most imgui widgets to ensure a change
+        to a node's settings is instantly applied, and the result made visible in the image viewer."""
+        self.any_change = self.any_change or bool_val
+
     def render_start(self):
         if not self.use_roi:
             self.roi = [0, 0, 0, 0]

@@ -223,16 +223,12 @@ class Reconstructor:
         camera_x = -(tile_idx[0] + 0.5) * self.tile_size[0]
         camera_y = -(tile_idx[1] + 0.5) * self.tile_size[1]
 
-        print("Tile size is ", self.tile_size)
         self.camera.position = [camera_x + self.camera_origin[0], camera_y + self.camera_origin[1], 0.0]
-        print("Camera position x, y is: ", self.camera.position[0], self.camera.position[1])
         self.camera.update_matrix()
         self.shader.uniformmat4("cameraMatrix", self.camera.view_projection_matrix)
         glDrawElementsInstanced(GL_TRIANGLES, self.vao.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None,
                                 self.particle_data.n_particles)
-        print("Done rendering tile")
         tile = glReadPixels(0, 0, self.default_tile_size[0], self.default_tile_size[1], GL_RGB, GL_FLOAT)
-        print("Done reading tile")
         return tile
 
 
