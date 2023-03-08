@@ -375,7 +375,6 @@ class CorrelationEditor:
                 imgui.set_next_item_width(60)
                 _c, CorrelationEditor.ARROW_KEY_TRANSLATION = imgui.input_float("Arrow key step size (nm)", CorrelationEditor.ARROW_KEY_TRANSLATION, 0.0, 0.0, "%.1f")
                 _c, CorrelationEditor.snap_enabled = imgui.checkbox("Allow snapping", CorrelationEditor.snap_enabled)
-                _c, cfg.ce_flip_mrc_on_load = imgui.checkbox("Flip .mrc volumes when loading", cfg.ce_flip_mrc_on_load)
                 _c, cfg.ce_flip_on_load = imgui.checkbox("Flip images when loading", cfg.ce_flip_on_load)
                 imgui.end_menu()
             if imgui.begin_menu("View"):
@@ -1410,9 +1409,6 @@ class CorrelationEditor:
         def ww_context_menu():
             imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_MENU_WINDOW_BACKGROUND)
             if imgui.begin_popup_context_window():
-                raise_error, _ = imgui.menu_item("Raise error (debug)")
-                if raise_error:
-                    raise cfg.error_obj
                 copy_error, _ = imgui.menu_item("Copy to clipboard")
                 if copy_error:
                     pyperclip.copy(cfg.error_msg)
@@ -1697,9 +1693,10 @@ class Renderer:
             self.border_shader.uniform3f("lineColour", p_group.colour)
             for coords in p_group.coordinates:
                 # coords to local coordinates
-                z_offset = (coords[2] - parent_frame.current_slice) * parent_frame.pixel_size_z / 10.0
+                z_offset = (coords[2] - parent_frame.current_slice) * parent_frame.pixel_size_z * 10.0
                 size_scaling = (max([0.0, p_group.diameter ** 2 - z_offset ** 2]))**0.5 * 0.1
-                size_scaling = max([size_scaling, 5.0])
+                print(size_scaling)
+                #size_scaling = max([size_scaling, 5.0])
                 local_mat = np.matrix([
                     [size_scaling, 0.0, 0.0, (coords[0] - parent_frame.width // 2) * parent_frame.pixel_size],
                     [0.0, size_scaling, 0.0, (coords[1] + parent_frame.height // 2) * parent_frame.pixel_size],
@@ -1897,7 +1894,7 @@ class ImportedFrameData:
                 if CorrelationEditor.flip_images_on_load:
                     self.pxd = np.flip(self.pxd, axis=0)
             elif self.extension == ".mrc":
-                with mrcfile.open(self.path) as mrc:
+                with mrcfile.open(self.path, header_only=True) as mrc:
                     self.pixel_size = float(mrc.voxel_size.x / 10.0)
                     self.pixel_size_z = float(mrc.voxel_size.z / 10.0)
                 mrc = mrcfile.mmap(self.path, mode="r")
@@ -1910,6 +1907,10 @@ class ImportedFrameData:
                     else:
                         self.pxd = mrc.data[0, :, :]
                         self.n_slices = mrc.data.shape[0]
+                if type(self.pxd[0, 0]) == np.int8:
+                    self.pxd = self.pxd.astype(np.uint8)
+                elif type(self.pxd[0, 0]) == np.int16:
+                    self.pxd = self.pxd.astype(np.uint16)
             else:
                 raise Exception(f"Could not import file with extension '{self.extension}'")
         except Exception as e:
@@ -1927,6 +1928,7 @@ class ImportedFrameData:
         if self.n_slices > 1:
             clem_frame.has_slices = True
             clem_frame.n_slices = self.n_slices
+
         return clem_frame
 
 

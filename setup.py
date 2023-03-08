@@ -10,11 +10,10 @@ from setuptools import setup, find_packages
 # bundle as .exe:
 # pyinstaller scNodes.spec --noconfirm
 # find __main__ folder in PycharmProjects/.../scNodes/dist, .zip it and rename scNodes, upload to GitHub.
-# optionally: make project structure easier to recognize in __main__ folder by restructuring file hierarchy.
 
 setup(
     name='scNodes',
-    version='1.1.0',
+    version='1.1.1',
     packages=find_packages(),
     url='https://github.com/bionanopatterning/scNodes',
     license='GPL v3',

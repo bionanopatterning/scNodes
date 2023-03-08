@@ -7,15 +7,13 @@ from datetime import datetime
 
 
 # TODO: fix type conversion upon importing uint8 .mrc file
-# TODO: make loading .mrc faster
-# TODO: fix .mrc flip upon loading
 # todo fix error where bakestack freezes baking a second time. 230120 - fixed, maybe?
 # TODO: fix snapping in editor input
 
 frozen = False
 root = ""
 app_name = "scNodes"
-version = "1.0.66"
+version = "1.1.1"
 license = "GNU GPL v3"
 logpath = "scNodes.log"
 filetype_project = ".scnp"
@@ -67,9 +65,9 @@ ce_active_frame = None
 ce_clear_colour = (1.0, 1.0, 1.0, 1.0)
 ce_default_pixel_size = 64.0
 ce_flip_on_load = False
-ce_flip_mrc_on_load = False
 ce_selected_position = [0, 0]
 ce_va_subdivision = 8
+
 def set_active_node(node, keep_active=False):
     global focused_node, active_node, next_active_node
     """

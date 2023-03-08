@@ -140,10 +140,12 @@ class CLEMFrame:
             mrc = mrcfile.mmap(self.path, mode="r")
             self.n_slices = mrc.data.shape[0]
             self.current_slice = min([self.current_slice, self.n_slices - 1])
-            if cfg.ce_flip_mrc_on_load:
-                self.data = mrc.data[:, self.current_slice, :]
-            else:
-                self.data = mrc.data[self.current_slice, :, :]
+            self.data = mrc.data[self.current_slice, :, :]
+            # type conversions
+            if type(self.data[0, 0]) == np.int8:
+                self.data = self.data.astype(np.uint8, copy=False)
+            elif type(self.data[0, 0]) == np.int16:
+                self.data = self.data.astype(np.uint16, copy=False)
             if self.flip_h:
                 self.data = np.flip(self.data, axis=1)
             if self.flip_v:

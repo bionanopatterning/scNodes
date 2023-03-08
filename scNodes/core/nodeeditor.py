@@ -157,9 +157,6 @@ class NodeEditor:
         def ww_context_menu():
             imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_MENU_WINDOW_BACKGROUND)
             if imgui.begin_popup_context_window():
-                raise_error, _ = imgui.menu_item("Raise error (debug)")
-                if raise_error:
-                    raise cfg.error_obj
                 copy_error, _ = imgui.menu_item("Copy to clipboard")
                 if copy_error:
                     pyperclip.copy(cfg.error_msg)
