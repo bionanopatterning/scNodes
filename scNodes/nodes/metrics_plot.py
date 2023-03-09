@@ -10,7 +10,7 @@ class PlotMetricsNode(Node):
     colour = (145 / 255, 236 / 255, 54 / 255, 1.0)
     group = "Metrics"
     size = 190
-    sortid = 952
+    sortid = 3952
 
     def __init__(self):
         super().__init__()
@@ -50,7 +50,6 @@ class PlotMetricsNode(Node):
 
             imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (2.0, 2.0))
             imgui.text("Frames to plot:")
-            imgui.new_line()
             imgui.set_next_item_width(60)
             _c, self.params["range_min"] = imgui.input_int("##min", self.params["range_min"], 0.0, 0.0)
             imgui.same_line()
@@ -83,8 +82,10 @@ class PlotMetricsNode(Node):
                     vals[metric_name].append(frame.scalar_metrics[metric_name])
 
         for metric in vals:
-            plt.plot(frames, vals[metric], linewidth = 1, label=metric)
+            plt.plot(frames, vals[metric], linewidth=1, label=metric)
         plt.xlim([frames[0], frames[-1]])
+        plt.xlabel("Frame number")
+        plt.ylabel("Metric value")
         plt.legend()
         plt.show()
 

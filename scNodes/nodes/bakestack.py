@@ -3,6 +3,7 @@ import os
 from tkinter import filedialog
 import shutil
 from joblib.externals.loky import set_loky_pickler
+import json
 set_loky_pickler("dill")
 
 
@@ -42,6 +43,7 @@ class BakeStackNode(Node):
         self.baked_at = 0
         self.has_coordinates = False
         self.coordinates = list()
+        self.scalar_metrics = list()
         self.params["bake_coordinates"] = False
         self.params["load_baked_stack_into_ram"] = False
 
@@ -119,9 +121,12 @@ class BakeStackNode(Node):
     def get_image_and_save(self, idx=None):
         datasource = self.connectable_attributes["dataset_in"].get_incoming_node()
         if datasource:
-            pxd = datasource.get_image(idx).load()
+            frame = datasource.get_image(idx)
+            pxd = frame.load()
             Image.fromarray(pxd).save(self.temp_dir + "/0" + str(idx) + ".tif")
-            # todo: save metadata!
+            metrics_path = self.temp_dir + "/0" + str(idx) + "_metrics.json"
+            with open(metrics_path, 'w') as file:
+                json.dump(frame.scalar_metrics, file, indent=2)
             if self.params["bake_coordinates"]:
                 coordsource = self.connectable_attributes["coordinates_in"].get_incoming_node()
                 coordinates = coordsource.get_coordinates(idx)
@@ -135,7 +140,10 @@ class BakeStackNode(Node):
             retimg.clean()
             if self.has_coordinates:
                 retimg.maxima = self.coordinates[idx]
-            # todo: load metadata!
+            # load scalar metrics
+            metrics_path = retimg.path[:retimg.path.rfind(".tif")]+"_metrics.json"
+            with open(metrics_path, 'r') as file:
+                retimg.scalar_metrics = json.load(file)
             return retimg
         else:
             datasource = self.connectable_attributes["dataset_in"].get_incoming_node()
@@ -189,7 +197,6 @@ class BakeStackNode(Node):
                 if cfg.profiling:
                     self.profiler_time += time.time() - time_start
                     self.profiler_count += len(indices)
-
                 if len(self.frames_to_bake) == 0:
                     # Load dataset from temp dir.
                     self.dataset = Dataset(self.temp_dir + "/00.tif")

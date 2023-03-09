@@ -10,8 +10,7 @@ class AddMetric(Node):
     colour = (145/255, 236/255, 54/255, 1.0)
     group = "Metrics"
     size = 190
-    sortid = 951
-    #enabled = False
+    sortid = 3951
 
     DEFAULT_METRICS = ["mean", "std", "1st moment", "2nd moment"]
 

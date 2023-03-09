@@ -50,6 +50,8 @@ class RegisterNode(Node):
         self.params["interpolation"] = 1
         self.params["edge_fill"] = 1
         self.params["preserve_range"] = False
+        self.params["add_drift_metrics"] = True
+        self.params["metric_nm_or_px"] = 0
 
     def render(self):
         if super().render_start():
@@ -128,6 +130,10 @@ class RegisterNode(Node):
         self.any_change = self.any_change or _c
         Node.tooltip("When checked, the intensity range of the output, registered image is fixed as the\n"
                      "same range as that of the original image.")
+        _c, self.params["add_drift_metrics"] = imgui.checkbox("Add drift metrics", self.params["add_drift_metrics"])
+        if self.params["add_drift_metrics"]:
+            self.params["metric_nm_or_px"] = imgui.combo("Metric unit", self.params["metric_nm_or_px"], ["nm", "pixel"])
+
 
     def get_image_impl(self, idx=None):
         data_source = self.connectable_attributes["dataset_in"].get_incoming_node()
@@ -165,12 +171,15 @@ class RegisterNode(Node):
 
             if self.params["reference_method"] == 2:
                 self.reference_image = None
-            input_img.scalar_metrics["drift (nm)"] = (input_img.translation[0]**2 + input_img.translation[1]**2)**0.5 * input_img.pixel_size
-            input_img.scalar_metrics["x drift (nm)"] = input_img.translation[0] * input_img.pixel_size
-            input_img.scalar_metrics["y drift (nm)"] = input_img.translation[1] * input_img.pixel_size
-            input_img.scalar_metrics["drift (px)"] = (input_img.translation[0] ** 2 + input_img.translation[1] ** 2) ** 0.5
-            input_img.scalar_metrics["x drift (px)"] = input_img.translation[0]
-            input_img.scalar_metrics["y drift (px)"] = input_img.translation[1]
+            if self.params["add_drift_metrics"]:
+                if self.params["metric_nm_or_px"] == 0:
+                    input_img.scalar_metrics["drift (nm)"] = (input_img.translation[0]**2 + input_img.translation[1]**2)**0.5 * input_img.pixel_size
+                    input_img.scalar_metrics["x drift (nm)"] = input_img.translation[0] * input_img.pixel_size
+                    input_img.scalar_metrics["y drift (nm)"] = input_img.translation[1] * input_img.pixel_size
+                else:
+                    input_img.scalar_metrics["drift (px)"] = (input_img.translation[0] ** 2 + input_img.translation[1] ** 2) ** 0.5
+                    input_img.scalar_metrics["x drift (px)"] = input_img.translation[0]
+                    input_img.scalar_metrics["y drift (px)"] = input_img.translation[1]
             input_img.bake_transform(interpolation=1 if self.params["interpolation"]==0 else 3, edges=RegisterNode.edge_fill_options_scipy_argument[self.params["edge_fill"]], preserve_range=self.params["preserve_range"])
             return input_img
 

@@ -10,7 +10,7 @@ class DiscardFramesNode(Node):
     colour = (145/255, 236/255, 54/255, 1.0)
     group = "Metrics"
     size = 190
-    sortid = 953
+    sortid = 3953
 
     DEFAULT_METRICS = ["mean", "std"]
 
@@ -95,13 +95,10 @@ class DiscardFramesNode(Node):
 
                 if self.params["selected_metric"] == "mean":
                     frame_metric_value = np.mean(pxd)
-                    frame.scalar_metrics["discard_by_mean"] = frame_metric_value
                 elif self.params["selected_metric"] == "std":
                     frame_metric_value = np.std(pxd)
-                    frame.scalar_metrics["discard_by_std"] = frame_metric_value
                 else:
                     frame_metric_value = frame.scalar_metrics[self.params["selected_metric"]]
-
                 self.current_frame_metric_value = frame_metric_value
                 frame.discard = not (self.params["range_min"] < frame_metric_value < self.params["range_max"])
                 return frame

@@ -5,20 +5,18 @@ import os
 from datetime import datetime
 # This file defines variables that can be accessed globally.
 
-
-# TODO: fix type conversion upon importing uint8 .mrc file
-# todo fix error where bakestack freezes baking a second time. 230120 - fixed, maybe?
-# TODO: fix snapping in editor input
+# todo: fix error where bakestack freezes baking a second time. 230309 - fixed, maybe?
 
 frozen = False
 root = ""
 app_name = "scNodes"
-version = "1.1.3"
+version = "1.1.4"
 license = "GNU GPL v3"
 logpath = "scNodes.log"
 filetype_project = ".scnp"
 filetype_node_setup = ".scn"
 filetype_scene = ".scnscene"
+
 nodes = list()
 active_node = None
 focused_node = None
@@ -46,13 +44,13 @@ connector_released = False
 connector_delete_requested = False
 
 n_cpus_max = cpu_count()
-n_cpus = n_cpus_max
-batch_size = n_cpus_max
+n_cpus = n_cpus_max * 3
+batch_size = n_cpus_max * 3
 
 image_viewer = None
 node_editor = None
 correlation_editor = None
-ce_tool_menu_names = {'Transform': True, 'Visuals': True, 'Export': False, 'Measure': False, 'Plugins': False, 'Particle picking': True}
+ce_tool_menu_names = {'Transform': True, 'Visuals': True, 'Export': True, 'Measure': True, 'Plugins': True, 'Particle picking': True}
 node_editor_relink = False
 correlation_editor_relink = False
 pickle_temp = dict()

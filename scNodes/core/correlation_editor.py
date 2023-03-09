@@ -1340,7 +1340,7 @@ class CorrelationEditor:
                     if not snap:
                         delta_x = cursor_world_pos_now[0] - cursor_world_pos_prev[0]
                         delta_y = cursor_world_pos_now[1] - cursor_world_pos_prev[1]
-                        CorrelationEditor.active_frame.translate([delta_x, delta_y])
+                    CorrelationEditor.active_frame.translate([delta_x, delta_y])
             elif CorrelationEditor.active_frame is not None:
                 pivot = CorrelationEditor.active_frame.pivot_point
                 if self.window.get_key(glfw.KEY_LEFT_SHIFT):  # if LEFT_SHIFT pressed, rotate/scale is around center of image instead of around pivot.

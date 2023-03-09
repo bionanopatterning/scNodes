@@ -400,7 +400,6 @@ class NodeEditor:
         except Exception as e:
             cfg.set_error(e, "Error saving node setup")
 
-
     @staticmethod
     def append_node_setup(path):
         try:
