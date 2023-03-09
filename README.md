@@ -46,3 +46,7 @@ ___
 ___
 #### Editing tools in the Correlation Editor
 ![](res/readme_img_e.png)
+
+___
+#### Fluorescence-guided particle picking
+![](res/readme_img_f.png)
