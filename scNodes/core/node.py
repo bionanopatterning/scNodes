@@ -342,8 +342,8 @@ class Node:
     @staticmethod
     def parallel_process(function, arglist):
         print(f"Starting parallel process with joblib.\nfn: {function}\nargs: {arglist}")
-        print(f"n_cpus = {cfg.n_cpus}, mmap_mode = {settings.joblib_mmmode}")
-        retvals = Parallel(n_jobs=cfg.n_cpus, mmap_mode=settings.joblib_mmmode)(delayed(function)(i) for i in arglist)
+        print(f"n_jobs = {cfg.batch_size}, mmap_mode = {settings.joblib_mmmode}")
+        retvals = Parallel(n_jobs=cfg.batch_size, mmap_mode=settings.joblib_mmmode)(delayed(function)(i) for i in arglist)
         return retvals
 
     @staticmethod

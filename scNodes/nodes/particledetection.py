@@ -110,7 +110,7 @@ class ParticleDetectionNode(Node):
                 self.active_roi = self.roi
             else:
                 Node.get_source_load_data_node(self).dataset.reconstruction_roi = [0, 0, image.shape[0], image.shape[1]]
-                self.active_roi = [0, 0, image.shape[0], image.shape[1]]
+                self.active_roi = [0, 0, image.shape[1], image.shape[0]]
             image_obj.maxima = coordinates
             return image_obj
 

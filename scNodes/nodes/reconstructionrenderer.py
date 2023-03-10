@@ -130,6 +130,7 @@ class ReconstructionRendererNode(Node):
                 roi = self.get_particle_data().reconstruction_roi
                 img_width = int((roi[3] - roi[1]) / self.params["pixel_size"])
                 img_height = int((roi[2] - roi[0]) / self.params["pixel_size"])
+                print(roi)
                 self.reconstruction_image_size = (img_height, img_width)
 
             header_expanded, _ = imgui.collapsing_header("Advanced", None)

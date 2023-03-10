@@ -10,7 +10,7 @@ from datetime import datetime
 frozen = False
 root = ""
 app_name = "scNodes"
-version = "1.1.4"
+version = "1.1.6"
 license = "GNU GPL v3"
 logpath = "scNodes.log"
 filetype_project = ".scnp"
@@ -44,7 +44,7 @@ connector_released = False
 connector_delete_requested = False
 
 n_cpus_max = cpu_count()
-n_cpus = n_cpus_max * 3
+n_cpus = n_cpus_max
 batch_size = n_cpus_max * 3
 
 image_viewer = None

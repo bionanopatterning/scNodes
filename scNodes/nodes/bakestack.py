@@ -46,6 +46,7 @@ class BakeStackNode(Node):
         self.scalar_metrics = list()
         self.params["bake_coordinates"] = False
         self.params["load_baked_stack_into_ram"] = False
+        self.detection_roi = [0, 0, 1, 1]
 
     def render(self):
         if super().render_start():
@@ -130,9 +131,13 @@ class BakeStackNode(Node):
             if self.params["bake_coordinates"]:
                 coordsource = self.connectable_attributes["coordinates_in"].get_incoming_node()
                 coordinates = coordsource.get_coordinates(idx)
+                self.detection_roi = coordsource.get_roi()
                 return coordinates
             return False
         return False
+
+    def get_roi(self):
+        return self.detection_roi
 
     def get_image_impl(self, idx=None):
         if self.has_dataset and idx in range(0, self.dataset.n_frames):
@@ -151,6 +156,9 @@ class BakeStackNode(Node):
                 return datasource.get_image(idx)
 
     def get_coordinates(self, idx=None):
+        coord_source = self.connectable_attributes["coordinates_in"].get_incoming_node()
+        if coord_source:
+            self.detection_roi = coord_source.get_roi()
         if self.has_coordinates and idx in range(0, self.dataset.n_frames):
             return self.coordinates[idx]
 
@@ -201,10 +209,8 @@ class BakeStackNode(Node):
                     # Load dataset from temp dir.
                     self.dataset = Dataset(self.temp_dir + "/00.tif")
                     if self.params["load_baked_stack_into_ram"]:
-                        print("Loading baked stack into RAM")
                         for frame in self.dataset.frames:
                             frame.load()
-                        print("Done loading baked stack into RAM")
                     self.any_change = True
                     self.baking = False
                     self.play = False
