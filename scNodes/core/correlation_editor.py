@@ -1759,8 +1759,8 @@ class Camera:
         self.view_projection_matrix = np.matmul(self.projection_matrix, self.view_matrix)
 
     def focus_on_frame(self, clemframe):
-        self.position[0] = clemframe.transform.translation[0]
-        self.position[1] = clemframe.transform.translation[1]
+        self.position[0] = -clemframe.transform.translation[0]
+        self.position[1] = -clemframe.transform.translation[1]
         # set zoom as well:
         img_width = clemframe.width * clemframe.pixel_size
         img_height = clemframe.height * clemframe.pixel_size

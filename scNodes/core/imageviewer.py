@@ -398,7 +398,9 @@ class ImageViewer:
                     if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.RELEASE):
                         self.moving_roi = False
                         self.roi.limit(self.image_width, self.image_height)
-                        cfg.active_node.any_change = True
+                        if cfg.active_node.FLAG_CHANGE_UPON_ROI_CHANGE:
+                            cfg.active_node.any_change = True
+
                     else:
                         self.roi.translate(self.cursor_delta_as_world_delta())
 
@@ -408,7 +410,8 @@ class ImageViewer:
                         self.drawing_roi = False
                         self.roi.correct_order()
                         self.roi.limit(self.image_width, self.image_height)
-                        cfg.active_node.any_change = True
+                        if cfg.active_node.FLAG_CHANGE_UPON_ROI_CHANGE:
+                            cfg.active_node.any_change = True
                     else:
                         new_box = [self.roi.box[0], self.roi.box[1], px_coords[0], px_coords[1]]
                         if cfg.active_node.ROI_MUST_BE_SQUARE:

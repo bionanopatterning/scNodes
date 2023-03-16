@@ -32,6 +32,7 @@ class ExportDataNode(Node):
         self.params["parallel"] = True
         self.returns_image = False
         self.does_profiling_count = False
+        self.FLAG_CHANGE_UPON_ROI_CHANGE = False
 
     def render(self):
         if super().render_start():

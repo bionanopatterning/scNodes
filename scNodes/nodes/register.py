@@ -132,7 +132,8 @@ class RegisterNode(Node):
                      "same range as that of the original image.")
         _c, self.params["add_drift_metrics"] = imgui.checkbox("Add drift metrics", self.params["add_drift_metrics"])
         if self.params["add_drift_metrics"]:
-            self.params["metric_nm_or_px"] = imgui.combo("Metric unit", self.params["metric_nm_or_px"], ["nm", "pixel"])
+            imgui.set_next_item_width(110)
+            _c, self.params["metric_nm_or_px"] = imgui.combo("Metric unit", self.params["metric_nm_or_px"], ["nm", "pixel"])
 
 
     def get_image_impl(self, idx=None):
