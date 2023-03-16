@@ -158,9 +158,6 @@ class ReconstructionRendererNode(Node):
                 pass
                 self.reconstructor.set_mode("ui16")
 
-        # if imgui.button("Recompile shader"):
-        #     self.reconstructor.recompile_shader()
-
     def get_histogram_values(self):
         datasource = self.connectable_attributes["reconstruction_in"].get_incoming_node()
         if datasource:

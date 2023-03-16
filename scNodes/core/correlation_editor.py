@@ -868,7 +868,6 @@ class CorrelationEditor:
             alpha_mask = np.zeros((out_size_pixels[0], out_size_pixels[1]))
             glEnable(GL_DEPTH_TEST)
 
-            import matplotlib.pyplot as plt
             glDepthFunc(GL_ALWAYS)
             for i in range(tiles_h):
                 for j in range(tiles_v):
@@ -885,8 +884,6 @@ class CorrelationEditor:
                         CorrelationEditor.renderer.render_frame_quad(camera, frame)
                     tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_RGB, GL_FLOAT)
                     out_img[i*T:min([(i+1)*T, W]), j*T:min([(j+1)*T, H]), 0:3] = np.rot90(tile, 1, (1, 0))[:min([T, W-(i*T)]), :min([T, H-(j*T)])]
-                    plt.imshow(np.rot90(tile, 1, (1, 0))[:min([T, W-(i*T)]), :min([T, H-(j*T)]), :])
-                    plt.show()
                     depth_tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_DEPTH_COMPONENT, GL_FLOAT)
                     alpha_mask[i*T:min([(i+1)*T, W]), j*T:min([(j+1)*T, H])] = np.rot90(depth_tile, 1, (1, 0))[:min([T, W-(i*T)]), :min([T, H-(j*T)])]
             glDisable(GL_DEPTH_TEST)
@@ -895,16 +892,10 @@ class CorrelationEditor:
             out_img[:, :, 3] = alpha_mask
             out_img = np.rot90(out_img, -1, (1, 0))
             out_img = out_img[::-1, :]
-            plt.imshow(out_img[:, :, 0:3])
-            plt.show()
             out_img *= 255
             out_img[out_img < 0] = 0
             out_img[out_img > 255] = 255
-            plt.imshow(out_img[:, :, 0:3])
-            plt.show()
             out_img = out_img.astype(np.uint8)
-            plt.imshow(out_img[:, :, 0:3])
-            plt.show()
             util.save_png(out_img, CorrelationEditor.ex_path, alpha=True)
 
         def export_tiff_stack():

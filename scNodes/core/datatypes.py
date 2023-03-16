@@ -326,8 +326,12 @@ class ParticleData:
         particle_data_obj.empty = False
         particle_data_obj.set_reconstruction_roi([particle_data_obj.x_min, particle_data_obj.y_min, particle_data_obj.x_max, particle_data_obj.y_max])
 
-
-
+        for key in particle_data_obj.parameters:
+            particle_data_obj.histogram_counts[key], particle_data_obj.histogram_bins[key] = np.histogram(particle_data_obj.parameters[key], bins=ParticleData.HISTOGRAM_BINS)
+            particle_data_obj.histogram_counts[key] = particle_data_obj.histogram_counts[key].astype(np.float32)
+            particle_data_obj.histogram_counts[key] = np.delete(particle_data_obj.histogram_counts[key], 0)
+            particle_data_obj.histogram_bins[key] = (particle_data_obj.histogram_bins[key][1], particle_data_obj.histogram_bins[key][-1])
+        particle_data_obj.baked = True
         return particle_data_obj
 
     def save_as_csv(self, path):
