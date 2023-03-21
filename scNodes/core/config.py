@@ -18,6 +18,8 @@ from datetime import datetime
 # todo: add alpha wobbler in right-click menu for the alpha slider
 # todo: fix BLUR FRAME plugin's original frame still being visible in the scene, but not in the object list
 # todo: add feature to CE: left-click and hold on a (pile of) frames opens a popup that lists all the files under the cursor. Helps to select files hidden by a file higher up in the stack - like in Fusion360.
+
+
 frozen = False
 root = ""
 app_name = "scNodes"
