@@ -1197,8 +1197,9 @@ class CorrelationEditor:
             _, CorrelationEditor.active_frame.alpha = imgui.slider_float("##alpha", CorrelationEditor.active_frame.alpha, 0.0, 1.0, format="alpha = %.2f")
             if _:
                 CorrelationEditor.alpha_wobbler_active = False
-            if imgui.is_item_hovered() and imgui.is_key_pressed(glfw.MOUSE_BUTTON_RIGHT):
-                CorrelationEditor.alpha_wobbler_active = not CorrelationEditor.alpha_wobbler_active
+            if imgui.begin_popup_context_item(""):
+                _, CorrelationEditor.alpha_wobbler_active = imgui.checkbox("Alpha wobbler", CorrelationEditor.alpha_wobbler_active)
+                imgui.end_popup()
             if CorrelationEditor.alpha_wobbler_active and CorrelationEditor.active_frame is not None:
                 CorrelationEditor.active_frame.alpha = 0.5 + 0.5 * np.sin(self.window.time * CorrelationEditor.ALPHA_WOBBLER_OSCILLATIONS_PER_SECOND * np.pi)
             # blend mode
