@@ -14,8 +14,10 @@ from datetime import datetime
 # todo: in the View tab in the CE: hide the tool window when all views set to False
 # todo: fix the Register grayscale plugin
 # todo: input - press "I" to toffle interpolation
-# todo: fix mrc file clemframes sometimes not updating despite slicer being changed and frame being loaded (the last thing I presume, since there is a slight loading delay upon changing the slicer value).
-
+# todo: fix mrc file clemframes sometimes not updating despite slicer being changed and frame being loaded (the last thing I presume, since there is a slight loading delay upon changing the slicer value). Reason appears to be that MIPMAP IS ONLY SET WHEN INTERP MODE CHANGES. NO MIPMAPPING FOR MRC FILES!
+# todo: add alpha wobbler in right-click menu for the alpha slider
+# todo: fix BLUR FRAME plugin's original frame still being visible in the scene, but not in the object list
+# todo: add feature to CE: left-click and hold on a (pile of) frames opens a popup that lists all the files under the cursor. Helps to select files hidden by a file higher up in the stack - like in Fusion360.
 frozen = False
 root = ""
 app_name = "scNodes"
