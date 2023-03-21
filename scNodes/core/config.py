@@ -5,7 +5,16 @@ import os
 from datetime import datetime
 # This file defines variables that can be accessed globally.
 
+# TO DO list
 # todo: fix error where bakestack freezes baking a second time. 230309 - fixed, maybe?
+# todo: when flipping a frame in CE, flip children as well.
+# todo: input - press '0' (zero) to hide/show frame
+# todo: input - press "SHIFT" and "+" or "-" to increase/decrease active frame Alpha by 0.1
+# todo: in the View tab in the CE, set the imgui frame padding to 2
+# todo: in the View tab in the CE: hide the tool window when all views set to False
+# todo: fix the Register grayscale plugin
+# todo: input - press "I" to toffle interpolation
+# todo: fix mrc file clemframes sometimes not updating despite slicer being changed and frame being loaded (the last thing I presume, since there is a slight loading delay upon changing the slicer value).
 
 frozen = False
 root = ""

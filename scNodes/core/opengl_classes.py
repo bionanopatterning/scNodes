@@ -1,5 +1,6 @@
 from OpenGL.GL import *
 from OpenGL.GLUT import *
+OpenGL.ERROR_CHECKING = False  # TODO: validate speed increase
 from itertools import count
 import numpy as np
 import ctypes
