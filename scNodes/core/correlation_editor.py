@@ -1,5 +1,7 @@
 import importlib
 import glfw
+import imgui
+
 from scNodes.core import util
 from tkinter import filedialog
 import pyperclip
@@ -68,18 +70,23 @@ class CorrelationEditor:
         measure_active = False
         measure_tool = None
         measure_tool_colour = (255 / 255, 202 / 255, 28 / 255, 1.0)
+
         # editing
         MOUSE_SHORT_PRESS_MAX_DURATION = 0.25  # seconds
         ARROW_KEY_TRANSLATION = 100.0  # nm
         ARROW_KEY_TRANSLATION_FAST = 1000.0  # nm
         ARROW_KEY_TRANSLATION_SLOW = 10.0
+        LONG_MOUSE_PRESS_EVENT_DURATION = 1.4
         mouse_left_press_world_pos = [0, 0]
         mouse_left_release_world_pos = [0, 0]
-
+        mouse_down_timer = 0.0
+        frame_xray_window_open = False
+        frame_xray_window_allow_opening = False
+        frame_xray_window_frames = list()
+        frame_xray_window_position = (0, 0)
         mrc_flip_on_load = False
         flip_images_on_load = False
 
-        # data
         frames = list()  # order of frames in this list determines the rendering order. Index 0 = front, index -1 = back.
         gizmos = list()
         gizmo_mode_scale = True  # if False, gizmo mode is rotate instead.
@@ -125,7 +132,8 @@ class CorrelationEditor:
         location_gizmo = None
         location_gizmo_visible = False
         incoming_files = list()
-
+        alpha_wobbler_active = False
+        ALPHA_WOBBLER_OSCILLATIONS_PER_SECOND = 0.5
         # particle picking
         picking_enabled = False
         picking_show = True
@@ -338,6 +346,7 @@ class CorrelationEditor:
         self.tool_info_window()
         self.objects_info_window()
         self.visuals_window()
+        self.frame_xray_window()
         self.measure_tools()
         self._warning_window()
 
@@ -378,8 +387,10 @@ class CorrelationEditor:
                 _c, cfg.ce_flip_on_load = imgui.checkbox("Flip images when loading", cfg.ce_flip_on_load)
                 imgui.end_menu()
             if imgui.begin_menu("View"):
+                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (2, 2))
                 for tool_menu_name in cfg.ce_tool_menu_names:
                     _c, cfg.ce_tool_menu_names[tool_menu_name] = imgui.checkbox(tool_menu_name, cfg.ce_tool_menu_names[tool_menu_name])
+                imgui.pop_style_var(1)
                 imgui.end_menu()
             if imgui.begin_menu("Editor"):
                 select_node_editor, _ = imgui.menu_item("Node Editor", None, False)
@@ -392,6 +403,8 @@ class CorrelationEditor:
         imgui.pop_style_var(1)
 
     def tool_info_window(self):
+        if not (True in cfg.ce_tool_menu_names.values()):
+            return
         af = CorrelationEditor.active_frame
         imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_PANEL_BACKGROUND[0:3], 0.0)
         imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_PANEL_BACKGROUND[0:3], 0.0)
@@ -955,6 +968,53 @@ class CorrelationEditor:
         else:
             export_tiff_stack()
 
+    @staticmethod
+    def _frame_context_menu(f, title_edit_field=True):
+        if title_edit_field:
+            _c, f.title = imgui.input_text("##fname", f.title, 30)
+        if f.title == "":
+            f.title = str(f.uid)
+        if imgui.menu_item("Send to top")[0]:
+            f.move_to_front()
+        elif imgui.menu_item("Send to bottom")[0]:
+            f.move_to_back()
+        elif imgui.menu_item("Raise one step")[0]:
+            f.move_forwards()
+        elif imgui.menu_item("Lower one step")[0]:
+            f.move_backwards()
+        elif imgui.menu_item("Rotate +90° (ccw)")[0]:
+            f.transform.rotation += 90.0
+        elif imgui.menu_item("Rotate -90° (cw)")[0]:
+            f.transform.rotation -= 90.0
+        elif imgui.menu_item("Duplicate")[0]:
+            duplicate = f.duplicate()
+            duplicate.setup_opengl_objects()
+            cfg.ce_frames.insert(0, duplicate)
+        if imgui.begin_menu("Flip"):
+            if imgui.menu_item("Horizontally")[0]:
+                f.flip()
+            if imgui.menu_item("Vertically")[0]:
+                f.flip(horizontally=False)
+            if imgui.menu_item("Horizontally (+ children)")[0]:
+                f.flip(include_children=True)
+            if imgui.menu_item("Vertically (+ children)")[0]:
+                f.flip(horizontally=False, include_children=True)
+            imgui.end_menu()
+        if imgui.begin_menu("Render binned"):
+            if imgui.menu_item("None", selected=f.binning == 1)[0]:
+                f.binning = 1
+            if imgui.menu_item("1.5 x", selected=f.binning == 1.5)[0]:
+                f.binning = 1.5
+            elif imgui.menu_item("2 x", selected=f.binning == 2)[0]:
+                f.binning = 2
+            elif imgui.menu_item("3 x", selected=f.binning == 3)[0]:
+                f.binning = 3
+            elif imgui.menu_item("4 x", selected=f.binning == 4)[0]:
+                f.binning = 4
+            elif imgui.menu_item("8 x", selected=f.binning == 8)[0]:
+                f.binning = 8
+            imgui.end_menu()
+
     def objects_info_window(self):
         content_width = 0
         to_delete = None
@@ -985,43 +1045,7 @@ class CorrelationEditor:
 
             _c, selected = imgui.selectable(""+f.title+f"###fuid{f.uid}", selected=CorrelationEditor.active_frame == f, width=label_width)
             if imgui.begin_popup_context_item():
-                _c, f.title = imgui.input_text("##fname", f.title, 30)
-                if f.title == "":
-                    f.title = str(f.uid)
-                if imgui.menu_item("Send to top")[0]:
-                    f.move_to_front()
-                elif imgui.menu_item("Send to bottom")[0]:
-                    f.move_to_back()
-                elif imgui.menu_item("Raise one step")[0]:
-                    f.move_forwards()
-                elif imgui.menu_item("Lower one step")[0]:
-                    f.move_backwards()
-                elif imgui.menu_item("Rotate +90° (ccw)")[0]:
-                    f.transform.rotation += 90.0
-                elif imgui.menu_item("Rotate -90° (cw)")[0]:
-                    f.transform.rotation -= 90.0
-                elif imgui.menu_item("Flip horizontally")[0]:
-                    f.flip()
-                elif imgui.menu_item("Flip vertically")[0]:
-                    f.flip(horizontally=False)
-                elif imgui.menu_item("Duplicate")[0]:
-                    duplicate = f.duplicate()
-                    duplicate.setup_opengl_objects
-                    cfg.ce_frames.insert(0, duplicate)
-                if imgui.begin_menu("Render binned"):
-                    if imgui.menu_item("None", selected=f.binning==1)[0]:
-                        f.binning = 1
-                    if imgui.menu_item("1.5 x", selected=f.binning==1.5)[0]:
-                        f.binning = 1.5
-                    elif imgui.menu_item("2 x", selected=f.binning==2)[0]:
-                        f.binning = 2
-                    elif imgui.menu_item("3 x", selected=f.binning==3)[0]:
-                        f.binning = 3
-                    elif imgui.menu_item("4 x", selected=f.binning==4)[0]:
-                        f.binning = 4
-                    elif imgui.menu_item("8 x", selected=f.binning==8)[0]:
-                        f.binning = 8
-                    imgui.end_menu()
+                CorrelationEditor._frame_context_menu(f)
                 imgui.end_popup()
             if selected:
                 CorrelationEditor.active_frame = f
@@ -1171,7 +1195,12 @@ class CorrelationEditor:
 
             imgui.set_next_item_width(CorrelationEditor.ALPHA_SLIDER_WIDTH)
             _, CorrelationEditor.active_frame.alpha = imgui.slider_float("##alpha", CorrelationEditor.active_frame.alpha, 0.0, 1.0, format="alpha = %.2f")
-
+            if _:
+                CorrelationEditor.alpha_wobbler_active = False
+            if imgui.is_item_hovered() and imgui.is_key_pressed(glfw.MOUSE_BUTTON_RIGHT):
+                CorrelationEditor.alpha_wobbler_active = not CorrelationEditor.alpha_wobbler_active
+            if CorrelationEditor.alpha_wobbler_active and CorrelationEditor.active_frame is not None:
+                CorrelationEditor.active_frame.alpha = 0.5 + 0.5 * np.sin(self.window.time * CorrelationEditor.ALPHA_WOBBLER_OSCILLATIONS_PER_SECOND * np.pi)
             # blend mode
             imgui.same_line()
             imgui.set_next_item_width(CorrelationEditor.BLEND_COMBO_WIDTH)
@@ -1179,6 +1208,26 @@ class CorrelationEditor:
         imgui.pop_style_color(5)
         imgui.pop_style_var(3)
         imgui.end()
+
+    def frame_xray_window(self):
+        if CorrelationEditor.frame_xray_window_open:
+            imgui.set_next_window_position(*CorrelationEditor.frame_xray_window_position)
+            imgui.set_next_window_size_constraints((160, 0), (1000, 1000))
+            imgui.begin("Select frame:", False, imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_SAVED_SETTINGS)
+            close_window = False
+            for frame in CorrelationEditor.frame_xray_window_frames:
+                imgui.push_id(f"xrayselection{frame.uid}")
+                if imgui.menu_item(frame.title)[0]:
+                    CorrelationEditor.active_frame = frame
+                    close_window = True
+                if imgui.is_item_hovered():
+                    CorrelationEditor.active_frame = frame
+                imgui.pop_id()
+            if close_window or self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
+                CorrelationEditor.frame_xray_window_open = False
+                CorrelationEditor.frame_xray_window_allow_opening = False
+                CorrelationEditor.mouse_down_timer = 0.0
+            imgui.end()
 
     def camera_control(self):
         if imgui.get_io().want_capture_mouse or imgui.get_io().want_capture_keyboard:
@@ -1294,7 +1343,18 @@ class CorrelationEditor:
                 return
 
         # Scene editor: mouse input - selecting frames and changing gizmo mode
-        if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
+        if self.window.cursor_delta != [0.0, 0.0]:
+            CorrelationEditor.frame_xray_window_allow_opening = False
+        if self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT):
+            CorrelationEditor.mouse_down_timer += self.window.delta_time
+        else:
+            CorrelationEditor.mouse_down_timer = 0.0
+        if CorrelationEditor.frame_xray_window_open:
+            CorrelationEditor.mouse_down_timer = 0.0
+            CorrelationEditor.frame_xray_window_allow_opening = False
+            return
+        elif self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
+            CorrelationEditor.frame_xray_window_allow_opening = True
             # check which object should be active (if any)
             clicked_object = self.get_object_under_cursor(self.window.cursor_pos)
             if isinstance(clicked_object, CLEMFrame):
@@ -1315,6 +1375,11 @@ class CorrelationEditor:
                 CorrelationEditor.gizmo_mode_scale = not CorrelationEditor.gizmo_mode_scale
             elif isinstance(clicked_object, CLEMFrame):
                 CorrelationEditor.active_frame = clicked_object
+        elif CorrelationEditor.frame_xray_window_allow_opening and CorrelationEditor.mouse_down_timer > CorrelationEditor.LONG_MOUSE_PRESS_EVENT_DURATION:
+            # get list of all the frames underneath cursor
+            CorrelationEditor.frame_xray_window_frames = self.get_all_frames_under_cursor(self.window.cursor_pos)
+            CorrelationEditor.frame_xray_window_open = True
+            CorrelationEditor.frame_xray_window_position = (self.window.cursor_pos[0] - 3, self.window.cursor_pos[1] - 3)
 
         # Editor mouse input - dragging frames and gizmo's
         if not imgui.get_io().want_capture_mouse:  # skip mouse drag input when imgui expects mouse input
@@ -1387,12 +1452,21 @@ class CorrelationEditor:
             elif imgui.is_key_pressed(glfw.KEY_DELETE, repeat=True):
                 if CorrelationEditor.active_frame is not None:
                     CorrelationEditor.delete_frame(CorrelationEditor.active_frame)
+
             for number_key in range(0, min([CorrelationEditor.N_BLEND_MODES, 9])):
                 if imgui.is_key_down(glfw.KEY_1 + number_key):
                     CorrelationEditor.active_frame.blend_mode = number_key
-            if imgui.is_key_down(glfw.KEY_A):
+            if imgui.is_key_pressed(glfw.KEY_0) or imgui.is_key_pressed(glfw.KEY_H) or imgui.is_key_pressed(glfw.KEY_V):
+                CorrelationEditor.active_frame.hide = not CorrelationEditor.active_frame.hide
+            elif imgui.is_key_down(glfw.KEY_LEFT_SHIFT) and imgui.is_key_pressed(glfw.KEY_MINUS):
+                CorrelationEditor.active_frame.alpha = max([0.0, CorrelationEditor.active_frame.alpha - 0.1])
+            elif imgui.is_key_down(glfw.KEY_LEFT_SHIFT) and imgui.is_key_pressed(glfw.KEY_EQUAL):
+                CorrelationEditor.active_frame.alpha = min([1.0, CorrelationEditor.active_frame.alpha + 0.1])
+            elif imgui.is_key_down(glfw.KEY_A):
                 CorrelationEditor.active_frame.compute_autocontrast()
-            if imgui.is_key_down(glfw.KEY_SPACE):
+            elif imgui.is_key_down(glfw.KEY_I):
+                CorrelationEditor.active_frame.toggle_interpolation()
+            elif imgui.is_key_down(glfw.KEY_SPACE):
                 self.camera.focus_on_frame(CorrelationEditor.active_frame)
 
     def _warning_window(self):
@@ -1441,40 +1515,7 @@ class CorrelationEditor:
                 imgui.set_next_window_position(self.context_menu_position[0] - 3, self.context_menu_position[1] - 3)
                 imgui.begin("##ce_cm", False, imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_SAVED_SETTINGS)
                 ## context menu options
-                any_option_selected = True
-                if imgui.menu_item("Send to top")[0]:
-                    frame.move_to_front()
-                elif imgui.menu_item("Send to bottom")[0]:
-                    frame.move_to_back()
-                elif imgui.menu_item("Raise one step")[0]:
-                    frame.move_forwards()
-                elif imgui.menu_item("Lower one step")[0]:
-                    frame.move_backwards()
-                elif imgui.menu_item("Rotate +90° (ccw)")[0]:
-                    frame.transform.rotation += 90.0
-                elif imgui.menu_item("Rotate -90° (cw)")[0]:
-                    frame.transform.rotation -= 90.0
-                elif imgui.menu_item("Flip horizontally")[0]:
-                    frame.flip()
-                elif imgui.menu_item("Flip vertically")[0]:
-                    frame.flip(horizontally=False)
-                elif imgui.menu_item("Duplicate")[0]:
-                    duplicate = frame.duplicate()
-                    cfg.ce_frames.insert(0, duplicate)
-                if imgui.begin_menu("Render binned"):
-                    if imgui.menu_item("None", selected=frame.binning==1)[0]:
-                        frame.binning = 1
-                    if imgui.menu_item("1.5 x", selected=frame.binning==1.5)[0]:
-                        frame.binning = 1.5
-                    elif imgui.menu_item("2 x", selected=frame.binning==2)[0]:
-                        frame.binning = 2
-                    elif imgui.menu_item("3 x", selected=frame.binning==3)[0]:
-                        frame.binning = 3
-                    elif imgui.menu_item("4 x", selected=frame.binning==4)[0]:
-                        frame.binning = 4
-                    elif imgui.menu_item("8 x", selected=frame.binning==8)[0]:
-                        frame.binning = 8
-                    imgui.end_menu()
+                CorrelationEditor._frame_context_menu(frame, title_edit_field=False)
                 if self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT) and not imgui.is_window_hovered(imgui.HOVERED_CHILD_WINDOWS | imgui.HOVERED_ALLOW_WHEN_BLOCKED_BY_POPUP):
                     self.context_menu_open = False
                 imgui.end()
@@ -1512,6 +1553,25 @@ class CorrelationEditor:
             if is_point_in_rectangle(cursor_world_position, frame.corner_positions):
                 return frame
         return None
+
+    def get_all_frames_under_cursor(self, cursor_position):
+        """Like get_object_under_cursor, but for frames only, and returns a list of all frames under cursor."""
+        def is_point_in_rectangle(point, corner_positions):
+            P = point
+            A = corner_positions[0]
+            B = corner_positions[1]
+            D = corner_positions[3]
+            ap = [P[0] - A[0], P[1] - A[1]]
+            ab = [B[0] - A[0], B[1] - A[1]]
+            ad = [D[0] - A[0], D[1] - A[1]]
+            return (0 < ap[0] * ab[0] + ap[1] * ab[1] < ab[0]**2 + ab[1]**2) and (0 < ap[0] * ad[0] + ap[1] * ad[1] < ad[0]**2 + ad[1]**2)
+
+        cursor_world_position = self.camera.cursor_to_world_position(cursor_position)
+        frame_list = list()
+        for frame in cfg.ce_frames:
+            if is_point_in_rectangle(cursor_world_position, frame.corner_positions):
+                frame_list.append(frame)
+        return frame_list
 
     def get_camera_zoom(self):
         return self.camera.zoom
@@ -1757,6 +1817,7 @@ class Camera:
         img_height = clemframe.height * clemframe.pixel_size
         size = max([img_width, img_height])
         self.zoom = CorrelationEditor.DEFAULT_ZOOM * CorrelationEditor.DEFAULT_HORIZONTAL_FOV_WIDTH / size
+
 
 class EditorGizmo:
     idgen = count(0)

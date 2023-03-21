@@ -6,20 +6,31 @@ from datetime import datetime
 # This file defines variables that can be accessed globally.
 
 # TO DO list
-# todo: fix error where bakestack freezes baking a second time. 230309 - fixed, maybe?
-# todo: when flipping a frame in CE, flip children as well.
-# todo: input - press '0' (zero) to hide/show frame
-# todo: input - press "SHIFT" and "+" or "-" to increase/decrease active frame Alpha by 0.1
-# todo: in the View tab in the CE, set the imgui frame padding to 2
-# todo: in the View tab in the CE: hide the tool window when all views set to False
-# todo: fix the Register grayscale plugin
-# todo: input - press "I" to toffle interpolation
-# todo: fix mrc file clemframes sometimes not updating despite slicer being changed and frame being loaded (the last thing I presume, since there is a slight loading delay upon changing the slicer value). Reason appears to be that MIPMAP IS ONLY SET WHEN INTERP MODE CHANGES. NO MIPMAPPING FOR MRC FILES!
-# todo: add alpha wobbler in right-click menu for the alpha slider
-# todo: fix BLUR FRAME plugin's original frame still being visible in the scene, but not in the object list
-# todo: add feature to CE: left-click and hold on a (pile of) frames opens a popup that lists all the files under the cursor. Helps to select files hidden by a file higher up in the stack - like in Fusion360.
+# todo: fix error where bakestack freezes when baking a second time. 230309 - fixed, maybe?
+# DONE: when flipping a frame in CE, flip children as well.
+# DONE: input - press '0' (zero) to hide/show frame
+# DONE: input - press "SHIFT" and "+" or "-" to increase/decrease active frame Alpha by 0.1
+# DONE: in the View tab in the CE, set the imgui frame padding to 2
+# DONE: in the View tab in the CE: hide the tool window when all views set to False
+# todo: troubleshoot the Register grayscale plugin
+# DONE: input - press "I" to toggle interpolation
+# DONE: fix mrc file clemframes sometimes not updating despite slicer being changed and frame being loaded. Reason appears to be that MIPMAP IS ONLY SET WHEN INTERP MODE CHANGES.
+# DONE: add alpha wobbler in right-click menu for the alpha slider
+# DONE: fix BLUR FRAME plugin's original frame still being visible in the scene, but not in the object list
+# DONE: add feature to CE: left-click and hold on a (pile of) frames opens a popup that lists all the files under the cursor. Helps to select files hidden by a file higher up in the stack - like in Fusion360.
+# DONE: dont move pivot point when scaling frame
+ce_controls = """
+Button input:
 
-
+Spacebar: focus view on the selected frame
+Number keys: set the blend mode of the selected frame
+Arrow keys: move frame. +SHIFT: move fast, +CTRL: move slow. 
+Shift and +/-: in/decrease selected frame alpha
+Delete: delete the selected frame
+0, H, or V: hide/show the selected frame
+A: set auto-contrast for the selected frame
+I: toggle interpolation mode for the selected frame
+"""
 frozen = False
 root = ""
 app_name = "scNodes"

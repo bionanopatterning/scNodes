@@ -84,11 +84,10 @@ class CLEMFrame:
         my_copy.setup_opengl_objects()
         return my_copy
 
-    def flip(self, horizontally=True):
+    def flip(self, horizontally=True, include_children=False):
         if horizontally:
             self.flip_h = not self.flip_h
             self.data = np.flip(self.data, axis=1)
-            # flip particles
             for group in self.particle_groups:
                 for i in range(len(group.coordinates)):
                     group.coordinates[i][0] = self.width - group.coordinates[i][0]
@@ -98,6 +97,9 @@ class CLEMFrame:
             for group in self.particle_groups:
                 for i in range(len(group.coordinates)):
                     group.coordinates[i][1] = -(self.height + group.coordinates[i][1])
+        if include_children:
+            for child in self.children:
+                child.flip(horizontally=horizontally, include_children=True)
         self.update_image_texture(compute_histogram=False)
 
     def setup_opengl_objects(self):
@@ -180,9 +182,11 @@ class CLEMFrame:
             offset = [pivot[0] - frame.transform.translation[0], pivot[1] - frame.transform.translation[1]]
             frame.transform.translation[0] += offset[0] * (1.0 - scale)
             frame.transform.translation[1] += offset[1] * (1.0 - scale)
-            frame.pivot_point[0] += offset[0] * (1.0 - scale)
-            frame.pivot_point[1] += offset[1] * (1.0 - scale)
             frame.pixel_size *= scale
+            if not frame == self:
+                frame.pivot_point[0] += offset[0] * (1.0 - scale)
+                frame.pivot_point[1] += offset[1] * (1.0 - scale)
+
 
     def update_model_matrix(self):
         self.transform.scale = self.pixel_size
