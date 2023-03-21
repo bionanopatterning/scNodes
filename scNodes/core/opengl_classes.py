@@ -38,6 +38,7 @@ class Texture:
             self.internalformat = if_f_t[0]
             self.format = if_f_t[1]
             self.type = if_f_t[2]
+            self.wants_mipmap = False
 
             glBindTexture(GL_TEXTURE_2D, self.renderer_id)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
@@ -64,22 +65,27 @@ class Texture:
             imgdata = pixeldata.flatten()
 
         glTexImage2D(GL_TEXTURE_2D, 0, self.internalformat, self.width, self.height, 0, self.format, self.type, imgdata)
+        if self.wants_mipmap:
+            glGenerateMipmap(GL_TEXTURE_2D)
 
     def set_linear_interpolation(self):
         glBindTexture(GL_TEXTURE_2D, self.renderer_id)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        self.wants_mipmap = False
 
     def set_linear_mipmap_interpolation(self):
         glBindTexture(GL_TEXTURE_2D, self.renderer_id)
         glGenerateMipmap(GL_TEXTURE_2D)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        self.wants_mipmap = True
 
     def set_no_interpolation(self):
         glBindTexture(GL_TEXTURE_2D, self.renderer_id)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+        self.wants_mipmap = False
 
 class Shader:
     """Uniforms can only be uploaded when Shaders is first manually bound by user."""
