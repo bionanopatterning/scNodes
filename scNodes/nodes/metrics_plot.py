@@ -32,6 +32,10 @@ class PlotMetricsNode(Node):
             self.connectable_attributes["dataset_in"].render_start()
             self.connectable_attributes["dataset_in"].render_end()
 
+            imgui.spacing()
+            imgui.separator()
+            imgui.spacing()
+            
             self.metric_list = []
             if self.last_frame_returned is not None:
                 self.metric_list = list(self.last_frame_returned.scalar_metrics.keys())
