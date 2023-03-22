@@ -335,6 +335,7 @@ class NodeEditor:
 
         node_source_files = glob.glob(cfg.root+"nodes/*.py")  # load all .py files in the /nodes folder
         i = 0
+        delete_all_nodes = False
         for nodesrc in node_source_files:  # for every file, dynamically load module and save the module's create() function to a dict, keyed by name of node.
             i += 1
             if "__init__.py" in nodesrc:
@@ -348,9 +349,9 @@ class NodeEditor:
                 if not impl.enabled:
                     continue
                 nodeimpls.append(impl)
-
             except Exception as e:
                 cfg.nodes = list()
+                delete_all_nodes = True
                 cfg.set_error(e, f"No well-defined Node type found in {nodesrc}. See manual for minimal code requirements.")
         node_ids = list()
 
@@ -372,6 +373,9 @@ class NodeEditor:
                     NodeEditor.NODE_GROUPS[group].append(_node.title)
 
         NodeEditor.node_group_all = list(NodeEditor.NODE_FACTORY.keys())
+
+        if delete_all_nodes:
+            cfg.nodes = list()
 
     @staticmethod
     def save_node_setup(path):

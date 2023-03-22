@@ -57,7 +57,7 @@ class Node:
         self.play = False
         self.any_change = False
         self.use_roi = False
-        self.roi = [0, 0, 0, 0]
+        self.roi = [0, 0, 0, 0]  # [left, bottom, right, top]
         self.lut = "auto"
         self.params = dict()
 

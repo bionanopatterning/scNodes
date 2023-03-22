@@ -189,7 +189,6 @@ class Frame:
     def write_roi(self, roi, data):
         self.data[roi[1]:roi[3], roi[0]:roi[2]] = data
 
-
     def __str__(self):
         sstr = "Frame: ..." + self.title + "\n" \
             + ("Discarded frame. " if self.discard else "Frame in use. ") \
