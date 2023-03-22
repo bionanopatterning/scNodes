@@ -1,7 +1,8 @@
 from scNodes.core.node import *
 from pystackreg import StackReg
+import scNodes.nodes.pyGPUreg as pyGPUreg
 import cv2
-import pyGPUreg
+
 
 def create():
     return RegisterNode()
@@ -17,6 +18,7 @@ class RegisterNode(Node):
     INTERPOLATION_OPTIONS = ["Linear", "Cubic"]
     EDGE_FILL_OPTIONS = ["Zero", "Repeat", "Reflect"]
     edge_fill_options_scipy_argument = ['constant', 'edge', 'reflect']
+
 
     def __init__(self):
         super().__init__()
@@ -76,12 +78,13 @@ class RegisterNode(Node):
                              "such as occur when non-constant image features like blinking particles are prevalent in the\n"
                              "full image.")
             else:
-                if not self.pygpureg_initialized:
-                    pyGPUreg.init(create_window=False, image_size=256)
-                    self.pygpureg_initialized = True
-                    out, shift = pyGPUreg.register(np.random.uniform(0, 100, (256, 256)), np.random.uniform(0, 100, (256, 256)))
-                    print(shift)
                 self.use_roi = True
+                if (self.roi[2] - self.roi[0]) != self.params["pyGPUreg_size"]:
+                    self.roi[0] = 0
+                    self.roi[2] = self.params["pyGPUreg_size"]
+                if (self.roi[3] - self.roi[1]) != self.params["pyGPUreg_size"]:
+                    self.roi[1] = 0
+                    self.roi[3] = self.params["pyGPUreg_size"]
             imgui.push_item_width(140)
             _method_changed, self.params["register_method"] = imgui.combo("Method", self.params["register_method"], RegisterNode.METHODS)
             if self.params["register_method"] == 0:
@@ -235,27 +238,25 @@ class RegisterNode(Node):
                         self.roi = [0, 0, self.params["pyGPUreg_size"], self.params["pyGPUreg_size"]]
 
                     reference_image = reference_image.load_roi(self.roi)
-                    #print(f'Setting pyGPUreg image size to {self.params["pyGPUreg_size"]}')
                     #pyGPUreg.set_image_size(self.params["pyGPUreg_size"])
                     #pyGPUreg.set_template(reference_image)
+
                 # if the template is OK, the ROI is ok, so just grab the incoming image and register.
-
-                pyGPUreg.register(np.random.uniform(0, 100, (256, 256)), np.random.uniform(0, 100, (256, 256)))
-                #input_img_data = input_img.load_roi(self.roi)
-                #input_img_data_registered, shift = pyGPUreg.register_to_template(input_img_data, edge_mode=self.params["edge_fill"])
-                #input_img.data = input_img_data_registered
-                #input_img.translation = [shift[0], shift[1]]
-                #input_img.width = self.params["pyGPUreg_size"]
-                # if self.params["add_drift_metrics"]:
-                #     if self.params["metric_nm_or_px"] == 0:
-                #         input_img.scalar_metrics["drift (nm)"] = (input_img.translation[0]**2 + input_img.translation[1]**2)**0.5 * input_img.pixel_size
-                #         input_img.scalar_metrics["x drift (nm)"] = input_img.translation[0] * input_img.pixel_size
-                #         input_img.scalar_metrics["y drift (nm)"] = input_img.translation[1] * input_img.pixel_size
-                #     else:
-                #         input_img.scalar_metrics["drift (px)"] = (input_img.translation[0] ** 2 + input_img.translation[1] ** 2) ** 0.5
-                #         input_img.scalar_metrics["x drift (px)"] = input_img.translation[0]
-                #         input_img.scalar_metrics["y drift (px)"] = input_img.translation[1]
-
+                input_img_data = input_img.load_roi(self.roi)
+                input_img_data_registered, shift = pyGPUreg.register(reference_image, input_img_data, edge_mode=self.params["edge_fill"])
+                input_img.data = input_img_data_registered
+                input_img.translation = [shift[1], shift[0]]
+                input_img.width = self.params["pyGPUreg_size"]
+                if self.params["add_drift_metrics"]:
+                    if self.params["metric_nm_or_px"] == 0:
+                        input_img.scalar_metrics["drift (nm)"] = (input_img.translation[0]**2 + input_img.translation[1]**2)**0.5 * input_img.pixel_size
+                        input_img.scalar_metrics["x drift (nm)"] = input_img.translation[0] * input_img.pixel_size
+                        input_img.scalar_metrics["y drift (nm)"] = input_img.translation[1] * input_img.pixel_size
+                    else:
+                        input_img.scalar_metrics["drift (px)"] = (input_img.translation[0] ** 2 + input_img.translation[1] ** 2) ** 0.5
+                        input_img.scalar_metrics["x drift (px)"] = input_img.translation[0]
+                        input_img.scalar_metrics["y drift (px)"] = input_img.translation[1]
+                return input_img
 
     def pre_pickle_impl(self):
         self.reference_image = None

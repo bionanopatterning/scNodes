@@ -70,7 +70,8 @@ class ParticleFittingNode(Node):
             imgui.set_next_item_width(200)
             _c, self.params["estimator"] = imgui.combo("Estimator", self.params["estimator"], ParticleFittingNode.ESTIMATORS)
             imgui.set_next_item_width(148)
-            _c, self.params["psf"] = imgui.combo("PSF", self.params["psf"], ParticleFittingNode.PSFS)
+            if self.params["estimator"] != 2:
+                _c, self.params["psf"] = imgui.combo("PSF", self.params["psf"], ParticleFittingNode.PSFS)
             if self.params["estimator"] in [0, 1]:
                 imgui.same_line()
                 imgui.button("?", 19, 19)
@@ -214,6 +215,7 @@ class ParticleFittingNode(Node):
         coord_source = self.connectable_attributes["localizations_in"].get_incoming_node()
         if data_source and coord_source:
             frame = data_source.get_image(idx)
+
             if self.params["skip_discard"] and frame.discard:
                 frame.particles = None
                 self.n_frames_discarded += 1

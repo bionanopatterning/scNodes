@@ -23,6 +23,7 @@ class Texture:
     IF_F_T["rgba32f"] = [GL_RGBA32F, GL_RGBA, GL_FLOAT]
     IF_F_T["rgb32f"] = [GL_RGB32F, GL_RGB, GL_FLOAT]
     IF_F_T["r32f"] = [GL_R32F, GL_RED, GL_FLOAT]
+    IF_F_T["rg32f"] = [GL_R32F, GL_RG, GL_FLOAT]
     IF_F_T["rgbu16"] = [GL_RGB16UI, GL_RGB_INTEGER, GL_UNSIGNED_SHORT]
     IF_F_T["rgb8u"] = [GL_RGB8UI, GL_RGB_INTEGER, GL_UNSIGNED_INT]  # should be GL_BYTE but not touching it for now
     IF_F_T["rgba8u"] = [GL_RGBA8UI, GL_RGBA_INTEGER, GL_UNSIGNED_INT]  # should be GL_BYTE but not touching it for now

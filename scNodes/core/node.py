@@ -413,7 +413,8 @@ class Node:
                     self.last_frame_returned = self.get_image_impl(idx)
                     self.last_index_requested = idx
                     retval = copy.deepcopy(self.last_frame_returned)
-            retval = self.get_image_impl(idx)
+            else:
+                retval = self.get_image_impl(idx)
         except Exception as e:
             cfg.set_error(e, f"{self} error: "+str(e))
         if cfg.profiling:

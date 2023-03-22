@@ -6,7 +6,7 @@ from scNodes.core.datatypes import *
 from scNodes.core.roi import *
 from tkinter import filedialog
 from scNodes.core.util import save_tiff
-
+import scNodes.nodes.pyGPUreg as pyGPUreg
 
 class ImageViewer:
     NO_IMAGE_NOTIFICATION_SIZE = (300, 20)
@@ -102,6 +102,10 @@ class ImageViewer:
         #
         self.current_dataset = Dataset()
         self.frame_info = ""
+        #
+
+        pyGPUreg.init(create_window=False)
+
 
     def set_mode(self, mode):
         if mode in ["R", "RGB"]:
@@ -140,6 +144,7 @@ class ImageViewer:
         self._render()
         self._edit_and_render_roi()
 
+
         # imgui
         imgui.get_io().display_size = self.window.width, self.window.height
         imgui.new_frame()
@@ -177,6 +182,7 @@ class ImageViewer:
         self._shortcuts()
         self._gui_main()
 
+
         imgui.pop_style_color(28)
         imgui.pop_style_var(1)
         imgui.render()
@@ -189,7 +195,6 @@ class ImageViewer:
                 if cfg.active_node.NODE_RETURNS_IMAGE:
                     an = cfg.active_node
                     self.current_dataset = an.get_source_load_data_node(an).dataset
-                    #if self.current_dataset.initialized: removed this if clause 221017 - final else was: self.show-iamge = False
                     self.current_dataset.current_frame = np.clip(self.current_dataset.current_frame, 0, self.current_dataset.n_frames - 1)
                     cfg.active_node.FRAME_REQUESTED_BY_IMAGE_VIEWER = True
                     new_image = cfg.active_node.get_image(self.current_dataset.current_frame)
