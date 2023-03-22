@@ -102,10 +102,8 @@ class ImageViewer:
         #
         self.current_dataset = Dataset()
         self.frame_info = ""
-        #
 
-        pyGPUreg.init(create_window=False)
-
+        pyGPUreg.init(create_window=True)  # todo: this initialization shouldn't be here.
 
     def set_mode(self, mode):
         if mode in ["R", "RGB"]:

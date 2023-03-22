@@ -56,18 +56,17 @@ def init(create_window=True, image_size=None):
     """
     global window, cs_butterfly, cs_cosft, cs_fft, cs_fft_pi, cs_multiply, cs_resample, cs_fft_single, cs_fft_pi_single, cs_multiply_single, cs_copy_r_to_rg, cs_cosft_single
 
-    if create_window:
-        if not glfw.init():
-            raise Exception("Could not initialize GLFW")
+    if not glfw.init():
+        raise Exception("Could not initialize GLFW")
 
-        # create a hidden glfw window and set OpenGL version
-        glfw.window_hint(glfw.VISIBLE, glfw.FALSE)
-        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, GLFW_CONTEXT_VERSION_MAJOR)
-        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, GLFW_CONTEXT_VERSION_MINOR)
-        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-        glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, GL_TRUE)
-        window = glfw.create_window(2, 2, "pyGPUreg hidden window", None, None)
-        glfw.make_context_current(window)
+    # create a hidden glfw window and set OpenGL version
+    glfw.window_hint(glfw.VISIBLE, glfw.FALSE)
+    glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, GLFW_CONTEXT_VERSION_MAJOR)
+    glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, GLFW_CONTEXT_VERSION_MINOR)
+    glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+    glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, GL_TRUE)
+    window = glfw.create_window(2, 2, "pyGPUreg hidden window", None, None)
+    glfw.make_context_current(window)
 
     # compile shaders
     shader_dir = os.path.join(os.path.dirname(__file__))+"\\shaders\\"
@@ -326,6 +325,9 @@ def bind_and_launch_cos_filter_compute_shader():
 
 
 def gpu_fft(image, image2=None):
+    if window is not None:
+        previous_context = glfw.get_current_context()
+        glfw.make_context_current(window)
     """
     Compute a FFT on the GPU for one of two input images. The data is sent to the GPU in the form of an RGBA, float32
     texture. Since one FFT requires only two colour channels (one for the real and one for the imaginary part), it is
@@ -359,6 +361,8 @@ def gpu_fft(image, image2=None):
 
     texture_data.bind()
     fourier_transforms = glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT)
+    if window is not None:
+        glfw.make_context_current(previous_context)
     if image2 is not None:
         return fourier_transforms[:, :, 0] + 1j * fourier_transforms[:, :, 1], fourier_transforms[:, :, 2] + 1j * fourier_transforms[:, :, 3]
     else:
@@ -366,6 +370,9 @@ def gpu_fft(image, image2=None):
 
 
 def register(template_image, moved_image, apply_shift=True, edge_mode=EDGE_MODE_ZERO, subpixel_mode=SUBPIXEL_MODE_COM, interpolation_mode=INTERPOLATION_MODE_LINEAR):
+    if window is not None:
+        previous_context = glfw.get_current_context()
+        glfw.make_context_current(window)
     """
     Register moved_image onto template_image by computing the phase correlation of a template and moved image in order to detect the shift between template and moved image. Optionally also resamples the moved image to undo the shift.
     :param template_image: 2d numpy array of pixel data for the template image.
@@ -419,9 +426,13 @@ def register(template_image, moved_image, apply_shift=True, edge_mode=EDGE_MODE_
     pcorr[image_size//2, image_size//2] = 0
     dx, dy = detect_subpixel_maximum(pcorr, mode=subpixel_mode)
     if not apply_shift:
+        if window is not None:
+            glfw.make_context_current(previous_context)
         return dx, dy
 
     resampled = sample_image_with_shift(moved_image, (dy, dx), edge_mode, interpolation_mode)
+    if window is not None:
+        glfw.make_context_current(previous_context)
     return resampled, (dx, dy)
 
 
@@ -466,6 +477,9 @@ def bind_and_launch_fft_single_compute_shaders(ft_texture, do_inversion_permutat
 
 
 def set_template(template_image):
+    if window is not None:
+        previous_context = glfw.get_current_context()
+        glfw.make_context_current(window)
     s = template_image.shape
     if s[0] != image_size or s[1] != image_size:
         raise Exception(f"Template image must be square and size {image_size}, or change size by calling pyGPUfit.set_image_size()")
@@ -489,9 +503,14 @@ def set_template(template_image):
 
     # compute FFT
     bind_and_launch_fft_single_compute_shaders(texture_rg_T)
+    if window is not None:
+        glfw.make_context_current(previous_context)
 
 
 def register_to_template(image, apply_shift=True, edge_mode=EDGE_MODE_ZERO, subpixel_mode=SUBPIXEL_MODE_COM, interpolation_mode=INTERPOLATION_MODE_LINEAR):
+    if window is not None:
+        previous_context = glfw.get_current_context()
+        glfw.make_context_current(window)
     s = image.shape
     if s[0] != image_size or s[1] != image_size:
         raise Exception(
@@ -534,8 +553,12 @@ def register_to_template(image, apply_shift=True, edge_mode=EDGE_MODE_ZERO, subp
     pcorr[image_size//2, image_size//2] = 0
     dx, dy = detect_subpixel_maximum(pcorr, mode=subpixel_mode)
     if not apply_shift:
+        if window is not None:
+            glfw.make_context_current(previous_context)
         return dx, dy
 
     resampled = sample_texture_with_shift(texture_r_i, (dx, dy), edge_mode, interpolation_mode)
+    if window is not None:
+        glfw.make_context_current(previous_context)
     return resampled, (dx, dy)
 
