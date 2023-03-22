@@ -4,6 +4,13 @@ import scNodes.nodes.pyGPUreg as pyGPUreg
 import cv2
 
 
+# todo: get_image_impl can be called in two ways:
+# 1) by changing the slider in the Image Viewer -> in this case, the image viewer OpenGL context is active
+# 2) in another node's on_update() method -> in this case, the imgui OpenGL context is active.
+# got to make pyGPUreg either i) switch between two pyGPUreg instances based on how it is called; maybe using the IAMGE_VIEWER_REQUESTING_IAMGE flag, or
+# by giving pyGPUreg internal control over the context.
+
+
 def create():
     return RegisterNode()
 
