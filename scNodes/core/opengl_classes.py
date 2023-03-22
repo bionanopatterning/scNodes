@@ -1,6 +1,6 @@
 from OpenGL.GL import *
 from OpenGL.GLUT import *
-OpenGL.ERROR_CHECKING = False  # TODO: validate speed increase
+#OpenGL.ERROR_CHECKING = False  # TODO: validate speed increase
 from itertools import count
 import numpy as np
 import ctypes
@@ -13,6 +13,7 @@ All classes have bind() and unbind()* functions. (* no unbind for Texture). Text
 int:slot, to allow binding to any texture slot. When doing so, remember to set glActiveTexture(GL_TEXTURE0) later on 
 whenever necessary.
 """
+
 
 class Texture:
     idGenerator = count()

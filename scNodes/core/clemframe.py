@@ -187,7 +187,6 @@ class CLEMFrame:
                 frame.pivot_point[0] += offset[0] * (1.0 - scale)
                 frame.pivot_point[1] += offset[1] * (1.0 - scale)
 
-
     def update_model_matrix(self):
         self.transform.scale = self.pixel_size
         self.transform.compute_matrix()
