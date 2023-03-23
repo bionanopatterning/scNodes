@@ -19,6 +19,9 @@ from datetime import datetime
 # DONE: fix BLUR FRAME plugin's original frame still being visible in the scene, but not in the object list
 # DONE: add feature to CE: left-click and hold on a (pile of) frames opens a popup that lists all the files under the cursor. Helps to select files hidden by a file higher up in the stack - like in Fusion360.
 # DONE: dont move pivot point when scaling frame
+# todo: add a lock image button in the Frames in scene window to lock editing
+# todo: in frame in scene window: text gray when image is hidden
+# todo: flip tomogram plugin
 ce_controls = """
 Button input:
 

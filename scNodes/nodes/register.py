@@ -4,13 +4,6 @@ import scNodes.nodes.pyGPUreg as pyGPUreg
 import cv2
 
 
-# todo: get_image_impl can be called in two ways:
-# 1) by changing the slider in the Image Viewer -> in this case, the image viewer OpenGL context is active
-# 2) in another node's on_update() method -> in this case, the imgui OpenGL context is active.
-# got to make pyGPUreg either i) switch between two pyGPUreg instances based on how it is called; maybe using the IAMGE_VIEWER_REQUESTING_IAMGE flag, or
-# by giving pyGPUreg internal control over the context.
-
-
 def create():
     return RegisterNode()
 
@@ -86,12 +79,6 @@ class RegisterNode(Node):
                              "full image.")
             else:
                 self.use_roi = True
-                if (self.roi[2] - self.roi[0]) != self.params["pyGPUreg_size"]:
-                    self.roi[0] = 0
-                    self.roi[2] = self.params["pyGPUreg_size"]
-                if (self.roi[3] - self.roi[1]) != self.params["pyGPUreg_size"]:
-                    self.roi[1] = 0
-                    self.roi[3] = self.params["pyGPUreg_size"]
             imgui.push_item_width(140)
             _method_changed, self.params["register_method"] = imgui.combo("Method", self.params["register_method"], RegisterNode.METHODS)
             if self.params["register_method"] == 0:
@@ -225,6 +212,12 @@ class RegisterNode(Node):
                 input_img.bake_transform(interpolation=1 if self.params["interpolation"]==0 else 3, edges=RegisterNode.edge_fill_options_scipy_argument[self.params["edge_fill"]], preserve_range=self.params["preserve_range"])
                 return input_img
             elif self.params["register_method"] == 2:
+                if (self.roi[2] - self.roi[0]) != self.params["pyGPUreg_size"]:
+                    self.roi[0] = 0
+                    self.roi[2] = self.params["pyGPUreg_size"]
+                if (self.roi[3] - self.roi[1]) != self.params["pyGPUreg_size"]:
+                    self.roi[1] = 0
+                    self.roi[3] = self.params["pyGPUreg_size"]
                 # set template if necessary
                 if not self.pygpureg_template_image_set:
                     if self.params["reference_method"] == 0:
@@ -241,22 +234,21 @@ class RegisterNode(Node):
                     if max_size < self.params["pyGPUreg_size"]:
                         self.roi = [0, 0, max_size, max_size]
                         self.params["pyGPUreg_size"] = max_size
-                    else:
-                        self.roi = [0, 0, self.params["pyGPUreg_size"], self.params["pyGPUreg_size"]]
 
                     reference_image = reference_image.load_roi(self.roi)
                     #pyGPUreg.set_image_size(self.params["pyGPUreg_size"])
                     #pyGPUreg.set_template(reference_image)
 
                 # if the template is OK, the ROI is ok, so just grab the incoming image and register.
-                input_img_data = input_img.load_roi(self.roi)
-                input_img_data_registered, shift = pyGPUreg.register(reference_image, input_img_data, edge_mode=self.params["edge_fill"])
-                input_img.data = input_img_data_registered
+                sample_data = input_img.load_roi(self.roi)
+                shift = pyGPUreg.register(reference_image, sample_data, apply_shift=False)
+                shift = [float(shift[0]), float(shift[1])]
+                registered_img = pyGPUreg.sample_image_with_shift(input_img.load(), shift=[shift[1], shift[0]], edge_mode=self.params["edge_fill"])
+                input_img.data = registered_img
                 input_img.translation = [shift[1], shift[0]]
-                input_img.width = self.params["pyGPUreg_size"]
                 if self.params["add_drift_metrics"]:
                     if self.params["metric_nm_or_px"] == 0:
-                        input_img.scalar_metrics["drift (nm)"] = (input_img.translation[0]**2 + input_img.translation[1]**2)**0.5 * input_img.pixel_size
+                        input_img.scalar_metrics["drift (nm)"] = (input_img.translation[0] ** 2 + input_img.translation[1] ** 2) ** 0.5 * input_img.pixel_size
                         input_img.scalar_metrics["x drift (nm)"] = input_img.translation[0] * input_img.pixel_size
                         input_img.scalar_metrics["y drift (nm)"] = input_img.translation[1] * input_img.pixel_size
                     else:
@@ -270,7 +262,6 @@ class RegisterNode(Node):
 
     def _orb_register(self, ref, img, keep=0.7, confidence=0.99, method=0):
         """
-
         :param ref: reference image
         :param img: image to be registered
         :param keep: the fraction (0.0 to 1.0) of matches to use to estimate the transformation - e.g. 0.1: keep top 10% matches

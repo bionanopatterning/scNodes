@@ -112,6 +112,7 @@ class ParticleFittingNode(Node):
             elif _play_btn_clicked and self.fitting:
                 self.fitting = False
                 self.particle_data.bake()
+                self.any_change = True
 
             imgui.text("Reconstruction info:")
             if not self.particle_data.empty:
