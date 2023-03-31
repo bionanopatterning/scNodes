@@ -1125,8 +1125,9 @@ class CorrelationEditor:
 
     def measure_tools(self):
         if CorrelationEditor.measure_active:
-            if self.window.get_key_event(glfw.KEY_ESCAPE, glfw.PRESS):
+            if imgui.is_key_down(glfw.KEY_ESCAPE):
                 CorrelationEditor.measure_active = False
+                CorrelationEditor.measure_tool.reset()
         if CorrelationEditor.show_scale_bar:
             imgui.push_style_var(imgui.STYLE_WINDOW_PADDING, (0.0, 0.0))
             imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 0.0)
@@ -1162,7 +1163,7 @@ class CorrelationEditor:
             imgui.pop_style_var(3)
 
     def visuals_window(self):
-        imgui.set_next_window_position(86,641)
+        imgui.set_next_window_position((self.window.width - CorrelationEditor.FRAMES_IN_SCENE_WINDOW_WIDTH -  628) // 2,self.window.height - 59)
         imgui.begin("##visualsw", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_SCROLLBAR | imgui.WINDOW_NO_BACKGROUND | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_ALWAYS_AUTO_RESIZE)
         imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, cfg.CE_WIDGET_ROUNDING)
         imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, cfg.CE_WIDGET_ROUNDING)
@@ -1463,11 +1464,11 @@ class CorrelationEditor:
                 CorrelationEditor.active_frame.alpha = max([0.0, CorrelationEditor.active_frame.alpha - 0.1])
             elif imgui.is_key_down(glfw.KEY_LEFT_SHIFT) and imgui.is_key_pressed(glfw.KEY_EQUAL):
                 CorrelationEditor.active_frame.alpha = min([1.0, CorrelationEditor.active_frame.alpha + 0.1])
-            elif imgui.is_key_down(glfw.KEY_A):
+            elif imgui.is_key_pressed(glfw.KEY_A):
                 CorrelationEditor.active_frame.compute_autocontrast()
-            elif imgui.is_key_down(glfw.KEY_I):
+            elif imgui.is_key_pressed(glfw.KEY_I):
                 CorrelationEditor.active_frame.toggle_interpolation()
-            elif imgui.is_key_down(glfw.KEY_SPACE):
+            elif imgui.is_key_pressed(glfw.KEY_SPACE):
                 self.camera.focus_on_frame(CorrelationEditor.active_frame)
 
     def _warning_window(self):

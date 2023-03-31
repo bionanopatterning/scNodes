@@ -32,7 +32,6 @@ class NodeEditor:
         self.imgui_context = imgui_context
         self.imgui_implementation = imgui_impl
 
-
         # Context menu
         self.context_menu_position = [0, 0]
         self.context_menu_open = False

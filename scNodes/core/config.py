@@ -22,6 +22,7 @@ from datetime import datetime
 # todo: add a lock image button in the Frames in scene window to lock editing
 # todo: in frame in scene window: text gray when image is hidden
 # todo: flip tomogram plugin
+# DONE: when Measure tool active, press ESCAPE to deactivate it.
 ce_controls = """
 Button input:
 

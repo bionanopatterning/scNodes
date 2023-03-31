@@ -142,7 +142,6 @@ class ImageViewer:
         self._render()
         self._edit_and_render_roi()
 
-
         # imgui
         imgui.get_io().display_size = self.window.width, self.window.height
         imgui.new_frame()
@@ -183,6 +182,7 @@ class ImageViewer:
 
         imgui.pop_style_color(28)
         imgui.pop_style_var(1)
+        self.imgui_implementation.io.display_size = imgui.get_io().display_size
         imgui.render()
         self.imgui_implementation.render(imgui.get_draw_data())
 
@@ -198,7 +198,6 @@ class ImageViewer:
                     new_image = cfg.active_node.get_image(self.current_dataset.current_frame)
                     cfg.active_node.FRAME_REQUESTED_BY_IMAGE_VIEWER = False
                     if cfg.active_node.OVERRIDE_AUTOCONTRAST:
-                        print("Overriding contrast settings")
                         self.autocontrast = [False, False, False]
                         lims = cfg.active_node.OVERRIDE_AUTOCONTRAST_LIMS
                         self.contrast_min = [lims[0], lims[0], lims[0]]
@@ -300,6 +299,7 @@ class ImageViewer:
             imgui.end()
             imgui.pop_style_color(3)
 
+
     def _render(self):
         if self.show_image:
             self.va.bind()
@@ -323,7 +323,7 @@ class ImageViewer:
 
     def _frame_info_window(self):
         imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 0.0)
-        imgui.set_next_window_position(0, self.window.height - ImageViewer.INFO_BAR_HEIGHT + (cfg.window_height - self.window.height), imgui.ALWAYS)
+        imgui.set_next_window_position(0, self.window.height - ImageViewer.INFO_BAR_HEIGHT, imgui.ALWAYS)
         imgui.set_next_window_size(self.window.width, ImageViewer.INFO_BAR_HEIGHT)
         ## Info & control panel
         imgui.begin("##frameselectwindow", flags=imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE)
