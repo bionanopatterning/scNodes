@@ -39,6 +39,7 @@ class CLEMFrame:
         self.particle_groups.append(ParticleGroup())
         self.current_particle_group = self.particle_groups[0]
         # transform parameters
+        self.locked = False
         self.pixel_size = cfg.ce_default_pixel_size  # pixel size in nm
         self.pixel_size_z = cfg.ce_default_pixel_size
         self.pivot_point = np.zeros(2)  # pivot point for rotation and scaling of this particular image. can be moved by the user. In _local coordinates_, i.e. relative to where the frame itself is positioned.
@@ -81,6 +82,7 @@ class CLEMFrame:
         my_copy = deepcopy(self)
         uid_counter = next(CLEMFrame.idgen)
         my_copy.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f') + "000") + uid_counter
+        my_copy.title += " (duplicate)"
         my_copy.setup_opengl_objects()
         return my_copy
 
@@ -160,6 +162,8 @@ class CLEMFrame:
             cfg.set_error(e, f"Could not load slice from '{self.path}'.\nHas the file been moved to a different location?")
 
     def translate(self, translation):
+        if self.locked:
+            return
         for frame in self.list_all_children(include_self=True):
             frame.pivot_point[0] += translation[0]
             frame.pivot_point[1] += translation[1]
@@ -167,6 +171,8 @@ class CLEMFrame:
             frame.transform.translation[1] += translation[1]
 
     def pivoted_rotation(self, pivot, angle):
+        if self.locked:
+            return
         for frame in self.list_all_children(include_self=True):
             frame.transform.rotation += angle
             p = np.matrix([frame.transform.translation[0] - pivot[0], frame.transform.translation[1] - pivot[1]]).T
@@ -183,6 +189,8 @@ class CLEMFrame:
             frame.transform.translation[1] += delta_translation[1]
 
     def pivoted_scale(self, pivot, scale):
+        if self.locked:
+            return
         for frame in self.list_all_children(include_self=True):
             offset = [pivot[0] - frame.transform.translation[0], pivot[1] - frame.transform.translation[1]]
             frame.transform.translation[0] += offset[0] * (1.0 - scale)

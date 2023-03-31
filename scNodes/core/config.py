@@ -57,7 +57,6 @@ window_width = 1100
 window_height = 700
 iv_window_width = 600
 iv_window_height = 700
-
 profiling = False
 
 error_msg = None
@@ -128,11 +127,13 @@ def set_error(error_object, error_message):
     error_new = True
     error_logged = False
 
+
 def save_scene(filename):
     if not filetype_scene in filename:
         filename += filetype_scene
     with open(filename, 'wb') as pickle_file:
         pickle.dump(ce_frames, pickle_file)
+
 
 def load_scene(filename):
     global ce_frames, correlation_editor_relink

@@ -76,7 +76,7 @@ class CorrelationEditor:
         ARROW_KEY_TRANSLATION = 100.0  # nm
         ARROW_KEY_TRANSLATION_FAST = 1000.0  # nm
         ARROW_KEY_TRANSLATION_SLOW = 10.0
-        LONG_MOUSE_PRESS_EVENT_DURATION = 0.8
+        LONG_MOUSE_PRESS_EVENT_DURATION = 0.55
         mouse_left_press_world_pos = [0, 0]
         mouse_left_release_world_pos = [0, 0]
         mouse_down_timer = 0.0
@@ -178,14 +178,26 @@ class CorrelationEditor:
             pxd_icon_no_interp = np.asarray(Image.open(cfg.root+"icons/icon_ninterp_256.png")).astype(np.float32) / 255.0
             self.icon_no_interp.update(pxd_icon_no_interp)
             self.icon_no_interp.set_linear_interpolation()  # :)
+
             self.icon_linterp = Texture(format="rgba32f")
             pxd_icon_linterp = np.asarray(Image.open(cfg.root+"icons/icon_linterp_256.png")).astype(np.float32) / 255.0
             self.icon_linterp.update(pxd_icon_linterp)
             self.icon_linterp.set_linear_interpolation()
+
             self.icon_close = Texture(format="rgba32f")
             pxd_icon_close = np.asarray(Image.open(cfg.root+"icons/icon_close_256.png")).astype(np.float32) / 255.0
             self.icon_close.update(pxd_icon_close)
             self.icon_close.set_linear_interpolation()
+
+            self.icon_locked = Texture(format="rgba32f")
+            pxd_icon_locked = np.asarray(Image.open(cfg.root+"icons/icon_locked_256.png")).astype(np.float32) / 255.0
+            self.icon_locked.update(pxd_icon_locked)
+            self.icon_locked.set_linear_interpolation()
+
+            self.icon_unlocked = Texture(format="rgba32f")
+            pxd_icon_unlocked = np.asarray(Image.open(cfg.root + "icons/icon_unlocked_256.png")).astype(np.float32) / 255.0
+            self.icon_unlocked.update(pxd_icon_unlocked)
+            self.icon_unlocked.set_linear_interpolation()
 
             # Particle picking ROI va
             n_segments = 32
@@ -205,6 +217,7 @@ class CorrelationEditor:
         self.window.set_full_viewport()
         if self.window.focused:
             self.imgui_implementation.process_inputs()
+
 
         if imgui.get_io().want_capture_keyboard is False and imgui.is_key_pressed(glfw.KEY_TAB):
             cfg.active_editor = 0
@@ -1041,8 +1054,7 @@ class CorrelationEditor:
             # Name
             imgui.bullet_text("")
             imgui.same_line()
-            label_width = CorrelationEditor.FRAMES_IN_SCENE_WINDOW_WIDTH - indent * CorrelationEditor.FRAME_LIST_INDENT_WIDTH - 72 - (0 if f.is_rgb else 15)
-
+            label_width = CorrelationEditor.FRAMES_IN_SCENE_WINDOW_WIDTH - indent * CorrelationEditor.FRAME_LIST_INDENT_WIDTH - 87 - (0 if f.is_rgb else 15)
             _c, selected = imgui.selectable(""+f.title+f"###fuid{f.uid}", selected=CorrelationEditor.active_frame == f, width=label_width)
             if imgui.begin_popup_context_item():
                 CorrelationEditor._frame_context_menu(f)
@@ -1074,18 +1086,22 @@ class CorrelationEditor:
             if enable_widgets:
                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1.0)
                 if not f.is_rgb:
-                    imgui.same_line(position=content_width - 35.0)
+                    imgui.same_line(position=content_width - 50.0)
                     _c, f.colour = imgui.color_edit4("##Background colour", *f.colour, flags=imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP | imgui.COLOR_EDIT_DISPLAY_HEX | imgui.COLOR_EDIT_DISPLAY_RGB)
                     if _c:
                         f.lut = 0  # change lut to custom colour
                         f.update_lut()
                 # Hide checkbox
-                imgui.same_line(position=content_width - 20.0)
+                imgui.same_line(position=content_width - 35.0)
                 visible = not f.hide
                 _c, visible = imgui.checkbox("##hideframe", visible)
                 f.hide = not visible
                 CorrelationEditor.tooltip("Hide frame")
-                imgui.same_line(position = content_width - 5.0)
+                imgui.same_line(position = content_width - 20.0)
+                lock_icon = self.icon_locked if f.locked else self.icon_unlocked
+                if imgui.image_button(lock_icon.renderer_id, 13, 13):
+                    f.locked = not f.locked
+                imgui.same_line(position=content_width - 5.0)
                 # Delete button
                 if imgui.image_button(self.icon_close.renderer_id, 13, 13):
                     to_delete = f
@@ -1460,9 +1476,9 @@ class CorrelationEditor:
                     CorrelationEditor.active_frame.blend_mode = number_key
             if imgui.is_key_pressed(glfw.KEY_0) or imgui.is_key_pressed(glfw.KEY_H) or imgui.is_key_pressed(glfw.KEY_V):
                 CorrelationEditor.active_frame.hide = not CorrelationEditor.active_frame.hide
-            elif imgui.is_key_down(glfw.KEY_LEFT_SHIFT) and imgui.is_key_pressed(glfw.KEY_MINUS):
+            elif imgui.is_key_pressed(glfw.KEY_MINUS):
                 CorrelationEditor.active_frame.alpha = max([0.0, CorrelationEditor.active_frame.alpha - 0.1])
-            elif imgui.is_key_down(glfw.KEY_LEFT_SHIFT) and imgui.is_key_pressed(glfw.KEY_EQUAL):
+            elif imgui.is_key_pressed(glfw.KEY_EQUAL):
                 CorrelationEditor.active_frame.alpha = min([1.0, CorrelationEditor.active_frame.alpha + 0.1])
             elif imgui.is_key_pressed(glfw.KEY_A):
                 CorrelationEditor.active_frame.compute_autocontrast()
