@@ -76,7 +76,7 @@ class CorrelationEditor:
         ARROW_KEY_TRANSLATION = 100.0  # nm
         ARROW_KEY_TRANSLATION_FAST = 1000.0  # nm
         ARROW_KEY_TRANSLATION_SLOW = 10.0
-        LONG_MOUSE_PRESS_EVENT_DURATION = 1.4
+        LONG_MOUSE_PRESS_EVENT_DURATION = 0.8
         mouse_left_press_world_pos = [0, 0]
         mouse_left_release_world_pos = [0, 0]
         mouse_down_timer = 0.0

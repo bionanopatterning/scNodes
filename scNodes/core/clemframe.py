@@ -115,6 +115,8 @@ class CLEMFrame:
         self.border_va = VertexArray(attribute_format="xy")
         self.update_lut()
         self.generate_va()
+        self.interpolate = not self.interpolate
+        self.toggle_interpolation()
 
     def update_image_texture(self, compute_histogram=True):
         self.texture.update(self.data.astype(np.float32))
@@ -127,32 +129,35 @@ class CLEMFrame:
         requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
         if requested_slice == self.current_slice:
             return
-        # else, load slice and update texture.
-        self.current_slice = requested_slice
-        if self.extension == ".tiff" or self.extension == ".tif":
-            self.data = tifffile.imread(self.path, key=self.current_slice).astype(float)
-            if cfg.ce_flip_on_load:
-                self.data = np.flip(self.data, axis=1)
-            if self.flip_h:
-                self.data = np.flip(self.data, axis=1)
-            if self.flip_v:
-                self.data = np.flip(self.data, axis=0)
-            self.update_image_texture()
-        elif self.extension == ".mrc":
-            mrc = mrcfile.mmap(self.path, mode="r")
-            self.n_slices = mrc.data.shape[0]
-            self.current_slice = min([self.current_slice, self.n_slices - 1])
-            self.data = mrc.data[self.current_slice, :, :]
-            # type conversions
-            if type(self.data[0, 0]) == np.int8:
-                self.data = self.data.astype(np.uint8, copy=False)
-            elif type(self.data[0, 0]) == np.int16:
-                self.data = self.data.astype(np.uint16, copy=False)
-            if self.flip_h:
-                self.data = np.flip(self.data, axis=1)
-            if self.flip_v:
-                self.data = np.flip(self.data, axis=0)
-            self.update_image_texture()
+        try:
+            # else, load slice and update texture.
+            self.current_slice = requested_slice
+            if self.extension == ".tiff" or self.extension == ".tif":
+                self.data = tifffile.imread(self.path, key=self.current_slice).astype(float)
+                if cfg.ce_flip_on_load:
+                    self.data = np.flip(self.data, axis=1)
+                if self.flip_h:
+                    self.data = np.flip(self.data, axis=1)
+                if self.flip_v:
+                    self.data = np.flip(self.data, axis=0)
+                self.update_image_texture()
+            elif self.extension == ".mrc":
+                mrc = mrcfile.mmap(self.path, mode="r")
+                self.n_slices = mrc.data.shape[0]
+                self.current_slice = min([self.current_slice, self.n_slices - 1])
+                self.data = mrc.data[self.current_slice, :, :]
+                # type conversions
+                if type(self.data[0, 0]) == np.int8:
+                    self.data = self.data.astype(np.uint8, copy=False)
+                elif type(self.data[0, 0]) == np.int16:
+                    self.data = self.data.astype(np.uint16, copy=False)
+                if self.flip_h:
+                    self.data = np.flip(self.data, axis=1)
+                if self.flip_v:
+                    self.data = np.flip(self.data, axis=0)
+                self.update_image_texture()
+        except Exception as e:
+            cfg.set_error(e, f"Could not load slice from '{self.path}'.\nHas the file been moved to a different location?")
 
     def translate(self, translation):
         for frame in self.list_all_children(include_self=True):
