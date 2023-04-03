@@ -1374,7 +1374,7 @@ class CorrelationEditor:
         elif self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
             CorrelationEditor.frame_xray_window_allow_opening = True
             # check which object should be active (if any)
-            clicked_object = self.get_object_under_cursor(self.window.cursor_pos)
+            clicked_object = self.get_object_under_cursor(self.window.cursor_pos, prioritize_active_frame=True)
             if isinstance(clicked_object, CLEMFrame):
                 if CorrelationEditor.active_frame != clicked_object:
                     CorrelationEditor.gizmo_mode_scale = True
@@ -1388,7 +1388,7 @@ class CorrelationEditor:
                 CorrelationEditor.active_frame = None
             self.mouse_left_press_world_pos = self.camera.cursor_to_world_position(self.window.cursor_pos)
         elif self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.RELEASE, max_duration=min([CorrelationEditor.active_frame_timer, CorrelationEditor.MOUSE_SHORT_PRESS_MAX_DURATION])):
-            clicked_object = self.get_object_under_cursor(self.window.cursor_pos, prioritize_active_frame=False)
+            clicked_object = self.get_object_under_cursor(self.window.cursor_pos, prioritize_active_frame=True)
             if CorrelationEditor.active_frame == clicked_object:
                 CorrelationEditor.gizmo_mode_scale = not CorrelationEditor.gizmo_mode_scale
             elif isinstance(clicked_object, CLEMFrame):
@@ -1484,6 +1484,18 @@ class CorrelationEditor:
                 CorrelationEditor.active_frame.compute_autocontrast()
             elif imgui.is_key_pressed(glfw.KEY_I):
                 CorrelationEditor.active_frame.toggle_interpolation()
+            elif imgui.is_key_pressed(glfw.KEY_L):
+                CorrelationEditor.active_frame.locked = not CorrelationEditor.active_frame.locked
+            elif imgui.is_key_pressed(glfw.KEY_PAGE_UP):
+                if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
+                    CorrelationEditor.active_frame.move_to_front()
+                else:
+                    CorrelationEditor.active_frame.move_forwards()
+            elif imgui.is_key_pressed(glfw.KEY_PAGE_DOWN):
+                if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
+                    CorrelationEditor.active_frame.move_to_back()
+                else:
+                    CorrelationEditor.active_frame.move_backwards()
             elif imgui.is_key_pressed(glfw.KEY_SPACE):
                 self.camera.focus_on_frame(CorrelationEditor.active_frame)
 

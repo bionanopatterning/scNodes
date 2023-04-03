@@ -29,11 +29,13 @@ Button input:
 Spacebar: focus view on the selected frame
 Number keys: set the blend mode of the selected frame
 Arrow keys: move frame. +SHIFT: move fast, +CTRL: move slow. 
-Shift and +/-: in/decrease selected frame alpha
+minus / equals(plus) keys: in/decrease selected frame alpha
 Delete: delete the selected frame
 0, H, or V: hide/show the selected frame
 A: set auto-contrast for the selected frame
 I: toggle interpolation mode for the selected frame
+L: lock/unlock frame
+PgUp/PgDn: move frame up/down in render stack. +SHIFT: move to top/bottom
 """
 frozen = False
 root = ""
