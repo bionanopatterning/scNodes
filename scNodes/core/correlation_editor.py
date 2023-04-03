@@ -281,7 +281,7 @@ class CorrelationEditor:
             new_frame.transform.translation = deepcopy(self.camera.position)
             new_frame.transform.translation[0] *= -1
             new_frame.transform.translation[1] *= -1
-            new_frame.pivot_point = deepcopy(self.camera.position)
+            new_frame.pivot_point = deepcopy(new_frame.transform.translation)
             new_frame.update_lut()
             cfg.ce_frames.insert(0, new_frame)
             CorrelationEditor.active_frame = new_frame
@@ -296,6 +296,7 @@ class CorrelationEditor:
         paths.pop(0)
         incoming = ImportedFrameData(path)
         clem_frame = incoming.to_CLEMFrame()
+        clem_frame.toggle_interpolation()
         if clem_frame:
             pos = deepcopy(self.camera.position)
             clem_frame.transform.translation = [-pos[0], -pos[1]]

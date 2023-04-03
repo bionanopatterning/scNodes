@@ -21,7 +21,9 @@ from datetime import datetime
 # DONE: dont move pivot point when scaling frame
 # todo: add a lock image button in the Frames in scene window to lock editing
 # todo: in frame in scene window: text gray when image is hidden
-# todo: flip tomogram plugin
+# todo: flip tomogram plugin\
+# todo: duplicates are buggy
+
 # DONE: when Measure tool active, press ESCAPE to deactivate it.
 ce_controls = """
 Button input:
@@ -29,13 +31,12 @@ Button input:
 Spacebar: focus view on the selected frame
 Number keys: set the blend mode of the selected frame
 Arrow keys: move frame. +SHIFT: move fast, +CTRL: move slow. 
-minus / equals(plus) keys: in/decrease selected frame alpha
+Shift and +/-: in/decrease selected frame alpha
 Delete: delete the selected frame
 0, H, or V: hide/show the selected frame
 A: set auto-contrast for the selected frame
 I: toggle interpolation mode for the selected frame
-L: lock/unlock frame
-PgUp/PgDn: move frame up/down in render stack. +SHIFT: move to top/bottom
+L: lock/unlock current screen
 """
 frozen = False
 root = ""
