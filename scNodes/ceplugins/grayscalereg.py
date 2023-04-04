@@ -10,11 +10,11 @@ def create():
 
 class GrayscaleRegPlugin(CEPlugin):
     title = "Register Grayscale"
-    description = "Register images of equal or different sizes based on image intensity.\n" \
-                  "Useful to register high-magnification TEM images to low-magnification\n" \
-                  "images of the same region (e.g. to register Exposure/Search frames onto\n" \
-                  "Overview images.) Requires manual picking of the approximate location \n" \
-                  "of the child image (the image to be transformed) within parent image." \
+    description = "Register an image (the ' child') onto a (larger) parent image, based on image intensity. The plugin\n" \
+                  "assumes that the child is positioned roughly in the right place. If the registration fails, try" \
+                  "toggling the 'Normalize' option to filter images before alignment." \
+                  "\n" \
+                  "Alignment is performed using TurboReg - see the Registration node for a reference."
 
     REGMODES = [StackReg.TRANSLATION, StackReg.RIGID_BODY, StackReg.SCALED_ROTATION]
     REGMODES_STR = ["T", "T+R", "T+R+S"]
@@ -23,19 +23,19 @@ class GrayscaleRegPlugin(CEPlugin):
     def __init__(self):
         self.parent_frame = None
         self.child_frame = None
-        self.FLAG_SHOW_LOCATION_PICKER = True
         self.regmode = 0
         self.bin = False
         self.binfac = 2
         self.smooth = False
         self.smoothfac = 2.0
+        self.normalize = True
         self.input_pos = True
 
 
     def render(self):
         _c, self.parent_frame = self.widget_select_frame_no_rgb("Parent frame:", self.parent_frame)
         imgui.text("Child frame:")
-        self.child_frame = self.selected_frame = CEPlugin.widget_show_active_frame_title()
+        self.child_frame = CEPlugin.widget_show_active_frame_title()
 
         imgui.spacing()
         _cw = imgui.get_content_region_available_width()
@@ -45,35 +45,25 @@ class GrayscaleRegPlugin(CEPlugin):
         self.tooltip("T = Translation, R = Rotation, S = Scaling.\n"
                      "Note: when allowing Scaling, the resulting image pixel size may differ from the\n"
                      "value found in the original image's header file or what was input by the user.\n"
-                     "Mode T or T+R should be good enough - allowing S tends to worsens results.\n\n"
-                     "The selected mode is only applied in the image registration step. In the prior\n"
-                     "filtering and rough alignment steps, the input images' (differing) pixel\n"
-                     "sizes are always taken in to account.")
+                     "Mode T or T+R is usually enough - allowing scaling tends to worsens results.\n\n")
 
-        # binning and smoothing
-        _c, self.bin = imgui.checkbox("Bin", self.bin)
-        if self.bin:
-            imgui.same_line(position=110)
-            imgui.set_next_item_width(30)
-            _c, self.binfac = imgui.input_int("factor##b", self.binfac, 0.0, 0.0)
-            self.binfac = max([1, self.binfac])
-            self.tooltip("Bin images prior to registration. Factor is the binning factor.")
-        _c, self.smooth = imgui.checkbox("Smooth", self.smooth)
-        if self.smooth:
-            imgui.same_line(position=110)
-            imgui.set_next_item_width(30)
-            _c, self.smoothfac = imgui.input_float("factor##s", self.smoothfac, 0.0, 0.0, format="%.1f")
-            self.smoothfac = max([0.1, self.smoothfac])
-            self.tooltip("Apply a Gaussian blur to the images prior to registration.\n"
-                         "Factor is the stdev (in units of the child image's pixel size) of the kernel")
-
-        _c, self.input_pos = imgui.checkbox("Location hint:", self.input_pos)
-        self.FLAG_SHOW_LOCATION_PICKER = self.input_pos
-        if self.input_pos:
-            self.widget_selected_position()
-        if _c and self.input_pos:
-            new_pos = self.child_frame.transform.translation
-            cfg.correlation_editor.set_location_indicator_gizmo_pos(new_pos[0], new_pos[1])
+        # normalizing, binning and smoothing
+        _c, self.normalize = imgui.checkbox("Normalize", self.normalize)
+        # _c, self.bin = imgui.checkbox("Bin", self.bin)
+        # if self.bin:
+        #     imgui.same_line(position=110)
+        #     imgui.set_next_item_width(30)
+        #     _c, self.binfac = imgui.input_int("factor##b", self.binfac, 0.0, 0.0)
+        #     self.binfac = max([1, self.binfac])
+        #     self.tooltip("Bin images prior to registration. Factor is the binning factor.")
+        # _c, self.smooth = imgui.checkbox("Smooth", self.smooth)
+        # if self.smooth:
+        #     imgui.same_line(position=110)
+        #     imgui.set_next_item_width(30)
+        #     _c, self.smoothfac = imgui.input_float("factor##s", self.smoothfac, 0.0, 0.0, format="%.1f")
+        #     self.smoothfac = max([0.1, self.smoothfac])
+        #     self.tooltip("Apply a Gaussian blur to the images prior to registration.\n"
+        #                  "Factor is the stdev (in units of the child image's pixel size) of the kernel")
 
         imgui.spacing()
         if self.widget_centred_button("Align!"):
@@ -82,7 +72,6 @@ class GrayscaleRegPlugin(CEPlugin):
 
     def align_frames(self):
         try:
-            import matplotlib.pyplot as plt
             # Filter, resize, and crop images
             p = self.filter_image(self.parent_frame.data)
             c = self.filter_image(self.child_frame.data)
@@ -94,37 +83,40 @@ class GrayscaleRegPlugin(CEPlugin):
             ## GET PIXEL COORDINATES OF WORLD LOCATION CURSOR
             pixel_offset = [0, 0]
             if self.input_pos:
-                pixel_coordinate, pixel_offset = self.parent_frame.world_to_pixel_coordinate(self.selected_position)
+                pixel_coordinate, pixel_offset = self.parent_frame.world_to_pixel_coordinate(self.child_frame.transform.translation)
                 _parent = self.crop_around_coordinate(p, _size, pixel_coordinate)
             else:
                 _parent = self.crop_center(p, _size)
+            if self.normalize:
+                _child -= np.mean(_child)
+                _child /= np.mean(np.abs(_child))
+                _parent -= np.mean(_parent)
+                _parent /= np.mean(np.abs(_parent))
+            # if self.bin:
+            #     width, height = _child.shape
+            #     _child = _child[:self.binfac * (width // self.binfac), :self.binfac * (height // self.binfac)]
+            #     _parent = _parent[:self.binfac * (width // self.binfac), :self.binfac * (height // self.binfac)]
+            #     _child = _child.reshape((width // self.binfac, self.binfac, height // self.binfac, self.binfac)).mean(3).mean(1)
+            #     _parent = _parent.reshape((width // self.binfac, self.binfac, height // self.binfac, self.binfac)).mean(3).mean(1)
+            # if self.smooth:
+            #     _child = gaussian_filter(_child, self.smoothfac)
+            #     _parent = gaussian_filter(_parent, self.smoothfac)
 
-            if self.bin:
-                width, height = _child.shape
-                _child = _child[:self.binfac * (width // self.binfac), :self.binfac * (height // self.binfac)]
-                _parent = _parent[:self.binfac * (width // self.binfac), :self.binfac * (height // self.binfac)]
-                _child = _child.reshape((width // self.binfac, self.binfac, height // self.binfac, self.binfac)).mean(3).mean(1)
-                _parent = _parent.reshape((width // self.binfac, self.binfac, height // self.binfac, self.binfac)).mean(3).mean(1)
-            if self.smooth:
-                _child = gaussian_filter(_child, self.smoothfac)
-                _parent = gaussian_filter(_parent, self.smoothfac)
 
             # Find transformation matrix that matches the frames
             sr = StackReg(GrayscaleRegPlugin.REGMODES[self.regmode])
             tmat = sr.register(_parent, _child)
+            regd = sr.transform(_child, tmat)
             T, R, S = self.decompose_transform_matrix(tmat)
-
             # Apply transform to child
+            #self.child_frame.parent_to(self.parent_frame)
+            #self.child_frame.transform = deepcopy(self.parent_frame.transform)
+            dx = (0.0 * pixel_offset[0] - T[0]) * npix_p
+            dy = (0.0 * pixel_offset[1] - T[1]) * npix_p
+            self.child_frame.translate([dx, dy])
+            self.child_frame.pivoted_rotation([self.child_frame.transform.translation[0], self.child_frame.transform.translation[1]], R)
+            self.child_frame.pivoted_scale([self.child_frame.transform.translation[0], self.child_frame.transform.translation[1]], S)
             self.child_frame.parent_to(self.parent_frame)
-            self.child_frame.transform = deepcopy(self.parent_frame.transform)
-            dx = T[0] * npix_c + pixel_offset[0] * npix_p
-            dy = T[1] * npix_c + pixel_offset[1] * npix_p
-            self.child_frame.transform.translation[0] += dx
-            self.child_frame.transform.translation[1] += dy
-            self.child_frame.transform.rotation -= R
-            self.child_frame.transform.scale *= S
-            self.child_frame.pivot_point[0] = self.child_frame.transform.translation[0]
-            self.child_frame.pivot_point[1] = self.child_frame.transform.translation[1]
 
         except Exception as e:
             cfg.set_error(e, "Error aligning frames in Register Grayscale tool.")

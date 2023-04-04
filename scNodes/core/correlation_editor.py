@@ -1033,6 +1033,7 @@ class CorrelationEditor:
                 f.binning = 8
             imgui.end_menu()
 
+
     def objects_info_window(self):
         content_width = 0
         to_delete = None

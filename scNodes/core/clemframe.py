@@ -83,6 +83,8 @@ class CLEMFrame:
 
     def duplicate(self):
         my_copy = deepcopy(self)
+        my_copy.children = list()
+        my_copy.parent = None
         uid_counter = next(CLEMFrame.idgen)
         my_copy.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f') + "000") + uid_counter
         my_copy.title += " (duplicate)"

@@ -116,6 +116,12 @@ class CEPlugin:
         return _c, selected_frame
 
     @staticmethod
+    def widget_info_selected_frame_position(frame):
+        _cw = imgui.get_content_region_available_width()
+        imgui.text(f"x: {frame.transform.translation[0] / 1000.0:.2f} um")
+        imgui.text(f"y: {frame.transform.translation[1] / 1000.0:.2f} um")
+
+    @staticmethod
     def widget_selected_position():
         _cw = imgui.get_content_region_available_width()
         imgui.text(f"x: {CEPlugin.selected_position[0] / 1000.0:.2f} um")
