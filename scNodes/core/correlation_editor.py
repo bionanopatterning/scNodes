@@ -1061,7 +1061,11 @@ class CorrelationEditor:
             imgui.bullet_text("")
             imgui.same_line()
             label_width = CorrelationEditor.FRAMES_IN_SCENE_WINDOW_WIDTH - indent * CorrelationEditor.FRAME_LIST_INDENT_WIDTH - 87 - (0 if f.is_rgb else 15)
+            if f.hide:
+                imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_TEXT_DISABLED)
             _c, selected = imgui.selectable(""+f.title+f"###fuid{f.uid}", selected=CorrelationEditor.active_frame == f, width=label_width)
+            if f.hide:
+                imgui.pop_style_color(1)
             if imgui.begin_popup_context_item():
                 CorrelationEditor._frame_context_menu(f)
                 imgui.end_popup()
@@ -1405,7 +1409,7 @@ class CorrelationEditor:
                 CorrelationEditor.active_frame = None
             self.mouse_left_press_world_pos = self.camera.cursor_to_world_position(self.window.cursor_pos)
         elif self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.RELEASE, max_duration=min([CorrelationEditor.active_frame_timer, CorrelationEditor.MOUSE_SHORT_PRESS_MAX_DURATION])):
-            clicked_object = self.get_object_under_cursor(self.window.cursor_pos, prioritize_active_frame=True)
+            clicked_object = self.get_object_under_cursor(self.window.cursor_pos, prioritize_active_frame=False)
             if CorrelationEditor.active_frame == clicked_object:
                 CorrelationEditor.gizmo_mode_scale = not CorrelationEditor.gizmo_mode_scale
             elif isinstance(clicked_object, CLEMFrame):

@@ -12,17 +12,17 @@ from datetime import datetime
 # DONE: input - press "SHIFT" and "+" or "-" to increase/decrease active frame Alpha by 0.1
 # DONE: in the View tab in the CE, set the imgui frame padding to 2
 # DONE: in the View tab in the CE: hide the tool window when all views set to False
-# todo: troubleshoot the Register grayscale plugin
+# DONE: troubleshoot the Register grayscale plugin
 # DONE: input - press "I" to toggle interpolation
 # DONE: fix mrc file clemframes sometimes not updating despite slicer being changed and frame being loaded. Reason appears to be that MIPMAP IS ONLY SET WHEN INTERP MODE CHANGES.
 # DONE: add alpha wobbler in right-click menu for the alpha slider
 # DONE: fix BLUR FRAME plugin's original frame still being visible in the scene, but not in the object list
 # DONE: add feature to CE: left-click and hold on a (pile of) frames opens a popup that lists all the files under the cursor. Helps to select files hidden by a file higher up in the stack - like in Fusion360.
 # DONE: dont move pivot point when scaling frame
-# todo: add a lock image button in the Frames in scene window to lock editing
-# todo: in frame in scene window: text gray when image is hidden
+# DONE: add a lock image button in the Frames in scene window to lock editing
+# DONE: in frame in scene window: text gray when image is hidden
 # todo: flip tomogram plugin\
-# todo: duplicates are buggy
+# DONE: duplicates are buggy - fixed
 
 # DONE: when Measure tool active, press ESCAPE to deactivate it.
 ce_controls = """
@@ -183,6 +183,7 @@ COLOUR_HEADER = COLOUR_FRAME_DARK
 COLOUR_HEADER_ACTIVE = COLOUR_FRAME_ACTIVE
 COLOUR_HEADER_HOVERED = COLOUR_FRAME_EXTRA_DARK
 COLOUR_TEXT = (0.0, 0.0, 0.0, 1.0)
+COLOUR_TEXT_DISABLED = (0.7, 0.7, 0.7, 1.0)
 COLOUR_TEXT_FADE = COLOUR_FRAME_EXTRA_DARK
 WINDOW_ROUNDING = 5.0
 CONTEXT_MENU_SIZE = (200, 98)
