@@ -36,7 +36,6 @@ class CLEMFrame:
         self.n_slices = 1
         self.sum_slices = 1
         self.current_sum_slices = 1
-        self.mmap = None
         self.current_slice = 0
         self.extension = ""
         self.particle_groups = list()
@@ -157,10 +156,9 @@ class CLEMFrame:
                     self.data = np.flip(self.data, axis=0)
                 self.update_image_texture()
             elif self.extension == ".mrc":
-                if self.mmap is None:
-                    self.mmap = mrcfile.mmap(self.path, mode="r")
-                self.n_slices = self.mmap.data.shape[0]
-                self.data = self.mmap.data[slices.pop(0), :, :]
+                mmap = mrcfile.mmap(self.path, mode="r")
+                self.n_slices = mmap.data.shape[0]
+                self.data = mmap.data[slices.pop(0), :, :]
                 target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
                 if type(self.data[0, 0]) not in target_type_dict:
                     target_type = float
@@ -168,7 +166,7 @@ class CLEMFrame:
                     target_type = target_type_dict[type(self.data[0, 0])]
                 self.data = np.array(self.data.astype(target_type, copy=False), dtype=float)
                 for idx in slices:
-                    self.data += np.array(self.mmap.data[idx, :, :].astype(target_type, copy=False), dtype=float)
+                    self.data += np.array(mmap.data[idx, :, :].astype(target_type, copy=False), dtype=float)
                 self.data /= actual_sum_slices
                 if self.flip_h:
                     self.data = np.flip(self.data, axis=1)

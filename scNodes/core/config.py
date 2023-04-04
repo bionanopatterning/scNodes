@@ -150,9 +150,6 @@ def load_scene(filename):
                     cef.current_sum_slices = 1
                 if not hasattr(cef, "locked"):
                     cef.locked = False
-                if not hasattr(cef, "mmap"):
-                    import mrcfile
-                    cef.mmap = mrcfile.mmap(cef.path, mode="r")
             correlation_editor_relink = True
     except Exception as e:
         set_error(e, "Error loading scene")
