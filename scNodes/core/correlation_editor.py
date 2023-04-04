@@ -1198,6 +1198,15 @@ class CorrelationEditor:
                 _c, requested_slice = imgui.slider_int("##slicer", CorrelationEditor.active_frame.current_slice, 0, CorrelationEditor.active_frame.n_slices - 1, format=f"slice {CorrelationEditor.active_frame.current_slice+1:.0f}/{CorrelationEditor.active_frame.n_slices:.0f}")
                 if _c:
                     CorrelationEditor.active_frame.set_slice(requested_slice)
+                imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND)
+                if imgui.begin_popup_context_item("##slicer_cm"):
+                    imgui.set_next_item_width(100)
+                    _c, CorrelationEditor.active_frame.sum_slices = imgui.input_int("Number of slices to sum", CorrelationEditor.active_frame.sum_slices, 1, 1)
+                    CorrelationEditor.active_frame.sum_slices = max([CorrelationEditor.active_frame.sum_slices, 1])
+                    if _c:
+                        CorrelationEditor.active_frame.set_slice(CorrelationEditor.active_frame.current_slice)
+                    imgui.end_popup()
+                imgui.pop_style_color(1)
             else:
                 imgui.dummy(0.0, 19.0)
             # interpolation mode
@@ -1215,9 +1224,11 @@ class CorrelationEditor:
             _, CorrelationEditor.active_frame.alpha = imgui.slider_float("##alpha", CorrelationEditor.active_frame.alpha, 0.0, 1.0, format="alpha = %.2f")
             if _:
                 CorrelationEditor.alpha_wobbler_active = False
+            imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND)
             if imgui.begin_popup_context_item(""):
                 _, CorrelationEditor.alpha_wobbler_active = imgui.checkbox("Alpha wobbler", CorrelationEditor.alpha_wobbler_active)
                 imgui.end_popup()
+            imgui.pop_style_color(1)
             if CorrelationEditor.alpha_wobbler_active and CorrelationEditor.active_frame is not None:
                 CorrelationEditor.active_frame.alpha = 0.5 + 0.5 * np.sin(self.window.time * CorrelationEditor.ALPHA_WOBBLER_OSCILLATIONS_PER_SECOND * np.pi)
             # blend mode

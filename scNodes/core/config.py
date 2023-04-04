@@ -41,7 +41,7 @@ L: lock/unlock current screen
 frozen = False
 root = ""
 app_name = "scNodes"
-version = "1.1.8"
+version = "1.1.9"
 license = "GNU GPL v3"
 logpath = "scNodes.log"
 filetype_project = ".scnp"
@@ -143,6 +143,16 @@ def load_scene(filename):
     try:
         with open(filename, 'rb') as pickle_file:
             ce_frames = pickle.load(pickle_file)
+            for cef in ce_frames:
+                if not hasattr(cef, "sum_slices"):
+                    cef.sum_slices = 1
+                if not hasattr(cef, "current_sum_slices"):
+                    cef.current_sum_slices = 1
+                if not hasattr(cef, "locked"):
+                    cef.locked = False
+                if not hasattr(cef, "mmap"):
+                    import mrcfile
+                    cef.mmap = mrcfile.mmap(cef.path, mode="r")
             correlation_editor_relink = True
     except Exception as e:
         set_error(e, "Error loading scene")

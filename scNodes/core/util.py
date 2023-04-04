@@ -5,7 +5,9 @@ import matplotlib.pyplot as plt
 import tifffile
 import glob
 from scNodes.core import config as cfg
+import time
 
+timer = 0.0
 
 def printProgressBar(iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
     # from: https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters?noredirect=1&lq=1
@@ -138,3 +140,12 @@ def loadtiff(path):
         data[f, :, :] = np.asarray(_data)
     data = np.squeeze(data)
     return data
+
+
+def tic():
+    global timer
+    timer = time.time_ns()
+
+
+def toc(msg):
+    print(msg + f" {(time.time_ns() - timer)*1e-9:.3} seconds")

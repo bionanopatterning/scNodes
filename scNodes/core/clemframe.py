@@ -1,6 +1,7 @@
 from scNodes.core import settings
 from scNodes.core import config as cfg
 from scNodes.core.opengl_classes import *
+from scNodes.core.util import tic, toc
 import tifffile
 import mrcfile
 from copy import copy, deepcopy
@@ -33,6 +34,9 @@ class CLEMFrame:
         self.path = None
         self.has_slices = False
         self.n_slices = 1
+        self.sum_slices = 1
+        self.current_sum_slices = 1
+        self.mmap = None
         self.current_slice = 0
         self.extension = ""
         self.particle_groups = list()
@@ -129,13 +133,22 @@ class CLEMFrame:
         if not self.has_slices:
             return
         requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
-        if requested_slice == self.current_slice:
+        if requested_slice == self.current_slice and self.current_sum_slices == self.sum_slices:
             return
+        self.current_sum_slices = self.sum_slices
+        slices = list(range(requested_slice, requested_slice+self.sum_slices))
+        for i in reversed(range(len(slices))):
+            if slices[i] >= self.n_slices:
+                slices.pop(i)
+        actual_sum_slices = len(slices)
         try:
             # else, load slice and update texture.
             self.current_slice = requested_slice
             if self.extension == ".tiff" or self.extension == ".tif":
-                self.data = tifffile.imread(self.path, key=self.current_slice).astype(float)
+                self.data = tifffile.imread(self.path, key=slices.pop(0)).astype(float)
+                for idx in slices:
+                    self.data += tifffile.imread(self.path, key=idx).astype(float)
+                self.data /= actual_sum_slices
                 if cfg.ce_flip_on_load:
                     self.data = np.flip(self.data, axis=1)
                 if self.flip_h:
@@ -144,15 +157,19 @@ class CLEMFrame:
                     self.data = np.flip(self.data, axis=0)
                 self.update_image_texture()
             elif self.extension == ".mrc":
-                mrc = mrcfile.mmap(self.path, mode="r")
-                self.n_slices = mrc.data.shape[0]
-                self.current_slice = min([self.current_slice, self.n_slices - 1])
-                self.data = mrc.data[self.current_slice, :, :]
-                # type conversions
-                if type(self.data[0, 0]) == np.int8:
-                    self.data = self.data.astype(np.uint8, copy=False)
-                elif type(self.data[0, 0]) == np.int16:
-                    self.data = self.data.astype(np.uint16, copy=False)
+                if self.mmap is None:
+                    self.mmap = mrcfile.mmap(self.path, mode="r")
+                self.n_slices = self.mmap.data.shape[0]
+                self.data = self.mmap.data[slices.pop(0), :, :]
+                target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
+                if type(self.data[0, 0]) not in target_type_dict:
+                    target_type = float
+                else:
+                    target_type = target_type_dict[type(self.data[0, 0])]
+                self.data = np.array(self.data.astype(target_type, copy=False), dtype=float)
+                for idx in slices:
+                    self.data += np.array(self.mmap.data[idx, :, :].astype(target_type, copy=False), dtype=float)
+                self.data /= actual_sum_slices
                 if self.flip_h:
                     self.data = np.flip(self.data, axis=1)
                 if self.flip_v:
@@ -424,4 +441,5 @@ class ParticleGroup:
         if isinstance(other, ParticleGroup):
             return self.id == other.id
         return False
+
 
