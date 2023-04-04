@@ -399,6 +399,10 @@ class CorrelationEditor:
                 _c, CorrelationEditor.ARROW_KEY_TRANSLATION = imgui.input_float("Arrow key step size (nm)", CorrelationEditor.ARROW_KEY_TRANSLATION, 0.0, 0.0, "%.1f")
                 _c, CorrelationEditor.snap_enabled = imgui.checkbox("Allow snapping", CorrelationEditor.snap_enabled)
                 _c, cfg.ce_flip_on_load = imgui.checkbox("Flip images when loading", cfg.ce_flip_on_load)
+                if imgui.menu_item("Re-initialize plugin library")[0]:
+                    CorrelationEditor.selected_tool = 0
+                    CorrelationEditor.current_tool = None
+                    CorrelationEditor.init_toolkit(reinitialize=True)
                 imgui.end_menu()
             if imgui.begin_menu("View"):
                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (2, 2))
@@ -1386,7 +1390,7 @@ class CorrelationEditor:
         elif self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
             CorrelationEditor.frame_xray_window_allow_opening = True
             # check which object should be active (if any)
-            clicked_object = self.get_object_under_cursor(self.window.cursor_pos, prioritize_active_frame=True)
+            clicked_object = self.get_object_under_cursor(self.window.cursor_pos, prioritize_active_frame=False)
             if isinstance(clicked_object, CLEMFrame):
                 if CorrelationEditor.active_frame != clicked_object:
                     CorrelationEditor.gizmo_mode_scale = True
@@ -1651,7 +1655,7 @@ class CorrelationEditor:
         CorrelationEditor.incoming_frame_buffer.append(frame_obj)
 
     @staticmethod
-    def init_toolkit():
+    def init_toolkit(reinitialize=False):
         class ToolImpl:
             def __init__(self, tool_create_fn):
                 self.create_fn = tool_create_fn
@@ -1668,7 +1672,10 @@ class CorrelationEditor:
 
             module_name = toolsrc[toolsrc.rfind("\\")+1:-3]
             try:
-                mod = importlib.import_module(("scNodes." if not cfg.frozen else "")+"ceplugins."+module_name)
+                if reinitialize:
+                    mod = importlib.reload(sys.modules[("scNodes." if not cfg.frozen else "")+"ceplugins."+module_name])
+                else:
+                    mod = importlib.import_module(("scNodes." if not cfg.frozen else "")+"ceplugins."+module_name)
                 toolimpls.append(ToolImpl(mod.create))
             except Exception as e:
                 cfg.set_error(e, f"No well-defined Plugin found in {toolsrc}. See manual for minimal code requirements.")

@@ -34,8 +34,10 @@ class GrayscaleRegPlugin(CEPlugin):
 
     def render(self):
         _c, self.parent_frame = self.widget_select_frame_no_rgb("Parent frame:", self.parent_frame)
-        _c, self.child_frame = self.widget_select_frame_no_rgb("Child frame:", self.child_frame)
+        imgui.text("Child frame:")
+        self.child_frame = self.selected_frame = CEPlugin.widget_show_active_frame_title()
 
+        imgui.spacing()
         _cw = imgui.get_content_region_available_width()
         imgui.push_item_width(_cw-120)
         _c, self.regmode = imgui.combo("Transform type", self.regmode, GrayscaleRegPlugin.REGMODES_STR)
