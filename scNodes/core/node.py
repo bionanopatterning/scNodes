@@ -14,6 +14,7 @@ class Node:
     title = "NullNode"
     group = "Ungrouped"
     compatibility = "not versioned"
+    description = "This node does not have a description."
     colour = (1.0, 1.0, 1.0, 1.0)
     id_generator = count(0)
     size = 200
@@ -205,6 +206,9 @@ class Node:
                     _lut, _ = imgui.menu_item(lut)
                     if _lut:
                         self.lut = lut
+                imgui.end_menu()
+            if imgui.begin_menu("Information on this node"):
+                imgui.text(self.description)
                 imgui.end_menu()
             imgui.end_popup()
         if cfg.profiling and self.does_profiling_time:

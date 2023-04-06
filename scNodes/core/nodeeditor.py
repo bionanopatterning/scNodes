@@ -176,7 +176,7 @@ class NodeEditor:
             imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 3.0)
             imgui.set_next_window_size(self.window.width, cfg.ERROR_WINDOW_HEIGHT)
             imgui.set_next_window_position(0, self.window.height - cfg.ERROR_WINDOW_HEIGHT)
-            _, stay_open = imgui.begin("Notifications", True, imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE)
+            _, stay_open = imgui.begin("Notification", True, imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE)
             if not cfg.error_logged:
                 cfg.write_to_log(cfg.error_msg)
                 cfg.error_logged = True

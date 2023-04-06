@@ -8,6 +8,10 @@ def create():
 
 
 class LoadDataNode(Node):
+    description = "Import a tiffstack. Select either a: i) single .tif file that contains stack data (3D, e.g XYZ or XYT), or\n" \
+                  "ii) a .tif file inside of a folder containing an image sequence. In this case all of the .tif images in the\n" \
+                  "folder will be loaded as one dataset."
+
     title = "Import dataset"
     group = "Data IO"
 

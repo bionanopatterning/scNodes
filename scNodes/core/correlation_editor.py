@@ -383,14 +383,23 @@ class CorrelationEditor:
                         if filename != '':
                             cfg.save_scene(filename)
                     except Exception as e:
-                        cfg.set_error(e, "Error saving scene")
+                        cfg.set_error(e, "Error saving scene - see details below")
                 if imgui.menu_item("Load scene")[0]:
                     try:
                         filename = filedialog.askopenfilename(filetypes=[("scNodes scene", cfg.filetype_scene)])
                         if filename != '':
                             cfg.load_scene(filename)
                     except Exception as e:
-                        cfg.set_error(e, "Error loading scene")
+                        cfg.set_error(e, "Error loading scene - see details below")
+                if imgui.menu_item("Import data")[0]:
+                    try:
+                        filenames = filedialog.askopenfilenames(filetypes=[("Compatible image types", ".mrc .tif .tiff .png")])
+                        print(filenames)
+                        if filenames != '':
+                            for file in filenames:
+                                self.window.dropped_files.append(file)
+                    except Exception as e:
+                        cfg.set_error(e, "Error importing images - see details below")
                 imgui.end_menu()
             if imgui.begin_menu("Settings"):
                 _c, self.window.clear_color = imgui.color_edit4("Background colour", *self.window.clear_color, flags=imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_SIDE_PREVIEW)
@@ -1524,9 +1533,13 @@ class CorrelationEditor:
         def ww_context_menu():
             imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_MENU_WINDOW_BACKGROUND)
             if imgui.begin_popup_context_window():
+                cfg.error_window_active = True
                 copy_error, _ = imgui.menu_item("Copy to clipboard")
                 if copy_error:
                     pyperclip.copy(cfg.error_msg)
+                copy_path_to_log, _ = imgui.menu_item("Copy path to scNodes.log")
+                if copy_path_to_log:
+                    pyperclip.copy(cfg.logpath)
                 imgui.end_popup()
             imgui.pop_style_color(1)
         ## Error message
@@ -1543,14 +1556,19 @@ class CorrelationEditor:
             imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_ERROR_WINDOW_TEXT)
             imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 3.0)
             imgui.set_next_window_size(self.window.width, cfg.ERROR_WINDOW_HEIGHT)
-            imgui.set_next_window_position(0, self.window.height - cfg.ERROR_WINDOW_HEIGHT)
-            _, stay_open = imgui.begin("Warning", True, imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE)
+            window_vertical_offset = 0 if cfg.error_window_active else cfg.ERROR_WINDOW_HEIGHT - 19
+            imgui.set_next_window_position(0, self.window.height - cfg.ERROR_WINDOW_HEIGHT + window_vertical_offset)
+            _, stay_open = imgui.begin("Notification", True, imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE)
+            if imgui.is_window_focused():
+                cfg.error_window_active = True
+                if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
+                    cfg.error_new = False
+            else:
+                cfg.error_window_active = False
             if not cfg.error_logged:
                 cfg.write_to_log(cfg.error_msg)
                 cfg.error_logged = True
             imgui.text(cfg.error_msg)
-            if imgui.is_window_focused() and self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
-                cfg.error_new = False
             ww_context_menu()
             imgui.end()
             if not stay_open:

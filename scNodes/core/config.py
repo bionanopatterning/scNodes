@@ -23,6 +23,7 @@ from datetime import datetime
 # DONE: in frame in scene window: text gray when image is hidden
 # todo: flip tomogram plugin\
 # DONE: duplicates are buggy - fixed
+# DONE: add menu bar -> File -> Import data function in CE
 
 # DONE: when Measure tool active, press ESCAPE to deactivate it.
 ce_controls = """
@@ -66,6 +67,7 @@ error_msg = None
 error_new = True
 error_obj = None
 error_logged = False
+error_window_active = False
 
 active_connector = None
 active_connector_parent_node = None
@@ -188,9 +190,9 @@ COLOUR_TEXT_FADE = COLOUR_FRAME_EXTRA_DARK
 WINDOW_ROUNDING = 5.0
 CONTEXT_MENU_SIZE = (200, 98)
 ERROR_WINDOW_HEIGHT = 80
-COLOUR_ERROR_WINDOW_BACKGROUND = (0.84, 0.84, 0.84, 1.0)
-COLOUR_ERROR_WINDOW_HEADER = (0.7, 0.7, 0.7, 1.0)
-COLOUR_ERROR_WINDOW_HEADER_NEW = (0.35, 0.35, 0.35, 1.0)
+COLOUR_ERROR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 0.94)
+COLOUR_ERROR_WINDOW_HEADER = (0.87, 0.87, 0.83, 0.96)
+COLOUR_ERROR_WINDOW_HEADER_NEW = (0.87, 0.87, 0.83, 0.96)
 COLOUR_ERROR_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
 COLOUR_CM_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
 COLOUR_CM_OPTION_HOVERED = (1.0, 1.0, 1.0, 1.0)
