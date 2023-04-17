@@ -8,6 +8,7 @@ def create():
 
 
 class LoadImageNode(Node):
+    description = "Load a single .tif image."
     title = "Import image"
     group = "Data IO"
     colour = (84 / 255, 77 / 255, 222 / 255, 1.0)

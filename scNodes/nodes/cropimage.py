@@ -6,6 +6,9 @@ def create():
 
 
 class CropImageNode(Node):
+    description = "Outputs a cropped ROI of the input images. The ROI is specified by drawing it on the images\n" \
+                  "in the image viewer. The image viewer does not show the actual output of the Crop Image node,\n" \
+                  "but shows the input image + the selected ROI. "
     title = "Crop image"
     group = "Image processing"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)

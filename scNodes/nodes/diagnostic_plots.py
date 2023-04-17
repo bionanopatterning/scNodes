@@ -6,6 +6,14 @@ def create():
 
 
 class DiagnosticPlotsNode(Node):
+    description = "Takes a reconstruction as the input and generates plots, which are shown in a pop-up window.\n" \
+                  "The node does not output images; instead, plots can be saved and interacted with in the pop-\n" \
+                  "up. There are two plotting modes:\n" \
+                  "1) Histogram: plot histograms of particle parameters, e.g. the uncertainty.\n" \
+                  "2) Scatter plot: generate scatter plots that relate two (or three, via colour) parameters.\n" \
+                  "\tFor example, plotting 'frame' versus 'intensity', with dots coloured by 'uncertainty'\t" \
+                  "\tcan help visualize whether and how the images change over time (but can also be hard\n" \
+                  "\tto interpret)."
     title = "Diagnostic plots"
     group = "PSF-fitting reconstruction"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)

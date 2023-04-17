@@ -6,6 +6,13 @@ def create():
 
 
 class ImageCalculatorNode(Node):
+    description = "Takes two datasets as the input, and outputs a single dataset which is identical to the\n" \
+                  "'first' (i.e. top) input dataset in most respects, but with the pixel data of every fra-\n" \
+                  "me changed by some calculation with the second (i.e. bottom) dataset, such as addition.\n" \
+                  "\n" \
+                  "An example use case is for background subtraction. The first input is the dataset of in-\n" \
+                  "terest, and the second an, e.g., wavelet-filtered version of the same dataset. Set the \n" \
+                  "'operation' option to 'Subtract', and the output is a wavelet background subtraction."
     title = "Image calculator"
     group = "Image processing"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)

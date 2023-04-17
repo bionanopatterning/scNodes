@@ -6,6 +6,14 @@ def create():
 
 
 class ParticleFittingNode(Node):
+    description = "Perform PSF fitting in the input frames at the location of the input coordinates. This node uses\n" \
+                  "'pyGPUfit' for GPU-accelerated fitting. Unfortunately, pyGPUfit uses CUDA, which is not available\n" \
+                  "on many macOS devices.\n" \
+                  "\n" \
+                  "The node outputs a 'Reconstruction', which is essentially just a list of particle positions,\n" \
+                  "intensities, uncertainties, etc., and which, in scNodes, is a datatype that can be further\n" \
+                  "processed by a number of other nodes that are also found in the 'PSF-fitting reconstruction'\n" \
+                  "node group. "
     title = "PSF fitting"
     group = "PSF-fitting reconstruction"
     colour = (230 / 255, 98 / 255, 13 / 255, 1.0)

@@ -348,7 +348,7 @@ class ImageViewer:
         if imgui.button(">", width=ImageViewer.FRAME_SELECT_BUTTON_SIZE[0], height=ImageViewer.FRAME_SELECT_BUTTON_SIZE[1]):
             self.current_dataset.current_frame += 1
             _frame_idx_changed = True
-        if not self.window.get_key(glfw.KEY_LEFT_SHIFT):
+        if not self.window.get_key(glfw.KEY_LEFT_SHIFT) or self.window.get_key(glfw.KEY_RIGHT_SHIFT) or self.window.get_key(glfw.KEY_LEFT_CONTROL):
             if self.window.scroll_delta[1] != 0:
                 _frame_idx_changed = True
                 self.current_dataset.current_frame -= int(self.window.scroll_delta[1])
@@ -434,14 +434,21 @@ class ImageViewer:
             if self.window.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE):
                 self.camera.position[0] += self.window.cursor_delta[0] * ImageViewer.CAMERA_PAN_SPEED
                 self.camera.position[1] -= self.window.cursor_delta[1] * ImageViewer.CAMERA_PAN_SPEED
-            if self.window.get_key(glfw.KEY_LEFT_SHIFT):
-                if self.window.scroll_delta[1] != 0:
-                    camera_updated_zoom = self.camera.zoom * (1.0 + self.window.scroll_delta[1] * ImageViewer.CAMERA_ZOOM_STEP)
+            zoom = False
+            zoom_val = self.window.scroll_delta[1]
+            if self.window.get_key_event(glfw.KEY_MINUS) or self.window.get_key_event(glfw.KEY_DOWN):
+                zoom = True
+                zoom_val  = -1.0
+            elif self.window.get_key_event(glfw.KEY_EQUAL) or self.window.get_key_event(glfw.KEY_UP):
+                zoom = True
+                zoom_val  = +1.0
+            if zoom or self.window.get_key(glfw.KEY_LEFT_SHIFT) or self.window.get_key(glfw.KEY_LEFT_CONTROL) or self.window.get_key(glfw.KEY_RIGHT_SHIFT) or self.window.get_key(glfw.KEY_RIGHT_CONTROL):
+                if zoom_val != 0:
+                    camera_updated_zoom = self.camera.zoom * (1.0 + zoom_val * ImageViewer.CAMERA_ZOOM_STEP)
                     if camera_updated_zoom < ImageViewer.CAMERA_ZOOM_MAX:
-                        self.camera.zoom *= (1.0 + self.window.scroll_delta[1] * ImageViewer.CAMERA_ZOOM_STEP)
-                        self.camera.position[0] *= (1.0 + self.window.scroll_delta[1] * ImageViewer.CAMERA_ZOOM_STEP)
-                        self.camera.position[1] *= (1.0 + self.window.scroll_delta[1] * ImageViewer.CAMERA_ZOOM_STEP)
-
+                        self.camera.zoom *= (1.0 + zoom_val * ImageViewer.CAMERA_ZOOM_STEP)
+                        self.camera.position[0] *= (1.0 + zoom_val * ImageViewer.CAMERA_ZOOM_STEP)
+                        self.camera.position[1] *= (1.0 + zoom_val * ImageViewer.CAMERA_ZOOM_STEP)
     def _shortcuts(self):
         if self.window.get_key_event(glfw.KEY_C, glfw.PRESS, glfw.MOD_SHIFT | glfw.MOD_CONTROL):
             self.contrast_window_open = True

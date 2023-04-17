@@ -13,6 +13,7 @@ def create():
 
 
 class CustomNode(Node):
+    description = "This description text is shown when the user right-clicks the node and hovers the 'Info' label."
     title = "Example node"  # The title is the name by which the node appears in the editor.
     group = ["Tutorial", "Custom nodes"]  # In the 'add node' right-click context menu, nodes are listed in groupes. A node can be in multiple groups as in this example. Any group name can be used here - also groups that are not in the default software.
     colour = (1.0, 0.0, 1.0, 1.0)  # this node will be magenta.

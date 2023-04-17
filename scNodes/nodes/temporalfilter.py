@@ -6,6 +6,14 @@ def create():
 
 
 class TemporalFilterNode(Node):
+    description = "This node performs 'temporal filtering', by processing multiple of the input dataset's frames to compute\b" \
+                  "one output frame. Different options are available that perform different temporal filters; e.g. a window-\n" \
+                  "ed average, forward/backward/central differences, or 'grouped difference' filtering.\n" \
+                  "This latter option can be useful when processing photo-activated fluorescence imaging datasets (e.g. PALM)\n" \
+                  "where the sample fluorescence is bright even after prolonged exposure (as is typical in, e.g., cryo-PALM).\n" \
+                  "If for example the acquisition routine was '1 activation UV pulse then 20 fluorescence images', it can help\n" \
+                  "to use the last fluorescence image in such a group of 20 images as a background template for the next group\n" \
+                  "of 20 images."
     title = "Temporal filter"
     group = "Image processing"
     colour = (55 / 255, 236 / 255, 54 / 255, 1.0)

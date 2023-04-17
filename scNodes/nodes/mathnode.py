@@ -6,6 +6,7 @@ def create():
 
 
 class MathNode(Node):
+    description = "Perform various mathematical operations on the input images' pixel data, such as taking the logarithm."
     title = "Math"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)
     group = "Converters"

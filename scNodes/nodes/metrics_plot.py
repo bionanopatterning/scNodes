@@ -6,6 +6,8 @@ def create():
     return PlotMetricsNode()
 
 class PlotMetricsNode(Node):
+    description = "Generate a plot of any metric associated with a dataset. See the 'Add metric' node description for\n" \
+                  "more information on metrics."
     title = "Plot metric"
     colour = (145 / 255, 236 / 255, 54 / 255, 1.0)
     group = "Metrics"

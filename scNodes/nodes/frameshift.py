@@ -6,6 +6,13 @@ def create():
 
 
 class FrameShiftNode(Node):
+    description = "This node shifts the reading index of the input dataset. This means that when, e.g., frame '10'\n" \
+                  "is requested (by the image viewer or a downstream node), this node returns, e.g., frame '11' in-\n" \
+                  "stead. (This is an example of a frameshift of +1; any shift value is allowed).\n" \
+                  "\n" \
+                  "When requesting frames outside of the range of the dataset (e.g. at index -1), the index is clamped\n" \
+                  "to be within that range; e.g., negative indices return frame 0, indices larger than the amount of\n" \
+                  "frames in the dataset return the last frame of the dataset."
     title = "Frame shift"
     group = "Image processing"
     colour = (235 / 255, 232 / 255, 80 / 255, 1.0)

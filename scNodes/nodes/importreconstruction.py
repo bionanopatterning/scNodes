@@ -7,6 +7,8 @@ def create():
 
 
 class LoadReconstructionNode(Node):
+    description = "Load a Reconstruction from a .csv file. Compatible with .csv files that are structured like\n" \
+                  "those exported by ThunderSTORM (or scNodes.)"
     title = "Import reconstruction"
     group = "Data IO"
     colour = (213 / 255, 10 / 255, 70 / 255, 1.0)

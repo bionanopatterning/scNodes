@@ -6,6 +6,15 @@ def create():
 
 
 class AddMetric(Node):
+    description = "Add a 'metric' to a dataset. Metrics are named tags that hold a certain value - for example, the\n" \
+                  "Registration node adds a metric called 'Drift (nm)' to every frame that it processes.\n" \
+                  "\n" \
+                  "Using the Add Metric node, you can add extra metrics to frames at any point in the processing pi-\n" \
+                  "peline. For example, we can calculate the mean of a frame's pixel intensities after a background\n" \
+                  "subtraction processing step, and call this metric 'filter_1' If the mean is not close to zero,\n" \
+                  "something might have gone wrong in the filtering step. This metric can then be used to either\n" \
+                  "filter out frames that are flawed (using a 'Discard by metric' node), or it can be plotted to\n" \
+                  "inspect the quality of the processing pipeline (using a 'Plot metric' node)."
     title = "Add metric"
     colour = (145/255, 236/255, 54/255, 1.0)
     group = "Metrics"
