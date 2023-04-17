@@ -229,6 +229,7 @@ class CorrelationEditor:
 
         cfg.ce_active_frame = CorrelationEditor.active_frame
         CorrelationEditor.incoming_files += deepcopy(self.window.dropped_files)
+
         self.window.on_update()
         if self.window.window_size_changed:
             cfg.window_width = self.window.width
@@ -292,6 +293,7 @@ class CorrelationEditor:
         self.imgui_implementation.render(imgui.get_draw_data())
 
     def load_externally_dropped_files(self, paths):
+        print(paths)
         path = paths[0]
         paths.pop(0)
         incoming = ImportedFrameData(path)
@@ -394,10 +396,9 @@ class CorrelationEditor:
                 if imgui.menu_item("Import data")[0]:
                     try:
                         filenames = filedialog.askopenfilenames(filetypes=[("Compatible image types", ".mrc .tif .tiff .png")])
-                        print(filenames)
                         if filenames != '':
                             for file in filenames:
-                                self.window.dropped_files.append(file)
+                                self.window.dropped_files.append(file.replace('/', '\\'))
                     except Exception as e:
                         cfg.set_error(e, "Error importing images - see details below")
                 imgui.end_menu()
@@ -1528,6 +1529,8 @@ class CorrelationEditor:
                     CorrelationEditor.active_frame.move_backwards()
             elif imgui.is_key_pressed(glfw.KEY_SPACE):
                 self.camera.focus_on_frame(CorrelationEditor.active_frame)
+            elif imgui.is_key_pressed(glfw.KEY_LEFT_SHIFT) and imgui.is_key_pressed(glfw.KEY_5):
+                self.snap_enabled = not self.snap_enabled
 
     def _warning_window(self):
         def ww_context_menu():

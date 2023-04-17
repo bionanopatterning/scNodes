@@ -6,7 +6,6 @@ from datetime import datetime
 # This file defines variables that can be accessed globally.
 
 # TO DO list
-# todo: fix error where bakestack freezes when baking a second time. 230309 - fixed, maybe?
 # DONE: when flipping a frame in CE, flip children as well.
 # DONE: input - press '0' (zero) to hide/show frame
 # DONE: input - press "SHIFT" and "+" or "-" to increase/decrease active frame Alpha by 0.1
@@ -24,8 +23,8 @@ from datetime import datetime
 # todo: flip tomogram plugin\
 # DONE: duplicates are buggy - fixed
 # DONE: add menu bar -> File -> Import data function in CE
-
 # DONE: when Measure tool active, press ESCAPE to deactivate it.
+# DONE: shortcut to toggle Snap enabled, same as in inkscape: '%'
 ce_controls = """
 Button input:
 
@@ -38,6 +37,7 @@ Delete: delete the selected frame
 A: set auto-contrast for the selected frame
 I: toggle interpolation mode for the selected frame
 L: lock/unlock current screen
+Shift + 5 (i.e. %): toggle snapping
 """
 frozen = False
 root = ""
