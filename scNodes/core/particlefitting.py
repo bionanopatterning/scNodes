@@ -1,6 +1,7 @@
 import numpy as np
 import pygpufit.gpufit as gf
-
+from joblib import Parallel, delayed
+from scNodes.core.util import tic, toc
 
 def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constraints=(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1)):
     def get_background_stdev(flat_roi, fitted_params):
@@ -58,9 +59,14 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
     if np.sum(states == 0) == 0:
         return list()
 
+    tic()
     background_stdev = np.empty(n_particles)
     for i in range(n_particles):
         background_stdev[i] = get_background_stdev(data[i, :], parameters[i, :])
+    toc("Computing background stdev original way: ")
+    tic()
+    background_stdev = np.asarray(Parallel(n_jobs=-1, mmap_mode='r')(delayed(get_background_stdev)(i, j) for i, j in zip(data, parameters)))
+    toc("Computing background stdev parallel: ")
 
     parameters[:, 1] += xy[:, 1]  # offsetting back into image coordinates (rather than crop coordinates)
     parameters[:, 2] += xy[:, 0]  # offsetting back into image coordinates

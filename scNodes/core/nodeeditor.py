@@ -395,9 +395,6 @@ class NodeEditor:
             full_setup = dict()
             full_setup["nodes"] = node_setup
             full_setup["links"] = links
-            print(full_setup)
-            print(node_setup)
-            print(links)
             with open(path, 'w') as outfile:
                 json.dump(full_setup, outfile, indent=2)
         except Exception as e:
