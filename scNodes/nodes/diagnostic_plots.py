@@ -11,7 +11,7 @@ class DiagnosticPlotsNode(Node):
                   "up. There are two plotting modes:\n" \
                   "1) Histogram: plot histograms of particle parameters, e.g. the uncertainty.\n" \
                   "2) Scatter plot: generate scatter plots that relate two (or three, via colour) parameters.\n" \
-                  "\tFor example, plotting 'frame' versus 'intensity', with dots coloured by 'uncertainty'\t" \
+                  "\tFor example, plotting 'frame' versus 'intensity', with dots coloured by 'uncertainty'\n" \
                   "\tcan help visualize whether and how the images change over time (but can also be hard\n" \
                   "\tto interpret)."
     title = "Diagnostic plots"

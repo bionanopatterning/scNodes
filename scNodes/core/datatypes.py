@@ -216,6 +216,9 @@ class ParticleData:
         self.colours_up_to_date = True
         self.empty = True
         self.reconstruction_roi = [0, 0, 0, 0]
+        self.photons_per_count = 0.45
+        self.camera_offset = 100.0
+        self.uncertainty_estimator = 0
 
     def __add__(self, other):
         for key in other:
@@ -247,20 +250,36 @@ class ParticleData:
         for key in self.parameters:
             self.parameters[key] = np.asarray(self.parameters[key])
 
+        self.n_particles = len(self.parameters["x [nm]"])
 
-        k1 = self.pixel_size**2 / 12
-        k2 = 8 * np.pi / self.pixel_size**2
-        self.n_particles = len(self.parameters["x [nm]"])  # parameters_raw will always have key "x [nm]"
-        intensity = self.parameters["intensity [counts]"]
+        if self.uncertainty_estimator == 0:
+            bkgstd = self.parameters["bkgstd [counts]"]
+            intensity = self.parameters["intensity [counts]"]
+            k1 = self.pixel_size ** 2 / 12
+            k2 = 8 * np.pi / self.pixel_size ** 2
+        elif self.uncertainty_estimator == 1:
+            self.parameters["intensity [photons]"] = self.parameters["intensity [counts]"] * self.photons_per_count
+            self.parameters["offset [photons]"] = self.parameters["offset [counts]"] * self.photons_per_count
+            self.parameters.pop("intensity [counts]")
+            self.parameters.pop("offset [counts]")
+            intensity = self.parameters["intensity [photons]"]
+            background = self.parameters["offset [photons]"]
+
         sigma = self.parameters["sigma [nm]"]
-        bkgstd = self.parameters["bkgstd [counts]"]
         discard_mask = np.zeros_like(self.parameters["x [nm]"])
         uncertainty = np.zeros_like(self.parameters["x [nm]"])
+
         for i in range(self.n_particles):
             if intensity[i] == 0.0:
                 discard_mask[i] = 1
                 continue
-            uncertainty[i] = np.sqrt(((sigma[i]*self.pixel_size)**2 + k1) / intensity[i] + k2 * (sigma[i]*self.pixel_size)**4 * bkgstd[i]**2 / intensity[i]**2)
+            if self.uncertainty_estimator == 0:
+                uncertainty[i] = np.sqrt(((sigma[i]*self.pixel_size)**2 + k1) / intensity[i] + k2 * (sigma[i]*self.pixel_size)**4 * bkgstd[i]**2 / intensity[i]**2)
+            elif self.uncertainty_estimator == 1:
+                sigma_eff_sq = (sigma[i]**2 + self.pixel_size**2 / 12)
+                sa_n = sigma_eff_sq / intensity[i]
+                variance = sa_n * (16 / 9 + 8 * np.pi * background[i]**2 * sa_n / self.pixel_size**2)
+                uncertainty[i] = np.sqrt(variance)
 
         discard_indices = discard_mask.nonzero()
         self.parameters['uncertainty [nm]'] = np.asarray(uncertainty)
