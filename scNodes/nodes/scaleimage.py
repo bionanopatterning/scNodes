@@ -7,6 +7,7 @@ def create():
 
 
 class ScaleImageNode(Node):
+    description = "This node changes the size (in terms of pixel width / height) of the input frames."
     title = "Scale image"
     group = "Image processing"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)

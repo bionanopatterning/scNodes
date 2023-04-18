@@ -6,6 +6,7 @@ def create():
 
 
 class ThresholdNode(Node):
+    description = "This node outputs copies of the input frames, but with thresholding applied."
     title = "Threshold"
     colour = (0.8, 0.5, 0.0, 1.0)
     group = "Image processing"

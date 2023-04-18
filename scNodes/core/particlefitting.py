@@ -1,8 +1,11 @@
 import numpy as np
 import pygpufit.gpufit as gf
+from scNodes.core.util import tic, toc
 
-
-def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constraints=(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1)):
+def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constraints=(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1), uncertainty_estimator=0, camera_offset=0):
+    """
+    uncertainty_type: 0 for Thompson et al. 2002, 1 for Mortsensen et al. 2010
+    """
     def get_background_stdev(flat_roi, fitted_params):
         gauss = np.empty_like(flat_roi)
         k = int(np.sqrt(gauss.shape[0])) // 2
@@ -37,11 +40,10 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
     params = np.empty((n_particles, 5), dtype=np.float32)
     for i in range(n_particles):
         x, y = xy[i]
-        data[i, :] = pxd[x - crop_radius:x + crop_radius + 1, y - crop_radius:y + crop_radius + 1].flatten()
+        data[i, :] = pxd[x - crop_radius:x + crop_radius + 1, y - crop_radius:y + crop_radius + 1].flatten() - camera_offset
         initial_offset = data[i, :].min()
         initial_intensity = pxd[x, y] - initial_offset
         params[i, :] = [initial_intensity, crop_radius, crop_radius, initial_sigma, initial_offset]
-
     estimator = gf.EstimatorID.LSE if method == 0 else gf.EstimatorID.MLE
 
     # Set up constraints
@@ -58,9 +60,10 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
     if np.sum(states == 0) == 0:
         return list()
 
-    background_stdev = np.empty(n_particles)
-    for i in range(n_particles):
-        background_stdev[i] = get_background_stdev(data[i, :], parameters[i, :])
+    if uncertainty_estimator == 0:
+        background_stdev = np.empty(n_particles)
+        for i in range(n_particles):
+            background_stdev[i] = get_background_stdev(data[i, :], parameters[i, :])
 
     parameters[:, 1] += xy[:, 1]  # offsetting back into image coordinates (rather than crop coordinates)
     parameters[:, 2] += xy[:, 0]  # offsetting back into image coordinates
@@ -81,12 +84,12 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
     frame_particle_data["sigma [nm]"] = parameters[accepted_particles, 3].squeeze().tolist()
     frame_particle_data["intensity [counts]"] = parameters[accepted_particles, 0].squeeze().tolist()
     frame_particle_data["offset [counts]"] = parameters[accepted_particles, 4].squeeze().tolist()
-    frame_particle_data["bkgstd [counts]"] = background_stdev[accepted_particles].squeeze().tolist()
-
-    ## END 230207
+    if uncertainty_estimator == 0:
+        frame_particle_data["bkgstd [counts]"] = background_stdev[accepted_particles].squeeze().tolist()
+    frame_particle_data["chi_square"] = chi_squares[accepted_particles].squeeze().tolist()
     return frame_particle_data
 
-def frame_to_particles_3d(frame, initial_sigma=2.0, method=0, crop_radius=4, constraints=(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1)):
+def frame_to_particles_3d(frame, initial_sigma=2.0, method=0, crop_radius=4, constraints=(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1), uncertainty_estimator=0, camera_offset=0):
     """
     frame_to_particles_3d differs from frame_to_particles in the model that is used:
     gf.ModelID.GAUSS_2D_ELLIPTIC vs. gf.ModelID.GAUSS_2D
@@ -128,7 +131,7 @@ def frame_to_particles_3d(frame, initial_sigma=2.0, method=0, crop_radius=4, con
     params = np.empty((n_particles, 6), dtype=np.float32)
     for i in range(n_particles):
         x, y = xy[i]
-        data[i, :] = pxd[x - crop_radius:x + crop_radius + 1, y - crop_radius:y + crop_radius + 1].flatten()
+        data[i, :] = pxd[x - crop_radius:x + crop_radius + 1, y - crop_radius:y + crop_radius + 1].flatten() - camera_offset
         initial_offset = data[i, :].min()
         initial_intensity = pxd[x, y] - initial_offset
         params[i, :] = [initial_intensity, crop_radius, crop_radius, initial_sigma, initial_sigma, initial_offset]
@@ -149,9 +152,10 @@ def frame_to_particles_3d(frame, initial_sigma=2.0, method=0, crop_radius=4, con
     if np.sum(states == 0) == 0:
         return list()
 
-    background_stdev = np.empty(n_particles)
-    for i in range(n_particles):
-        background_stdev[i] = get_background_stdev(data[i, :], parameters[i, :])
+    if uncertainty_estimator == 0:
+        background_stdev = np.empty(n_particles)
+        for i in range(n_particles):
+            background_stdev[i] = get_background_stdev(data[i, :], parameters[i, :])
 
     parameters[:, 1] += xy[:, 1]  # offsetting back into image coordinates (rather than crop coordinates)
     parameters[:, 2] += xy[:, 0]  # offsetting back into image coordinates
@@ -170,8 +174,10 @@ def frame_to_particles_3d(frame, initial_sigma=2.0, method=0, crop_radius=4, con
     frame_particle_data["sigma [nm]"] = parameters[accepted_particles, 3].squeeze().tolist()
     frame_particle_data["intensity [counts]"] = parameters[accepted_particles, 0].squeeze().tolist()
     frame_particle_data["offset [counts]"] = parameters[accepted_particles, 5].squeeze().tolist()
-    frame_particle_data["bkgstd [counts]"] = background_stdev[accepted_particles].squeeze().tolist()
+    if uncertainty_estimator == 0:
+        frame_particle_data["bkgstd [counts]"] = background_stdev[accepted_particles].squeeze().tolist()
     frame_particle_data["sigma2 [nm]"] = parameters[accepted_particles, 4].squeeze().tolist()
+    frame_particle_data["chi_square"] = chi_squares[accepted_particles].squeeze().tolist()
     ## END 230207
 
     return frame_particle_data

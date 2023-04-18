@@ -12,6 +12,16 @@ def create():
 
 
 class BakeStackNode(Node):
+    description = "The Bake Stack node can be used to process and save the output of the entire upstream node setup.\n" \
+                  "This can be helpful when certain processing steps are slow and executed repeatedly. For instance,\n" \
+                  "when using a windowed average temporal filter downstream of an image registration node. In such a\n" \
+                  "case, pre-registering the entire stack by the use of a Bake Stack node and placing the temporal  \n" \
+                  "filter downstream of the Bake Stack node helps to speed up processing, as it avoids registering  \n" \
+                  "images multiple times.\n" \
+                  "\n" \
+                  "When the 'Parallel' option is selected, the node used joblib to process images in parallel on the\n" \
+                  "CPU. Some functions are not compatible with joblib - for example the GPU-accelerated registration " \
+                  "or ORB registration can not be parallelized."
     title = "Bake stack"
     group = "Image processing"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)

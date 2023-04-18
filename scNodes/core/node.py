@@ -9,7 +9,6 @@ from joblib import Parallel, delayed
 from joblib.externals.loky import set_loky_pickler
 set_loky_pickler("dill")
 
-
 class Node:
     title = "NullNode"
     group = "Ungrouped"

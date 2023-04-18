@@ -6,6 +6,10 @@ def create():
 
 
 class ParticleDetectionNode(Node):
+    description = "This node takes a Dataset as the input and outputs 'Coordinates'. These coordinates correspond to\n" \
+                  "the location of local maxima in the input frames. The Particle Detection node is usually a precur-\n" \
+                  "sor of a PSF Fitting node, which requires coordinates as the input and performs fitting at these\n" \
+                  "coordinates."
     title = "Particle detection"
     group = "PSF-fitting reconstruction"
     colour = (230 / 255, 174 / 255, 13 / 255, 1.0)

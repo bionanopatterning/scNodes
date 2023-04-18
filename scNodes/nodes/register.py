@@ -9,6 +9,9 @@ def create():
 
 
 class RegisterNode(Node):
+    description = "Register (i.e. drift correction) images onto some template. Multiple registration methods are available.\n" \
+                  "For datasets with highly similar images, we prefer to use our own method 'pyGPUreg', which can be very\n" \
+                  "fast. For different datasets, different registration methods may offer better results."
     title = "Registration"
     group = "Image processing"  # default groups: "Data IO", "Image processing", "Reconstruction", "Custom"
     colour = (68 / 255, 177 / 255, 209 / 255, 1.0)

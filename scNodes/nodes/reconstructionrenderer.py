@@ -6,6 +6,12 @@ def create():
 
 
 class ReconstructionRendererNode(Node):
+    description = "Render the input Reconstruction to an image. Rendering is performed on the GPU. Every particle in\n" \
+                  "the input reconstruction is rendered as a normalized Gaussian spot, with the standard deviation of\n" \
+                  "the Gaussian set to the uncertainty of the detection. Optionally, particles can also be colourized\n" \
+                  "in relation to any of the particle's parameters. For reconstructions with low particle counts, this\n" \
+                  "can help generate more insightful reconstructions. When the number of particles is very high, the\n" \
+                  "information added by the colourisation can get lost in the crowded final image."
     title = "Render reconstruction"
     group = "PSF-fitting reconstruction"
     colour = (243 / 255, 0 / 255, 80 / 255, 1.0)

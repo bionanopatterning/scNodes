@@ -6,6 +6,10 @@ def create():
 
 
 class InvertNode(Node):
+    description = "This is the node that is created in the 'Creating a custom node' tutorial that can be found in the\n" \
+                  "user manual.\n" \
+                  "\n" \
+                  "The node inverts the pixel intensities of the input frames."
     title = "Invert images"
     colour = (0.8, 0.5, 0.0, 1.0)
     group = "Image processing"

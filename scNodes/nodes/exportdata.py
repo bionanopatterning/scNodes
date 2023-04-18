@@ -9,6 +9,11 @@ def create():
 
 
 class ExportDataNode(Node):
+    description = "Input can be a Dataset, Image, or Reconstruction. This node saves the input data\n" \
+                  "as either a tif(stack) or a .csv file in the case of Reconstructions. When the\n" \
+                  "'Parallel' option is selected, frames are processed in parallel on the CPU using\n" \
+                  "joblib. Not all functions are compatible with parallel processing; see also the \n" \
+                  "Bake Stack node description."
     title = "Export data"
     group = "Data IO"
     colour = (138 / 255, 8 / 255, 8 / 255, 1.0)

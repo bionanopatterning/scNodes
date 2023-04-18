@@ -9,6 +9,10 @@ def create():
 
 
 class SofiNode(Node):
+    description = "SOFI is a super-resolution reconstruction method that is often used as an alternative to PSF-fitting\n" \
+                  "methods when images contain many overlapping fluorescent particles. The SOFI reconstruction node is \n" \
+                  "based on Miao et al.'s 'PySOFI: an open source Python package for SOFI.' (2022). The node processes \n" \
+                  "the input data in one go, which can cause the software to become unresponsive for a while."
     title = "SOFI reconstruction"
     group = ["Alternative reconstruction"]
     colour = (98 / 255, 13 / 255, 230 / 255, 1.0)  # (230 / 255, 98 / 255, 13 / 255, 1.0)

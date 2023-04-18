@@ -6,6 +6,10 @@ def create():
 
 
 class ParticleFilterNode(Node):
+    description = "Filter a reconstruction on the basis of the values of certain particle parameters. The input and\n" \
+                  "output reconstructions are the same, except that in the output Reconstruction some particles will\n" \
+                  "have their 'show' flag set to False. These particles are not rendered; i.e., are removed from the\n" \
+                  "reconstruction."
     title = "Particle filter"
     group = "PSF-fitting reconstruction"
     colour = (243 / 255, 0 / 255, 80 / 255, 1.0)

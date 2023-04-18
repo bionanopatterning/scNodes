@@ -6,6 +6,9 @@ def create():
 
 
 class GetImageNode(Node):
+    description = "Takes a Dataset as the input and outputs a single Frame. The output frame can be either \n" \
+                  "a copy of any frame in the dataset, or a projection image such as the average of all the\n" \
+                  "frames in the input dataset.\n"
     title = "Dataset to image"
     group = "Converters"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)

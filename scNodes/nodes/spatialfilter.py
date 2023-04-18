@@ -9,6 +9,7 @@ def create():
 
 
 class SpatialFilterNode(Node):
+    description = "Apply various filters to the pixel data of input frames. "
     title = "Spatial filter"
     group = "Image processing"
     colour = (44 / 255, 217 / 255, 158 / 255, 1.0)

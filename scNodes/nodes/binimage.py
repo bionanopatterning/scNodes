@@ -6,6 +6,7 @@ def create():
 
 
 class BinImageNode(Node):
+    description = "Outputs binned copies of the input frames."
     title = "Bin image"
     group = "Image processing"
     colour = (143 / 255, 143 / 255, 143 / 255, 1.0)

@@ -6,6 +6,10 @@ def create():
 
 
 class DiscardFramesNode(Node):
+    description = "Discard frames based on the value of any metric associated with the frame. Discarded frames are\n" \
+                  "ignored in the PSF-fitting node - they do not contribute to the final reconstruction.\n" \
+                  "\n" \
+                  "See the 'Add metric' node description for more information on metrics."
     title = "Discard by metric"
     colour = (145/255, 236/255, 54/255, 1.0)
     group = "Metrics"
