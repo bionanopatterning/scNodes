@@ -69,9 +69,13 @@ class ParticleFilterNode(Node):
             imgui.new_line()
             imgui.same_line(content_width / 2 - 50)
             if imgui.button("Add filter", width = 100, height = 20):
-                new_filter = ParticleFilterNode.Filter(self)
-                new_filter.set_data(*self.get_histogram_vals(self.available_parameters[0]), self.available_parameters[0])
-                self.filters.append(new_filter)
+                try:
+                    self.get_histogram_parameters()
+                    new_filter = ParticleFilterNode.Filter(self)
+                    new_filter.set_data(*self.get_histogram_vals(self.available_parameters[0]), self.available_parameters[0])
+                    self.filters.append(new_filter)
+                except Exception as e:
+                    cfg.set_error(e, "Could not add filter - no data available to filter.")
             imgui.pop_style_color(2)
             super().render_end()
 
@@ -87,10 +91,13 @@ class ParticleFilterNode(Node):
             return np.asarray([0, 0]).astype('float32'), np.asarray([0, 1]).astype('float32')
 
     def get_histogram_parameters(self):
-        datasource = self.connectable_attributes["reconstruction_in"].get_incoming_node()
-        if datasource:
-            particledata = datasource.get_particle_data()
-            self.available_parameters = list(particledata.histogram_counts.keys())
+        try:
+            datasource = self.connectable_attributes["reconstruction_in"].get_incoming_node()
+            if datasource:
+                particledata = datasource.get_particle_data()
+                self.available_parameters = list(particledata.histogram_counts.keys())
+        except Exception as e:
+            pass
 
     def get_particle_data_impl(self):
         if cfg.profiling:

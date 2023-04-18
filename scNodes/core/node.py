@@ -203,11 +203,6 @@ class Node:
             _delete, _ = imgui.menu_item("Delete node")
             if _delete:
                 self.delete()
-            _reset, _ = imgui.menu_item("Reset node")
-            if _reset:
-                new_node = Node.create_node_by_type(self.type)
-                self.params = copy.deepcopy(new_node.params)
-                new_node.delete()
             if imgui.begin_menu("Set node-specific LUT"):
                 for lut in ["auto"] + settings.lut_names:
                     _lut, _ = imgui.menu_item(lut)
@@ -566,7 +561,7 @@ class ConnectableAttribute:
         window_width = imgui.get_window_content_region_width()
         self.draw_x = imgui.get_cursor_screen_pos()[0] + (ConnectableAttribute.CONNECTOR_HORIZONTAL_OFFSET if self.direction else window_width - 1 - ConnectableAttribute.CONNECTOR_HORIZONTAL_OFFSET)
         if self.direction == ConnectableAttribute.INPUT:
-            imgui.same_line(position = ConnectableAttribute.CONNECTOR_SPACING)
+            imgui.same_line(position=ConnectableAttribute.CONNECTOR_SPACING)
             self.draw_y = imgui.get_cursor_screen_pos()[1] + ConnectableAttribute.CONNECTOR_VERTICAL_OFFSET
         else:
             imgui.same_line(position=window_width - text_width)

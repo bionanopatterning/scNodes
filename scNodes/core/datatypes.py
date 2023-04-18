@@ -239,6 +239,10 @@ class ParticleData:
     def clean(self):
         if 'visible' in self.parameters:
             self.parameters["visible"] = np.ones_like(self.parameters["visible"])
+        if "dx [nm]" in self.parameters:
+            self.parameters["dx [nm]"] = np.zeros_like(self.parameters["dx [nm]"])
+        if "dy [nm]" in self.parameters:
+            self.parameters["dy [nm]"] = np.zeros_like(self.parameters["dy [nm]"])
         self.baked_by_renderer = False
 
     def bake(self):
@@ -281,6 +285,11 @@ class ParticleData:
                 variance = sa_n * (16 / 9 + 8 * np.pi * background[i]**2 * sa_n / self.pixel_size**2)
                 uncertainty[i] = np.sqrt(variance)
 
+        discard_mask += self.parameters["x [nm]"] < self.x_min
+        discard_mask += self.parameters["x [nm]"] > self.x_max
+        discard_mask += self.parameters["y [nm]"] < self.y_min
+        discard_mask += self.parameters["y [nm]"] > self.y_max
+
         discard_indices = discard_mask.nonzero()
         self.parameters['uncertainty [nm]'] = np.asarray(uncertainty)
 
@@ -305,6 +314,9 @@ class ParticleData:
         self.y_min = np.min(self.parameters['y [nm]'])
         self.x_max = np.max(self.parameters['x [nm]'])
         self.y_max = np.max(self.parameters['y [nm]'])
+        self.n_particles = len(self.parameters["x [nm]"])
+        self.parameters['dx [nm]'] = np.zeros_like(self.parameters['x [nm]'])
+        self.parameters['dy [nm]'] = np.zeros_like(self.parameters['y [nm]'])
 
     def apply_filter(self, parameter_key, min_val, max_val, logic_not=False):
         vals = self.parameters[parameter_key]
@@ -335,6 +347,8 @@ class ParticleData:
 
         particle_data_obj.pixel_size = 1
         particle_data_obj.n_particles = len(particle_data_obj.parameters['x [nm]'])
+        particle_data_obj.parameters['dx [nm]'] = np.ones_like(particle_data_obj.parameters['x [nm]'])
+        particle_data_obj.parameters['dy [nm]'] = np.ones_like(particle_data_obj.parameters['x [nm]'])
         particle_data_obj.parameters['visible'] = np.ones_like(particle_data_obj.parameters['x [nm]'])
         particle_data_obj.parameters['colour_idx'] = np.ones_like(particle_data_obj.parameters['x [nm]'])
         particle_data_obj.x_min = np.min(particle_data_obj.parameters['x [nm]'])
@@ -355,6 +369,12 @@ class ParticleData:
     def save_as_csv(self, path):
         _colour_idx = self.parameters.pop("colour_idx")
         _visible = self.parameters.pop("visible")
+        dx = self.parameters.pop("dx [nm]")
+        dy = self.parameters.pop("dy [nm]")
+        self.parameters["x [nm]"] += dx
+        self.parameters["y [nm]"] += dy
         pd.DataFrame.from_dict(self.parameters).to_csv(path, index=False)
         self.parameters["colour_idx"] = _colour_idx
         self.parameters["visible"] = _visible
+        self.parameters["dx [nm]"] = dx
+        self.parameters["dy [nm]"] = dy
