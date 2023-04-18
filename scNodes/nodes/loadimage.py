@@ -51,6 +51,10 @@ class LoadImageNode(Node):
 
             super().render_end()
 
+    def on_receive_drop(self, files):
+        self.params["path"] = files[0]
+        self.on_select_file()
+
     def on_select_file(self):
         try:
             self.img = Frame(self.params["path"])

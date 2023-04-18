@@ -1539,7 +1539,7 @@ class CorrelationEditor:
                     pyperclip.copy(cfg.error_msg)
                 copy_path_to_log, _ = imgui.menu_item("Copy path to scNodes.log")
                 if copy_path_to_log:
-                    pyperclip.copy(cfg.logpath)
+                    pyperclip.copy(os.path.abspath(cfg.logpath))
                 imgui.end_popup()
             imgui.pop_style_color(1)
         ## Error message

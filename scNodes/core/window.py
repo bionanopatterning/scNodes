@@ -135,7 +135,7 @@ class Window:
     def get_mouse_button(self, button):
         return glfw.get_mouse_button(self.glfw_window, button)
 
-    def get_key_event(self, key, action, mods=0, pop_event=True):
+    def get_key_event(self, key, action=glfw.PRESS, mods=0, pop_event=True):
         if self.key_event:
             if self.key_event.check(key, action, mods):
                 if pop_event:

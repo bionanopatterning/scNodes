@@ -3,8 +3,6 @@ import numpy as np
 
 n_cpus = -1
 
-
-
 ne_window_title = "scNodes editor"
 
 iv_window_title = "scNodes image viewer"

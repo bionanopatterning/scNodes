@@ -50,6 +50,7 @@ class ImageViewer:
         self.shader = Shader(cfg.root+"shaders/iv_textured_shader.glsl")
         self.roi_shader = Shader(cfg.root+"shaders/iv_line_shader.glsl")
         self.texture = Texture(format="rgb32f")
+        self.texture.set_linear_mipmap_interpolation()
         self.fbo = FrameBuffer(*settings.def_img_size)
         self.va = VertexArray()
         self.lut_texture = Texture(format="rgb32f")
@@ -436,11 +437,7 @@ class ImageViewer:
                 self.camera.position[1] -= self.window.cursor_delta[1] * ImageViewer.CAMERA_PAN_SPEED
             if self.window.get_key(glfw.KEY_LEFT_SHIFT):
                 if self.window.scroll_delta[1] != 0:
-                    camera_updated_zoom = self.camera.zoom * (1.0 + self.window.scroll_delta[1] * ImageViewer.CAMERA_ZOOM_STEP)
-                    if camera_updated_zoom < ImageViewer.CAMERA_ZOOM_MAX:
-                        self.camera.zoom *= (1.0 + self.window.scroll_delta[1] * ImageViewer.CAMERA_ZOOM_STEP)
-                        self.camera.position[0] *= (1.0 + self.window.scroll_delta[1] * ImageViewer.CAMERA_ZOOM_STEP)
-                        self.camera.position[1] *= (1.0 + self.window.scroll_delta[1] * ImageViewer.CAMERA_ZOOM_STEP)
+                    self.camera.centred_zoom(self.window.scroll_delta[1] * ImageViewer.CAMERA_ZOOM_STEP)
 
     def _shortcuts(self):
         if self.window.get_key_event(glfw.KEY_C, glfw.PRESS, glfw.MOD_SHIFT | glfw.MOD_CONTROL):
@@ -457,10 +454,14 @@ class ImageViewer:
         if self.window.get_key_event(glfw.KEY_S, glfw.PRESS, glfw.MOD_CONTROL):
             if self.image_pxd is not None:
                 self.save_current_image()
-        if self.window.get_key_event(glfw.KEY_DELETE, glfw.PRESS, 0) or self.window.get_key_event(glfw.KEY_DELETE, glfw.REPEAT, 0):
+        elif self.window.get_key_event(glfw.KEY_MINUS) or self.window.get_key_event(glfw.KEY_KP_SUBTRACT):
+            self.camera.centred_zoom(-ImageViewer.CAMERA_ZOOM_STEP)
+        elif self.window.get_key_event(glfw.KEY_EQUAL) or self.window.get_key_event(glfw.KEY_KP_ADD):
+            self.camera.centred_zoom(ImageViewer.CAMERA_ZOOM_STEP)
+        elif self.window.get_key_event(glfw.KEY_DELETE, glfw.PRESS, 0) or self.window.get_key_event(glfw.KEY_DELETE, glfw.REPEAT, 0):
             self.current_dataset.delete_by_index(self.current_dataset.current_frame)
             self.new_image_requested = True
-        if self.window.get_key_event(glfw.KEY_TAB, glfw.PRESS):
+        elif self.window.get_key_event(glfw.KEY_TAB, glfw.PRESS):
             cfg.active_editor = 1 - cfg.active_editor
 
     def _context_menu(self):
@@ -568,7 +569,7 @@ class ImageViewer:
                 self.contrast_max[i] = img_sorted[int((1.0 - settings.autocontrast_saturation / 100.0) * n)]
 
     def center_camera(self):
-        self.camera.zoom = 1
+        #self.camera.zoom = 1
         self.camera.position = [-self.image_width / 2, -self.image_height / 2, 0.0]
 
     def set_lut(self, lut_index):
@@ -630,5 +631,12 @@ class Camera:
         ])
         self.view_projection_matrix = np.matmul(self.projection_matrix, self.view_matrix)
 
+    def centred_zoom(self, zoom_delta):
+        fac = 1.0 + zoom_delta
+        camera_updated_zoom = self.zoom * fac
+        if camera_updated_zoom < ImageViewer.CAMERA_ZOOM_MAX:
+            self.zoom *= fac
+            self.position[0] *= fac
+            self.position[1] *= fac
 
 

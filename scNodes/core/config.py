@@ -24,6 +24,15 @@ from datetime import datetime
 # todo: flip tomogram plugin\
 # DONE: duplicates are buggy - fixed
 # DONE: add menu bar -> File -> Import data function in CE
+# TODO: Add tutorial dataset
+# TODO: Archive code on Zenodo or something similar with a DOI
+# TODO: Add a subtle zoom slider to the Image Viewer
+# TODO: Improve camera behaviour in Image Viewer; no automatic update on changing image size
+# TODO: Localization based drift correction using RCC
+# TODO: Faster PSF-fitting with e.g. jungmannlab/picasso and/or other methods if available
+# TODO: maybe - increase pyGPUfit speed by performing image cropping on GPU as well.
+# TODO: make Linux compatible
+# TODO: explicitaly make scNodes _incompatible_ with iOS
 
 # DONE: when Measure tool active, press ESCAPE to deactivate it.
 ce_controls = """
@@ -74,7 +83,7 @@ active_connector_parent_node = None
 active_connector_hover_pos = [0, 0]
 connector_released = False
 connector_delete_requested = False
-
+ne_dropped_files = None
 n_cpus_max = cpu_count()
 n_cpus = n_cpus_max
 batch_size = n_cpus_max * 3

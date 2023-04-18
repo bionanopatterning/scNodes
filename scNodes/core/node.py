@@ -151,12 +151,20 @@ class Node:
         imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *Node.COLOUR_FRAME_BACKGROUND)
         imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *Node.COLOUR_WINDOW_BACKGROUND)
         _, stay_open = imgui.begin(self.title + f"##{self.id}", True, imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_BRING_TO_FRONT_ON_FOCUS | imgui.WINDOW_NO_SAVED_SETTINGS | imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_COLLAPSE)# | imgui.WINDOW_NO_MOVE)
-
+        # Recognize when files are dropped onto the node:
+        mouse_pos = imgui.get_mouse_pos()
+        mouse_over_window_x = 0 < mouse_pos[0] - self.last_measured_window_position[0] < self.size
+        mouse_over_window_y = 0 < mouse_pos[1] - self.last_measured_window_position[1] < self.node_height
+        is_node_hovered = mouse_over_window_x and mouse_over_window_y
+        if is_node_hovered and cfg.ne_dropped_files != []:
+            self.on_receive_drop(cfg.ne_dropped_files)
+            cfg.ne_dropped_files = []
         if imgui.is_window_focused() and not imgui.is_any_item_hovered():
             if cfg.set_active_node(self):
                 self.on_gain_focus()
             self.position[0] = self.position[0] + cfg.node_move_requested[0]
             self.position[1] = self.position[1] + cfg.node_move_requested[1]
+        #
         self.position[0] += cfg.camera_move_requested[0]
         self.position[1] += cfg.camera_move_requested[1]
         self.last_measured_window_position = imgui.get_window_position()
@@ -462,6 +470,9 @@ class Node:
         pass
 
     def on_load(self):
+        pass
+
+    def on_receive_drop(self, files):
         pass
 
 

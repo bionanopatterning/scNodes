@@ -333,7 +333,6 @@ class CLEMFrame:
         w, h = self.width * 0.5, self.height * 0.5
         vertex_attributes = list()
         indices = list()
-        border_indices = list()
         n = cfg.ce_va_subdivision
         for i in range(n):
             for j in range(n):

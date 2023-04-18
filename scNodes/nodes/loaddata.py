@@ -121,6 +121,10 @@ class LoadDataNode(Node):
             self.on_select_file()
             self.any_change = True
 
+    def on_receive_drop(self, files):
+        self.params["path"] = files[0]
+        self.on_select_file()
+
     def on_select_file(self):
         try:
             self.dataset = Dataset(self.params["path"], self.params["pixel_size"])

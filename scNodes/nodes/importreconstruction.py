@@ -41,6 +41,10 @@ class LoadReconstructionNode(Node):
                     self.on_select_file()
             super().render_end()
 
+    def on_receive_drop(self, files):
+        self.params["path"] = files[0]
+        self.on_select_file()
+
     def on_select_file(self):
         try:
             self.particle_data = ParticleData.from_csv(self.params["path"])
