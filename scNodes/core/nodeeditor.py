@@ -37,7 +37,7 @@ class NodeEditor:
         self.context_menu_open = False
         self.context_menu_can_close = False
 
-        NodeEditor.init_node_factory()
+        self.context_menu_show_info = False
 
         if True:
             self.boot_img_texture = Texture(format="rgba32f")
@@ -328,7 +328,7 @@ class NodeEditor:
                 self.group = self.node_obj.group
                 self.id = self.node_obj.sortid
                 self.enabled = self.node_obj.enabled
-
+                self.description = self.node_obj.description
             def __del__(self):
                 self.node_obj.delete()
 

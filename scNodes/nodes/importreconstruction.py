@@ -19,7 +19,7 @@ class LoadReconstructionNode(Node):
         self.size = 200
 
         self.connectable_attributes["reconstruction_out"] = ConnectableAttribute(ConnectableAttribute.TYPE_RECONSTRUCTION, ConnectableAttribute.OUTPUT, self)
-        self.particle_data = None
+        self.particle_data = ParticleData()
         self.params["path"] = ""
 
     def render(self):
@@ -56,3 +56,6 @@ class LoadReconstructionNode(Node):
         except Exception as e:
             cfg.set_error(e, f"Error getting reconstruction from {self.title} node")
             return None
+
+    def on_load(self):
+        self.on_select_file()

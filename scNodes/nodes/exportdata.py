@@ -163,6 +163,7 @@ class ExportDataNode(Node):
         data_source = self.connectable_attributes["dataset_in"].get_incoming_node()
         if data_source:
             incoming_img = data_source.get_image(idx)
-            img_pxd = incoming_img.load()
-            incoming_img.clean()
-            return img_pxd
+            if incoming_img:
+                img_pxd = incoming_img.load()
+                incoming_img.clean()
+                return img_pxd

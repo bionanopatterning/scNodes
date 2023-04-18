@@ -171,11 +171,11 @@ class Reconstructor:
         """
         self.vao.bind()
 
-        self.instance_vbos["x"] = VertexBuffer(self.particle_data.parameters['x [nm]'])
+        self.instance_vbos["x"] = VertexBuffer(self.particle_data.parameters['x [nm]'] + self.particle_data.parameters['dx [nm]'])
         self.instance_vbos["x"].set_location_and_stride(2, 1)
         self.instance_vbos["x"].set_divisor_to_per_instance()
 
-        self.instance_vbos["y"] = VertexBuffer(self.particle_data.parameters['y [nm]'])
+        self.instance_vbos["y"] = VertexBuffer(self.particle_data.parameters['y [nm]'] + self.particle_data.parameters['dy [nm]'])
         self.instance_vbos["y"].set_location_and_stride(3, 1)
         self.instance_vbos["y"].set_divisor_to_per_instance()
 

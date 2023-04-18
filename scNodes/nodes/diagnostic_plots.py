@@ -127,6 +127,7 @@ class DiagnosticPlotsNode(Node):
                 # plot histogram
                 bins = None if self.params["n_bins"] == -1 else self.params["n_bins"]
                 data = particledata.parameters[self.available_parameters[self.params["x_param"]]]
+                data = data[particledata.parameters["visible"]==1]
                 plt.hist(data, bins=bins, color = (0.0, 0.0, 0.0, 1.0))
                 plt.xlabel(self.available_parameters[self.params["x_param"]])
                 plt.title(f"Histogram of particle {self.available_parameters[self.params['x_param']]}")
@@ -134,6 +135,8 @@ class DiagnosticPlotsNode(Node):
                 # plot scatter plot
                 xdata = particledata.parameters[self.available_parameters[self.params["x_param"]]]
                 ydata = particledata.parameters[self.available_parameters[self.params["y_param"]]]
+                xdata = xdata[particledata.parameters["visible"] == 1]
+                ydata = ydata[particledata.parameters["visible"] == 1]
                 # colour
                 if self.params["colourize"]:
                     cdata = particledata.parameters[self.available_parameters[self.params["c_param"]]]
