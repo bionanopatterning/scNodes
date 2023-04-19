@@ -50,7 +50,6 @@ class ImageViewer:
         self.shader = Shader(cfg.root+"shaders/iv_textured_shader.glsl")
         self.roi_shader = Shader(cfg.root+"shaders/iv_line_shader.glsl")
         self.texture = Texture(format="rgb32f")
-        self.texture.set_linear_mipmap_interpolation()
         self.fbo = FrameBuffer(*settings.def_img_size)
         self.va = VertexArray()
         self.lut_texture = Texture(format="rgb32f")
@@ -569,7 +568,7 @@ class ImageViewer:
                 self.contrast_max[i] = img_sorted[int((1.0 - settings.autocontrast_saturation / 100.0) * n)]
 
     def center_camera(self):
-        #self.camera.zoom = 1
+        self.camera.zoom = 1
         self.camera.position = [-self.image_width / 2, -self.image_height / 2, 0.0]
 
     def set_lut(self, lut_index):

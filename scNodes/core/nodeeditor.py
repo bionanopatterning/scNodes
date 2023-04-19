@@ -183,9 +183,9 @@ class NodeEditor:
             imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_ERROR_WINDOW_TEXT)
             imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 3.0)
             imgui.set_next_window_size(self.window.width, cfg.ERROR_WINDOW_HEIGHT)
-            window_vertical_offset = 0 if (cfg.error_window_active or cfg.error_new) else cfg.ERROR_WINDOW_HEIGHT - 19
+            window_vertical_offset = 0 if cfg.error_window_active else cfg.ERROR_WINDOW_HEIGHT - 19
             imgui.set_next_window_position(0, self.window.height - cfg.ERROR_WINDOW_HEIGHT + window_vertical_offset)
-            _, stay_open = imgui.begin("Notification", True, imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE)
+            _, stay_open = imgui.begin("Notification", True, imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_FOCUS_ON_APPEARING)
             if imgui.is_window_focused():
                 cfg.error_window_active = True
                 if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
