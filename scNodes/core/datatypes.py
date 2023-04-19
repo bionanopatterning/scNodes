@@ -280,9 +280,10 @@ class ParticleData:
             if self.uncertainty_estimator == 0:
                 uncertainty[i] = np.sqrt(((sigma[i]*self.pixel_size)**2 + k1) / intensity[i] + k2 * (sigma[i]*self.pixel_size)**4 * bkgstd[i]**2 / intensity[i]**2)
             elif self.uncertainty_estimator == 1:
-                sigma_eff_sq = (sigma[i]**2 + self.pixel_size**2 / 12)
-                sa_n = sigma_eff_sq / intensity[i]
-                variance = sa_n * (16 / 9 + 8 * np.pi * background[i]**2 * sa_n / self.pixel_size**2)
+                N = intensity[i]
+                sa2 = (sigma[i]**2 + 1 / 12) * self.pixel_size**2
+                tau = (2 * np.pi * (sigma[i]**2 + 1/12) * background[i]) / N
+                variance = sa2 * (1 + 4*tau + np.sqrt((2 * tau)/(1 + 4*tau))) / N
                 uncertainty[i] = np.sqrt(variance)
 
         discard_mask += self.parameters["x [nm]"] < self.x_min
