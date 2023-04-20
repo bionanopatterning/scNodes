@@ -281,6 +281,9 @@ class ImageViewer:
             _always_auto_changed, self.autocontrast[self.contrast_window_channel] = imgui.checkbox("always auto", self.autocontrast[self.contrast_window_channel])
             if _always_auto_changed and self.autocontrast[self.contrast_window_channel]:
                 self._compute_auto_contrast()
+
+            imgui.set_next_item_width(80)
+            _c, settings.autocontrast_saturation = imgui.drag_float("Saturate %", settings.autocontrast_saturation, 0.1, 0.1, 50.0, format= '%.2f')
             if imgui.is_window_focused():
                 if self.window.get_key_event(glfw.KEY_SPACE, glfw.PRESS):
                     self._compute_auto_contrast()
