@@ -6,7 +6,6 @@ from datetime import datetime
 # This file defines variables that can be accessed globally.
 
 # TO DO list
-# todo: fix error where bakestack freezes when baking a second time. 230309 - fixed, maybe?
 # DONE: when flipping a frame in CE, flip children as well.
 # DONE: input - press '0' (zero) to hide/show frame
 # DONE: input - press "SHIFT" and "+" or "-" to increase/decrease active frame Alpha by 0.1
@@ -19,9 +18,9 @@ from datetime import datetime
 # DONE: fix BLUR FRAME plugin's original frame still being visible in the scene, but not in the object list
 # DONE: add feature to CE: left-click and hold on a (pile of) frames opens a popup that lists all the files under the cursor. Helps to select files hidden by a file higher up in the stack - like in Fusion360.
 # DONE: dont move pivot point when scaling frame
+# DONE: when Measure tool active, press ESCAPE to deactivate it.
 # DONE: add a lock image button in the Frames in scene window to lock editing
 # DONE: in frame in scene window: text gray when image is hidden
-# todo: flip tomogram plugin\
 # DONE: duplicates are buggy - fixed
 # DONE: add menu bar -> File -> Import data function in CE
 # TODO: Archive code on Zenodo or something similar with a DOI
@@ -31,24 +30,11 @@ from datetime import datetime
 # DONE: make Linux compatible
 # TODO: explicitaly make scNodes _incompatible_ with iOS
 
-# DONE: when Measure tool active, press ESCAPE to deactivate it.
-ce_controls = """
-Button input:
 
-Spacebar: focus view on the selected frame
-Number keys: set the blend mode of the selected frame
-Arrow keys: move frame. +SHIFT: move fast, +CTRL: move slow. 
-Shift and +/-: in/decrease selected frame alpha
-Delete: delete the selected frame
-0, H, or V: hide/show the selected frame
-A: set auto-contrast for the selected frame
-I: toggle interpolation mode for the selected frame
-L: lock/unlock current screen
-"""
 frozen = False
 root = ""
 app_name = "scNodes"
-version = "1.1.9"
+version = "1.1.11"
 license = "GNU GPL v3"
 logpath = "scNodes.log"
 filetype_project = ".scnp"

@@ -27,7 +27,7 @@ if __name__ == "__main__":
             cfg.frozen = True
         else:
             cfg.write_to_log("Running as a normal Python process.")
-            cfg.root = os.path.join(os.path.dirname(__file__)).replace("\\", "/")+"/"
+            cfg.root = os.path.join(os.path.dirname(__file__))
 
         if not glfw.init():
             raise Exception("Could not initialize GLFW library!")

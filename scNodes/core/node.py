@@ -210,7 +210,7 @@ class Node:
                     if _lut:
                         self.lut = lut
                 imgui.end_menu()
-            if imgui.begin_menu("Information on this node"):
+            if imgui.begin_menu("About this node"):
                 imgui.text(self.description)
                 imgui.end_menu()
             imgui.end_popup()

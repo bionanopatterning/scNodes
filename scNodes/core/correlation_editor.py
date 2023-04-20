@@ -174,28 +174,29 @@ class CorrelationEditor:
         CorrelationEditor.EXPORT_FBO = FrameBuffer(CorrelationEditor.EXPORT_TILE_SIZE, CorrelationEditor.EXPORT_TILE_SIZE, texture_format="rgb32f")
         # Load icons and set up particle picking ROI VA
         if True:
+            icon_dir = os.path.join(cfg.root, "icons")
             self.icon_no_interp = Texture(format="rgba32f")
-            pxd_icon_no_interp = np.asarray(Image.open(cfg.root+"icons/icon_ninterp_256.png")).astype(np.float32) / 255.0
+            pxd_icon_no_interp = np.asarray(Image.open(os.path.join(icon_dir, "icon_ninterp_256.png"))).astype(np.float32) / 255.0
             self.icon_no_interp.update(pxd_icon_no_interp)
             self.icon_no_interp.set_linear_interpolation()  # :)
 
             self.icon_linterp = Texture(format="rgba32f")
-            pxd_icon_linterp = np.asarray(Image.open(cfg.root+"icons/icon_linterp_256.png")).astype(np.float32) / 255.0
+            pxd_icon_linterp = np.asarray(Image.open(os.path.join(icon_dir, "icon_linterp_256.png"))).astype(np.float32) / 255.0
             self.icon_linterp.update(pxd_icon_linterp)
             self.icon_linterp.set_linear_interpolation()
 
             self.icon_close = Texture(format="rgba32f")
-            pxd_icon_close = np.asarray(Image.open(cfg.root+"icons/icon_close_256.png")).astype(np.float32) / 255.0
+            pxd_icon_close = np.asarray(Image.open(os.path.join(icon_dir, "icon_close_256.png"))).astype(np.float32) / 255.0
             self.icon_close.update(pxd_icon_close)
             self.icon_close.set_linear_interpolation()
 
             self.icon_locked = Texture(format="rgba32f")
-            pxd_icon_locked = np.asarray(Image.open(cfg.root+"icons/icon_locked_256.png")).astype(np.float32) / 255.0
+            pxd_icon_locked = np.asarray(Image.open(os.path.join(icon_dir, "icon_locked_256.png"))).astype(np.float32) / 255.0
             self.icon_locked.update(pxd_icon_locked)
             self.icon_locked.set_linear_interpolation()
 
             self.icon_unlocked = Texture(format="rgba32f")
-            pxd_icon_unlocked = np.asarray(Image.open(cfg.root + "icons/icon_unlocked_256.png")).astype(np.float32) / 255.0
+            pxd_icon_unlocked = np.asarray(Image.open(os.path.join(icon_dir, "icon_unlocked_256.png"))).astype(np.float32) / 255.0
             self.icon_unlocked.update(pxd_icon_unlocked)
             self.icon_unlocked.set_linear_interpolation()
 
@@ -293,13 +294,12 @@ class CorrelationEditor:
         self.imgui_implementation.render(imgui.get_draw_data())
 
     def load_externally_dropped_files(self, paths):
-        print(paths)
         path = paths[0]
         paths.pop(0)
         incoming = ImportedFrameData(path)
         clem_frame = incoming.to_CLEMFrame()
-        clem_frame.toggle_interpolation()
         if clem_frame:
+            clem_frame.toggle_interpolation()
             pos = deepcopy(self.camera.position)
             clem_frame.transform.translation = [-pos[0], -pos[1]]
             clem_frame.pivot_point = [-pos[0], -pos[1]]
@@ -770,19 +770,18 @@ class CorrelationEditor:
             imgui.end()
 
         if cfg.ce_tool_menu_names["Plugins"]:
-            if imgui.collapsing_header("Plugins", None)[0]:
+            if len(CorrelationEditor.tools_list) == 0:
+                imgui.text("no plugins available")
+            elif imgui.collapsing_header("Plugins", None)[0]:
                 _cw = imgui.get_content_region_available_width()
                 imgui.set_next_item_width(_cw - 25)
-                _c, CorrelationEditor.selected_tool = imgui.combo("##tools", CorrelationEditor.selected_tool, ["Select plugin..."] + CorrelationEditor.tools_list)
-                if _c:
-                    if CorrelationEditor.selected_tool > 0:
-                        CorrelationEditor.current_tool = CorrelationEditor.tool_factory[CorrelationEditor.tools_list[CorrelationEditor.selected_tool - 1]]()
-                    else:
-                        CorrelationEditor.current_tool = CEPlugin()
-                if CorrelationEditor.selected_tool > 0:
-                    imgui.same_line()
-                    imgui.button("?", 19, 19)
-                    CorrelationEditor.tooltip(CorrelationEditor.tool_descriptions[CorrelationEditor.selected_tool - 1])
+                _c, CorrelationEditor.selected_tool = imgui.combo("##tools", CorrelationEditor.selected_tool, CorrelationEditor.tools_list)
+                if _c or CorrelationEditor.current_tool is None:
+                    CorrelationEditor.current_tool = CorrelationEditor.tool_factory[CorrelationEditor.tools_list[CorrelationEditor.selected_tool]]()
+
+                imgui.same_line()
+                imgui.button("?", 19, 19)
+                CorrelationEditor.tooltip(CorrelationEditor.tool_descriptions[CorrelationEditor.selected_tool])
                 if CorrelationEditor.current_tool is not None:
                     imgui.separator()
                     try:
@@ -791,7 +790,7 @@ class CorrelationEditor:
                         CorrelationEditor.current_tool.render()
                         CorrelationEditor.location_gizmo_visible = CorrelationEditor.current_tool.FLAG_SHOW_LOCATION_PICKER
                     except Exception as e:
-                        cfg.set_error(e, f"Plugin '{CorrelationEditor.tools_list[CorrelationEditor.selected_tool - 1]}' caused an error:")
+                        cfg.set_error(e, f"Plugin '{CorrelationEditor.tools_list[CorrelationEditor.selected_tool]}' caused an error:")
 
         if cfg.ce_tool_menu_names["Particle picking"]:
             if imgui.collapsing_header("Particle picking", None)[0]:
@@ -1691,7 +1690,7 @@ class CorrelationEditor:
                 self.info = self.tool_obj.description
 
         toolimpls = list()
-        tool_source_files = glob.glob(cfg.root+"ceplugins/*.py")
+        tool_source_files = glob.glob(os.path.join(cfg.root, "ceplugins", "*.py"))
         for toolsrc in tool_source_files:
             if "custom_tool_template" in toolsrc or "__init__.py" in toolsrc:
                 continue
@@ -1718,9 +1717,9 @@ class CorrelationEditor:
 
 class Renderer:
     def __init__(self):
-        self.quad_shader = Shader(cfg.root+"shaders/ce_quad_shader.glsl")
-        self.border_shader = Shader(cfg.root+"shaders/ce_border_shader.glsl")
-        self.gizmo_shader = Shader(cfg.root+"shaders/ce_gizmo_shader.glsl")
+        self.quad_shader = Shader(os.path.join(cfg.root, "shaders", "ce_quad_shader.glsl"))
+        self.border_shader = Shader(os.path.join(cfg.root, "shaders", "ce_border_shader.glsl"))
+        self.gizmo_shader = Shader(os.path.join(cfg.root, "shaders", "ce_gizmo_shader.glsl"))
 
     def render_frame_quad(self, camera, frame, override_blending=False):
         if override_blending:
@@ -1917,10 +1916,11 @@ class EditorGizmo:
 
     @staticmethod
     def init_textures():
-        icon_scale = np.asarray(Image.open(cfg.root+"icons/icon_scale_256.png")).astype(float) / 255.0
-        icon_rotate = np.asarray(Image.open(cfg.root+"icons/icon_rotate_256.png")).astype(float) / 255.0
-        icon_pivot = np.asarray(Image.open(cfg.root+"icons/icon_pivot_256.png")).astype(float) / 255.0
-        icon_location = np.asarray(Image.open(cfg.root+"icons/icon_location_256.png")).astype(float) / 255.0
+        icon_dir = os.path.join(cfg.root, "icons")
+        icon_scale = np.asarray(Image.open(os.path.join(icon_dir, "icon_scale_256.png"))).astype(float) / 255.0
+        icon_rotate = np.asarray(Image.open(os.path.join(icon_dir, "icon_rotate_256.png"))).astype(float) / 255.0
+        icon_pivot = np.asarray(Image.open(os.path.join(icon_dir, "icon_pivot_256.png"))).astype(float) / 255.0
+        icon_location = np.asarray(Image.open(os.path.join(icon_dir, "icon_location_256.png"))).astype(float) / 255.0
         icon_scale[:, :, 0:2] = 1.0
         icon_rotate[:, :, 0:2] = 1.0
         icon_pivot[:, :, 0:2] = 1.0
@@ -2001,7 +2001,8 @@ class EditorGizmo:
 class ImportedFrameData:
     def __init__(self, path):
         self.path = path
-        self.title = path[path.rfind("\\")+1:]
+        self.title = os.path.basename(path)
+        self.title = self.title[self.title.rfind("\\")+1:]
         self.extension = path[path.rfind("."):]
         self.pxd = None
         self.n_slices = 1

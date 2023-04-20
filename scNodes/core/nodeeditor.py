@@ -42,7 +42,7 @@ class NodeEditor:
 
         if True:
             self.boot_img_texture = Texture(format="rgba32f")
-            pxd_boot_img_texture = np.asarray(Image.open(cfg.root+"icons/scnodes_boot_img.png")).astype(np.float32) / 255.0
+            pxd_boot_img_texture = np.asarray(Image.open(os.path.join(cfg.root,"icons", "scnodes_boot_img.png"))).astype(np.float32) / 255.0
             self.boot_img_texture.update(pxd_boot_img_texture)
             self.boot_img_height, self.boot_img_width = pxd_boot_img_texture.shape[0:2]
             self.boot_img_texture.set_linear_interpolation()
@@ -347,7 +347,7 @@ class NodeEditor:
             def __del__(self):
                 self.node_obj.delete()
 
-        node_source_files = glob.glob(cfg.root+"nodes/*.py")  # load all .py files in the /nodes folder
+        node_source_files = glob.glob(os.path.join(cfg.root, "nodes", "*.py"))  # load all .py files in the /nodes folder
         i = 0
         delete_all_nodes = False
         for nodesrc in node_source_files:  # for every file, dynamically load module and save the module's create() function to a dict, keyed by name of node.

@@ -47,8 +47,8 @@ class ImageViewer:
         self.imgui_implementation = imgui_implementation
 
         # Rendering related objects and vars
-        self.shader = Shader(cfg.root+"shaders/iv_textured_shader.glsl")
-        self.roi_shader = Shader(cfg.root+"shaders/iv_line_shader.glsl")
+        self.shader = Shader(os.path.join(cfg.root, "shaders", "iv_textured_shader.glsl"))
+        self.roi_shader = Shader(os.path.join(cfg.root, "shaders", "iv_line_shader.glsl"))
         self.texture = Texture(format="rgb32f")
         self.fbo = FrameBuffer(*settings.def_img_size)
         self.va = VertexArray()
