@@ -13,7 +13,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='scNodes',
-    version='1.1.11',
+    version='1.1.14',
     packages=find_packages(),
     url='https://github.com/bionanopatterning/scNodes',
     license='GPL v3',
@@ -29,9 +29,9 @@ setup(
         "joblib>=1.1.0",
         "matplotlib>=3.5.3",
         "mrcfile>=1.4.3",
-        "numpy>=1.3.0",  ## was 1.23.2
+        "numpy>=1.3.0",
         "opencv-python>=4.6.0.66",
-        "pandas>=1.3.5",  ## was 1.4.4
+        "pandas>=1.3.5",
         "Pillow>=9.2.0",
         "psutil>=5.9.2",
         "PyOpenGl>=3.1.6",

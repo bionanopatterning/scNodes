@@ -24,17 +24,15 @@ from datetime import datetime
 # DONE: duplicates are buggy - fixed
 # DONE: add menu bar -> File -> Import data function in CE
 # TODO: Archive code on Zenodo or something similar with a DOI
-# TODO: Improve camera behaviour in Image Viewer; no automatic update on changing image size
 # DONE: Localization based drift correction using RCC
 # DONE: Faster PSF-fitting
 # DONE: make Linux compatible
-# TODO: explicitaly make scNodes _incompatible_ with iOS
 
 
 frozen = False
 root = ""
 app_name = "scNodes"
-version = "1.1.11"
+version = "1.1.14"
 license = "GNU GPL v3"
 logpath = "scNodes.log"
 filetype_project = ".scnp"

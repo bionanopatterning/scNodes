@@ -6,7 +6,7 @@ from scNodes.core.datatypes import *
 from scNodes.core.roi import *
 from tkinter import filedialog
 from scNodes.core.util import save_tiff
-import scNodes.nodes.pyGPUreg as pyGPUreg
+import pyGPUreg
 
 class ImageViewer:
     NO_IMAGE_NOTIFICATION_SIZE = (300, 20)
