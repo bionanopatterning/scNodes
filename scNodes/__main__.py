@@ -1,7 +1,6 @@
 import os
 import sys
 
-import imgui
 
 directory = os.path.join(os.path.dirname(__file__))
 directory = directory[:directory.rfind("\\")]

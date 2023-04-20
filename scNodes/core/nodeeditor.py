@@ -64,8 +64,8 @@ class NodeEditor:
         self.window.set_full_viewport()
         if self.window.focused:
             self.imgui_implementation.process_inputs()
-        self.window.on_update()
         cfg.ne_dropped_files = self.window.dropped_files
+        self.window.on_update()
         if self.window.window_size_changed:
             cfg.window_width = self.window.width
             cfg.window_height = self.window.height
@@ -94,6 +94,7 @@ class NodeEditor:
 
         cfg.node_move_requested = [0, 0]
         cfg.camera_move_requested = [0, 0]
+        cfg.cursor_pos = self.window.cursor_pos
         imgui_want_mouse = imgui.get_io().want_capture_mouse
         imgui.is_any_item_active()
         if self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT) and imgui_want_mouse:
@@ -106,7 +107,8 @@ class NodeEditor:
         self._gui_main()
         imgui.render()
         self.imgui_implementation.render(imgui.get_draw_data())
-        cfg.ne_dropped_files = None
+
+        #cfg.ne_dropped_files = []
 
     def end_frame(self):
         self.window.end_frame()
@@ -353,7 +355,7 @@ class NodeEditor:
             if "__init__.py" in nodesrc:
                 continue
 
-            module_name = nodesrc[nodesrc.rfind("\\")+1:-3]
+            module_name = os.path.basename(nodesrc)[:-3]
             try:
                 # get the module spec and import the module
                 mod = importlib.import_module(("scNodes." if not cfg.frozen else "")+"nodes."+module_name)
@@ -364,7 +366,7 @@ class NodeEditor:
             except Exception as e:
                 cfg.nodes = list()
                 delete_all_nodes = True
-                cfg.set_error(e, f"No well-defined Node type found in {nodesrc}. See manual for minimal code requirements.")
+                cfg.set_error(e, f"Could not import the node at: {nodesrc}. See manual for minimal code requirements.")
         node_ids = list()
 
         for ni in nodeimpls:
@@ -443,8 +445,10 @@ class NodeEditor:
                 for node in new_nodes:
                     node.on_load()
                     node.id *= int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f'))
+                    for attr in node.connectable_attributes.values():
+                        attr.id *= int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f'))
         except Exception as e:
-            cfg.set_error(e, "Error appending/loading node setup: ")
+            cfg.set_error(e, "Error appending/loading node setup. Does the node setup contain nodes that are not available in or compatible with the current version / your OS?")
 
 
     @staticmethod

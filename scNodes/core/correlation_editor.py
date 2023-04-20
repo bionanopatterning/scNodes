@@ -1696,7 +1696,7 @@ class CorrelationEditor:
             if "custom_tool_template" in toolsrc or "__init__.py" in toolsrc:
                 continue
 
-            module_name = toolsrc[toolsrc.rfind("\\")+1:-3]
+            module_name = os.path.basename(toolsrc)[:-3]
             try:
                 if reinitialize:
                     mod = importlib.reload(sys.modules[("scNodes." if not cfg.frozen else "")+"ceplugins."+module_name])

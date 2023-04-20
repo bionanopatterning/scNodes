@@ -57,7 +57,7 @@ class LoadDataNode(Node):
             imgui.same_line()
             if imgui.button("...", 26, 19):
                 selected_file = filedialog.askopenfilename()
-                if selected_file is not None:
+                if type(selected_file) is str:
                     if get_filetype(selected_file) in ['.tiff', '.tif']:
                         self.params["path"] = selected_file
                         self.on_select_file()

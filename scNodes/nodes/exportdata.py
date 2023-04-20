@@ -26,7 +26,7 @@ class ExportDataNode(Node):
         self.connectable_attributes["dataset_in"] = ConnectableAttribute(ConnectableAttribute.TYPE_MULTI, ConnectableAttribute.INPUT, self, [ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.TYPE_IMAGE, ConnectableAttribute.TYPE_RECONSTRUCTION])
         self.connectable_attributes["dataset_in"].title = "Any"
 
-        self.params["path"] = "..."
+        self.params["path"] = ""
         self.roi = [0, 0, 0, 0]
         self.saving = False
         self.params["export_type"] = 0  # 0 for dataset, 1 for image.
@@ -63,13 +63,13 @@ class ExportDataNode(Node):
             if self.params["export_type"] in [0, 1]:
                 _, self.use_roi = imgui.checkbox("use ROI", self.use_roi)
             imgui.text("Output path")
-            imgui.push_item_width(150)
+            imgui.push_item_width(160)
             _, self.params["path"] = imgui.input_text("##intxt", self.params["path"], 256, imgui.INPUT_TEXT_ALWAYS_OVERWRITE)
             imgui.pop_item_width()
             imgui.same_line()
             if imgui.button("...", 26, 19):
                 filename = filedialog.asksaveasfilename()
-                if filename is not None:
+                if type(filename) is str:
                     if '.' in filename[-5:]:
                         filename = filename[:filename.rfind(".")]
                     self.params["path"] = filename

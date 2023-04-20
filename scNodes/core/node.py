@@ -150,8 +150,9 @@ class Node:
         imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *Node.COLOUR_FRAME_BACKGROUND)
         imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *Node.COLOUR_WINDOW_BACKGROUND)
         _, stay_open = imgui.begin(self.title + f"##{self.id}", True, imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_BRING_TO_FRONT_ON_FOCUS | imgui.WINDOW_NO_SAVED_SETTINGS | imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_COLLAPSE)# | imgui.WINDOW_NO_MOVE)
+
         # Recognize when files are dropped onto the node:
-        mouse_pos = imgui.get_mouse_pos()
+        mouse_pos = cfg.cursor_pos
         mouse_over_window_x = 0 < mouse_pos[0] - self.last_measured_window_position[0] < self.size
         mouse_over_window_y = 0 < mouse_pos[1] - self.last_measured_window_position[1] < self.node_height
         is_node_hovered = mouse_over_window_x and mouse_over_window_y
