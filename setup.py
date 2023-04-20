@@ -13,7 +13,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='scNodes',
-    version='1.1.14',
+    version='1.1.15',
     packages=find_packages(),
     url='https://github.com/bionanopatterning/scNodes',
     license='GPL v3',
@@ -35,6 +35,7 @@ setup(
         "Pillow>=9.2.0",
         "psutil>=5.9.2",
         "PyOpenGl>=3.1.6",
+        "pyGPUreg>=0.1.3",
         "PyWavelets>=1.3.0",
         "pyperclip>=1.8.2",
         "pystackreg>=0.2.6.post1",
