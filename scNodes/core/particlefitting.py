@@ -67,7 +67,6 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
 
     parameters[:, 1] += xy[:, 1]  # offsetting back into image coordinates (rather than crop coordinates)
     parameters[:, 2] += xy[:, 0]  # offsetting back into image coordinates
-    particles = list()
     converged = states == 0
 
     ## 230207
@@ -168,6 +167,7 @@ def frame_to_particles_3d(frame, initial_sigma=2.0, method=0, crop_radius=4, con
         accepted_particles[i] = converged[i] and parameters[i, 3] != constraint_values[0, 7]
     n_particles = int(accepted_particles.sum(0))
 
+    accepted_particles = accepted_particles.nonzero()
     frame_particle_data["frame"] = list(np.ones(n_particles, dtype=np.float32) * frame.framenr)
     frame_particle_data["x [nm]"] = parameters[accepted_particles, 1].squeeze().tolist()
     frame_particle_data["y [nm]"] = parameters[accepted_particles, 2].squeeze().tolist()
