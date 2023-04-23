@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/531679394.svg)](https://zenodo.org/badge/latestdoi/531679394)
 ![](scNodes/icons/scnodes_boot_img.png)
 
 ### scNodes: correlating super-resolution fluorescence & transmission electron cryomicroscopy
