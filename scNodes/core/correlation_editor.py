@@ -2008,6 +2008,9 @@ class ImportedFrameData:
         self.n_slices = 1
         self.pixel_size = CorrelationEditor.DEFAULT_IMAGE_PIXEL_SIZE
         self.pixel_size_z = CorrelationEditor.DEFAULT_IMAGE_PIXEL_SIZE
+        self.flip = False
+        if cfg.ce_flip_on_load:
+            self.flip = True
         try:
             if self.extension == ".tiff" or self.extension == ".tif":
                 tif = tifffile.TiffFile(self.path)
@@ -2054,7 +2057,8 @@ class ImportedFrameData:
         if self.n_slices > 1:
             clem_frame.has_slices = True
             clem_frame.n_slices = self.n_slices
-
+        if self.flip:
+            clem_frame.flip(horizontally=False)
         return clem_frame
 
 

@@ -6,14 +6,14 @@ block_cipher = None
 
 a = Analysis(
     ['__main__.py'],
-    pathex=['../venv/lib/site-packages/glfw', '../venv/lib/site-packages/pygpufit', '../venv/lib/site-packages/'],
+    pathex=['../venv/lib/site-packages/glfw', '../venv/lib/site-packages/pygpufit', '../venv/lib/site-packages/', '../venv/lib/site-packages/pyGPUreg'],
     binaries=[],
-    datas=[
-    ("./icons", "icons"), ("./shaders", "shaders"), ("./nodes", "nodes"), ("./ceplugins", "ceplugins"),
+    datas=[("./icons", "icons"), ("./shaders", "shaders"), ("./nodes", "nodes"), ("./ceplugins", "ceplugins"),
     ("./core/particlefitting.py", "scNodes/core"), ("./nodes/pysofi", "scNodes/nodes/pysofi"),
     ("../venv/lib/site-packages/pygpufit/Gpufit.dll", "pygpufit"),
+    ("../venv/lib/site-packages/pyGPUreg", "pyGPUreg"),
     ("./nodesetups", "nodesetups")],
-    hiddenimports=['pywt', 'scNodes.core.particlefitting', 'pystackreg', 'cv2', 'scNodes.nodes.pysofi', 'pygpufit'],
+    hiddenimports=['pywt', 'scNodes.core.particlefitting', 'pystackreg', 'cv2', 'scNodes.nodes.pysofi', 'pygpufit', 'pyGPUreg'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

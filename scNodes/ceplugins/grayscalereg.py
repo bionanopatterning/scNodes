@@ -2,7 +2,7 @@ from scNodes.core.ceplugin import *
 from copy import copy, deepcopy
 from pystackreg import StackReg
 import cv2
-from scipy.ndimage import gaussian_filter
+
 
 def create():
     return GrayscaleRegPlugin()

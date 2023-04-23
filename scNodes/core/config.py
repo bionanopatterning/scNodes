@@ -85,7 +85,7 @@ ce_frames = list()
 ce_active_frame = None
 ce_clear_colour = (1.0, 1.0, 1.0, 1.0)
 ce_default_pixel_size = 64.0
-ce_flip_on_load = False
+ce_flip_on_load = True
 ce_selected_position = [0, 0]
 ce_va_subdivision = 8
 

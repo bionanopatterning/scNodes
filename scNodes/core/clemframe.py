@@ -150,8 +150,6 @@ class CLEMFrame:
                 for idx in slices:
                     self.data += tifffile.imread(self.path, key=idx).astype(float)
                 self.data /= actual_sum_slices
-                if cfg.ce_flip_on_load:
-                    self.data = np.flip(self.data, axis=1)
                 if self.flip_h:
                     self.data = np.flip(self.data, axis=1)
                 if self.flip_v:
@@ -318,14 +316,11 @@ class CLEMFrame:
 
             self.hist_vals = self.hist_vals.astype('float32')
             self.hist_bins = self.hist_bins.astype('float32')
-            #self.hist_vals = np.delete(self.hist_vals, 0)
-            #self.hist_bins = np.delete(self.hist_bins, 0)
             self.hist_vals = np.log(self.hist_vals + 1)
         else:
             for i in range(3):
                 vals, _ = np.histogram(self.data[:, :, i], bins=CLEMFrame.HISTOGRAM_BINS)
                 vals = vals.astype('float32')
-                #vals = np.delete(vals, 0)
                 self.rgb_hist_vals.append(vals)
 
     def generate_va(self):
