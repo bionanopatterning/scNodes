@@ -148,8 +148,8 @@ class ExportDataNode(Node):
                         self.frames_to_load.pop()
                     self.parallel_process(self.get_img_and_save, indices)
                 else:
-                    self.n_frames_saved += 5
-                    for i in range(5):
+                    for i in range(min([5, len(self.frames_to_load)])):
+                        self.n_frames_saved += 1
                         self.get_img_and_save(self.frames_to_load[-1])
                         self.frames_to_load.pop()
 

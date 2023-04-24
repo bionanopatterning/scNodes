@@ -1,8 +1,6 @@
 import os
 import sys
-
-import imgui
-
+from imgui.integrations.glfw import GlfwRenderer
 directory = os.path.join(os.path.dirname(__file__))
 directory = directory[:directory.rfind("\\")]
 sys.path.insert(0, os.path.abspath(".."))
@@ -42,8 +40,6 @@ if __name__ == "__main__":
         main_window.set_window_callbacks()
         node_editor = NodeEditor(main_window, main_window_imgui_context, main_window_imgui_glfw_implementation)
         correlation_editor = CorrelationEditor(main_window, main_window_imgui_context, main_window_imgui_glfw_implementation)
-
-
 
         image_viewer_window = Window(cfg.iv_window_width, cfg.iv_window_height, settings.iv_window_title)
         image_viewer_window_imgui_context = imgui.create_context(main_window_imgui_glfw_implementation.io.fonts)

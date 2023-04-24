@@ -1,7 +1,6 @@
 from scNodes.core import settings
 from scNodes.core import config as cfg
 from scNodes.core.opengl_classes import *
-from scNodes.core.util import tic, toc
 import tifffile
 import mrcfile
 from copy import copy, deepcopy
@@ -14,7 +13,6 @@ class CLEMFrame:
 
     def __init__(self, img_array):
         """Grayscale images only - img_array must be a 2D np.ndarray"""
-        # data
         uid_counter = next(CLEMFrame.idgen)
         self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')+"000") + uid_counter
         self.data = img_array
@@ -156,9 +154,9 @@ class CLEMFrame:
                     self.data = np.flip(self.data, axis=0)
                 self.update_image_texture()
             elif self.extension == ".mrc":
-                mmap = mrcfile.mmap(self.path, mode="r")
-                self.n_slices = mmap.data.shape[0]
-                self.data = mmap.data[slices.pop(0), :, :]
+                mrc = mrcfile.mmap(self.path, mode="r")
+                self.n_slices = mrc.data.shape[0]
+                self.data = mrc.data[slices.pop(0), :, :]
                 target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
                 if type(self.data[0, 0]) not in target_type_dict:
                     target_type = float
@@ -166,7 +164,7 @@ class CLEMFrame:
                     target_type = target_type_dict[type(self.data[0, 0])]
                 self.data = np.array(self.data.astype(target_type, copy=False), dtype=float)
                 for idx in slices:
-                    self.data += np.array(mmap.data[idx, :, :].astype(target_type, copy=False), dtype=float)
+                    self.data += np.array(mrc.data[idx, :, :].astype(target_type, copy=False), dtype=float)
                 self.data /= actual_sum_slices
                 if self.flip_h:
                     self.data = np.flip(self.data, axis=1)

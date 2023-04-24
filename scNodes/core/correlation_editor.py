@@ -2040,6 +2040,8 @@ class ImportedFrameData:
                     self.pxd = self.pxd.astype(np.uint8)
                 elif type(self.pxd[0, 0]) == np.int16:
                     self.pxd = self.pxd.astype(np.uint16)
+                if isinstance(self.pxd, np.memmap):
+                    self.pxd = np.asarray(self.pxd)
             else:
                 raise Exception(f"Could not import file with extension '{self.extension}'")
         except Exception as e:

@@ -1,7 +1,5 @@
 import importlib.util
 import shutil
-import imgui
-from imgui.integrations.glfw import GlfwRenderer
 import glfw
 import sys
 import tkinter as tk
