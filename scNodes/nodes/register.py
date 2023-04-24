@@ -171,7 +171,7 @@ class RegisterNode(Node):
         data_source = self.connectable_attributes["dataset_in"].get_incoming_node()
         if data_source:
             input_img = data_source.get_image(idx)
-            if self.params["reference_method"] == 1 and self.params["frame"] == 1:
+            if self.params["reference_method"] == 1 and self.params["frame"] == idx:
                 return input_img
             if self.params["register_method"] in [0, 1]:
                 if self.reference_image is None:

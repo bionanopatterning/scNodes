@@ -1404,7 +1404,7 @@ class CorrelationEditor:
         elif self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
             CorrelationEditor.frame_xray_window_allow_opening = True
             # check which object should be active (if any)
-            clicked_object = self.get_object_under_cursor(self.window.cursor_pos, prioritize_active_frame=False)
+            clicked_object = self.get_object_under_cursor(self.window.cursor_pos, prioritize_active_frame=True)
             if isinstance(clicked_object, CLEMFrame):
                 if CorrelationEditor.active_frame != clicked_object:
                     CorrelationEditor.gizmo_mode_scale = True

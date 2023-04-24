@@ -3,36 +3,11 @@ import traceback
 import dill as pickle
 import os
 from datetime import datetime
-# This file defines variables that can be accessed globally.
-
-# TO DO list
-# DONE: when flipping a frame in CE, flip children as well.
-# DONE: input - press '0' (zero) to hide/show frame
-# DONE: input - press "SHIFT" and "+" or "-" to increase/decrease active frame Alpha by 0.1
-# DONE: in the View tab in the CE, set the imgui frame padding to 2
-# DONE: in the View tab in the CE: hide the tool window when all views set to False
-# DONE: troubleshoot the Register grayscale plugin
-# DONE: input - press "I" to toggle interpolation
-# DONE: fix mrc file clemframes sometimes not updating despite slicer being changed and frame being loaded. Reason appears to be that MIPMAP IS ONLY SET WHEN INTERP MODE CHANGES.
-# DONE: add alpha wobbler in right-click menu for the alpha slider
-# DONE: fix BLUR FRAME plugin's original frame still being visible in the scene, but not in the object list
-# DONE: add feature to CE: left-click and hold on a (pile of) frames opens a popup that lists all the files under the cursor. Helps to select files hidden by a file higher up in the stack - like in Fusion360.
-# DONE: dont move pivot point when scaling frame
-# DONE: when Measure tool active, press ESCAPE to deactivate it.
-# DONE: add a lock image button in the Frames in scene window to lock editing
-# DONE: in frame in scene window: text gray when image is hidden
-# DONE: duplicates are buggy - fixed
-# DONE: add menu bar -> File -> Import data function in CE
-# TODO: Archive code on Zenodo or something similar with a DOI
-# DONE: Localization based drift correction using RCC
-# DONE: Faster PSF-fitting
-# DONE: make Linux compatible
-
 
 frozen = False
 root = ""
 app_name = "scNodes"
-version = "1.1.15"
+version = "1.1.16"
 license = "GNU GPL v3"
 logpath = "scNodes.log"
 filetype_project = ".scnp"
@@ -78,8 +53,6 @@ node_editor_relink = False
 correlation_editor_relink = False
 pickle_temp = dict()
 
-
-## 221221 correlation editor vars & related
 active_editor = 0  # 0 for node editor, 1 for correlation
 ce_frames = list()
 ce_active_frame = None
@@ -88,6 +61,7 @@ ce_default_pixel_size = 64.0
 ce_flip_on_load = True
 ce_selected_position = [0, 0]
 ce_va_subdivision = 8
+
 
 def set_active_node(node, keep_active=False):
     global focused_node, active_node, next_active_node
@@ -153,11 +127,13 @@ def write_to_log(text):
         f.write("\n\n ____________________ \n\n")
         f.write(text)
 
+
 def start_log():
     if os.path.exists(root+logpath):
         os.remove(root+logpath)
     with open(root+logpath, "a") as f:
         f.write(app_name+" version "+version+" "+license+"\n"+datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
+
 
 COLOUR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 0.94)
 COLOUR_PANEL_BACKGROUND = (0.94, 0.94, 0.94, 0.94)
