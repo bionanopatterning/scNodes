@@ -2009,7 +2009,7 @@ class ImportedFrameData:
         self.pixel_size = CorrelationEditor.DEFAULT_IMAGE_PIXEL_SIZE
         self.pixel_size_z = CorrelationEditor.DEFAULT_IMAGE_PIXEL_SIZE
         self.flip = False
-        if cfg.ce_flip_on_load:
+        if cfg.ce_flip_on_load and self.extension != ".mrc":
             self.flip = True
         try:
             if self.extension == ".tiff" or self.extension == ".tif":
