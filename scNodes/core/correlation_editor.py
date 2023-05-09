@@ -135,11 +135,15 @@ class CorrelationEditor:
         alpha_wobbler_active = False
         ALPHA_WOBBLER_OSCILLATIONS_PER_SECOND = 1.2
         # particle picking
+        picking_mode = 0  # 0 for single particle, 1 for filament.
         picking_enabled = False
         picking_show = True
         picking_va = None
+        ppf_spacing = 100  # Angstrom.
+        ppf_segment_start = None
+        ppf_segment_start_world = None
+        ppf_filament_length = 0
         force_ppmenu_open = False
-
         # info
         show_control_info_window = False
 
@@ -370,6 +374,7 @@ class CorrelationEditor:
         self.measure_tools()
         self._warning_window()
         self.controls_info_window()
+        CorrelationEditor.renderer.render_lines(self.camera)
         imgui.pop_style_color(28)
         imgui.pop_style_var(1)
 
@@ -461,7 +466,6 @@ class CorrelationEditor:
                 CorrelationEditor.show_control_info_window = False
             if expanded:
                 imgui.end()
-
 
     def tool_info_window(self):
         if not (True in cfg.ce_tool_menu_names.values()):
@@ -850,6 +854,7 @@ class CorrelationEditor:
                     _c, CorrelationEditor.picking_show = imgui.checkbox("Show particles", CorrelationEditor.picking_show)
                 else:
                     CorrelationEditor.picking_show = True
+
                 # Draw picking GUI
                 if CorrelationEditor.picking_enabled and af is not None:
                     # select group
@@ -886,7 +891,7 @@ class CorrelationEditor:
                         af.current_particle_group = af.particle_groups[-1]
                     imgui.separator()
 
-                    imgui.text("Currently editing:")
+                    imgui.text("Currently editing group:")
                     _cw = imgui.get_content_region_available_width()
                     imgui.set_next_item_width(_cw)
                     _c, selected_group = imgui.combo("##ptclgroup", af.particle_groups.index(af.current_particle_group),
@@ -894,7 +899,6 @@ class CorrelationEditor:
                     af.current_particle_group = af.particle_groups[selected_group]
                     imgui.set_next_item_width(_cw)
                     _c, af.current_particle_group.diameter = imgui.slider_float("##Size (A)", af.current_particle_group.diameter, 20.0, 800.0, format="size: %.1f A")
-
 
                     # delete button
                     imgui.new_line()
@@ -918,7 +922,22 @@ class CorrelationEditor:
                                         z = xyz[2]
                                         file.write(f"{x:.0f}\t{y:.0f}\t{z:.0f}\n")
 
+
+                    imgui.text("Picking mode:")
+                    imgui.set_next_item_width(_cw)
+                    _c, CorrelationEditor.picking_mode = imgui.combo("##pickmode", CorrelationEditor.picking_mode, ["Single particle", "Filament"])
+                    if CorrelationEditor.picking_mode == 1:
+                        imgui.set_next_item_width(_cw)
+                        _c, CorrelationEditor.ppf_spacing = imgui.slider_float("##Spacing (A)", CorrelationEditor.ppf_spacing, 20.0, 800.0, format="spacing: %.1f A")
+
                     imgui.pop_style_var(1)
+
+                    if CorrelationEditor.picking_mode == 1 and CorrelationEditor.ppf_segment_start_world:
+                        start = CorrelationEditor.ppf_segment_start_world
+                        stop = self.camera.cursor_to_world_position(self.window.cursor_pos)
+                        self.renderer.add_line((start[0], start[1]), (stop[0], stop[1]), (af.current_particle_group.colour[:3]))
+                        # draw a line for the current segment.
+
         imgui.end()
         imgui.pop_style_color(3)
 
@@ -1379,22 +1398,66 @@ class CorrelationEditor:
 
         # particle picking, if active, takes precedence over other input
         if CorrelationEditor.picking_enabled and CorrelationEditor.active_frame is not None:
+
             if self.window.get_key(glfw.KEY_ESCAPE):
                 CorrelationEditor.picking_enabled = False
                 return
-            # if clicked, figure out what the corresponding image coordinates are
+
             # adding a particle:
-            if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
+            if CorrelationEditor.picking_mode == 0:
+                if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
+                    frame = CorrelationEditor.active_frame
+                    world_pos = self.camera.cursor_to_world_position(self.window.cursor_pos)
+                    model_mat = frame.transform.matrix
+                    pixel_pos = np.matmul(np.linalg.inv(model_mat), np.matrix([world_pos[0], world_pos[1], 0.0, 1.0]).T)
+                    particle_coordinates = [float(pixel_pos[0] + frame.width // 2), float(pixel_pos[1] - frame.height // 2), 0]
+
+                    if frame.has_slices:
+                        particle_coordinates[2] = frame.current_slice
+                    frame.current_particle_group.coordinates.append(particle_coordinates)
+                    return
+            elif CorrelationEditor.picking_mode == 1:
                 frame = CorrelationEditor.active_frame
                 world_pos = self.camera.cursor_to_world_position(self.window.cursor_pos)
-                model_mat = frame.transform.matrix
-                pixel_pos = np.matmul(np.linalg.inv(model_mat), np.matrix([world_pos[0], world_pos[1], 0.0, 1.0]).T)
-                particle_coordinates = [float(pixel_pos[0] + frame.width // 2), float(pixel_pos[1] - frame.height // 2), 0]
+                pixel_pos = np.matmul(np.linalg.inv(frame.transform.matrix), np.matrix([world_pos[0], world_pos[1], 0.0, 1.0]).T)
+                particle_coordinates = [float(pixel_pos[0] + frame.width // 2), float(pixel_pos[1] - frame.height // 2), 0 if not frame.has_slices else frame.current_slice]
+                if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
+                    if CorrelationEditor.ppf_segment_start is not None:
+                        segment_beginning = CorrelationEditor.ppf_segment_start
+                        # set the latest click pos to be the new segment start.
+                        CorrelationEditor.ppf_segment_start = np.array(particle_coordinates)
+                        CorrelationEditor.ppf_segment_start_world = world_pos
+                        delta = CorrelationEditor.ppf_segment_start - segment_beginning
+                        segment_length = (np.sum(delta**2))**0.5
+                        CorrelationEditor.ppf_filament_length += segment_length
+                        # add particles between the segment's beginning and the new click.
+                        uvec = delta / segment_length  # unit vector directed along the segment.
+                        spacing = CorrelationEditor.ppf_spacing * 0.1 / frame.pixel_size  # spacing in pixel units. INTRODUCES AN ASSUMPTION OF ISOTROPIC PIXEL SIZE!
 
-                if frame.has_slices:
-                    particle_coordinates[2] = frame.current_slice
-                frame.current_particle_group.coordinates.append(particle_coordinates)
-                return
+                        # place the first particle (use up the remainder of the previous segment, if necessary)
+                        prev_particle = segment_beginning + uvec * (spacing - CorrelationEditor.ppf_remainder)
+
+                        # then loop until remaining length is too small
+                        segment_remaining_length = segment_length + CorrelationEditor.ppf_remainder - spacing
+                        frame.current_particle_group.coordinates.append(list(prev_particle))
+                        while segment_remaining_length > spacing:
+                            prev_particle = prev_particle + uvec * spacing
+                            frame.current_particle_group.coordinates.append(list(prev_particle))
+                            segment_remaining_length -= spacing
+                        CorrelationEditor.ppf_remainder = segment_remaining_length
+                        # particles must be placed on the line starting at vec3 segment_beginning, along vec3 uvec.
+                        # the first particle is not necessarily placed at segment_beginning; it must be SPACING units away from the previous particle.
+                    else:
+                        CorrelationEditor.ppf_segment_start = np.array(particle_coordinates)
+                        CorrelationEditor.ppf_segment_start_world = world_pos
+                        CorrelationEditor.ppf_filament_length = 0
+                        CorrelationEditor.ppf_remainder = 0
+                elif self.window.get_mouse_event(glfw.MOUSE_BUTTON_MIDDLE, glfw.PRESS):
+                    # stop working on the current filament
+                    CorrelationEditor.ppf_segment_start = None
+                    CorrelationEditor.ppf_segment_start_world = None
+                    CorrelationEditor.ppf_filament_length = 0
+                    CorrelationEditor.ppf_remainder = 0
             # removing a particle:
             if self.window.get_mouse_event(glfw.MOUSE_BUTTON_RIGHT, glfw.PRESS):
                 world_pos = self.camera.cursor_to_world_position(self.window.cursor_pos)
@@ -1547,7 +1610,7 @@ class CorrelationEditor:
                 CorrelationEditor.active_frame.alpha = min([1.0, CorrelationEditor.active_frame.alpha + 0.1])
             elif imgui.is_key_pressed(glfw.KEY_A):
                 if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
-                    CorrelationEditor.active_frame.compute_autocontrast(settings.autocontrast_saturation * 20.0)
+                    CorrelationEditor.active_frame.compute_autocontrast(settings.autocontrast_saturation * 100.0)
                 else:
                     CorrelationEditor.active_frame.compute_autocontrast()
             elif imgui.is_key_pressed(glfw.KEY_I):
@@ -1563,6 +1626,8 @@ class CorrelationEditor:
                 CorrelationEditor.picking_enabled = not CorrelationEditor.picking_enabled
                 if CorrelationEditor.picking_enabled:
                     CorrelationEditor.force_ppmenu_open = True
+            elif imgui.is_key_pressed(glfw.KEY_LEFT_BRACKET):
+                CorrelationEditor.picking_mode = 0 if CorrelationEditor.picking_mode ==  1 else 1
             elif imgui.is_key_pressed(glfw.KEY_PAGE_UP):
                 if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
                     CorrelationEditor.active_frame.move_to_front()
@@ -1767,6 +1832,9 @@ class Renderer:
         self.quad_shader = Shader(os.path.join(cfg.root, "shaders", "ce_quad_shader.glsl"))
         self.border_shader = Shader(os.path.join(cfg.root, "shaders", "ce_border_shader.glsl"))
         self.gizmo_shader = Shader(os.path.join(cfg.root, "shaders", "ce_gizmo_shader.glsl"))
+        self.line_shader = Shader(os.path.join(cfg.root, "shaders", "ce_line_shader.glsl"))
+        self.line_list = list()
+        self.line_va = VertexArray(None, None, attribute_format="xyrgb")
 
     def render_frame_quad(self, camera, frame, override_blending=False):
         if override_blending:
@@ -1877,6 +1945,34 @@ class Renderer:
                 glDrawElements(GL_LINES, va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
         self.border_shader.unbind()
         va.unbind()
+
+    def add_line(self, start_xy, stop_xy, colour):
+        self.line_list.append((start_xy, stop_xy, colour))
+
+    def render_lines(self, camera):
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendEquation(GL_FUNC_ADD)
+        # make VA
+        vertices = list()
+        indices = list()
+        i = 0
+        for line in self.line_list:
+            vertices += [*line[0], *line[2]]
+            vertices += [*line[1], *line[2]]
+            indices += [2*i, 2*i+1]
+            i += 1
+        self.line_va.update(VertexBuffer(vertices), IndexBuffer(indices))
+        self.line_list = list()  # clear draw list
+
+        # launch
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendEquation(GL_FUNC_ADD)
+        self.line_shader.bind()
+        self.line_va.bind()
+        self.line_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
+        glDrawElements(GL_LINES, self.line_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        self.line_shader.unbind()
+        self.line_va.unbind()
 
 
 class Camera:

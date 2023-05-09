@@ -22,6 +22,7 @@ controls = [
     ("Arrows", "Move frame. +SHIFT: move fast, +CTRL: move slow"),
     ("Escape", "Deactivate measure tool / particle picking"),
     ("P/E", "(De)activate particle picking"),
+    ("[", "Toggle particle picking mode (single particle / filament)"),
     ("M", "(De)activate measure tool"),
     ("Shift + scroll", "Zoom in/out"),
     ("Delete", "Delete frame"),

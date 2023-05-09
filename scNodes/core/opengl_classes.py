@@ -260,6 +260,12 @@ class VertexArray:
             glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 16, ctypes.cast(0, ctypes.c_void_p))
             glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 16, ctypes.cast(8, ctypes.c_void_p))
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer.indexBufferObject)
+        elif self.attribute_format == "xyrgb":
+            glEnableVertexAttribArray(0)
+            glEnableVertexAttribArray(1)
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 20, ctypes.cast(0, ctypes.c_void_p))
+            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 20, ctypes.cast(8, ctypes.c_void_p))
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer.indexBufferObject)
         glBindVertexArray(0)
 
     def bind(self):
