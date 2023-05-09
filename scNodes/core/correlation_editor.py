@@ -411,9 +411,6 @@ class CorrelationEditor:
                                 self.window.dropped_files.append(file.replace('/', '\\'))
                     except Exception as e:
                         cfg.set_error(e, "Error importing images - see details below")
-                imgui.separator()
-                if imgui.menu_item("View controls")[0]:
-                    CorrelationEditor.show_control_info_window = True
                 imgui.end_menu()
             if imgui.begin_menu("Settings"):
                 _c, self.window.clear_color = imgui.color_edit4("Background colour", *self.window.clear_color, flags=imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_SIDE_PREVIEW)
@@ -426,6 +423,9 @@ class CorrelationEditor:
                     CorrelationEditor.selected_tool = 0
                     CorrelationEditor.current_tool = None
                     CorrelationEditor.init_toolkit(reinitialize=True)
+                imgui.separator()
+                if imgui.menu_item("View controls")[0]:
+                    CorrelationEditor.show_control_info_window = True
                 imgui.end_menu()
             if imgui.begin_menu("View"):
                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (2, 2))
@@ -513,10 +513,9 @@ class CorrelationEditor:
                 imgui.text("Pixel size: ")
                 imgui.same_line()
                 pxsi = af.pixel_size
-                pixel_size_changed, pxsf = imgui.drag_float("##Pixel size", af.pixel_size, CorrelationEditor.SCALE_SPEED, 0.0, 0.0, '%.3f nm')
+                pixel_size_changed, pxsf = imgui.drag_float("##Pixel size", af.pixel_size, CorrelationEditor.SCALE_SPEED, 0.01, 0.0, '%.3f nm')
                 if pixel_size_changed:
                     af.pivoted_scale(af.pivot_point, pxsf/pxsi)
-                af.pixel_size = max([af.pixel_size, 0.01])
                 imgui.spacing()
 
         # Visuals info
@@ -1465,8 +1464,8 @@ class CorrelationEditor:
                         CorrelationEditor.ppf_segment_start_world = world_pos
                         CorrelationEditor.ppf_current_filament_vertices_world.append(world_pos)
                         CorrelationEditor.ppf_filament_length = 0
-                        CorrelationEditor.ppf_remainder = -CorrelationEditor.ppf_spacing * 0.1 / frame.pixel_size
-                elif self.window.get_mouse_event(glfw.MOUSE_BUTTON_RIGHT, glfw.PRESS):
+                        CorrelationEditor.ppf_remainder = CorrelationEditor.ppf_spacing * 0.1 / frame.pixel_size
+                elif CorrelationEditor.ppf_segment_start is not None and self.window.get_mouse_event(glfw.MOUSE_BUTTON_RIGHT, glfw.PRESS):
                     # stop working on the current filament
                     CorrelationEditor.ppf_segment_start = None
                     CorrelationEditor.ppf_segment_start_world = None
@@ -1488,11 +1487,11 @@ class CorrelationEditor:
                 # remove particle closest to xy:
                 p_group = frame.current_particle_group
                 remove_idx = None
-                dist = np.inf
+                dist = -np.inf
                 for i in range(len(p_group.coordinates)):
                     particle_xy = p_group.coordinates[i]
                     _dist = (click_xy[0] - particle_xy[0])**2 + (click_xy[1] - particle_xy[1])**2
-                    if _dist < dist:
+                    if _dist > dist:
                         remove_idx = i
                         dist = _dist
                 if remove_idx is not None:
@@ -1621,10 +1620,10 @@ class CorrelationEditor:
                     CorrelationEditor.active_frame.blend_mode = number_key
             if imgui.is_key_pressed(glfw.KEY_0) or imgui.is_key_pressed(glfw.KEY_H) or imgui.is_key_pressed(glfw.KEY_V):
                 CorrelationEditor.active_frame.hide = not CorrelationEditor.active_frame.hide
-            elif imgui.is_key_pressed(glfw.KEY_MINUS):
+            elif imgui.is_key_pressed(glfw.KEY_MINUS, True):
                 CorrelationEditor.active_frame.alpha = max([0.0, CorrelationEditor.active_frame.alpha - 0.1])
                 CorrelationEditor.alpha_wobbler_active = False
-            elif imgui.is_key_pressed(glfw.KEY_EQUAL):
+            elif imgui.is_key_pressed(glfw.KEY_EQUAL, True):
                 CorrelationEditor.active_frame.alpha = min([1.0, CorrelationEditor.active_frame.alpha + 0.1])
                 CorrelationEditor.alpha_wobbler_active = False
             elif imgui.is_key_pressed(glfw.KEY_A):
@@ -1635,7 +1634,13 @@ class CorrelationEditor:
                 else:
                     CorrelationEditor.active_frame.compute_autocontrast()
             elif imgui.is_key_pressed(glfw.KEY_I):
-                CorrelationEditor.active_frame.toggle_interpolation()
+                if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
+                    _min = CorrelationEditor.active_frame.contrast_lims[0]
+                    _max = CorrelationEditor.active_frame.contrast_lims[1]
+                    CorrelationEditor.active_frame.contrast_lims[0] = _max
+                    CorrelationEditor.active_frame.contrast_lims[1] = _min
+                else:
+                    CorrelationEditor.active_frame.toggle_interpolation()
             elif imgui.is_key_pressed(glfw.KEY_L):
                 CorrelationEditor.active_frame.locked = not CorrelationEditor.active_frame.locked
             elif imgui.is_key_pressed(glfw.KEY_M):
@@ -1649,12 +1654,12 @@ class CorrelationEditor:
                     CorrelationEditor.force_ppmenu_open = True
             elif imgui.is_key_pressed(glfw.KEY_LEFT_BRACKET):
                 CorrelationEditor.picking_mode = 0 if CorrelationEditor.picking_mode ==  1 else 1
-            elif imgui.is_key_pressed(glfw.KEY_PAGE_UP):
+            elif imgui.is_key_pressed(glfw.KEY_PAGE_UP, True):
                 if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
                     CorrelationEditor.active_frame.move_to_front()
                 else:
                     CorrelationEditor.active_frame.move_forwards()
-            elif imgui.is_key_pressed(glfw.KEY_PAGE_DOWN):
+            elif imgui.is_key_pressed(glfw.KEY_PAGE_DOWN, True):
                 if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
                     CorrelationEditor.active_frame.move_to_back()
                 else:
@@ -1663,6 +1668,9 @@ class CorrelationEditor:
                 self.camera.focus_on_frame(CorrelationEditor.active_frame)
             elif imgui.is_key_pressed(glfw.KEY_S):
                 self.snap_enabled = not self.snap_enabled
+            elif imgui.is_key_pressed(glfw.KEY_C):
+                if CorrelationEditor.active_frame:
+                    CorrelationEditor.active_frame.lut_clamp_mode = (CorrelationEditor.active_frame.lut_clamp_mode + 1) % 3
 
     def _warning_window(self):
         def ww_context_menu():

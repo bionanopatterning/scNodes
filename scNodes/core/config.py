@@ -19,8 +19,9 @@ controls = [
     ("1-6", "Change blending mode"),
     ("-/+", "De-/increase frame alpha"),
     ("A", "Set autocontrast. +SHIFT: higher contrast, +CTRL: even higher contrast"),
+    ("C", "Toggle clamp mode (clamp / discard / discard min)"),
     ("E/P", "Enable/disable particle picking"),
-    ("I", "Toggle interpolation mode"),
+    ("I", "Toggle interpolation mode. +SHIFT: invert contrast"),
     ("L", "Toggle current frame edit lock"),
     ("M", "(De)activate measure tool"),
     ("S", "Toggle snapping"),
@@ -29,7 +30,7 @@ controls = [
     ("Escape", "Deactivate measure tool / particle picking"),
     ("Shift + scroll", "Zoom in/out"),
     ("Delete", "Delete frame"),
-    ("Page up/down", "Move frame up/down in render stack"),
+    ("Page up/down", "Move frame up/down in render stack. +SHIFT: move to top/bottom"),
     ("Spacebar", "Focus camera on currently selected frame"),
 ]
 
