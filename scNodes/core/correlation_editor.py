@@ -1412,6 +1412,7 @@ class CorrelationEditor:
                 return
 
             # adding a particle:
+            block_removal_for_one_frame = False
             if CorrelationEditor.picking_mode == 0:
                 if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
                     frame = CorrelationEditor.active_frame
@@ -1431,6 +1432,7 @@ class CorrelationEditor:
                 particle_coordinates = [float(pixel_pos[0] + frame.width // 2), float(pixel_pos[1] - frame.height // 2), 0 if not frame.has_slices else frame.current_slice]
                 if self.window.get_mouse_event(glfw.MOUSE_BUTTON_LEFT, glfw.PRESS):
                     if CorrelationEditor.ppf_segment_start is not None:
+
                         segment_beginning = CorrelationEditor.ppf_segment_start
                         # set the latest click pos to be the new segment start.
                         CorrelationEditor.ppf_segment_start = np.array(particle_coordinates)
@@ -1444,6 +1446,7 @@ class CorrelationEditor:
                         spacing = CorrelationEditor.ppf_spacing * 0.1 / frame.pixel_size  # spacing in pixel units. INTRODUCES AN ASSUMPTION OF ISOTROPIC PIXEL SIZE!
 
                         # place the first particle (use up the remainder of the previous segment, if necessary)
+
                         if (CorrelationEditor.ppf_remainder + segment_length) > spacing:
                             prev_particle = segment_beginning + uvec * (spacing - CorrelationEditor.ppf_remainder)
 
@@ -1462,16 +1465,18 @@ class CorrelationEditor:
                         CorrelationEditor.ppf_segment_start_world = world_pos
                         CorrelationEditor.ppf_current_filament_vertices_world.append(world_pos)
                         CorrelationEditor.ppf_filament_length = 0
-                        CorrelationEditor.ppf_remainder = 0
-                elif self.window.get_mouse_event(glfw.MOUSE_BUTTON_MIDDLE, glfw.PRESS):
+                        CorrelationEditor.ppf_remainder = -CorrelationEditor.ppf_spacing * 0.1 / frame.pixel_size
+                elif self.window.get_mouse_event(glfw.MOUSE_BUTTON_RIGHT, glfw.PRESS):
                     # stop working on the current filament
                     CorrelationEditor.ppf_segment_start = None
                     CorrelationEditor.ppf_segment_start_world = None
                     CorrelationEditor.ppf_filament_length = 0
                     CorrelationEditor.ppf_remainder = 0
                     CorrelationEditor.ppf_current_filament_vertices_world = list()
+                    block_removal_for_one_frame = True
+
             # removing a particle:
-            if self.window.get_mouse_event(glfw.MOUSE_BUTTON_RIGHT, glfw.PRESS):
+            if not block_removal_for_one_frame and self.window.get_mouse_event(glfw.MOUSE_BUTTON_RIGHT, glfw.PRESS):
                 world_pos = self.camera.cursor_to_world_position(self.window.cursor_pos)
                 frame = CorrelationEditor.active_frame
                 frame_pos = frame.transform.translation
@@ -1948,11 +1953,12 @@ class Renderer:
             self.border_shader.uniform3f("lineColour", p_group.colour)
             for coords in p_group.coordinates:
                 # coords to local coordinates
-                z_offset = (coords[2] - parent_frame.current_slice) * parent_frame.pixel_size_z
-                size_scaling = max([0.0, p_group.diameter ** 2 - z_offset ** 2])**0.5 * 0.1
+                z_offset = (coords[2] - parent_frame.current_slice) * parent_frame.pixel_size_z * 10.0
+                radius_at_current_depth = max([0.0, p_group.diameter ** 2 - z_offset ** 2])**0.5 * 0.1
+
                 local_mat = np.matrix([
-                    [size_scaling, 0.0, 0.0, (coords[0] - parent_frame.width // 2) * parent_frame.pixel_size],
-                    [0.0, size_scaling, 0.0, (coords[1] + parent_frame.height // 2) * parent_frame.pixel_size],
+                    [radius_at_current_depth, 0.0, 0.0, (coords[0] - parent_frame.width // 2) * parent_frame.pixel_size],
+                    [0.0, radius_at_current_depth, 0.0, (coords[1] + parent_frame.height // 2) * parent_frame.pixel_size],
                     [0.0, 0.0, 1.0, 0.0],
                     [0.0, 0.0, 0.0, 1.0],
                 ])
