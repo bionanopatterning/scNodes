@@ -133,11 +133,15 @@ class CorrelationEditor:
         location_gizmo_visible = False
         incoming_files = list()
         alpha_wobbler_active = False
-        ALPHA_WOBBLER_OSCILLATIONS_PER_SECOND = 0.5
+        ALPHA_WOBBLER_OSCILLATIONS_PER_SECOND = 1.2
         # particle picking
         picking_enabled = False
         picking_show = True
         picking_va = None
+        force_ppmenu_open = False
+
+        # info
+        show_control_info_window = False
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -262,7 +266,7 @@ class CorrelationEditor:
                     gizmo.set_zoom_compensation_factor(self.camera.zoom)
         else:
             for gizmo in self.gizmos:
-                    gizmo.hide = True
+                gizmo.hide = True
         # Handle location indicator gizmo:
         if CorrelationEditor.location_gizmo_visible:
             CorrelationEditor.location_gizmo.hide = False
@@ -365,7 +369,7 @@ class CorrelationEditor:
         self.frame_xray_window()
         self.measure_tools()
         self._warning_window()
-
+        self.controls_info_window()
         imgui.pop_style_color(28)
         imgui.pop_style_var(1)
 
@@ -401,6 +405,9 @@ class CorrelationEditor:
                                 self.window.dropped_files.append(file.replace('/', '\\'))
                     except Exception as e:
                         cfg.set_error(e, "Error importing images - see details below")
+                imgui.separator()
+                if imgui.menu_item("View controls")[0]:
+                    CorrelationEditor.show_control_info_window = True
                 imgui.end_menu()
             if imgui.begin_menu("Settings"):
                 _c, self.window.clear_color = imgui.color_edit4("Background colour", *self.window.clear_color, flags=imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_SIDE_PREVIEW)
@@ -429,6 +436,32 @@ class CorrelationEditor:
             imgui.end_main_menu_bar()
         imgui.pop_style_color(6)
         imgui.pop_style_var(1)
+
+    def controls_info_window(self):
+        if CorrelationEditor.show_control_info_window:
+            expanded, opened = imgui.begin("Controls", True)
+            if opened:
+                imgui.columns(2, "##control_info_columns")
+                imgui.separator()
+                imgui.text("Key")
+                imgui.set_column_width(0, 150)
+
+                imgui.next_column()
+                imgui.text("Description")
+                imgui.next_column()
+                imgui.separator()
+                for key_description_pair in cfg.controls:
+                    key = key_description_pair[0]
+                    dsc = key_description_pair[1]
+                    imgui.text(key)
+                    imgui.next_column()
+                    imgui.text(dsc)
+                    imgui.next_column()
+            else:
+                CorrelationEditor.show_control_info_window = False
+            if expanded:
+                imgui.end()
+
 
     def tool_info_window(self):
         if not (True in cfg.ce_tool_menu_names.values()):
@@ -793,6 +826,9 @@ class CorrelationEditor:
                         cfg.set_error(e, f"Plugin '{CorrelationEditor.tools_list[CorrelationEditor.selected_tool]}' caused an error:")
 
         if cfg.ce_tool_menu_names["Particle picking"]:
+            if CorrelationEditor.force_ppmenu_open:
+                CorrelationEditor.force_ppmenu_open = False
+                imgui.set_next_item_open(True)
             if imgui.collapsing_header("Particle picking", None)[0]:
                 af = cfg.ce_active_frame
 
@@ -802,7 +838,7 @@ class CorrelationEditor:
                     imgui.text(af.title)
                     CorrelationEditor.tooltip(af.title)
                     imgui.set_next_item_width(70)
-                    _c, af.pixel_size_z = imgui.input_float("Voxel depth", af.pixel_size_z, 0.0, 0.0, format='%.2f nm')
+                    #_c, af.pixel_size_z = imgui.input_float("Voxel depth", af.pixel_size_z, 0.0, 0.0, format='%.2f nm')
                 else:
                     imgui.text("<no frame selected>")
 
@@ -1041,7 +1077,6 @@ class CorrelationEditor:
             elif imgui.menu_item("8 x", selected=f.binning == 8)[0]:
                 f.binning = 8
             imgui.end_menu()
-
 
     def objects_info_window(self):
         content_width = 0
@@ -1511,11 +1546,23 @@ class CorrelationEditor:
             elif imgui.is_key_pressed(glfw.KEY_EQUAL):
                 CorrelationEditor.active_frame.alpha = min([1.0, CorrelationEditor.active_frame.alpha + 0.1])
             elif imgui.is_key_pressed(glfw.KEY_A):
-                CorrelationEditor.active_frame.compute_autocontrast()
+                if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
+                    CorrelationEditor.active_frame.compute_autocontrast(settings.autocontrast_saturation * 20.0)
+                else:
+                    CorrelationEditor.active_frame.compute_autocontrast()
             elif imgui.is_key_pressed(glfw.KEY_I):
                 CorrelationEditor.active_frame.toggle_interpolation()
             elif imgui.is_key_pressed(glfw.KEY_L):
                 CorrelationEditor.active_frame.locked = not CorrelationEditor.active_frame.locked
+            elif imgui.is_key_pressed(glfw.KEY_M):
+                CorrelationEditor.measure_active = not CorrelationEditor.measure_active
+                if not CorrelationEditor.measure_active:
+                    CorrelationEditor.measure_active = False
+                    CorrelationEditor.measure_tool.reset()
+            elif imgui.is_key_pressed(glfw.KEY_P) or imgui.is_key_pressed(glfw.KEY_E):
+                CorrelationEditor.picking_enabled = not CorrelationEditor.picking_enabled
+                if CorrelationEditor.picking_enabled:
+                    CorrelationEditor.force_ppmenu_open = True
             elif imgui.is_key_pressed(glfw.KEY_PAGE_UP):
                 if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
                     CorrelationEditor.active_frame.move_to_front()
@@ -1817,9 +1864,8 @@ class Renderer:
             self.border_shader.uniform3f("lineColour", p_group.colour)
             for coords in p_group.coordinates:
                 # coords to local coordinates
-                z_offset = (coords[2] - parent_frame.current_slice) * parent_frame.pixel_size_z * 10.0
-                size_scaling = (max([0.0, p_group.diameter ** 2 - z_offset ** 2]))**0.5 * 0.1
-                #size_scaling = max([size_scaling, 5.0])
+                z_offset = (coords[2] - parent_frame.current_slice) * parent_frame.pixel_size_z
+                size_scaling = max([0.0, p_group.diameter ** 2 - z_offset ** 2])**0.5 * 0.1
                 local_mat = np.matrix([
                     [size_scaling, 0.0, 0.0, (coords[0] - parent_frame.width // 2) * parent_frame.pixel_size],
                     [0.0, size_scaling, 0.0, (coords[1] + parent_frame.height // 2) * parent_frame.pixel_size],
@@ -1831,7 +1877,6 @@ class Renderer:
                 glDrawElements(GL_LINES, va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
         self.border_shader.unbind()
         va.unbind()
-
 
 
 class Camera:

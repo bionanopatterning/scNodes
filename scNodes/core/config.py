@@ -14,6 +14,23 @@ filetype_project = ".scnp"
 filetype_node_setup = ".scn"
 filetype_scene = ".scnscene"
 
+controls = [
+    ("1-6", "Change blending mode"),
+    ("0/H/V", "Toggle frame visibility"),
+    ("-/+", "De-/increase frame alpha"),
+    ("A", "Set autocontrast. +SHIFT: higher contrast"),
+    ("Arrows", "Move frame. +SHIFT: move fast, +CTRL: move slow"),
+    ("Escape", "Deactivate measure tool / particle picking"),
+    ("P/E", "(De)activate particle picking"),
+    ("M", "(De)activate measure tool"),
+    ("Shift + scroll", "Zoom in/out"),
+    ("Delete", "Delete frame"),
+    ("I", "Toggle interpolation mode"),
+    ("Page up/down", "Move frame up/down in render stack"),
+    ("Spacebar", "Focus camera on currently selected frame"),
+    ("%", "Toggle snapping")
+]
+
 nodes = list()
 active_node = None
 focused_node = None
