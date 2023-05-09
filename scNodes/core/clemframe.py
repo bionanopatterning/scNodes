@@ -305,8 +305,11 @@ class CLEMFrame:
         subsample = self.data[::settings.autocontrast_subsample, ::settings.autocontrast_subsample]
         n = subsample.shape[0] * subsample.shape[1]
         sorted_pixelvals = np.sort(subsample.flatten())
-        self.contrast_lims[0] = sorted_pixelvals[int(saturation_pct / 100.0 * n)]
-        self.contrast_lims[1] = sorted_pixelvals[int((1.0 - saturation_pct / 100.0) * n)]
+
+        min_idx = min([int(saturation_pct / 100.0 * n), n - 1])
+        max_idx = max([int((1.0 - saturation_pct / 100.0) * n), 0])
+        self.contrast_lims[0] = sorted_pixelvals[min_idx]
+        self.contrast_lims[1] = sorted_pixelvals[max_idx]
 
     def compute_histogram(self):
         if not self.is_rgb:

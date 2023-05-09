@@ -143,6 +143,7 @@ class CorrelationEditor:
         ppf_segment_start = None
         ppf_segment_start_world = None
         ppf_filament_length = 0
+        ppf_current_filament_vertices_world = list()
         force_ppmenu_open = False
         # info
         show_control_info_window = False
@@ -444,8 +445,8 @@ class CorrelationEditor:
 
     def controls_info_window(self):
         if CorrelationEditor.show_control_info_window:
-            expanded, opened = imgui.begin("Controls", True)
-            if opened:
+            expanded, opened = imgui.begin("Controls", True, imgui.WINDOW_NO_COLLAPSE)
+            if opened or expanded:
                 imgui.columns(2, "##control_info_columns")
                 imgui.separator()
                 imgui.text("Key")
@@ -462,10 +463,10 @@ class CorrelationEditor:
                     imgui.next_column()
                     imgui.text(dsc)
                     imgui.next_column()
-            else:
-                CorrelationEditor.show_control_info_window = False
-            if expanded:
                 imgui.end()
+            if not opened:
+                CorrelationEditor.show_control_info_window = False
+
 
     def tool_info_window(self):
         if not (True in cfg.ce_tool_menu_names.values()):
@@ -937,10 +938,13 @@ class CorrelationEditor:
                     imgui.pop_style_var(1)
 
                     if CorrelationEditor.picking_mode == 1 and CorrelationEditor.ppf_segment_start_world:
-                        start = CorrelationEditor.ppf_segment_start_world
+                        for i in range(len(CorrelationEditor.ppf_current_filament_vertices_world) - 1):
+                            start = CorrelationEditor.ppf_current_filament_vertices_world[i]
+                            stop = CorrelationEditor.ppf_current_filament_vertices_world[i + 1]
+                            self.renderer.add_line((start[0], start[1]), (stop[0], stop[1]), (af.current_particle_group.colour[:3]))
+                        start = CorrelationEditor.ppf_current_filament_vertices_world[-1]
                         stop = self.camera.cursor_to_world_position(self.window.cursor_pos)
                         self.renderer.add_line((start[0], start[1]), (stop[0], stop[1]), (af.current_particle_group.colour[:3]))
-                        # draw a line for the current segment.
 
         imgui.end()
         imgui.pop_style_color(3)
@@ -1431,6 +1435,7 @@ class CorrelationEditor:
                         # set the latest click pos to be the new segment start.
                         CorrelationEditor.ppf_segment_start = np.array(particle_coordinates)
                         CorrelationEditor.ppf_segment_start_world = world_pos
+                        CorrelationEditor.ppf_current_filament_vertices_world.append(world_pos)
                         delta = CorrelationEditor.ppf_segment_start - segment_beginning
                         segment_length = (np.sum(delta**2))**0.5
                         CorrelationEditor.ppf_filament_length += segment_length
@@ -1439,21 +1444,23 @@ class CorrelationEditor:
                         spacing = CorrelationEditor.ppf_spacing * 0.1 / frame.pixel_size  # spacing in pixel units. INTRODUCES AN ASSUMPTION OF ISOTROPIC PIXEL SIZE!
 
                         # place the first particle (use up the remainder of the previous segment, if necessary)
-                        prev_particle = segment_beginning + uvec * (spacing - CorrelationEditor.ppf_remainder)
+                        if (CorrelationEditor.ppf_remainder + segment_length) > spacing:
+                            prev_particle = segment_beginning + uvec * (spacing - CorrelationEditor.ppf_remainder)
 
-                        # then loop until remaining length is too small
-                        segment_remaining_length = segment_length + CorrelationEditor.ppf_remainder - spacing
-                        frame.current_particle_group.coordinates.append(list(prev_particle))
-                        while segment_remaining_length > spacing:
-                            prev_particle = prev_particle + uvec * spacing
+                            # then loop until remaining length is too small
+                            segment_remaining_length = segment_length + CorrelationEditor.ppf_remainder - spacing
                             frame.current_particle_group.coordinates.append(list(prev_particle))
-                            segment_remaining_length -= spacing
-                        CorrelationEditor.ppf_remainder = segment_remaining_length
-                        # particles must be placed on the line starting at vec3 segment_beginning, along vec3 uvec.
-                        # the first particle is not necessarily placed at segment_beginning; it must be SPACING units away from the previous particle.
+                            while segment_remaining_length > spacing:
+                                prev_particle = prev_particle + uvec * spacing
+                                frame.current_particle_group.coordinates.append(list(prev_particle))
+                                segment_remaining_length -= spacing
+                            CorrelationEditor.ppf_remainder = segment_remaining_length
+                        else:
+                            CorrelationEditor.ppf_remainder += segment_length
                     else:
                         CorrelationEditor.ppf_segment_start = np.array(particle_coordinates)
                         CorrelationEditor.ppf_segment_start_world = world_pos
+                        CorrelationEditor.ppf_current_filament_vertices_world.append(world_pos)
                         CorrelationEditor.ppf_filament_length = 0
                         CorrelationEditor.ppf_remainder = 0
                 elif self.window.get_mouse_event(glfw.MOUSE_BUTTON_MIDDLE, glfw.PRESS):
@@ -1462,6 +1469,7 @@ class CorrelationEditor:
                     CorrelationEditor.ppf_segment_start_world = None
                     CorrelationEditor.ppf_filament_length = 0
                     CorrelationEditor.ppf_remainder = 0
+                    CorrelationEditor.ppf_current_filament_vertices_world = list()
             # removing a particle:
             if self.window.get_mouse_event(glfw.MOUSE_BUTTON_RIGHT, glfw.PRESS):
                 world_pos = self.camera.cursor_to_world_position(self.window.cursor_pos)
@@ -1617,6 +1625,8 @@ class CorrelationEditor:
             elif imgui.is_key_pressed(glfw.KEY_A):
                 if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
                     CorrelationEditor.active_frame.compute_autocontrast(settings.autocontrast_saturation * 100.0)
+                elif imgui.is_key_down(glfw.KEY_LEFT_CONTROL):
+                    CorrelationEditor.active_frame.compute_autocontrast(settings.autocontrast_saturation * 500.0)
                 else:
                     CorrelationEditor.active_frame.compute_autocontrast()
             elif imgui.is_key_pressed(glfw.KEY_I):
@@ -1646,7 +1656,7 @@ class CorrelationEditor:
                     CorrelationEditor.active_frame.move_backwards()
             elif imgui.is_key_pressed(glfw.KEY_SPACE):
                 self.camera.focus_on_frame(CorrelationEditor.active_frame)
-            elif imgui.is_key_pressed(glfw.KEY_LEFT_SHIFT) and imgui.is_key_pressed(glfw.KEY_5):
+            elif imgui.is_key_pressed(glfw.KEY_S):
                 self.snap_enabled = not self.snap_enabled
 
     def _warning_window(self):

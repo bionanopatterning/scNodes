@@ -18,7 +18,7 @@ controls = [
     ("1-6", "Change blending mode"),
     ("0/H/V", "Toggle frame visibility"),
     ("-/+", "De-/increase frame alpha"),
-    ("A", "Set autocontrast. +SHIFT: higher contrast"),
+    ("A", "Set autocontrast. +SHIFT: higher contrast, +CTRL: even higher contrast"),
     ("Arrows", "Move frame. +SHIFT: move fast, +CTRL: move slow"),
     ("Escape", "Deactivate measure tool / particle picking"),
     ("P/E", "(De)activate particle picking"),
@@ -29,7 +29,7 @@ controls = [
     ("I", "Toggle interpolation mode"),
     ("Page up/down", "Move frame up/down in render stack"),
     ("Spacebar", "Focus camera on currently selected frame"),
-    ("%", "Toggle snapping")
+    ("S", "Toggle snapping")
 ]
 
 nodes = list()
