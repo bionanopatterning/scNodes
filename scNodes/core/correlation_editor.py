@@ -732,7 +732,11 @@ class CorrelationEditor:
                             delta = ex_height - ex_width
                             CorrelationEditor.ex_lims[3] -= delta / 2
                             CorrelationEditor.ex_lims[1] += delta / 2
-
+                    # make sure top-left is in fact at the top and left
+                    CorrelationEditor.ex_lims[0] = min([CorrelationEditor.ex_lims[0], CorrelationEditor.ex_lims[2]])
+                    CorrelationEditor.ex_lims[2] = max([CorrelationEditor.ex_lims[0], CorrelationEditor.ex_lims[2]])
+                    CorrelationEditor.ex_lims[1] = min([CorrelationEditor.ex_lims[1], CorrelationEditor.ex_lims[3]])
+                    CorrelationEditor.ex_lims[3] = max([CorrelationEditor.ex_lims[1], CorrelationEditor.ex_lims[3]])
                     imgui.pop_style_color()
                     imgui.pop_style_var(3)
                 CorrelationEditor.ex_img_size = [int(1000.0 * (lims[2] - lims[0]) / CorrelationEditor.ex_pxnm), int(1000.0 * (lims[3] - lims[1]) / CorrelationEditor.ex_pxnm)]
@@ -1606,8 +1610,10 @@ class CorrelationEditor:
                 CorrelationEditor.active_frame.hide = not CorrelationEditor.active_frame.hide
             elif imgui.is_key_pressed(glfw.KEY_MINUS):
                 CorrelationEditor.active_frame.alpha = max([0.0, CorrelationEditor.active_frame.alpha - 0.1])
+                CorrelationEditor.alpha_wobbler_active = False
             elif imgui.is_key_pressed(glfw.KEY_EQUAL):
                 CorrelationEditor.active_frame.alpha = min([1.0, CorrelationEditor.active_frame.alpha + 0.1])
+                CorrelationEditor.alpha_wobbler_active = False
             elif imgui.is_key_pressed(glfw.KEY_A):
                 if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
                     CorrelationEditor.active_frame.compute_autocontrast(settings.autocontrast_saturation * 100.0)

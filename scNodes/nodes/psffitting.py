@@ -49,7 +49,7 @@ class ParticleFittingNode(Node):
         self.n_frames_discarded = 0
         self.frames_to_fit = list()
         self.particle_data = ParticleData()
-
+        self.batch_size = 5
         self.time_start = 0
         self.time_stop = 0
 
@@ -227,13 +227,16 @@ class ParticleFittingNode(Node):
                     self.particle_data.set_reconstruction_roi(np.asarray(self.detection_roi) * self.particle_data.pixel_size)
                     self.particle_data.bake()
                 else:
-                    fitted_frame = self.get_image(self.frames_to_fit[-1])
-                    self.n_fitted += 1
-                    if fitted_frame is not None:
-                        particles = fitted_frame.particles
-                        self.frames_to_fit.pop()
-                        if not fitted_frame.discard:
-                            self.particle_data += particles
+                    for i in range(min([self.batch_size, len(self.frames_to_fit)])):
+                        fitted_frame = self.get_image(self.frames_to_fit[-1])
+                        self.n_fitted += 1
+                        if fitted_frame is not None:
+                            particles = fitted_frame.particles
+                            self.frames_to_fit.pop()
+                            if not fitted_frame.discard:
+                                self.particle_data += particles
+                        else:
+                            break
         except Exception as e:
             self.fitting = False
             self.play = False
