@@ -133,7 +133,7 @@ class CorrelationEditor:
         location_gizmo_visible = False
         incoming_files = list()
         alpha_wobbler_active = False
-        ALPHA_WOBBLER_OSCILLATIONS_PER_SECOND = 0.5
+        ALPHA_WOBBLER_OSCILLATIONS_PER_SECOND = 1.2
         # particle picking
         picking_enabled = False
         picking_show = True
@@ -695,7 +695,11 @@ class CorrelationEditor:
                             delta = ex_height - ex_width
                             CorrelationEditor.ex_lims[3] -= delta / 2
                             CorrelationEditor.ex_lims[1] += delta / 2
-
+                    # make sure top-left is in fact at the top and left
+                    CorrelationEditor.ex_lims[0] = min([CorrelationEditor.ex_lims[0], CorrelationEditor.ex_lims[2]])
+                    CorrelationEditor.ex_lims[2] = max([CorrelationEditor.ex_lims[0], CorrelationEditor.ex_lims[2]])
+                    CorrelationEditor.ex_lims[1] = min([CorrelationEditor.ex_lims[1], CorrelationEditor.ex_lims[3]])
+                    CorrelationEditor.ex_lims[3] = max([CorrelationEditor.ex_lims[1], CorrelationEditor.ex_lims[3]])
                     imgui.pop_style_color()
                     imgui.pop_style_var(3)
                 CorrelationEditor.ex_img_size = [int(1000.0 * (lims[2] - lims[0]) / CorrelationEditor.ex_pxnm), int(1000.0 * (lims[3] - lims[1]) / CorrelationEditor.ex_pxnm)]
@@ -1508,8 +1512,10 @@ class CorrelationEditor:
                 CorrelationEditor.active_frame.hide = not CorrelationEditor.active_frame.hide
             elif imgui.is_key_pressed(glfw.KEY_MINUS):
                 CorrelationEditor.active_frame.alpha = max([0.0, CorrelationEditor.active_frame.alpha - 0.1])
+                CorrelationEditor.alpha_wobbler_active = False
             elif imgui.is_key_pressed(glfw.KEY_EQUAL):
                 CorrelationEditor.active_frame.alpha = min([1.0, CorrelationEditor.active_frame.alpha + 0.1])
+                CorrelationEditor.alpha_wobbler_active = False
             elif imgui.is_key_pressed(glfw.KEY_A):
                 CorrelationEditor.active_frame.compute_autocontrast()
             elif imgui.is_key_pressed(glfw.KEY_I):
