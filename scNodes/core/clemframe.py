@@ -298,12 +298,15 @@ class CLEMFrame:
             lut_array_rgba[0, 0, 3] = 0.0
         self.lut_texture.update(lut_array_rgba)
 
-    def compute_autocontrast(self):
+    def compute_autocontrast(self, saturation=None):
+        saturation_pct = settings.autocontrast_saturation
+        if saturation:
+            saturation_pct = saturation
         subsample = self.data[::settings.autocontrast_subsample, ::settings.autocontrast_subsample]
         n = subsample.shape[0] * subsample.shape[1]
         sorted_pixelvals = np.sort(subsample.flatten())
-        self.contrast_lims[0] = sorted_pixelvals[int(settings.autocontrast_saturation / 100.0 * n)]
-        self.contrast_lims[1] = sorted_pixelvals[int((1.0 - settings.autocontrast_saturation / 100.0) * n)]
+        self.contrast_lims[0] = sorted_pixelvals[int(saturation_pct / 100.0 * n)]
+        self.contrast_lims[1] = sorted_pixelvals[int((1.0 - saturation_pct / 100.0) * n)]
 
     def compute_histogram(self):
         if not self.is_rgb:
