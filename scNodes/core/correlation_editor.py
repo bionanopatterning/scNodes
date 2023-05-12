@@ -228,10 +228,11 @@ class CorrelationEditor:
         if self.window.focused:
             self.imgui_implementation.process_inputs()
 
-
-        if imgui.get_io().want_capture_keyboard is False and imgui.is_key_pressed(glfw.KEY_TAB):
-            cfg.active_editor = 0
-
+        if not imgui.get_io().want_capture_keyboard and imgui.is_key_pressed(glfw.KEY_TAB):
+            if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
+                cfg.active_editor = (cfg.active_editor - 1) % len(cfg.editors)
+            else:
+                cfg.active_editor = (cfg.active_editor + 1) % len(cfg.editors)
         if cfg.correlation_editor_relink:
             CorrelationEditor.relink_after_load()
             cfg.correlation_editor_relink = False
@@ -434,10 +435,10 @@ class CorrelationEditor:
                 imgui.pop_style_var(1)
                 imgui.end_menu()
             if imgui.begin_menu("Editor"):
-                select_node_editor, _ = imgui.menu_item("Node Editor", None, False)
-                select_correlation_editor, _ = imgui.menu_item("Correlation", None, True)
-                if select_node_editor:
-                    cfg.active_editor = 0
+                for i in range(len(cfg.editors)):
+                    select, _ = imgui.menu_item(cfg.editors[i], None, False)
+                    if select:
+                        cfg.active_editor = i
                 imgui.end_menu()
             imgui.end_main_menu_bar()
         imgui.pop_style_color(6)
@@ -2057,7 +2058,6 @@ class Camera:
     def focus_on_frame(self, clemframe):
         self.position[0] = -clemframe.transform.translation[0]
         self.position[1] = -clemframe.transform.translation[1]
-        # set zoom as well:
         img_width = clemframe.width * clemframe.pixel_size
         img_height = clemframe.height * clemframe.pixel_size
         size = max([img_width, img_height])

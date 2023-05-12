@@ -68,7 +68,10 @@ class NodeEditor:
             cfg.window_width = self.window.width
             cfg.window_height = self.window.height
         if not imgui.get_io().want_capture_keyboard and imgui.is_key_pressed(glfw.KEY_TAB):
-            cfg.active_editor = 1
+            if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
+                cfg.active_editor = (cfg.active_editor - 1) % len(cfg.editors)
+            else:
+                cfg.active_editor = (cfg.active_editor + 1) % len(cfg.editors)
         if not self.window.get_key(glfw.KEY_ESCAPE):
             for node in cfg.nodes:
                 node.clear_flags()
@@ -307,10 +310,10 @@ class NodeEditor:
                     imgui.end_menu()
                 imgui.end_menu()
             if imgui.begin_menu('Editor'):
-                select_node_editor, _ = imgui.menu_item("Node Editor", None, selected=True)
-                select_correlation_editor, _ = imgui.menu_item("Correlation", None, selected=False)
-                if select_correlation_editor:
-                    cfg.active_editor = 1
+                for i in range(len(cfg.editors)):
+                    select, _ = imgui.menu_item(cfg.editors[i], None, False)
+                    if select:
+                        cfg.active_editor = i
                 imgui.end_menu()
             imgui.end_main_menu_bar()
         imgui.pop_style_color(6)

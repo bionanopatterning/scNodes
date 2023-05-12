@@ -73,7 +73,8 @@ node_editor_relink = False
 correlation_editor_relink = False
 pickle_temp = dict()
 
-active_editor = 0  # 0 for node editor, 1 for correlation
+editors = ["Node Editor", "Correlation Editor", "Segmentation Editor"]
+active_editor = 2  # 0 for node editor, 1 for correlation
 ce_frames = list()
 ce_active_frame = None
 ce_clear_colour = (1.0, 1.0, 1.0, 1.0)
@@ -82,6 +83,8 @@ ce_flip_on_load = True
 ce_selected_position = [0, 0]
 ce_va_subdivision = 8
 
+se_frames = list()
+se_active_frame = None
 
 def set_active_node(node, keep_active=False):
     global focused_node, active_node, next_active_node

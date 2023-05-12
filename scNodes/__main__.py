@@ -1,6 +1,7 @@
 import os
 import sys
 from imgui.integrations.glfw import GlfwRenderer
+
 directory = os.path.join(os.path.dirname(__file__))
 directory = directory[:directory.rfind("\\")]
 sys.path.insert(0, os.path.abspath(".."))
@@ -17,6 +18,7 @@ if __name__ == "__main__":
         from scNodes.core.correlation_editor import *
         from scNodes.core.imageviewer import *
         from scNodes.core.reconstruction import *
+        from scNodes.core.segmentation_editor import *
         from joblib.externals.loky import set_loky_pickler
         set_loky_pickler("cloudpickle")
 
@@ -38,9 +40,10 @@ if __name__ == "__main__":
         main_window_imgui_glfw_implementation = GlfwRenderer(main_window.glfw_window)
         main_window.set_mouse_callbacks()
         main_window.set_window_callbacks()
+        # set up editors
         node_editor = NodeEditor(main_window, main_window_imgui_context, main_window_imgui_glfw_implementation)
         correlation_editor = CorrelationEditor(main_window, main_window_imgui_context, main_window_imgui_glfw_implementation)
-
+        segmentation_editor = SegmentationEditor(main_window, main_window_imgui_context, main_window_imgui_glfw_implementation)
         image_viewer_window = Window(cfg.iv_window_width, cfg.iv_window_height, settings.iv_window_title)
         image_viewer_window_imgui_context = imgui.create_context(main_window_imgui_glfw_implementation.io.fonts)
         image_viewer_window_glfw_implementation = GlfwRenderer(image_viewer_window.glfw_window)
@@ -59,9 +62,12 @@ if __name__ == "__main__":
                 if cfg.active_editor == 0:
                     node_editor.on_update()
                     node_editor.end_frame()
-                else:
+                elif cfg.active_editor == 1:
                     correlation_editor.on_update()
                     correlation_editor.end_frame()
+                elif cfg.active_editor == 2:
+                    segmentation_editor.on_update()
+                    segmentation_editor.end_frame()
                 image_viewer.window.make_current()
                 image_viewer.on_update()
                 image_viewer.end_frame()

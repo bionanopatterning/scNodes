@@ -30,6 +30,7 @@ class Texture:
     IF_F_T["rgba16u"] = [GL_RGBA16UI, GL_RGBA_INTEGER, GL_UNSIGNED_SHORT]
     IF_F_T["rgba32u"] = [GL_RGBA32UI, GL_RGBA_INTEGER, GL_UNSIGNED_INT]
 
+
     def __init__(self, format=None):
         if format:
             self.id = next(Texture.idGenerator)
@@ -65,10 +66,10 @@ class Texture:
         imgdata = None
         if not pixeldata is None:
             imgdata = pixeldata.flatten()
-
         glTexImage2D(GL_TEXTURE_2D, 0, self.internalformat, self.width, self.height, 0, self.format, self.type, imgdata)
         if self.wants_mipmap:
             glGenerateMipmap(GL_TEXTURE_2D)
+
 
     def set_linear_interpolation(self):
         glBindTexture(GL_TEXTURE_2D, self.renderer_id)
