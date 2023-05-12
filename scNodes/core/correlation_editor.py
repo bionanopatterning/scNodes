@@ -369,7 +369,7 @@ class CorrelationEditor:
                 CorrelationEditor.renderer.render_particle_rois(self.camera, self.active_frame, CorrelationEditor.picking_va, all_groups=True)
         self.menu_bar()
         self.context_menu()
-        self.tool_info_window()
+        self.tool_window()
         self.objects_info_window()
         self.visuals_window()
         self.frame_xray_window()
@@ -468,8 +468,7 @@ class CorrelationEditor:
             if not opened:
                 CorrelationEditor.show_control_info_window = False
 
-
-    def tool_info_window(self):
+    def tool_window(self):
         if not (True in cfg.ce_tool_menu_names.values()):
             return
         af = CorrelationEditor.active_frame

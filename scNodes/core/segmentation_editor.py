@@ -15,6 +15,7 @@ class SegmentationEditor:
         DEFAULT_HORIZONTAL_FOV_WIDTH = 50000  # upon init, camera zoom is such that from left to right of window = 50 micron.
         DEFAULT_ZOOM = 1.0  # adjusted in init
         DEFAULT_WORLD_PIXEL_SIZE = 1.0  # adjusted on init
+        MAIN_WINDOW_WIDTH = 270
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -68,20 +69,71 @@ class SegmentationEditor:
         self.imgui_implementation.render(imgui.get_draw_data())
 
     def gui_main(self):
-        def brush_window():
-            imgui.begin("Brush")
-            imgui.text("TODO")  # TODO
+        imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *cfg.COLOUR_PANEL_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_TEXT)
+        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *cfg.COLOUR_TITLE_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *cfg.COLOUR_TITLE_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_COLLAPSED, *cfg.COLOUR_TITLE_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *cfg.COLOUR_TITLE_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *cfg.COLOUR_TITLE_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *cfg.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_FRAME_ACTIVE)
+        imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *cfg.COLOUR_FRAME_ACTIVE)
+        imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *cfg.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.COLOUR_FRAME_EXTRA_DARK)
+        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.COLOUR_FRAME_DARK)
+        imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_SCROLLBAR_GRAB, *cfg.COLOUR_FRAME_DARK)
+        imgui.push_style_color(imgui.COLOR_SCROLLBAR_GRAB_HOVERED, *cfg.COLOUR_FRAME_DARK)
+        imgui.push_style_color(imgui.COLOR_SCROLLBAR_GRAB_ACTIVE, *cfg.COLOUR_FRAME_BACKGROUND)
+        imgui.push_style_color(imgui.COLOR_SCROLLBAR_BACKGROUND, *cfg.COLOUR_FRAME_EXTRA_DARK)
+        imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *cfg.COLOUR_TEXT)
+        imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM_HOVERED, *cfg.COLOUR_TEXT)
+        imgui.push_style_color(imgui.COLOR_CHECK_MARK, *cfg.COLOUR_FRAME_EXTRA_DARK)
+        imgui.push_style_color(imgui.COLOR_MENUBAR_BACKGROUND, *cfg.COLOUR_MAIN_MENU_BAR)
+        imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_HEADER)
+        imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *cfg.COLOUR_HEADER_HOVERED)
+        imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_HEADER_ACTIVE)
+        imgui.push_style_color(imgui.COLOR_DRAG_DROP_TARGET, *cfg.COLOUR_DROP_TARGET)
+        imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, cfg.WINDOW_ROUNDING)
+
+        def datasets_panel():
+            if imgui.begin_child("dataset", 0.0, 80, True, imgui.WINDOW_ALWAYS_VERTICAL_SCROLLBAR):
+                for s in cfg.se_frames:
+                    imgui.push_id(f"se{s.uid}")
+                    if imgui.selectable(s.title, cfg.se_active_frame == s):
+                        cfg.se_active_frame = s
+                        imgui.pop_id()
+                imgui.end_child()
+
+        def features_panel():
+            imgui.text("features")
+
+        def brush_panel():
+            imgui.text("brush")
             # 1) make brush selection window
             # 2) make brush Object
             # 3) make Brush do something to a Segmentation's data and upload that edit to GPU
 
-            imgui.end()
         # render the active frame
         if cfg.se_active_frame is not None:
             self.renderer.render_frame(cfg.se_active_frame, self.camera)
 
-        # imgui windows
-        brush_window()
+        imgui.set_next_window_position(0, 18, imgui.ONCE)
+        imgui.set_next_window_size(SegmentationEditor.MAIN_WINDOW_WIDTH, self.window.height - 18)
+        imgui.begin("##se_main", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE)
+        if imgui.collapsing_header("Available datasets", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+            datasets_panel()
+        if imgui.collapsing_header("Features", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+            features_panel()
+        if imgui.collapsing_header("Brush", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+            brush_panel()
+        imgui.end()
+
+        imgui.pop_style_color(28)
+        imgui.pop_style_var(1)
 
     def camera_control(self):
         if imgui.get_io().want_capture_mouse or imgui.get_io().want_capture_keyboard:
@@ -98,6 +150,11 @@ class SegmentationEditor:
         self.window.end_frame()
 
 
+#def apply_brush(segmentation, location):
+
+
+
+
 class SEFrame:
     idgen = count(0)
 
@@ -105,7 +162,7 @@ class SEFrame:
         uid_counter = next(SEFrame.idgen)
         self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')+"000") + uid_counter
         self.path = path
-
+        self.title = os.path.splitext(os.path.basename(self.path))[0]
         self.n_slices = 0
         self.data = None
         self.features = list()
@@ -220,6 +277,7 @@ class Segmentation:
         self.data = np.zeros((self.height, self.width))
         self.texture = Texture(format="r32f")
         self.texture.update(self.data)
+
 
 
 
