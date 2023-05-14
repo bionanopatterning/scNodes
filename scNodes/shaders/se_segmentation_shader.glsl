@@ -17,7 +17,7 @@ void main()
 #fragment
 #version 420
 
-layout(binding = 0) uniform sampler2D image;
+layout(binding = 0) uniform usampler2D image;
 
 out vec4 fragmentColor;
 in vec2 fUV;
@@ -28,7 +28,7 @@ uniform vec3 colour;
 void main()
 {
     vec2 uv = fUV;
-    float pixelValue = texture(image, uv).r;
+    float pixelValue = texture(image, uv).r / 255.0;
     if (pixelValue <= 0)
     {
         discard;

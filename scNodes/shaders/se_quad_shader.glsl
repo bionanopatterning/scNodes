@@ -31,5 +31,5 @@ void main()
     vec2 uv = fUV;
     float pixelValue = texture(image, uv).r;
     float contrastValue = (pixelValue - contrastMin.r) / (contrastMax.r - contrastMin.r);
-    fragmentColor = vec4(uv.r, uv.g, contrastValue, alpha);
+    fragmentColor = vec4(contrastValue, contrastValue, contrastValue, alpha);
 }
