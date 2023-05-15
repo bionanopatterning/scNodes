@@ -25,6 +25,7 @@ class SegmentationEditor:
         INFO_HISTOGRAM_HEIGHT = 70
         SLICER_WINDOW_VERTICAL_OFFSET = 30
         SLICER_WINDOW_WIDTH = 700
+        ACTIVE_SLICES_CHILD_HEIGHT = 140
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -39,12 +40,14 @@ class SegmentationEditor:
         self.camera.zoom = SegmentationEditor.DEFAULT_ZOOM
         self.renderer = Renderer()
 
-
-        sef = SEFrame("C:/Users/mgflast/Desktop/tomo4.mrc")
+        self.fboa = FrameBuffer()
+        self.fbob = FrameBuffer()
+        sef = SEFrame("C:/Users/mart_/Desktop/tomo.mrc")
+        sef2 = SEFrame("C:/Users/mart_/Desktop/tomo.mrc")
         cfg.se_frames.append(sef)
-        cfg.se_active_frame = sef
+        cfg.se_frames.append(sef2)
+        self.set_active_dataset(sef2)
 
-        sef.features.append(Segmentation(sef, "def"))
 
         if True:  # load icons
             icon_dir = os.path.join(cfg.root, "icons")
@@ -54,16 +57,10 @@ class SegmentationEditor:
             self.icon_close.update(pxd_icon_close)
             self.icon_close.set_linear_interpolation()
 
-            self.icon_expand = Texture(format="rgba32f")
-            pxd_icon_expand = np.asarray(Image.open(os.path.join(icon_dir, "icon_expand_256.png"))).astype(np.float32) / 255.0
-            self.icon_expand.update(pxd_icon_expand)
-            self.icon_expand.set_linear_interpolation()
-
-            self.icon_expanded = Texture(format="rgba32f")
-            pxd_icon_expanded = np.asarray(Image.open(os.path.join(icon_dir, "icon_expanded_256.png"))).astype(
-                np.float32) / 255.0
-            self.icon_expanded.update(pxd_icon_expanded)
-            self.icon_expanded.set_linear_interpolation()
+    def set_active_dataset(self, dataset):
+        cfg.se_active_frame = dataset
+        self.renderer.fbo1 = FrameBuffer(dataset.width, dataset.height)
+        self.renderer.fbo2 = FrameBuffer(dataset.width, dataset.height)
 
     def on_update(self):
         imgui.set_current_context(self.imgui_context)
@@ -102,33 +99,39 @@ class SegmentationEditor:
             return
 
         # key input
-        active_feature = cfg.se_active_frame.active_feature
         active_frame = cfg.se_active_frame
-        if imgui.is_key_down(glfw.KEY_LEFT_CONTROL) and active_feature is not None:
-            active_feature.brush_size += self.window.scroll_delta[1]
-            active_feature.brush_size = max([1, active_feature.brush_size])
-        if imgui.is_key_pressed(glfw.KEY_DOWN) or imgui.is_key_pressed(glfw.KEY_S):
-            idx = 0 if not active_feature in active_frame.features else active_frame.features.index(active_feature)
-            idx = (idx + 1) % len(active_frame.features)
-            cfg.se_active_frame.active_feature = cfg.se_active_frame.features[idx]
-        elif imgui.is_key_pressed(glfw.KEY_UP) or imgui.is_key_pressed(glfw.KEY_W):
-            idx = 0 if not active_feature in active_frame.features else active_frame.features.index(active_feature)
-            idx = (idx - 1) % len(active_frame.features)
-            cfg.se_active_frame.active_feature = cfg.se_active_frame.features[idx]
-        if not imgui.is_key_down(glfw.KEY_LEFT_SHIFT) and not imgui.is_key_down(glfw.KEY_LEFT_CONTROL) and active_frame is not None:
-            idx = int(active_frame.current_slice + self.window.scroll_delta[1])
-            idx = idx % active_frame.n_slices
-            active_frame.set_slice(idx)
+        active_feature = None
+        if active_frame is not None:
+            active_feature = cfg.se_active_frame.active_feature
+        # Key inputs that affect the active feature:
+        if active_feature is not None:
+            if imgui.is_key_down(glfw.KEY_LEFT_CONTROL) and active_feature is not None:
+                active_feature.brush_size += self.window.scroll_delta[1]
+                active_feature.brush_size = max([1, active_feature.brush_size])
+            if imgui.is_key_pressed(glfw.KEY_DOWN) or imgui.is_key_pressed(glfw.KEY_S):
+                idx = 0 if active_feature not in active_frame.features else active_frame.features.index(active_feature)
+                idx = (idx + 1) % len(active_frame.features)
+                cfg.se_active_frame.active_feature = cfg.se_active_frame.features[idx]
+            elif imgui.is_key_pressed(glfw.KEY_UP) or imgui.is_key_pressed(glfw.KEY_W):
+                idx = 0 if active_feature not in active_frame.features else active_frame.features.index(active_feature)
+                idx = (idx - 1) % len(active_frame.features)
+                cfg.se_active_frame.active_feature = cfg.se_active_frame.features[idx]
+        # Key inputs that affect the active frame
+        if active_frame is not None:
+            if not imgui.is_key_down(glfw.KEY_LEFT_SHIFT) and not imgui.is_key_down(glfw.KEY_LEFT_CONTROL) and active_frame is not None:
+                idx = int(active_frame.current_slice + self.window.scroll_delta[1])
+                idx = idx % active_frame.n_slices
+                active_frame.set_slice(idx)
+
         # Drawing / mouse input
-        f = cfg.se_active_frame.active_feature
-        if f is not None:
+        if active_feature is not None:
             cursor_world_position = self.camera.cursor_to_world_position(self.window.cursor_pos)
-            pixel_coordinate = f.parent.world_to_pixel_coordinate(cursor_world_position)
+            pixel_coordinate = active_feature.parent.world_to_pixel_coordinate(cursor_world_position)
 
             if imgui.is_mouse_down(0):
-                Brush.apply_circular(f, pixel_coordinate, True)
+                Brush.apply_circular(active_feature, pixel_coordinate, True)
             elif imgui.is_mouse_down(1):
-                Brush.apply_circular(f, pixel_coordinate, False)
+                Brush.apply_circular(active_feature, pixel_coordinate, False)
 
     def gui_main(self):
         if True:
@@ -166,12 +169,21 @@ class SegmentationEditor:
             if imgui.begin_child("dataset", 0.0, 80, True, imgui.WINDOW_ALWAYS_VERTICAL_SCROLLBAR):
                 for s in cfg.se_frames:
                     imgui.push_id(f"se{s.uid}")
-                    if imgui.selectable(s.title, cfg.se_active_frame == s):
-                        cfg.se_active_frame = s
-                        imgui.pop_id()
+                    _change, _selected = imgui.selectable(s.title, cfg.se_active_frame == s)
+                    if _change and _selected:
+                        self.set_active_dataset(s)
+                    if imgui.begin_popup_context_item("##datasetContext"):
+                        if imgui.menu_item("Delete dataset")[0]:
+                            cfg.se_frames.remove(s)
+                            if cfg.se_active_frame == s:
+                                cfg.se_active_frame = None
+                        imgui.end_popup()
+                    imgui.pop_id()
                 imgui.end_child()
 
         def features_panel():
+            if cfg.se_active_frame is None:
+                return
             features = cfg.se_active_frame.features
             for f in features:
                 pop_active_colour = False
@@ -222,8 +234,25 @@ class SegmentationEditor:
                     imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_TRANSPARENT)
 
                     if imgui.begin_menu("##asdc"):
-                        imgui.menu_item("abc")
+                        imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *cfg.COLOUR_HEADER_HOVERED)
+                        imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_HEADER_ACTIVE)
+                        imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_HEADER)
+                        imgui.text("Active slices")
+                        imgui.begin_child("active_slices", 100, SegmentationEditor.ACTIVE_SLICES_CHILD_HEIGHT, True)
+                        cw = imgui.get_content_region_available_width()
+                        for i in f.edited_slices:
+                            imgui.push_id(f"{f.uid}{i}")
+                            _, jumpto = imgui.selectable(f"{i}", f.current_slice == i, width = cw - 23)
+                            if jumpto:
+                                f.parent.set_slice(i)
+                            imgui.same_line(position = cw - 5)
+                            if imgui.image_button(self.icon_close.renderer_id, 13, 13):
+                                f.remove_slice(i)
+                            imgui.pop_id()
+                        imgui.end_child()
+                        imgui.pop_style_color(3)
                         imgui.end_menu()
+
                     imgui.pop_style_color(3)
 
                     imgui.pop_style_var(5)
@@ -301,6 +330,9 @@ class SegmentationEditor:
             imgui.pop_style_var(1)
 
         def slicer_window():
+            if cfg.se_active_frame is None:
+                return
+
             imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, cfg.CE_WIDGET_ROUNDING)
             imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, cfg.CE_WIDGET_ROUNDING)
             imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1.0)
@@ -329,7 +361,8 @@ class SegmentationEditor:
         menu_bar()
         # Render the currently active frame
         if cfg.se_active_frame is not None:
-            self.renderer.render_frame(cfg.se_active_frame, self.camera)
+            self.renderer.render_frame(cfg.se_active_frame, self.camera, self.window)
+
         # MAIN WINDOW
         imgui.set_next_window_position(0, 17, imgui.ONCE)
         imgui.set_next_window_size(SegmentationEditor.MAIN_WINDOW_WIDTH, self.window.height - 17)
@@ -396,6 +429,9 @@ class SEFrame:
         self.contrast_lims = [0, 65535.0]
         self.compute_autocontrast()
         self.compute_histogram()
+
+        self.features.append(Segmentation(self, "Unnamed feature"))
+        self.active_feature = self.features[-1]
 
     def setup_opengl_objects(self):
         self.texture = Texture(format="r32f")
@@ -556,17 +592,26 @@ class Segmentation:
             self.data = None
             self.texture.update(self.data, self.width, self.height)
 
+    def remove_slice(self, requested_slice):
+        if requested_slice in self.edited_slices:
+            self.edited_slices.remove(requested_slice)
+            self.slices.pop(requested_slice)
+            if self.current_slice == requested_slice:
+                self.data *= 0
+                self.texture.update(self.data, self.width, self.height)
+
     def request_draw_in_current_slice(self):
-        self.edited_slices.append(self.current_slice)
         if self.current_slice in self.slices:
             if self.slices[self.current_slice] is None:
                 self.slices[self.current_slice] = np.zeros((self.height, self.width), dtype=float)
                 self.data = self.slices[self.current_slice]
                 self.texture.update(self.data, self.width, self.height)
+                self.edited_slices.append(self.current_slice)
         else:
             self.slices[self.current_slice] = np.zeros((self.height, self.width), dtype=float)
             self.data = self.slices[self.current_slice]
             self.texture.update(self.data, self.width, self.height)
+            self.edited_slices.append(self.current_slice)
 
 
 class Brush:
@@ -626,19 +671,56 @@ class Renderer:
         self.quad_shader = Shader(os.path.join(cfg.root, "shaders", "se_quad_shader.glsl"))
         self.segmentation_shader = Shader(os.path.join(cfg.root, "shaders", "se_segmentation_shader.glsl"))
         self.border_shader = Shader(os.path.join(cfg.root, "shaders", "se_border_shader.glsl"))
+        self.gaussf_shader = Shader(os.path.join(cfg.root, "shaders", "se_gauss_filter.glsl"))
         self.line_shader = Shader(os.path.join(cfg.root, "shaders", "ce_line_shader.glsl"))
         self.line_list = list()
         self.line_va = VertexArray(None, None, attribute_format="xyrgb")
+        self.fbo1 = FrameBuffer()
+        self.fbo2 = FrameBuffer()
 
-    def render_frame(self, se_frame, camera):
+    def render_frame(self, se_frame, camera, window):
         se_frame.update_model_matrix()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glBlendEquation(GL_FUNC_ADD)
 
-        # render the image (later: to framebuffer)
+        self.fbo1.clear((0.0, 0.0, 0.0, 1.0))
+        self.fbo2.clear((0.0, 0.0, 0.0, 1.0))
+        # render the image to a framebuffer
+        fake_camera_matrix = np.matrix([[2 / self.fbo1.width, 0, 0, 0],[0, 2 / self.fbo1.height, 0, 0],[0, 0, -2 / 100, 0],[0, 0, 0, 1],])
+        self.fbo1.bind()
         self.quad_shader.bind()
         se_frame.quad_va.bind()
         se_frame.texture.bind(0)
+        self.quad_shader.uniformmat4("cameraMatrix", fake_camera_matrix)
+        self.quad_shader.uniformmat4("modelMatrix", np.identity(4))
+        self.quad_shader.uniform1f("alpha", se_frame.alpha)
+        self.quad_shader.uniform3f("contrastMin", [0.0, 0.0, 0.0])
+        self.quad_shader.uniform3f("contrastMax", [1.0, 0.0, 0.0])
+        glDrawElements(GL_TRIANGLES, se_frame.quad_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        self.quad_shader.unbind()
+        se_frame.quad_va.unbind()
+        glActiveTexture(GL_TEXTURE0)
+        self.fbo1.unbind()
+
+        # filter framebuffer
+        ## Gaussian filter - sample from fbo1, render into fbo2
+        self.fbo2.bind()
+        self.gaussf_shader.bind()
+        self.fbo1.texture.bind()
+        se_frame.quad_va.bind()
+        self.gaussf_shader.uniformmat4("cameraMatrix", fake_camera_matrix)
+        self.gaussf_shader.uniformmat4("modelMatrix", np.identity(4))
+        glDrawElements(GL_TRIANGLES, se_frame.quad_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        self.gaussf_shader.unbind()
+        se_frame.quad_va.unbind()
+        self.fbo2.unbind()
+
+
+        window.set_full_viewport()
+        # render the framebuffer to the screen
+        self.quad_shader.bind()
+        se_frame.quad_va.bind()
+        self.fbo2.texture.bind(0)
         self.quad_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
         self.quad_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
         self.quad_shader.uniform1f("alpha", se_frame.alpha)
@@ -648,8 +730,6 @@ class Renderer:
         self.quad_shader.unbind()
         se_frame.quad_va.unbind()
         glActiveTexture(GL_TEXTURE0)
-
-        # filter framebuffer
 
         # render overlays
         se_frame.quad_va.bind()

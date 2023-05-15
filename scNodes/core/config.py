@@ -146,15 +146,15 @@ def load_scene(filename):
 
 
 def write_to_log(text):
-    with open(root+logpath, "a") as f:
+    with open(os.path.join(root, logpath), "a") as f:
         f.write("\n\n ____________________ \n\n")
         f.write(text)
 
 
 def start_log():
-    if os.path.exists(root+logpath):
-        os.remove(root+logpath)
-    with open(root+logpath, "a") as f:
+    if os.path.join(root, logpath):
+        os.path.join(root, logpath)
+    with open(os.path.join(root, logpath), "a") as f:
         f.write(app_name+" version "+version+" "+license+"\n"+datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
 
 COLOUR_TEST_A = (1.0, 0.0, 1.0, 1.0)
