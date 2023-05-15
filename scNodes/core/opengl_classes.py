@@ -71,13 +71,13 @@ class Texture:
         if self.wants_mipmap:
             glGenerateMipmap(GL_TEXTURE_2D)
 
-    # def update_subimage(self, pixeldata, xoffset, yoffset):
-    #     self.bind()
-    #     glTexSubImage2D(GL_TEXTURE_2D, 0, xoffset, yoffset, pixeldata.shape[1], pixeldata.shape[0], self.format, self.type, pixeldata.flatten())
-
-    def set_pixel(self, x, y, value):
+    def update_subimage(self, pixeldata, xoffset, yoffset):
         self.bind()
-        glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, 1, 1, self.format, self.type, value)
+        glTexSubImage2D(GL_TEXTURE_2D, 0, xoffset, yoffset, pixeldata.shape[1], pixeldata.shape[0], self.format, self.type, pixeldata.flatten())
+
+    # def set_pixel(self, x, y, value):
+    #     self.bind()
+    #     glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, 1, 1, self.format, self.type, value)
 
     def set_linear_interpolation(self):
         glBindTexture(GL_TEXTURE_2D, self.renderer_id)

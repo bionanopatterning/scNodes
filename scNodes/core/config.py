@@ -157,6 +157,10 @@ def start_log():
     with open(root+logpath, "a") as f:
         f.write(app_name+" version "+version+" "+license+"\n"+datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
 
+COLOUR_TEST_A = (1.0, 0.0, 1.0, 1.0)
+COLOUR_TEST_B = (0.0, 1.0, 1.0, 1.0)
+COLOUR_TEST_C = (1.0, 1.0, 0.0, 1.0)
+COLOUR_TEST_D  = (1.0, 1.0, 1.0, 1.0)
 
 COLOUR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 0.94)
 COLOUR_PANEL_BACKGROUND = (0.94, 0.94, 0.94, 0.94)
@@ -186,7 +190,7 @@ COLOUR_ERROR_WINDOW_HEADER_NEW = (0.87, 0.87, 0.83, 0.96)
 COLOUR_ERROR_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
 COLOUR_CM_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
 COLOUR_CM_OPTION_HOVERED = (1.0, 1.0, 1.0, 1.0)
-
+COLOUR_TRANSPARENT = (1.0, 1.0, 1.0, 0.0)
 TOOLTIP_APPEAR_DELAY = 1.0
 TOOLTIP_HOVERED_TIMER = 0.0
 TOOLTIP_HOVERED_START_TIME = 0.0

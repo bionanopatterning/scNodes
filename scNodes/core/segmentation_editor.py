@@ -6,6 +6,9 @@ from itertools import count
 import mrcfile
 from scNodes.core.opengl_classes import *
 import datetime
+import scNodes.core.settings as settings
+from PIL import Image
+from copy import copy
 
 
 class SegmentationEditor:
@@ -18,7 +21,10 @@ class SegmentationEditor:
 
         # GUI params
         MAIN_WINDOW_WIDTH = 270
-        FEATURE_PANEL_HEIGHT = 80
+        FEATURE_PANEL_HEIGHT = 86
+        INFO_HISTOGRAM_HEIGHT = 70
+        SLICER_WINDOW_VERTICAL_OFFSET = 30
+        SLICER_WINDOW_WIDTH = 700
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -34,11 +40,30 @@ class SegmentationEditor:
         self.renderer = Renderer()
 
 
-        sef = SEFrame("C:/Users/mart_/Desktop/tomo.mrc")
+        sef = SEFrame("C:/Users/mgflast/Desktop/tomo4.mrc")
         cfg.se_frames.append(sef)
         cfg.se_active_frame = sef
 
         sef.features.append(Segmentation(sef, "def"))
+
+        if True:  # load icons
+            icon_dir = os.path.join(cfg.root, "icons")
+
+            self.icon_close = Texture(format="rgba32f")
+            pxd_icon_close = np.asarray(Image.open(os.path.join(icon_dir, "icon_close_256.png"))).astype(np.float32) / 255.0
+            self.icon_close.update(pxd_icon_close)
+            self.icon_close.set_linear_interpolation()
+
+            self.icon_expand = Texture(format="rgba32f")
+            pxd_icon_expand = np.asarray(Image.open(os.path.join(icon_dir, "icon_expand_256.png"))).astype(np.float32) / 255.0
+            self.icon_expand.update(pxd_icon_expand)
+            self.icon_expand.set_linear_interpolation()
+
+            self.icon_expanded = Texture(format="rgba32f")
+            pxd_icon_expanded = np.asarray(Image.open(os.path.join(icon_dir, "icon_expanded_256.png"))).astype(
+                np.float32) / 255.0
+            self.icon_expanded.update(pxd_icon_expanded)
+            self.icon_expanded.set_linear_interpolation()
 
     def on_update(self):
         imgui.set_current_context(self.imgui_context)
@@ -66,6 +91,7 @@ class SegmentationEditor:
         self.camera_control()
         self.camera.on_update()
         self.gui_main()
+        self.renderer.render_overlay(self.camera)
         self.input()
 
         imgui.render()
@@ -74,48 +100,67 @@ class SegmentationEditor:
     def input(self):
         if imgui.get_io().want_capture_mouse or imgui.get_io().want_capture_keyboard:
             return
-        # drawing
+
+        # key input
+        active_feature = cfg.se_active_frame.active_feature
+        active_frame = cfg.se_active_frame
+        if imgui.is_key_down(glfw.KEY_LEFT_CONTROL) and active_feature is not None:
+            active_feature.brush_size += self.window.scroll_delta[1]
+            active_feature.brush_size = max([1, active_feature.brush_size])
+        if imgui.is_key_pressed(glfw.KEY_DOWN) or imgui.is_key_pressed(glfw.KEY_S):
+            idx = 0 if not active_feature in active_frame.features else active_frame.features.index(active_feature)
+            idx = (idx + 1) % len(active_frame.features)
+            cfg.se_active_frame.active_feature = cfg.se_active_frame.features[idx]
+        elif imgui.is_key_pressed(glfw.KEY_UP) or imgui.is_key_pressed(glfw.KEY_W):
+            idx = 0 if not active_feature in active_frame.features else active_frame.features.index(active_feature)
+            idx = (idx - 1) % len(active_frame.features)
+            cfg.se_active_frame.active_feature = cfg.se_active_frame.features[idx]
+        if not imgui.is_key_down(glfw.KEY_LEFT_SHIFT) and not imgui.is_key_down(glfw.KEY_LEFT_CONTROL) and active_frame is not None:
+            idx = int(active_frame.current_slice + self.window.scroll_delta[1])
+            idx = idx % active_frame.n_slices
+            active_frame.set_slice(idx)
+        # Drawing / mouse input
         f = cfg.se_active_frame.active_feature
         if f is not None:
             cursor_world_position = self.camera.cursor_to_world_position(self.window.cursor_pos)
             pixel_coordinate = f.parent.world_to_pixel_coordinate(cursor_world_position)
 
             if imgui.is_mouse_down(0):
-                Brush.apply_circular(f, pixel_coordinate, value=1)
+                Brush.apply_circular(f, pixel_coordinate, True)
             elif imgui.is_mouse_down(1):
-                Brush.apply_circular(f, pixel_coordinate, value=255)
-
+                Brush.apply_circular(f, pixel_coordinate, False)
 
     def gui_main(self):
-        imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *cfg.COLOUR_PANEL_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_TEXT)
-        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *cfg.COLOUR_TITLE_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *cfg.COLOUR_TITLE_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_COLLAPSED, *cfg.COLOUR_TITLE_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *cfg.COLOUR_TITLE_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *cfg.COLOUR_TITLE_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_FRAME_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *cfg.COLOUR_FRAME_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_FRAME_ACTIVE)
-        imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *cfg.COLOUR_FRAME_ACTIVE)
-        imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *cfg.COLOUR_FRAME_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.COLOUR_FRAME_EXTRA_DARK)
-        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.COLOUR_FRAME_DARK)
-        imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_FRAME_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_SCROLLBAR_GRAB, *cfg.COLOUR_FRAME_DARK)
-        imgui.push_style_color(imgui.COLOR_SCROLLBAR_GRAB_HOVERED, *cfg.COLOUR_FRAME_DARK)
-        imgui.push_style_color(imgui.COLOR_SCROLLBAR_GRAB_ACTIVE, *cfg.COLOUR_FRAME_BACKGROUND)
-        imgui.push_style_color(imgui.COLOR_SCROLLBAR_BACKGROUND, *cfg.COLOUR_FRAME_EXTRA_DARK)
-        imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *cfg.COLOUR_TEXT)
-        imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM_HOVERED, *cfg.COLOUR_TEXT)
-        imgui.push_style_color(imgui.COLOR_CHECK_MARK, *cfg.COLOUR_FRAME_EXTRA_DARK)
-        imgui.push_style_color(imgui.COLOR_MENUBAR_BACKGROUND, *cfg.COLOUR_MAIN_MENU_BAR)
-        imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_HEADER)
-        imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *cfg.COLOUR_HEADER_HOVERED)
-        imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_HEADER_ACTIVE)
-        imgui.push_style_color(imgui.COLOR_DRAG_DROP_TARGET, *cfg.COLOUR_DROP_TARGET)
-        imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, cfg.WINDOW_ROUNDING)
+        if True:
+            imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *cfg.COLOUR_PANEL_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_TEXT)
+            imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *cfg.COLOUR_TITLE_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *cfg.COLOUR_TITLE_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_COLLAPSED, *cfg.COLOUR_TITLE_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *cfg.COLOUR_TITLE_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *cfg.COLOUR_TITLE_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_FRAME_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *cfg.COLOUR_FRAME_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_FRAME_ACTIVE)
+            imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *cfg.COLOUR_FRAME_ACTIVE)
+            imgui.push_style_color(imgui.COLOR_BUTTON, *cfg.COLOUR_FRAME_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *cfg.COLOUR_FRAME_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.COLOUR_FRAME_EXTRA_DARK)
+            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.COLOUR_FRAME_DARK)
+            imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_FRAME_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_SCROLLBAR_GRAB, *cfg.COLOUR_FRAME_DARK)
+            imgui.push_style_color(imgui.COLOR_SCROLLBAR_GRAB_HOVERED, *cfg.COLOUR_FRAME_DARK)
+            imgui.push_style_color(imgui.COLOR_SCROLLBAR_GRAB_ACTIVE, *cfg.COLOUR_FRAME_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_SCROLLBAR_BACKGROUND, *cfg.COLOUR_FRAME_EXTRA_DARK)
+            imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM, *cfg.COLOUR_TEXT)
+            imgui.push_style_color(imgui.COLOR_PLOT_HISTOGRAM_HOVERED, *cfg.COLOUR_TEXT)
+            imgui.push_style_color(imgui.COLOR_CHECK_MARK, *cfg.COLOUR_FRAME_EXTRA_DARK)
+            imgui.push_style_color(imgui.COLOR_MENUBAR_BACKGROUND, *cfg.COLOUR_MAIN_MENU_BAR)
+            imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_HEADER)
+            imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *cfg.COLOUR_HEADER_HOVERED)
+            imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_HEADER_ACTIVE)
+            imgui.push_style_color(imgui.COLOR_DRAG_DROP_TARGET, *cfg.COLOUR_DROP_TARGET)
+            imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, cfg.WINDOW_ROUNDING)
 
         def datasets_panel():
             if imgui.begin_child("dataset", 0.0, 80, True, imgui.WINDOW_ALWAYS_VERTICAL_SCROLLBAR):
@@ -127,7 +172,6 @@ class SegmentationEditor:
                 imgui.end_child()
 
         def features_panel():
-
             features = cfg.se_active_frame.features
             for f in features:
                 pop_active_colour = False
@@ -152,17 +196,47 @@ class SegmentationEditor:
                     imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
                     imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
                     imgui.set_next_item_width(cw - 40)
-                    pxs = cfg.se_active_frame.pixel_size
-                    _, f.brushsize = imgui.slider_float("brush", f.brushsize, 0.1, 25.0, format="%.1f nm")
+                    pxs = cfg.se_active_frame.pixel_size * 0.1
+                    _, f.brush_size = imgui.slider_float("brush", f.brush_size, 1.0, 25.0 / pxs, format=f"{f.brush_size/2:.1f} px / {f.brush_size * pxs/2:.1f} nm ")
+                    f.brush_size = int(f.brush_size)
                     imgui.set_next_item_width(cw - 40)
                     _, f.alpha = imgui.slider_float("alpha", f.alpha, 0.0, 1.0, format="%.2f")
+
+                    # Show / fill checkboxes
+                    _, show = imgui.checkbox("show", not f.hide)
+                    f.hide = not show
+                    imgui.same_line()
+                    _, fill = imgui.checkbox("fill", not f.contour)
+                    f.contour = not fill
+                    imgui.same_line()
+
+                    # delete feature button
+                    imgui.same_line(position=cw - 20)
+                    delete_feature = False
+                    if imgui.image_button(self.icon_close.renderer_id, 13, 13):
+                        delete_feature = True
+                    imgui.same_line(position=cw - 20)
+
+                    imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *cfg.COLOUR_TRANSPARENT)
+                    imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_TRANSPARENT)
+                    imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_TRANSPARENT)
+
+                    if imgui.begin_menu("##asdc"):
+                        imgui.menu_item("abc")
+                        imgui.end_menu()
+                    imgui.pop_style_color(3)
+
                     imgui.pop_style_var(5)
+                    if pop_active_colour:
+                        imgui.pop_style_color(1)
+
+                    if delete_feature:
+                        cfg.se_active_frame.features.remove(f)
+                        if cfg.se_active_frame.active_feature == f:
+                            cfg.se_active_frame.active_feature = None
 
                     if imgui.is_window_hovered() and imgui.is_mouse_clicked(0):
                         cfg.se_active_frame.active_feature = f
-
-                    if pop_active_colour:
-                        imgui.pop_style_color(1)
                     imgui.end_child()
 
             # 'Add feature' button
@@ -175,21 +249,90 @@ class SegmentationEditor:
                 cfg.se_active_frame.features.append(Segmentation(cfg.se_active_frame, "Unnamed feature"))
             imgui.pop_style_var(1)
 
-        def filters_panel():
-            cw = imgui.get_content_region_available_width()
-            imgui.push_item_width(cw)
-            _, cfg.se_active_frame.contrast_lims[0] = imgui.drag_float("##min", cfg.se_active_frame.contrast_lims[0],
-                                                                       1.0, 0.0, 0.0, format="min: %.0f")
-            _, cfg.se_active_frame.contrast_lims[1] = imgui.drag_float("##max", cfg.se_active_frame.contrast_lims[1],
-                                                                       1.0, 0.0, 0.0, format="max: %.0f")
-            imgui.pop_item_width()
+            # render drawing ROI indicator
+            active_feature = cfg.se_active_frame.active_feature
+            if active_feature is not None:
+                radius = active_feature.brush_size * active_feature.parent.pixel_size
+                world_position = self.camera.cursor_to_world_position(self.window.cursor_pos)
+                self.renderer.add_circle(world_position, radius, active_feature.colour)
 
-        # render the active frame
+        def filters_panel():
+            sef = cfg.se_active_frame
+            if sef is not None:
+                _cw = imgui.get_content_region_available_width()
+                imgui.plot_histogram("##hist", sef.hist_vals,
+                                     graph_size=(_cw, SegmentationEditor.INFO_HISTOGRAM_HEIGHT))
+                imgui.push_item_width(_cw)
+
+                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
+                imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
+                imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
+                imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+
+                _c, sef.contrast_lims[0] = imgui.slider_float("min", sef.contrast_lims[0], sef.hist_bins[0], sef.hist_bins[-1],format='min %.1f')
+                _c, sef.contrast_lims[1] = imgui.slider_float("max", sef.contrast_lims[1], sef.hist_bins[0], sef.hist_bins[-1],format='max %.1f')
+                imgui.pop_item_width()
+
+                imgui.pop_style_var(5)
+
+        def menu_bar():
+            imgui.push_style_color(imgui.COLOR_MENUBAR_BACKGROUND, *cfg.COLOUR_MAIN_MENU_BAR)
+            imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_MAIN_MENU_BAR_TEXT)
+            imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *cfg.COLOUR_MAIN_MENU_BAR_HILIGHT)
+            imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_MAIN_MENU_BAR_HILIGHT)
+            imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_MAIN_MENU_BAR_HILIGHT)
+            imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_MENU_WINDOW_BACKGROUND)
+            imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (2.0, 2.0))
+
+            if imgui.core.begin_main_menu_bar():
+                if imgui.begin_menu("File"):
+                    pass
+                    imgui.end_menu()
+                if imgui.begin_menu("Editor"):
+                    for i in range(len(cfg.editors)):
+                        select, _ = imgui.menu_item(cfg.editors[i], None, False)
+                        if select:
+                            cfg.active_editor = i
+                    imgui.end_menu()
+                imgui.end_main_menu_bar()
+
+            imgui.pop_style_color(6)
+            imgui.pop_style_var(1)
+
+        def slicer_window():
+            imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, cfg.CE_WIDGET_ROUNDING)
+            imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, cfg.CE_WIDGET_ROUNDING)
+            imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1.0)
+
+            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_PANEL_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *cfg.COLOUR_PANEL_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_PANEL_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.COLOUR_TITLE_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.COLOUR_TITLE_BACKGROUND)
+            imgui.set_next_window_size(SegmentationEditor.SLICER_WINDOW_WIDTH, 0.0)
+            window_x_pos = SegmentationEditor.MAIN_WINDOW_WIDTH + (self.window.width - SegmentationEditor.MAIN_WINDOW_WIDTH - SegmentationEditor.SLICER_WINDOW_WIDTH) / 2
+            imgui.set_next_window_position(window_x_pos, self.window.height - SegmentationEditor.SLICER_WINDOW_VERTICAL_OFFSET)
+            imgui.begin("##slicer", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_BACKGROUND)
+            imgui.set_next_item_width(imgui.get_content_region_available_width())
+            frame = cfg.se_active_frame
+            slice_idx_changed, requested_slice = imgui.slider_int("##slicer_slider", frame.current_slice, 0, frame.n_slices, format=f"slice {1+frame.current_slice}/{frame.n_slices}")
+            if slice_idx_changed:
+                frame.set_slice(requested_slice)
+            imgui.end()
+
+            imgui.pop_style_var(3)
+            imgui.pop_style_color(5)
+
+        # START GUI:
+        # Menu bar
+        menu_bar()
+        # Render the currently active frame
         if cfg.se_active_frame is not None:
             self.renderer.render_frame(cfg.se_active_frame, self.camera)
-
-        imgui.set_next_window_position(0, 18, imgui.ONCE)
-        imgui.set_next_window_size(SegmentationEditor.MAIN_WINDOW_WIDTH, self.window.height - 18)
+        # MAIN WINDOW
+        imgui.set_next_window_position(0, 17, imgui.ONCE)
+        imgui.set_next_window_size(SegmentationEditor.MAIN_WINDOW_WIDTH, self.window.height - 17)
         imgui.begin("##se_main", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE)
         if imgui.collapsing_header("Available datasets", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
             datasets_panel()
@@ -197,8 +340,10 @@ class SegmentationEditor:
             filters_panel()
         if imgui.collapsing_header("Features", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
             features_panel()
-
         imgui.end()
+
+        # SLICER
+        slicer_window()
 
         imgui.pop_style_color(28)
         imgui.pop_style_var(1)
@@ -218,9 +363,10 @@ class SegmentationEditor:
         self.window.end_frame()
 
 
-
 class SEFrame:
     idgen = count(0)
+
+    HISTOGRAM_BINS = 40
 
     def __init__(self, path):
         uid_counter = next(SEFrame.idgen)
@@ -240,10 +386,16 @@ class SEFrame:
         self.border_va = None
         self.interpolate = False
         self.alpha = 1.0
-        self.contrast_lims = [0, 1000]
+
+        self.hist_vals = list()
+        self.hist_bins = list()
+
         self.corner_positions_local = []
         self.set_slice(0, False)
         self.setup_opengl_objects()
+        self.contrast_lims = [0, 65535.0]
+        self.compute_autocontrast()
+        self.compute_histogram()
 
     def setup_opengl_objects(self):
         self.texture = Texture(format="r32f")
@@ -312,6 +464,7 @@ class SEFrame:
 
     def update_image_texture(self):
         self.texture.update(self.data.astype(np.float32))
+        self.compute_histogram()
 
     def update_model_matrix(self):
         self.transform.scale = self.pixel_size
@@ -327,6 +480,29 @@ class SEFrame:
         out_vec = invmat * vec
         pixel_coordinate = [int(out_vec[0, 0] + self.width / 2), int(out_vec[1, 0] + self.height / 2)]
         return pixel_coordinate
+
+    def compute_autocontrast(self, saturation=None):
+        saturation_pct = settings.autocontrast_saturation
+        if saturation:
+            saturation_pct = saturation
+        subsample = self.data[::settings.autocontrast_subsample, ::settings.autocontrast_subsample]
+        n = subsample.shape[0] * subsample.shape[1]
+        sorted_pixelvals = np.sort(subsample.flatten())
+
+        min_idx = min([int(saturation_pct / 100.0 * n), n - 1])
+        max_idx = max([int((1.0 - saturation_pct / 100.0) * n), 0])
+        self.contrast_lims[0] = sorted_pixelvals[min_idx]
+        self.contrast_lims[1] = sorted_pixelvals[max_idx]
+
+    def compute_histogram(self):
+        # ignore very bright pixels
+        mean = np.mean(self.data)
+        std = np.std(self.data)
+        self.hist_vals, self.hist_bins = np.histogram(self.data[self.data < (mean + 20 * std)], bins=SEFrame.HISTOGRAM_BINS)
+
+        self.hist_vals = self.hist_vals.astype('float32')
+        self.hist_bins = self.hist_bins.astype('float32')
+        self.hist_vals = np.log(self.hist_vals + 1)
 
     @staticmethod
     def from_clemframe(clemframe):
@@ -352,51 +528,96 @@ class Segmentation:
         self.colour = np.random.randint(0, 4, 3) / 3
         self.colour /= np.sum(self.colour**2)*0.5
         self.alpha = 1.0
-        self.brushsize = 10.0
+        self.hide = False
+        self.contour = False
+        self.expanded = False
+        self.brush_size = 10.0
         self.slices = dict()
-        self.slices[self.parent.current_slice] = np.zeros((self.width, self.height), dtype=float)
-        self.data = self.slices[self.parent.current_slice]
+        self.edited_slices = list()
+        self.current_slice = 0
+        self.data = None
         self.texture = Texture(format="r32f")
-        self.texture.update(self.data)
+        self.texture.update(None, self.width, self.height)
+        self.texture.set_linear_interpolation()
+        self.set_slice(self.parent.current_slice)
 
     def set_slice(self, requested_slice):
+        if requested_slice == self.current_slice:
+            return
+        self.current_slice = requested_slice
         if requested_slice in self.slices:
             self.data = self.slices[requested_slice]
-            self.texture.update(self.data)
+            if self.data is None:
+                self.texture.update(self.data, self.width, self.height)
+            else:
+                self.texture.update(self.data)
         else:
             self.slices[requested_slice] = None
+            self.data = None
+            self.texture.update(self.data, self.width, self.height)
+
+    def request_draw_in_current_slice(self):
+        self.edited_slices.append(self.current_slice)
+        if self.current_slice in self.slices:
+            if self.slices[self.current_slice] is None:
+                self.slices[self.current_slice] = np.zeros((self.height, self.width), dtype=float)
+                self.data = self.slices[self.current_slice]
+                self.texture.update(self.data, self.width, self.height)
+        else:
+            self.slices[self.current_slice] = np.zeros((self.height, self.width), dtype=float)
+            self.data = self.slices[self.current_slice]
+            self.texture.update(self.data, self.width, self.height)
 
 
 class Brush:
-    # circular_roi = np.zeros(1)
-    # circular_roi_radius = -1
-
-    # @staticmethod
-    # def set_circular_roi_radius(radius):
-    #     if Brush.circular_roi_radius == radius:
-    #         return
-    #     Brush.circular_roi_radius = radius
-    #     Brush.circular_roi = np.zeros((2*radius+1, 2*radius+1))
-    #     r = radius**2
-    #     for x in range(0, 2*radius+1):
-    #         for y in range(0, 2*radius+1):
-    #             if ((x-radius)**2 + (y-radius)**2) < r:
-    #                 Brush.circular_roi[x, y] = 1
+    circular_roi = np.zeros(1, dtype=float)
+    circular_roi_radius = -1
 
     @staticmethod
-    def apply_circular(segmentation, center_coordinates, value=1):
-        r = int(segmentation.brushsize)
-        dtype = type(segmentation.data[0, 0])
-        for i in range(-r, r+1):
-            for j in range(-r, r+1):
-                x = center_coordinates[0] + i
-                y = center_coordinates[1] + j
-                if (i**2 + j**2) > r**2:
-                    continue
-                if 0 <= x < segmentation.width and 0 <= y < segmentation.height:
-                    print(f"Painting at: {x}, {y}; exp. dimensions {segmentation.width}, {segmentation.height}; act. dims {segmentation.data.shape}")
-                    segmentation.data[x, y] = value
-                    segmentation.texture.set_pixel(x, y, dtype(value))
+    def set_circular_roi_radius(radius):
+        if Brush.circular_roi_radius == radius:
+            return
+        Brush.circular_roi_radius = radius
+        Brush.circular_roi = np.zeros((2*radius+1, 2*radius+1), dtype=float)
+        r = radius**2
+        for x in range(0, 2*radius+1):
+            for y in range(0, 2*radius+1):
+                if ((x-radius)**2 + (y-radius)**2) < r:
+                    Brush.circular_roi[x, y] = True
+
+    @staticmethod
+    def apply_circular(segmentation, center_coordinates, val=True):
+        # check if the current slice already exists; if not, make it.
+        segmentation.request_draw_in_current_slice()
+        r = int(segmentation.brush_size)
+        center_coordinates[0], center_coordinates[1] = center_coordinates[1], center_coordinates[0]
+        Brush.set_circular_roi_radius(r)
+
+        x = [center_coordinates[0] - r, center_coordinates[0] + r + 1]
+        y = [center_coordinates[1] - r, center_coordinates[1] + r + 1]
+        rx = [0, 2 * r + 1]
+        ry = [0, 2 * r + 1]
+        if x[0] > segmentation.height or x[1] < 0 or y[0] > segmentation.width or y[1] < 0:
+            return
+        if x[0] < 0:
+            rx[0] -= x[0]
+            x[0] = 0
+        if y[0] < 0:
+            ry[0] -= y[0]
+            y[0] = 0
+        if x[1] > segmentation.height:
+            rx[1] -= (x[1] - segmentation.height)
+            x[1] = segmentation.height
+        if y[1] > segmentation.width:
+            ry[1] -= (y[1] - segmentation.width)
+            y[1] = segmentation.width
+
+        if val:
+            segmentation.data[x[0]:x[1], y[0]:y[1]] += Brush.circular_roi[rx[0]:rx[1], ry[0]:ry[1]]
+        else:
+            segmentation.data[x[0]:x[1], y[0]:y[1]] *= (1.0 - Brush.circular_roi[rx[0]:rx[1], ry[0]:ry[1]])
+        segmentation.data[x[0]:x[1], y[0]:y[1]] = np.clip(segmentation.data[x[0]:x[1], y[0]:y[1]], 0, 1)
+        segmentation.texture.update_subimage(segmentation.data[x[0]:x[1], y[0]:y[1]], y[0], x[0])
 
 
 class Renderer:
@@ -405,6 +626,9 @@ class Renderer:
         self.quad_shader = Shader(os.path.join(cfg.root, "shaders", "se_quad_shader.glsl"))
         self.segmentation_shader = Shader(os.path.join(cfg.root, "shaders", "se_segmentation_shader.glsl"))
         self.border_shader = Shader(os.path.join(cfg.root, "shaders", "se_border_shader.glsl"))
+        self.line_shader = Shader(os.path.join(cfg.root, "shaders", "ce_line_shader.glsl"))
+        self.line_list = list()
+        self.line_va = VertexArray(None, None, attribute_format="xyrgb")
 
     def render_frame(self, se_frame, camera):
         se_frame.update_model_matrix()
@@ -425,26 +649,27 @@ class Renderer:
         se_frame.quad_va.unbind()
         glActiveTexture(GL_TEXTURE0)
 
-        # filter framebuffer?
+        # filter framebuffer
 
         # render overlays
-        self.segmentation_shader.bind()
         se_frame.quad_va.bind()
+        self.segmentation_shader.bind()
         self.segmentation_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
         self.segmentation_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
-        for segmentation in se_frame.features:
-            if segmentation == se_frame.active_feature:
+        render_list = copy(se_frame.features)
+        if se_frame.active_feature in render_list:
+            render_list.remove(se_frame.active_feature)
+            render_list.append(se_frame.active_feature)
+        for segmentation in render_list:
+            if segmentation.hide:
+                continue
+            if segmentation.data is None:
                 continue
             self.segmentation_shader.uniform1f("alpha", segmentation.alpha)
             self.segmentation_shader.uniform3f("colour", segmentation.colour)
+            self.segmentation_shader.uniform1i("contour", int(segmentation.contour))
             segmentation.texture.bind(0)
             glDrawElements(GL_TRIANGLES, se_frame.quad_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
-        # draw active feature last
-        segmentation = se_frame.active_feature
-        self.segmentation_shader.uniform1f("alpha", segmentation.alpha)
-        self.segmentation_shader.uniform3f("colour", segmentation.colour)
-        segmentation.texture.bind(0)
-        glDrawElements(GL_TRIANGLES, se_frame.quad_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
         se_frame.quad_va.unbind()
         self.segmentation_shader.unbind()
         glActiveTexture(GL_TEXTURE0)
@@ -459,6 +684,46 @@ class Renderer:
         glDrawElements(GL_LINES, se_frame.border_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
         self.border_shader.unbind()
         se_frame.border_va.unbind()
+
+    def add_line(self, start_xy, stop_xy, colour):
+        self.line_list.append((start_xy, stop_xy, colour))
+
+    def add_circle(self, center_xy, radius, colour, segments=32):
+        theta = 0
+        start_xy = (center_xy[0] + radius * np.cos(theta), center_xy[1] + radius * np.sin(theta))
+        for i in range(segments):
+            theta = (i * 2 * np.pi / (segments - 1))
+            stop_xy = (center_xy[0] + radius * np.cos(theta), center_xy[1] + radius * np.sin(theta))
+            self.line_list.append((start_xy, stop_xy, colour))
+            start_xy = (center_xy[0] + radius * np.cos(theta), center_xy[1] + radius * np.sin(theta))
+
+    def render_lines(self, camera):
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendEquation(GL_FUNC_ADD)
+        # make VA
+        vertices = list()
+        indices = list()
+        i = 0
+        for line in self.line_list:
+            vertices += [*line[0], *line[2]]
+            vertices += [*line[1], *line[2]]
+            indices += [2*i, 2*i+1]
+            i += 1
+        self.line_va.update(VertexBuffer(vertices), IndexBuffer(indices))
+        self.line_list = list()  # clear draw list
+
+        # launch
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendEquation(GL_FUNC_ADD)
+        self.line_shader.bind()
+        self.line_va.bind()
+        self.line_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
+        glDrawElements(GL_LINES, self.line_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        self.line_shader.unbind()
+        self.line_va.unbind()
+
+    def render_overlay(self, camera):
+        self.render_lines(camera)
 
 
 class Camera:

@@ -17,21 +17,25 @@ void main()
 #fragment
 #version 420
 
-layout(binding = 0) uniform usampler2D image;
+layout(binding = 0) uniform sampler2D image;
 
 out vec4 fragmentColor;
 in vec2 fUV;
 
 uniform float alpha;
 uniform vec3 colour;
+uniform int contour;
 
 void main()
 {
     vec2 uv = fUV;
-    float pixelValue = texture(image, uv).r / 255.0;
-    if (pixelValue <= 0)
+    float pixelValue = texture(image, uv).r;
+    if ((pixelValue <= 0) || (pixelValue == 1 && contour == 1))
     {
         discard;
     }
-    fragmentColor = vec4(pixelValue * colour, alpha);
+    else
+    {
+        fragmentColor = vec4(pixelValue * colour, alpha);
+    }
 }
