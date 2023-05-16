@@ -23,13 +23,13 @@ out vec4 fragmentColor;
 in vec2 fUV;
 
 uniform float alpha;
-uniform vec3 contrastMin;
-uniform vec3 contrastMax;
+uniform float contrastMin;
+uniform float contrastMax;
 
 void main()
 {
     vec2 uv = fUV;
     float pixelValue = texture(image, uv).r;
-    float contrastValue = (pixelValue - contrastMin.r) / (contrastMax.r - contrastMin.r);
+    float contrastValue = (pixelValue - contrastMin) / (contrastMax - contrastMin);
     fragmentColor = vec4(contrastValue, contrastValue, contrastValue, alpha);
 }

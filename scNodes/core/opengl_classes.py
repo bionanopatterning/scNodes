@@ -98,6 +98,7 @@ class Texture:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         self.wants_mipmap = False
 
+
 class Shader:
     """Uniforms can only be uploaded when Shaders is first manually bound by user."""
     def __init__(self, sourcecode = None):
