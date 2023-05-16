@@ -456,7 +456,7 @@ class CorrelationEditor:
                 imgui.text("Description")
                 imgui.next_column()
                 imgui.separator()
-                for key_description_pair in cfg.controls:
+                for key_description_pair in cfg.ce_controls:
                     key = key_description_pair[0]
                     dsc = key_description_pair[1]
                     imgui.text(key)

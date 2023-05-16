@@ -14,7 +14,7 @@ filetype_project = ".scnp"
 filetype_node_setup = ".scn"
 filetype_scene = ".scnscene"
 
-controls = [
+ce_controls = [
     ("0/H/V", "Toggle frame visibility"),
     ("1-6", "Change blending mode"),
     ("-/+", "De-/increase frame alpha"),
@@ -32,6 +32,21 @@ controls = [
     ("Delete", "Delete frame"),
     ("Page up/down", "Move frame up/down in render stack. +SHIFT: move to top/bottom"),
     ("Spacebar", "Focus camera on currently selected frame"),
+]
+
+iv_controls = [
+    ("Shift + scroll", "De-/increase zoom"),
+    ("- or +/=", "De-/increase zoom"),
+    ("Arrows left/right", "Previous/next frame"),
+    ("Ctrl + shift + C", "Open contrast settings window"),
+    ("Spacebar", "Compute autocontast (when ^ open)"),
+    ("Spacebar + CTRL/SHIFT", "Toggle always autocontrast"),
+    ("Ctrl + W", "Close contrast settings window"),
+    ("Delete", "Remove frame from dataset"),
+    ("Tab", "Switch editor"),
+    ("Ctrl + S", "Save current frame"),
+    ("Ctrl + A", "Add frame to Correlation Editor"),
+    ("Ctrl + I", "Invert LUT")
 ]
 
 nodes = list()
@@ -143,16 +158,22 @@ def load_scene(filename):
 
 
 def write_to_log(text):
-    with open(root+logpath, "a") as f:
-        f.write("\n\n ____________________ \n\n")
-        f.write(text)
+    try:
+        with open(root+logpath, "a") as f:
+            f.write("\n\n ____________________ \n\n")
+            f.write(text)
+    except Exception as e:
+        print("Could not access log\n", e)
 
 
 def start_log():
-    if os.path.exists(root+logpath):
-        os.remove(root+logpath)
-    with open(root+logpath, "a") as f:
-        f.write(app_name+" version "+version+" "+license+"\n"+datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
+    try:
+        if os.path.exists(root+logpath):
+            os.remove(root+logpath)
+        with open(root+logpath, "a") as f:
+            f.write(app_name+" version "+version+" "+license+"\n"+datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
+    except Exception as e:
+        print("Could not start log\n", e)
 
 
 COLOUR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 0.94)

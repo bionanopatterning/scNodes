@@ -35,5 +35,6 @@ def_img_size = (2048, 2048)
 
 autocontrast_saturation = 0.03  # Autocontrast will set contrast lims such that this % of pixels is over/under saturated.
 autocontrast_subsample = 2  # Autocontrast works on sub-samples images to avoid costly computations. When this value is e.g. 2, every 2nd pixel in X/Y is used.
+invert_lut = False
 
 joblib_mmmode = 'c'

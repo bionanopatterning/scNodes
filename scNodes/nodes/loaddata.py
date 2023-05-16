@@ -171,5 +171,6 @@ class LoadDataNode(Node):
         self.dataset = cfg.pickle_temp["dataset"]
 
     def on_load(self):
-        self.on_select_file()
+        if self.params["path"] != "":
+            self.on_select_file()
 

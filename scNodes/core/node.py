@@ -196,11 +196,15 @@ class Node:
                     cfg.set_active_node(None, True)
                     cfg.set_active_node(self, False)
                 imgui.close_current_popup()
-            # _duplicate, _ = imgui.menu_item("Duplicate node")
-            # if _duplicate:
-            #     duplicate_node = Node.create_node_by_type(self.type)
-            #     duplicate_node.position = [self.position[0] + 10, self.position[1] + 10]
-            #     cfg.set_active_node(duplicate_node)
+            _duplicate, _ = imgui.menu_item("Duplicate node")
+            if _duplicate:
+                duplicate_node = copy.deepcopy(self)
+                duplicate_node.__init__()
+                duplicate_node.params = copy.deepcopy(self.params)
+                duplicate_node.roi = self.roi
+                duplicate_node.position[0] = self.position[0] + 10
+                duplicate_node.position[1] = self.position[1] + 10
+                cfg.set_active_node(duplicate_node)
             _delete, _ = imgui.menu_item("Delete node")
             if _delete:
                 self.delete()
