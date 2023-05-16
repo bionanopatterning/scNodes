@@ -15,7 +15,7 @@ layout(std430, binding = 0) buffer kernel_coefficients {
 
 void main()
 {
-    ivec2 size = imageSize(u_input_image);
+    //ivec2 size = imageSize(u_input_image);
     ivec2 pc = ivec2(gl_GlobalInvocationID.xy);
 
     vec4 pxv = vec4(0.0);
@@ -23,7 +23,7 @@ void main()
     {
         for (int i=0;i<N;i++)
         {
-            pxv += (0.03) * imageLoad(u_input_image, ivec2(pc.x - M + i, pc.y));
+            pxv += kernel.val[i] * imageLoad(u_input_image, ivec2(pc.x - M + i, pc.y));
         }
     }
     else

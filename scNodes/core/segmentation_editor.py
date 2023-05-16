@@ -42,7 +42,7 @@ class SegmentationEditor:
         self.renderer = Renderer()
         self.fboa = FrameBuffer()
         self.fbob = FrameBuffer()
-        sef = SEFrame("C:/Users/mgflast/Desktop/tomo4.mrc")
+        sef = SEFrame("C:/Users/mart_/Desktop/tomo.mrc")
         cfg.se_frames.append(sef)
         self.set_active_dataset(sef)
 
@@ -59,6 +59,7 @@ class SegmentationEditor:
         cfg.se_active_frame = dataset
         self.renderer.fbo1 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
         self.renderer.fbo2 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
+        self.renderer.fbo3 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
         if dataset.interpolate:
             self.renderer.fbo1.texture.set_linear_interpolation()
             self.renderer.fbo2.texture.set_linear_interpolation()
@@ -239,7 +240,6 @@ class SegmentationEditor:
                         imgui.set_next_item_width(cw - 30)
                         imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 2))
                         _c, ftrtype = imgui.combo("##filtertype", ftr.type, Filter.TYPES)
-
                         if _c:
                             sef.filters[sef.filters.index(ftr)] = Filter(sef, ftrtype)
 
@@ -250,11 +250,13 @@ class SegmentationEditor:
                         imgui.pop_style_var(1)
                         # Parameter and strength sliders
                         imgui.push_item_width(cw)
-                        _d, ftr.param = imgui.slider_float("##param", ftr.param, 0.1, 10.0, format=f"{Filter.PARAMETER_NAME[ftr.type]}: {ftr.param:.1f}")
-                        _e, ftr.strength = imgui.slider_float("##strength", ftr.strength, 0.0, 1.0, format=f"strength: {ftr.strength:.2f}")
+                        if Filter.PARAMETER_NAME[ftr.type] is not None:
+                            _c, ftr.param = imgui.slider_float("##param", ftr.param, 0.1, 10.0, format=f"{Filter.PARAMETER_NAME[ftr.type]}: {ftr.param:.1f}")
+                            if _c:
+                                ftr.fill_kernel()
+                        _, ftr.strength = imgui.slider_float("##strength", ftr.strength, -1.0, 1.0, format=f"weight: {ftr.strength:.2f}")
                         imgui.pop_item_width()
-                        if _d or _e:
-                            ftr.fill_kernel()
+
                         imgui.pop_id()
                     imgui.set_next_item_width(imgui.get_content_region_available_width())
                     imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 2))
@@ -455,10 +457,6 @@ class SegmentationEditor:
                 training_sets_tab()
                 imgui.end_tab_item()
             imgui.end_tab_bar()
-        imgui.end()
-        imgui.begin("##debug")
-        imgui.image(self.renderer.fbo1.texture.renderer_id, self.renderer.fbo1.width // 8, self.renderer.fbo1.height // 8)
-        imgui.image(self.renderer.fbo2.texture.renderer_id, self.renderer.fbo2.width // 8, self.renderer.fbo2.height // 8)
         imgui.end()
 
         # SLICER
@@ -757,45 +755,62 @@ class Brush:
 
 class Filter:
 
-    TYPES = ["Gaussian", "Debug"]
-    PARAMETER_NAME = ["sigma", "value"]
+    TYPES = ["Gaussian", "Derivative of Gaussian", "Sobel vertical", "Sobel horizontal"]
+    PARAMETER_NAME = ["sigma", "sigma", None, None]
     M = 16
 
     def __init__(self, parent, filter_type):
         self.parent = parent
         self.type = filter_type  # integer, corresponding to an index in the Filter.TYPES list
-        self.k = np.zeros((Filter.M*2+1, 1), dtype=float)
-        self.ssbo = -1
+        self.k1 = np.zeros((Filter.M*2+1, 1), dtype=np.float32)
+        self.k2 = np.zeros((Filter.M * 2 + 1, 1), dtype=np.float32)
+        self.ssbo1 = -1
+        self.ssbo2 = -1
         self.param = 1.0
-        self.strength = 0.5
+        self.strength = 1.0
         self.fill_kernel()
 
     def upload_buffer(self):
-        self.ssbo = glGenBuffers(1)
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.ssbo)
-        print(self.k)
-        glBufferData(GL_SHADER_STORAGE_BUFFER, (Filter.M * 2 + 1) * 4, self.k, GL_STATIC_READ)
+        self.ssbo1 = glGenBuffers(1)
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.ssbo1)
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (Filter.M * 2 + 1) * 4, self.k1.flatten(), GL_STATIC_READ)
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT)
+        self.ssbo2 = glGenBuffers(1)
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.ssbo2)
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (Filter.M * 2 + 1) * 4, self.k2.flatten(), GL_STATIC_READ)
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT)
 
-        print("debug")
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.ssbo)
-        print(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (Filter.M * 2 + 1) * 4))
 
-    def bind(self):
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, self.ssbo)
+    def bind(self, horizontal=True):
+        if horizontal:
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, self.ssbo1)
+        else:
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, self.ssbo2)
 
     def unbind(self):
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)
 
     def fill_kernel(self):
         if self.type == 0:
-            self.k = np.exp(-np.linspace(-Filter.M, Filter.M, 2*Filter.M+1)**2 / self.param**2)
-            self.k /= np.sum(self.k)
+            self.k1 = np.exp(-np.linspace(-Filter.M, Filter.M, 2*Filter.M+1)**2 / self.param**2, dtype=np.float32)
+            self.k1 /= np.sum(self.k1, dtype=np.float32)
+            self.k2 = self.k1
         if self.type == 1:
-            self.k = self.param * np.ones((Filter.M*2+1)) / (Filter.M * 2 + 1)
+            self.k1 = np.exp(-np.linspace(-Filter.M, Filter.M, 2 * Filter.M + 1) ** 2 / self.param ** 2,dtype=np.float32)
+            self.k1 = np.diff(self.k1)
+            self.k2 = self.k2
+        if self.type == 2:
+            self.k1 = np.asarray([0] * (Filter.M - 1) + [1, 2, 1] + [0] * (Filter.M - 1))
+            self.k2 = np.asarray([0] * (Filter.M - 1) + [1, 0, -1] + [0] * (Filter.M - 1))
+        if self.type == 3:
+            self.k1 = np.asarray([0] * (Filter.M - 1) + [1, 0, -1] + [0] * (Filter.M - 1))
+            self.k2 = np.asarray([0] * (Filter.M - 1) + [1, 2, 1] + [0] * (Filter.M - 1))
 
-        self.k = np.asarray(self.k, dtype=float)
+
+        self.k1 = np.asarray(self.k1, dtype=np.float32)
+        self.k2 = np.asarray(self.k2, dtype=np.float32)
         self.upload_buffer()
 
 
@@ -806,11 +821,13 @@ class Renderer:
         self.segmentation_shader = Shader(os.path.join(cfg.root, "shaders", "se_segmentation_shader.glsl"))
         self.border_shader = Shader(os.path.join(cfg.root, "shaders", "se_border_shader.glsl"))
         self.kernel_filter = Shader(os.path.join(cfg.root, "shaders", "se_compute_kernel_filter.glsl"))
+        self.mix_filtered = Shader(os.path.join(cfg.root, "shaders", "se_compute_mix.glsl"))
         self.line_shader = Shader(os.path.join(cfg.root, "shaders", "ce_line_shader.glsl"))
         self.line_list = list()
         self.line_va = VertexArray(None, None, attribute_format="xyrgb")
         self.fbo1 = FrameBuffer()
         self.fbo2 = FrameBuffer()
+        self.fbo3 = FrameBuffer()
 
     def render_frame(self, se_frame, camera, window, filters=[]):
         se_frame.update_model_matrix()
@@ -819,8 +836,10 @@ class Renderer:
 
         self.fbo1.clear((0.0, 0.0, 0.0, 1.0))
         self.fbo2.clear((0.0, 0.0, 0.0, 1.0))
-        # render the image to a framebuffer
-        fake_camera_matrix = np.matrix([[2 / self.fbo1.width, 0, 0, 0],[0, 2 / self.fbo1.height, 0, 0],[0, 0, -2 / 100, 0],[0, 0, 0, 1],])
+        self.fbo3.clear((0.0, 0.0, 0.0, 2.0))
+
+        # render the image to a framebuffer (todo: no need to render, just use a compute shader and imageload).
+        fake_camera_matrix = np.matrix([[2 / self.fbo1.width, 0, 0, 0], [0, 2 / self.fbo1.height, 0, 0], [0, 0, -2 / 100, 0], [0, 0, 0, 1]])
         self.fbo1.bind()
         self.quad_shader.bind()
         se_frame.quad_va.bind()
@@ -837,32 +856,38 @@ class Renderer:
         self.fbo1.unbind()
         window.set_full_viewport()
         # filter framebuffer
-        source_fbo = self.fbo1
-        target_fbo = self.fbo2
         self.kernel_filter.bind()
         compute_size = (int(np.ceil(se_frame.width / 16)), int(np.ceil(se_frame.height / 16)), 1)
         for fltr in filters:
             self.kernel_filter.bind()
-            fltr.bind()
-            glBindImageTexture(0, source_fbo.texture.renderer_id, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
-            glBindImageTexture(1, target_fbo.texture.renderer_id, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F)
+            fltr.bind(horizontal=True)
+            glBindImageTexture(0, self.fbo1.texture.renderer_id, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
+            glBindImageTexture(1, self.fbo2.texture.renderer_id, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F)
             self.kernel_filter.uniform1i("direction", 0)
             glDispatchCompute(*compute_size)
             glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT)
-            target_fbo, source_fbo = source_fbo, target_fbo
-            glBindImageTexture(0, source_fbo.texture.renderer_id, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
-            glBindImageTexture(1, target_fbo.texture.renderer_id, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F)
+            fltr.bind(horizontal=False)
+            glBindImageTexture(0, self.fbo2.texture.renderer_id, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
+            glBindImageTexture(1, self.fbo3.texture.renderer_id, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F)
             self.kernel_filter.uniform1i("direction", 1)
             glDispatchCompute(*compute_size)
-            target_fbo, source_fbo = source_fbo, target_fbo
             glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT)
             fltr.unbind()
-        self.kernel_filter.unbind()
+            self.kernel_filter.unbind()
+            ## mix the filtered and the original image
+            self.mix_filtered.bind()
+            glBindImageTexture(0, self.fbo3.texture.renderer_id, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F)
+            glBindImageTexture(1, self.fbo1.texture.renderer_id, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F)
+            self.mix_filtered.uniform1f("strength", fltr.strength)
+            glDispatchCompute(*compute_size)
+            glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT)
+            self.mix_filtered.unbind()
+
 
         # render the framebuffer to the screen
         self.quad_shader.bind()
         se_frame.quad_va.bind()
-        source_fbo.texture.bind(0)
+        self.fbo1.texture.bind(0)
         self.quad_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
         self.quad_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
         self.quad_shader.uniform1f("alpha", se_frame.alpha)
