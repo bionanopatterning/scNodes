@@ -85,6 +85,7 @@ ce_va_subdivision = 8
 
 se_frames = list()
 se_active_frame = None
+se_path = "..."
 
 def set_active_node(node, keep_active=False):
     global focused_node, active_node, next_active_node
@@ -191,7 +192,12 @@ COLOUR_ERROR_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
 COLOUR_CM_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
 COLOUR_CM_OPTION_HOVERED = (1.0, 1.0, 1.0, 1.0)
 COLOUR_TRANSPARENT = (1.0, 1.0, 1.0, 0.0)
-COLOUR_FRAME_BACKGROUND_BLUE = (0.76, 0.76, 0.83, 1.0);
+COLOUR_FRAME_BACKGROUND_BLUE = (0.76, 0.76, 0.83, 1.0)
+COLOUR_POSITIVE = (0.1, 0.8, 0.1, 1.0)
+COLOUR_NEGATIVE = (0.8, 0.1, 0.1, 1.0)
+COLOUR_NEUTRAL = (0.6, 0.6, 0.6, 1.0)
+COLOUR_NEUTRAL_LIGHT = (0.8, 0.8, 0.8, 1.0)
+
 TOOLTIP_APPEAR_DELAY = 1.0
 TOOLTIP_HOVERED_TIMER = 0.0
 TOOLTIP_HOVERED_START_TIME = 0.0
