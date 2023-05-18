@@ -12,7 +12,8 @@ from copy import copy
 from tkinter import filedialog
 import threading
 import time
-
+import tifffile
+import dill as pickle
 
 class SegmentationEditor:
     if True:
@@ -50,7 +51,8 @@ class SegmentationEditor:
 
         self.active_tab = "Segmentation"
         # training dataset params
-        self.all_features = list()
+        self.all_feature_names = list()
+        self.trainset_feature_selection = dict()
         self.trainset_selection = list()
         self.trainset_num_boxes_positive = 0
         self.trainset_num_boxes_negative = 0
@@ -241,7 +243,7 @@ class SegmentationEditor:
                         imgui.same_line(spacing=21)
                         _c, sef.autocontrast = imgui.checkbox("auto", sef.autocontrast)
                         if _c and sef.autocontrast:
-                            sef.compute_autocontrast()
+                            sef.requires_histogram_update = True
                         imgui.same_line(spacing=21)
                         _c, sef.interpolate = imgui.checkbox("interpolate", sef.interpolate)
                         if _c:
@@ -254,47 +256,47 @@ class SegmentationEditor:
                                 self.renderer.fbo1.texture.set_no_interpolation()
                                 self.renderer.fbo2.texture.set_no_interpolation()
 
-                    imgui.separator()
-                    fidx = 0
-                    for ftr in sef.filters:
-                        fidx += 1
-                        imgui.push_id(f"filter{fidx}")
-                        cw = imgui.get_content_region_available_width()
+                        imgui.separator()
+                        fidx = 0
+                        for ftr in sef.filters:
+                            fidx += 1
+                            imgui.push_id(f"filter{fidx}")
+                            cw = imgui.get_content_region_available_width()
 
-                        # Filter type selection combo
-                        imgui.set_next_item_width(cw - 60)
-                        imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 2))
-                        _c, ftrtype = imgui.combo("##filtertype", ftr.type, Filter.TYPES)
-                        if _c:
-                            sef.filters[sef.filters.index(ftr)] = Filter(sef, ftrtype)
-                        imgui.same_line()
-                        _, ftr.enabled = imgui.checkbox("##enabled", ftr.enabled)
-                        if _:
-                            ftr.parent.requires_histogram_update = True
-                        # Delete button
-                        imgui.same_line()
-                        if imgui.image_button(self.icon_close.renderer_id, 13, 13):
-                            sef.filters.remove(ftr)
-                        imgui.pop_style_var(1)
-                        # Parameter and strength sliders
-                        imgui.push_item_width(cw)
-                        if Filter.PARAMETER_NAME[ftr.type] is not None:
-                            _c, ftr.param = imgui.slider_float("##param", ftr.param, 0.1, 10.0, format=f"{Filter.PARAMETER_NAME[ftr.type]}: {ftr.param:.1f}")
+                            # Filter type selection combo
+                            imgui.set_next_item_width(cw - 60)
+                            imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 2))
+                            _c, ftrtype = imgui.combo("##filtertype", ftr.type, Filter.TYPES)
                             if _c:
-                                ftr.fill_kernel()
-                        _, ftr.strength = imgui.slider_float("##strength", ftr.strength, 0.0, 1.0, format=f"weight: {ftr.strength:.2f}")
-                        if _:
-                            ftr.parent.requires_histogram_update = True
-                        imgui.pop_item_width()
+                                sef.filters[sef.filters.index(ftr)] = Filter(sef, ftrtype)
+                            imgui.same_line()
+                            _, ftr.enabled = imgui.checkbox("##enabled", ftr.enabled)
+                            if _:
+                                ftr.parent.requires_histogram_update = True
+                            # Delete button
+                            imgui.same_line()
+                            if imgui.image_button(self.icon_close.renderer_id, 13, 13):
+                                sef.filters.remove(ftr)
+                            imgui.pop_style_var(1)
+                            # Parameter and strength sliders
+                            imgui.push_item_width(cw)
+                            if Filter.PARAMETER_NAME[ftr.type] is not None:
+                                _c, ftr.param = imgui.slider_float("##param", ftr.param, 0.1, 10.0, format=f"{Filter.PARAMETER_NAME[ftr.type]}: {ftr.param:.1f}")
+                                if _c:
+                                    ftr.fill_kernel()
+                            _, ftr.strength = imgui.slider_float("##strength", ftr.strength, -1.0, 1.0, format=f"weight: {ftr.strength:.2f}")
+                            if _:
+                                ftr.parent.requires_histogram_update = True
+                            imgui.pop_item_width()
 
-                        imgui.pop_id()
-                    imgui.set_next_item_width(imgui.get_content_region_available_width())
-                    imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 2))
-                    _c, new_filter_type = imgui.combo("##filtertype", 0, ["Add filter"] + Filter.TYPES)
-                    if _c and not new_filter_type == 0:
-                        sef.filters.append(Filter(sef, new_filter_type - 1))
-                    imgui.pop_style_var(6)
-                    imgui.pop_style_color(1)
+                            imgui.pop_id()
+                        imgui.set_next_item_width(imgui.get_content_region_available_width())
+                        imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 2))
+                        _c, new_filter_type = imgui.combo("##filtertype", 0, ["Add filter"] + Filter.TYPES)
+                        if _c and not new_filter_type == 0:
+                            sef.filters.append(Filter(sef, new_filter_type - 1))
+                        imgui.pop_style_var(6)
+                        imgui.pop_style_color(1)
 
             def features_panel():
                 if imgui.collapsing_header("Features", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
@@ -415,7 +417,7 @@ class SegmentationEditor:
                             self.renderer.add_square(world_position, active_feature.box_size_nm, active_feature.colour)
                     for f in cfg.se_active_frame.features:
                         frame_xy = f.parent.transform.translation
-                        if f.show_boxes:
+                        if f.show_boxes and not f.hide:
                             for box in f.boxes[f.current_slice]:
                                 box_x_pos = frame_xy[0] + (box[0] - f.parent.width / 2) * f.parent.pixel_size
                                 box_y_pos = frame_xy[1] + (box[1] - f.parent.height / 2) * f.parent.pixel_size
@@ -432,10 +434,9 @@ class SegmentationEditor:
                 for s in cfg.se_frames:
                     if s.sample:
                         for f in s.features:
-                            idx = self.all_features.index(f.title)
-                            if self.trainset_selection[idx] == 1:
+                            if self.trainset_feature_selection[f.title] == 1:
                                 self.trainset_num_boxes_positive += f.n_boxes
-                            elif self.trainset_selection[idx] == -1:
+                            elif self.trainset_feature_selection[f.title] == -1:
                                 self.trainset_num_boxes_negative += f.n_boxes
 
             if imgui.collapsing_header("Create a training set", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
@@ -446,12 +447,12 @@ class SegmentationEditor:
                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 2))
 
                 imgui.text("Features of interest")
-                if imgui.begin_child("features", 0.0, 1 + len(self.all_features) * 20, False, imgui.WINDOW_NO_SCROLLBAR):
+                if imgui.begin_child("features", 0.0, 1 + len(self.all_feature_names) * 20, False, imgui.WINDOW_NO_SCROLLBAR):
                     imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_NEUTRAL_LIGHT)
                     cw = imgui.get_content_region_available_width()
                     imgui.push_item_width(cw)
-                    for i in range(len(self.all_features)):
-                        val = self.trainset_selection[i]
+                    for fname in self.all_feature_names:
+                        val = self.trainset_feature_selection[fname]
                         if val == 1:
                             imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.COLOUR_POSITIVE)
                             imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.COLOUR_POSITIVE)
@@ -461,8 +462,7 @@ class SegmentationEditor:
                         elif val == -1:
                             imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.COLOUR_NEGATIVE)
                             imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.COLOUR_NEGATIVE)
-                        fname = self.all_features[i]
-                        _, self.trainset_selection[i] = imgui.slider_int(f"##{fname}", val, -1, 1, format=f"{fname}")
+                        _, self.trainset_feature_selection[fname] = imgui.slider_int(f"##{fname}", val, -1, 1, format=f"{fname}")
                         imgui.pop_style_color(2)
                     imgui.pop_style_color(1)
                     imgui.pop_style_var(1)
@@ -470,19 +470,21 @@ class SegmentationEditor:
                     imgui.end_child()
 
                 imgui.text("Datasets to sample")
+                imgui.push_style_color(imgui.COLOR_CHECK_MARK, 0.0, 0.0, 0.0, 1.0)
                 if imgui.begin_child("datasets", 0.0, min([80, 10 + len(cfg.se_frames)*20]), True):
                     for s in cfg.se_frames:
                         imgui.push_id(f"{s.uid}")
                         _, s.sample = imgui.checkbox(s.title, s.sample)
                         imgui.pop_id()
                     imgui.end_child()
+                imgui.pop_style_color()
 
 
                 imgui.text("Set parameters")
                 if imgui.begin_child("params", 0.0, 80, True):
                     imgui.push_item_width(cw - 53)
                     _, self.trainset_boxsize = imgui.slider_int("boxes", self.trainset_boxsize, 8, 128, format=f"{self.trainset_boxsize} pixel")
-                    _, self.trainset_apix = imgui.slider_float("a/pix", self.trainset_apix, 1.0, 20.0)
+                    _, self.trainset_apix = imgui.slider_float("A/pix", self.trainset_apix, 1.0, 20.0, format=f"{self.trainset_apix:.2f}")
                     imgui.pop_item_width()
                     calculate_number_of_boxes()
                     imgui.text(f"Positive samples: {self.trainset_num_boxes_positive}")
@@ -527,12 +529,28 @@ class SegmentationEditor:
                 if imgui.begin_menu("File"):
                     if imgui.menu_item("Import dataset")[0]:
                         try:
-                            filename = filedialog.askopenfilename(filetypes=[("mrc file", ".mrc")])
+                            filename = filedialog.askopenfilename(filetypes=[("scNodes segmentable", ".mrc .scns")])
                             if filename != '':
-                                cfg.se_frames.append(SEFrame(filename))
-                                cfg.se_active_frame = cfg.se_frames[-1]
+                                if filename[-4:] == ".mrc":
+                                    cfg.se_frames.append(SEFrame(filename))
+                                    cfg.se_active_frame = cfg.se_frames[-1]
+                                elif filename[-5:] == ".scns":
+                                    with open(filename, 'rb') as pickle_file:
+                                        segmentation = pickle.load(pickle_file)
+                                        segmentation.on_load()
+                                        cfg.se_frames.append(segmentation)
+                                        cfg.se_active_frame = cfg.se_frames[-1]
                         except Exception as e:
-                            pass
+                            print(e)
+                    if imgui.menu_item("Save dataset")[0]:
+                        try:
+                            filename = filedialog.asksaveasfilename(filetypes=[("scNodes segmentation", ".sncs")])
+                            if filename != '':
+                                with open(filename+".scns", 'wb') as pickle_file:
+                                    pickle.dump(cfg.se_active_frame, pickle_file)
+                        except Exception as e:
+                            print(e)
+
                     imgui.end_menu()
                 if imgui.begin_menu("Editor"):
                     for i in range(len(cfg.editors)):
@@ -599,12 +617,19 @@ class SegmentationEditor:
             if imgui.begin_tab_item("Models")[0]:
                 if self.active_tab != "Models":
                     # upon opening Models tab.
-                    self.all_features = list()
+                    self.all_feature_names = list()
                     for sef in cfg.se_frames:
                         for ftr in sef.features:
-                            if ftr.title not in self.all_features:
-                                self.all_features.append(ftr.title)
-                    self.trainset_selection = [0] * len(self.all_features)
+                            if ftr.title not in self.all_feature_names:
+                                self.all_feature_names.append(ftr.title)
+                            if ftr.title not in self.trainset_feature_selection:
+                                self.trainset_feature_selection[ftr.title] = 0.0
+                    to_pop = list()
+                    for key in self.trainset_feature_selection.keys():
+                        if key not in self.all_feature_names:
+                            to_pop.append(key)
+                    for key in to_pop:
+                        self.trainset_feature_selection.pop(key)
                 self.active_tab = "Models"
                 models_tab()
                 imgui.end_tab_item()
@@ -628,11 +653,11 @@ class SegmentationEditor:
         #
         positive_feature_names = list()
         negative_feature_names = list()
-        for i in range(len(self.all_features)):
-            if self.trainset_selection[i] == 1:
-                positive_feature_names.append(self.all_features[i])
-            elif self.trainset_selection[i] == -1:
-                negative_feature_names.append(self.all_features[i])
+        for f in self.all_feature_names:
+            if self.trainset_feature_selection[f] == 1:
+                positive_feature_names.append(f)
+            elif self.trainset_feature_selection[f] == -1:
+                negative_feature_names.append(f)
 
         datasets_to_sample = list()
         for dataset in cfg.se_frames:
@@ -652,7 +677,7 @@ class SegmentationEditor:
         positive = list()
         negative = list()
 
-        nm = int(np.floor(boxsize / 2))  # negative indecing
+        nm = int(np.floor(boxsize / 2))
         pm = int(np.ceil(boxsize / 2))
         n_done = 0
         for d in datasets:
@@ -675,8 +700,8 @@ class SegmentationEditor:
                         for (x, y) in f.boxes[z]:
                             x_min = (x-nm)
                             x_max = (x+pm)
-                            y_min = (y-nm)
-                            y_max = (y+pm)
+                            y_min = h - (y+pm)
+                            y_max = h - (y-nm)
                             if x_min > 0 and y_min > 0 and x_max < w and y_max < h:
                                 image = mrcf.data[z, x_min:x_max, y_min:y_max]  # TODO: don't slice an amount of pixels, but an amount of nanometers - take into account apix and box_size
                                 segmentation = f.slices[z][x_min:x_max, y_min:y_max]
@@ -686,6 +711,9 @@ class SegmentationEditor:
                                     negative.append([image, np.zeros_like(segmentation)])  # TODO: warn when negative img contains positively segmented features
                             n_done += 1
                             process.set_progress(n_done / n_boxes)
+        all_imgs = np.array(positive + negative)
+        tifffile.imwrite(path, all_imgs)
+
 
     def camera_control(self):
         if imgui.get_io().want_capture_mouse or imgui.get_io().want_capture_keyboard:
@@ -726,8 +754,8 @@ class SEFrame:
         self.interpolate = False
         self.alpha = 1.0
         self.filters = list()
-        self.invert = False
-        self.autocontrast = False
+        self.invert = True
+        self.autocontrast = True
         self.sample = True
         self.hist_vals = list()
         self.hist_bins = list()
@@ -855,9 +883,19 @@ class SEFrame:
         self.hist_bins = self.hist_bins.astype('float32')
         self.hist_vals = np.log(self.hist_vals + 1)
 
+    def on_load(self):
+        uid_counter = next(SEFrame.idgen)
+        self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f') + "000") + uid_counter
+        self.setup_opengl_objects()
+        for f in self.features:
+            f.on_load()
+        for f in self.filters:
+            f.fill_kernel()
+
     @staticmethod
     def from_clemframe(clemframe):
         se_frame = SEFrame(clemframe.path)
+
 
     def __eq__(self, other):
         if isinstance(other, SEFrame):
@@ -907,16 +945,23 @@ class Segmentation:
         self.texture.set_linear_interpolation()
         self.set_slice(self.parent.current_slice)
 
+    def on_load(self):
+        uid_counter = next(Segmentation.idgen)
+        self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f') + "000") + uid_counter
+        self.texture = Texture(format="r32f")
+        cslice = self.current_slice
+        self.current_slice = -1
+        self.set_slice(cslice)
+
     def set_box_size(self, box_size_px):
         self.box_size = box_size_px
-        self.box_size_nm = self.box_size / self.parent.pixel_size
+        self.box_size_nm = self.box_size * self.parent.pixel_size
 
     def add_box(self, pixel_coordinates):
         if len(self.boxes[self.current_slice]) == 0:
             self.request_draw_in_current_slice()
         self.boxes[self.current_slice].append(pixel_coordinates)
         self.n_boxes += 1
-
 
     def remove_box(self, pixel_coordinate):
         box_list = self.boxes[self.current_slice]
@@ -927,7 +972,6 @@ class Segmentation:
         for i in range(len(box_list)):
             _d = (box_list[i][0]-x)**2 + (box_list[i][1]-y)**2
             if _d < d:
-                print(_d, i)
                 d = _d
                 idx = i
         if idx is not None:
@@ -1028,7 +1072,7 @@ class Brush:
 class Filter:
 
     TYPES = ["Gaussian blur", "Box blur", "Sobel vertical", "Sobel horizontal"]
-    PARAMETER_NAME = ["sigma", "box", None, None, None]
+    PARAMETER_NAME = ["sigma", "box", None, None]
     M = 16
 
     def __init__(self, parent, filter_type):
@@ -1044,6 +1088,8 @@ class Filter:
         self.fill_kernel()
 
     def upload_buffer(self):
+        if self.ssbo1 != -1:
+            glDeleteBuffers(2, [self.ssbo1, self.ssbo2])
         self.ssbo1 = glGenBuffers(1)
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.ssbo1)
         glBufferData(GL_SHADER_STORAGE_BUFFER, (Filter.M * 2 + 1) * 4, self.k1.flatten(), GL_STATIC_READ)
@@ -1402,7 +1448,6 @@ class Transform:
         return out
 
 
-
 class BackgroundProcess:
     idgen = count(0)
 
@@ -1421,11 +1466,10 @@ class BackgroundProcess:
 
     def _run(self):
         self.function(*self.args, self)
+        print("process done")
 
     def set_progress(self, progress):
         self.progress = progress
-        print(f"BackgroundProcess {self.uid} at {100.0 * self.progress:.1f} % completion!")
-        time.sleep(0.1)
 
     def __str__(self):
         return f"BackgroundProcess {self.uid} with function {self.function} and args {self.args}"

@@ -87,6 +87,7 @@ se_frames = list()
 se_active_frame = None
 se_path = "..."
 
+
 def set_active_node(node, keep_active=False):
     global focused_node, active_node, next_active_node
     """
