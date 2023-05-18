@@ -29,6 +29,7 @@ class SegmentationEditor:
         SLICER_WINDOW_VERTICAL_OFFSET = 30
         SLICER_WINDOW_WIDTH = 700
         ACTIVE_SLICES_CHILD_HEIGHT = 140
+        PROGRESS_BAR_HEIGHT = 8
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -43,7 +44,7 @@ class SegmentationEditor:
         self.camera.zoom = SegmentationEditor.DEFAULT_ZOOM
         self.renderer = Renderer()
 
-        sef = SEFrame("C:/Users/mgflast/Desktop/tomo.mrc")
+        sef = SEFrame("C:/Users/mart_/Desktop/tomo.mrc")
         cfg.se_frames.append(sef)
         self.set_active_dataset(sef)
 
@@ -490,6 +491,21 @@ class SegmentationEditor:
 
                 # 'Generate set' button
                 cw = imgui.get_content_region_available_width()
+
+                for process in self.active_trainset_exports:
+                    origin = imgui.get_window_position()
+                    y = imgui.get_cursor_screen_pos()[1]
+                    drawlist = imgui.get_window_draw_list()
+                    drawlist.add_rect_filled(8 + origin[0], y,
+                                             8 + origin[0] + cw,
+                                             y + SegmentationEditor.PROGRESS_BAR_HEIGHT,
+                                             imgui.get_color_u32_rgba(*cfg.COLOUR_NEUTRAL))
+                    drawlist.add_rect_filled(8 + origin[0], y,
+                                             8 + origin[0] + cw * min([1.0, process.progress]),
+                                             y + SegmentationEditor.PROGRESS_BAR_HEIGHT, imgui.get_color_u32_rgba(*cfg.COLOUR_POSITIVE))
+                    imgui.dummy(0, SegmentationEditor.PROGRESS_BAR_HEIGHT)
+                    if process.progress == 1.0:
+                        self.active_trainset_exports.remove(process)
                 imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
                 imgui.new_line()
                 imgui.same_line(spacing=(cw - 120) / 2)
@@ -624,6 +640,8 @@ class SegmentationEditor:
                 datasets_to_sample.append(dataset)
 
         n_boxes = self.trainset_num_boxes_positive + self.trainset_num_boxes_negative
+        if n_boxes == 0:
+            return
         args = (path, n_boxes, positive_feature_names, negative_feature_names, datasets_to_sample, self.trainset_boxsize, self.trainset_apix)
 
         process = BackgroundProcess(self._create_training_set, args)
