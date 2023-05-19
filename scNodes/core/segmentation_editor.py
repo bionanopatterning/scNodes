@@ -14,6 +14,7 @@ import threading
 import time
 import tifffile
 import dill as pickle
+from scipy.ndimage import zoom
 
 class SegmentationEditor:
     if True:
@@ -45,9 +46,12 @@ class SegmentationEditor:
         self.camera.zoom = SegmentationEditor.DEFAULT_ZOOM
         self.renderer = Renderer()
 
-        sef = SEFrame("C:/Users/mart_/Desktop/tomo.mrc")
-        cfg.se_frames.append(sef)
-        self.set_active_dataset(sef)
+        #sef = SEFrame("C:/Users/mgflast/Desktop/tomo4.mrc")
+        # with open("C:/Users/mgflast/Desktop/delete/TESTBOXING.scns", 'rb') as pf:
+        #     sef = pickle.load(pf)
+        # sef.on_load()
+        # cfg.se_frames.append(sef)
+        # self.set_active_dataset(sef)
 
         self.active_tab = "Segmentation"
         # training dataset params
@@ -533,20 +537,22 @@ class SegmentationEditor:
                             if filename != '':
                                 if filename[-4:] == ".mrc":
                                     cfg.se_frames.append(SEFrame(filename))
-                                    cfg.se_active_frame = cfg.se_frames[-1]
+                                    self.set_active_dataset(cfg.se_frames[-1])
                                 elif filename[-5:] == ".scns":
                                     with open(filename, 'rb') as pickle_file:
                                         segmentation = pickle.load(pickle_file)
                                         segmentation.on_load()
                                         cfg.se_frames.append(segmentation)
-                                        cfg.se_active_frame = cfg.se_frames[-1]
+                                        self.set_active_dataset(cfg.se_frames[-1])
                         except Exception as e:
                             print(e)
                     if imgui.menu_item("Save dataset")[0]:
                         try:
-                            filename = filedialog.asksaveasfilename(filetypes=[("scNodes segmentation", ".sncs")])
+                            filename = filedialog.asksaveasfilename(filetypes=[("scNodes segmentation", ".scns")])
                             if filename != '':
-                                with open(filename+".scns", 'wb') as pickle_file:
+                                if filename[-5:] != ".scns":
+                                    filename += ".scns"
+                                with open(filename, 'wb') as pickle_file:
                                     pickle.dump(cfg.se_active_frame, pickle_file)
                         except Exception as e:
                             print(e)
@@ -609,8 +615,6 @@ class SegmentationEditor:
         imgui.begin("##se_main", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE)
         if imgui.begin_tab_bar("##tabs"):
             if imgui.begin_tab_item("Segmentation")[0]:
-                if imgui.is_item_focused() and imgui.is_mouse_released(0):
-                    print("asd")
                 segmentation_tab()
                 self.active_tab = "Segmentation"
                 imgui.end_tab_item()
@@ -677,13 +681,23 @@ class SegmentationEditor:
         positive = list()
         negative = list()
 
-        nm = int(np.floor(boxsize / 2))
-        pm = int(np.ceil(boxsize / 2))
         n_done = 0
+        target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
+
+        crop_nm = boxsize * apix
         for d in datasets:
             mrcf = mrcfile.mmap(d.path, mode="r")
+            raw_type = type(mrcf.data[0, 0, 0])
+            out_type = float
+            if raw_type in target_type_dict:
+                out_type = target_type_dict[raw_type]
+
             w = d.width
             h = d.height
+            crop_px = int(np.ceil((boxsize * apix) / (d.pixel_size * 10.0)))  # size to crop so that the crop contains at least a boxsize*apix sized region
+            scale_fac = (d.pixel_size * 10.0) / apix  # how much to scale the cropped images.
+            nm = int(np.floor(crop_px / 2))
+            pm = int(np.ceil(crop_px / 2))
             is_positive = True
             # find all boxes
             for f in d.features:
@@ -700,17 +714,24 @@ class SegmentationEditor:
                         for (x, y) in f.boxes[z]:
                             x_min = (x-nm)
                             x_max = (x+pm)
-                            y_min = h - (y+pm)
-                            y_max = h - (y-nm)
+                            y_min = (y-nm)
+                            y_max = (y+pm)
                             if x_min > 0 and y_min > 0 and x_max < w and y_max < h:
-                                image = mrcf.data[z, x_min:x_max, y_min:y_max]  # TODO: don't slice an amount of pixels, but an amount of nanometers - take into account apix and box_size
-                                segmentation = f.slices[z][x_min:x_max, y_min:y_max]
+                                image = np.flipud(mrcf.data[z, y_min:y_max, x_min:x_max])
+                                image = np.array(image.astype(out_type, copy=False), dtype=float)
+                                segmentation = np.flipud(f.slices[z][y_min:y_max, x_min:x_max])
+                                # scale image to the requested pixel size
+                                image = zoom(image, scale_fac)
+                                segmentation = zoom(segmentation, scale_fac)
+                                image = image[:boxsize, :boxsize]
+                                segmentation = segmentation[:boxsize, :boxsize]
                                 if is_positive:
                                     positive.append([image, segmentation])
                                 else:
                                     negative.append([image, np.zeros_like(segmentation)])  # TODO: warn when negative img contains positively segmented features
                             n_done += 1
                             process.set_progress(n_done / n_boxes)
+
         all_imgs = np.array(positive + negative)
         tifffile.imwrite(path, all_imgs)
 
@@ -747,6 +768,7 @@ class SEFrame:
         self.active_feature = None
         self.height, self.width = mrcfile.mmap(self.path, mode="r").data.shape[1:3]
         self.pixel_size = mrcfile.open(self.path, header_only=True).voxel_size.x / 10.0
+        self.title += f" ({self.pixel_size * 10.0:.2f} A/pix)"
         self.transform = Transform()
         self.texture = None
         self.quad_va = None
@@ -838,7 +860,6 @@ class SEFrame:
 
     def update_image_texture(self):
         self.texture.update(self.data.astype(np.float32))
-        #self.compute_histogram()
 
     def update_model_matrix(self):
         self.transform.scale = self.pixel_size
@@ -1007,19 +1028,19 @@ class Segmentation:
     def request_draw_in_current_slice(self):
         if self.current_slice in self.slices:
             if self.slices[self.current_slice] is None:
-                self.slices[self.current_slice] = np.zeros((self.height, self.width), dtype=float)
+                self.slices[self.current_slice] = np.zeros((self.height, self.width), dtype=np.uint8)
                 self.data = self.slices[self.current_slice]
                 self.texture.update(self.data, self.width, self.height)
                 self.edited_slices.append(self.current_slice)
         else:
-            self.slices[self.current_slice] = np.zeros((self.height, self.width), dtype=float)
+            self.slices[self.current_slice] = np.zeros((self.height, self.width), dtype=np.uint8)
             self.data = self.slices[self.current_slice]
             self.texture.update(self.data, self.width, self.height)
             self.edited_slices.append(self.current_slice)
 
 
 class Brush:
-    circular_roi = np.zeros(1, dtype=float)
+    circular_roi = np.zeros(1, dtype=np.uint8)
     circular_roi_radius = -1
 
     @staticmethod
@@ -1027,7 +1048,7 @@ class Brush:
         if Brush.circular_roi_radius == radius:
             return
         Brush.circular_roi_radius = radius
-        Brush.circular_roi = np.zeros((2*radius+1, 2*radius+1), dtype=float)
+        Brush.circular_roi = np.zeros((2*radius+1, 2*radius+1), dtype=np.uint8)
         r = radius**2
         for x in range(0, 2*radius+1):
             for y in range(0, 2*radius+1):
@@ -1064,7 +1085,7 @@ class Brush:
         if val:
             segmentation.data[x[0]:x[1], y[0]:y[1]] += Brush.circular_roi[rx[0]:rx[1], ry[0]:ry[1]]
         else:
-            segmentation.data[x[0]:x[1], y[0]:y[1]] *= (1.0 - Brush.circular_roi[rx[0]:rx[1], ry[0]:ry[1]])
+            segmentation.data[x[0]:x[1], y[0]:y[1]] *= (np.uint8(1.0) - Brush.circular_roi[rx[0]:rx[1], ry[0]:ry[1]])
         segmentation.data[x[0]:x[1], y[0]:y[1]] = np.clip(segmentation.data[x[0]:x[1], y[0]:y[1]], 0, 1)
         segmentation.texture.update_subimage(segmentation.data[x[0]:x[1], y[0]:y[1]], y[0], x[0])
 
@@ -1466,7 +1487,6 @@ class BackgroundProcess:
 
     def _run(self):
         self.function(*self.args, self)
-        print("process done")
 
     def set_progress(self, progress):
         self.progress = progress
