@@ -19,7 +19,9 @@ def create(input_shape):
     conv2 = Conv2D(128, (3, 3), padding='same')(conv2)
     shortcut2 = Conv2D(128, (1, 1), padding='same')(act1)
     add2 = Add()([shortcut2, conv2])
-    output = Activation('relu')(add2)
+    act2 = Activation('relu')(add2)
+
+    output = Conv2D(1, (1, 1), activation='sigmoid')(act2)
 
     # create the model
     model = Model(inputs=[inputs], outputs=[output])

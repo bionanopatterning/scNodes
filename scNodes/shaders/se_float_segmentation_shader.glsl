@@ -36,6 +36,6 @@ void main()
     }
     else
     {
-        fragmentColor = vec4(pixelValue * colour, alpha);
+        fragmentColor = vec4(colour, alpha);
     }
 }
