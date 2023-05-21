@@ -581,7 +581,7 @@ class SegmentationEditor:
                                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
 
                                 imgui.push_item_width(cw)
-                                _, m.epochs = imgui.slider_int("##epochs", m.epochs, 1, 100, f"{m.epochs} epoch"+("s" if m.epochs>1 else ""))
+                                _, m.epochs = imgui.slider_int("##epochs", m.epochs, 1, 50, f"{m.epochs} epoch"+("s" if m.epochs>1 else ""))
                                 _, m.batch_size = imgui.slider_int("##batchs", m.batch_size, 1, 128, f"{m.batch_size} batch size")
                                 imgui.pop_item_width()
                                 imgui.pop_style_var(1)
@@ -659,6 +659,10 @@ class SegmentationEditor:
                             SegmentationEditor._gui_background_process_progress_bar(m.background_process)
                             if m.background_process.progress >= 1.0:
                                 m.background_process = None
+
+                        if imgui.is_window_hovered() and imgui.is_mouse_clicked(0):
+                            cfg.se_active_model = m
+
                         imgui.end_child()
                     if pop_active_colour:
                         imgui.pop_style_color(1)
@@ -1217,6 +1221,7 @@ class Segmentation:
                 self.data *= 0
                 self.texture.update(self.data, self.width, self.height)
         if requested_slice in self.boxes:
+            self.n_boxes -= len(self.boxes[requested_slice])
             self.boxes[requested_slice] = list()
 
     def request_draw_in_current_slice(self):

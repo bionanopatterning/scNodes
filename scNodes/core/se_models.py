@@ -36,7 +36,7 @@ class SEModel:
         self.compiled = False
         self.box_size = -1
         self.model = None
-        self.model_enum = 0
+        self.model_enum = 2
         self.epochs = 25
         self.batch_size = 32
         self.train_data_path = "..."
@@ -45,7 +45,7 @@ class SEModel:
         self.show = True
         self.alpha = 0.75
         self.threshold = 0.5
-        self.overlap = 0.5
+        self.overlap = 0.2
         self.active_tab = 0
         self.background_process = None
         self.n_parameters = 0
@@ -141,7 +141,7 @@ class SEModel:
             box_size = train_x.shape[1]
             # compile, if not compiled yet
             if not self.compiled:
-                self.compile(box_size)
+                self.compile(box_size) # TODO: fix the models apix at this point
             # if training data box size is not compatible with the compiled model, abort.
             if box_size != self.box_size:
                 self.train_data_path = f"DATA HAS WRONG BOX SIZE ({box_size[0]} x {box_size[1]})"
@@ -149,7 +149,7 @@ class SEModel:
                 return
 
             # train
-            self.model.fit(train_x, train_y, epochs=self.epochs, batch_size=self.batch_size,
+            self.model.fit(train_x, train_y, epochs=self.epochs, batch_size=self.batch_size, shuffle=True, validation_split=0.1,
                            callbacks=[TrainingProgressCallback(process, n_samples, self.batch_size),
                                       StopTrainingCallback(process.stop_request)])
         except Exception as e:
