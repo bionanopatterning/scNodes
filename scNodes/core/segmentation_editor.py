@@ -11,10 +11,11 @@ from PIL import Image
 from copy import copy
 from tkinter import filedialog
 import threading
-import time
 import tifffile
 import dill as pickle
 from scipy.ndimage import zoom
+from scNodes.core.se_models import *
+
 
 class SegmentationEditor:
     if True:
@@ -32,6 +33,8 @@ class SegmentationEditor:
         SLICER_WINDOW_WIDTH = 700
         ACTIVE_SLICES_CHILD_HEIGHT = 140
         PROGRESS_BAR_HEIGHT = 8
+        MODEL_PANEL_HEIGHT_TRAINING = 158
+        MODEL_PANEL_HEIGHT_PREDICTION = 145
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -45,13 +48,6 @@ class SegmentationEditor:
         SegmentationEditor.DEFAULT_WORLD_PIXEL_SIZE = 1.0 / SegmentationEditor.DEFAULT_ZOOM
         self.camera.zoom = SegmentationEditor.DEFAULT_ZOOM
         self.renderer = Renderer()
-
-        #sef = SEFrame("C:/Users/mgflast/Desktop/tomo4.mrc")
-        # with open("C:/Users/mgflast/Desktop/delete/TESTBOXING.scns", 'rb') as pf:
-        #     sef = pickle.load(pf)
-        # sef.on_load()
-        # cfg.se_frames.append(sef)
-        # self.set_active_dataset(sef)
 
         self.active_tab = "Segmentation"
         # training dataset params
@@ -70,6 +66,12 @@ class SegmentationEditor:
             pxd_icon_close = np.asarray(Image.open(os.path.join(icon_dir, "icon_close_256.png"))).astype(np.float32) / 255.0
             self.icon_close.update(pxd_icon_close)
             self.icon_close.set_linear_interpolation()
+
+            self.icon_stop = Texture(format="rgba32f")
+            pxd_icon_stop = np.asarray(Image.open(os.path.join(icon_dir, "icon_stop_256.png"))).astype(
+                np.float32) / 255.0
+            self.icon_stop.update(pxd_icon_stop)
+            self.icon_stop.set_linear_interpolation()
 
     def set_active_dataset(self, dataset):
         cfg.se_active_frame = dataset
@@ -104,6 +106,10 @@ class SegmentationEditor:
             cfg.window_height = self.window.height
             self.camera.set_projection_matrix(cfg.window_width, cfg.window_height)
 
+        if self.active_tab == "Models" and cfg.se_active_frame is not None and cfg.se_active_frame.slice_changed:
+            for model in cfg.se_models:
+                model.set_slice(cfg.se_active_frame.data)
+            cfg.se_active_frame.slice_changed = False
         imgui.get_io().display_size = self.window.width, self.window.height
         imgui.new_frame()
 
@@ -129,6 +135,14 @@ class SegmentationEditor:
             active_feature = cfg.se_active_frame.active_feature
 
         # Key inputs that affect the active feature:
+        if active_frame is not None:
+            if not imgui.is_key_down(glfw.KEY_LEFT_SHIFT) and not imgui.is_key_down(
+                    glfw.KEY_LEFT_CONTROL) and active_frame is not None:
+                if self.window.scroll_delta[1] != 0.0:
+                    idx = int(active_frame.current_slice - self.window.scroll_delta[1])
+                    idx = idx % active_frame.n_slices
+                    active_frame.set_slice(idx)
+
         if self.active_tab == "Segmentation":
             if active_feature is not None:
                 if imgui.is_key_down(glfw.KEY_LEFT_CONTROL) and active_feature is not None:
@@ -142,14 +156,6 @@ class SegmentationEditor:
                     idx = 0 if active_feature not in active_frame.features else active_frame.features.index(active_feature)
                     idx = (idx - 1) % len(active_frame.features)
                     cfg.se_active_frame.active_feature = cfg.se_active_frame.features[idx]
-
-            # Key inputs that affect the active frame
-            if active_frame is not None:
-                if not imgui.is_key_down(glfw.KEY_LEFT_SHIFT) and not imgui.is_key_down(glfw.KEY_LEFT_CONTROL) and active_frame is not None:
-                    if self.window.scroll_delta[1] != 0.0:
-                        idx = int(active_frame.current_slice - self.window.scroll_delta[1])
-                        idx = idx % active_frame.n_slices
-                        active_frame.set_slice(idx)
 
             # Drawing / mouse input
             if active_feature is not None:
@@ -410,23 +416,6 @@ class SegmentationEditor:
                         cfg.se_active_frame.features.append(Segmentation(cfg.se_active_frame, f"Unnamed feature {len(cfg.se_active_frame.features)+1}"))
                     imgui.pop_style_var(1)
 
-                    # render drawing ROI indicator
-                    active_feature = cfg.se_active_frame.active_feature
-                    if active_feature is not None:
-                        radius = active_feature.brush_size * active_feature.parent.pixel_size
-                        world_position = self.camera.cursor_to_world_position(self.window.cursor_pos)
-                        if not imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
-                            self.renderer.add_circle(world_position, radius, active_feature.colour)
-                        else:
-                            self.renderer.add_square(world_position, active_feature.box_size_nm, active_feature.colour)
-                    for f in cfg.se_active_frame.features:
-                        frame_xy = f.parent.transform.translation
-                        if f.show_boxes and not f.hide:
-                            for box in f.boxes[f.current_slice]:
-                                box_x_pos = frame_xy[0] + (box[0] - f.parent.width / 2) * f.parent.pixel_size
-                                box_y_pos = frame_xy[1] + (box[1] - f.parent.height / 2) * f.parent.pixel_size
-                                self.renderer.add_square((box_x_pos, box_y_pos), f.box_size_nm, f.colour)
-
             datasets_panel()
             filters_panel()
             features_panel()
@@ -443,11 +432,11 @@ class SegmentationEditor:
                             elif self.trainset_feature_selection[f.title] == -1:
                                 self.trainset_num_boxes_negative += f.n_boxes
 
-            if imgui.collapsing_header("Create a training set", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+            if imgui.collapsing_header("Create a training set", None)[0]:
                 imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
                 imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
-                imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+                imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 2))
 
                 imgui.text("Features of interest")
@@ -499,17 +488,7 @@ class SegmentationEditor:
                 cw = imgui.get_content_region_available_width()
 
                 for process in self.active_trainset_exports:
-                    origin = imgui.get_window_position()
-                    y = imgui.get_cursor_screen_pos()[1]
-                    drawlist = imgui.get_window_draw_list()
-                    drawlist.add_rect_filled(8 + origin[0], y,
-                                             8 + origin[0] + cw,
-                                             y + SegmentationEditor.PROGRESS_BAR_HEIGHT,
-                                             imgui.get_color_u32_rgba(*cfg.COLOUR_NEUTRAL))
-                    drawlist.add_rect_filled(8 + origin[0], y,
-                                             8 + origin[0] + cw * min([1.0, process.progress]),
-                                             y + SegmentationEditor.PROGRESS_BAR_HEIGHT, imgui.get_color_u32_rgba(*cfg.COLOUR_POSITIVE))
-                    imgui.dummy(0, SegmentationEditor.PROGRESS_BAR_HEIGHT)
+                    SegmentationEditor._gui_background_process_progress_bar(process)
                     if process.progress == 1.0:
                         self.active_trainset_exports.remove(process)
                 imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
@@ -517,8 +496,182 @@ class SegmentationEditor:
                 imgui.same_line(spacing=(cw - 120) / 2)
                 if imgui.button("Generate set", 120, 23):
                     self.launch_create_training_set()
-                imgui.pop_style_var(1)
-                imgui.pop_style_var(5)
+                imgui.pop_style_var(6)
+
+            if imgui.collapsing_header("Available datasets", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+                if imgui.begin_child("dataset", 0.0, 80, True, imgui.WINDOW_ALWAYS_VERTICAL_SCROLLBAR):
+                    for s in cfg.se_frames:
+                        imgui.push_id(f"se{s.uid}")
+                        _change, _selected = imgui.selectable(s.title, cfg.se_active_frame == s)
+                        if _change and _selected:
+                            self.set_active_dataset(s)
+                        if imgui.begin_popup_context_item("##datasetContext"):
+                            if imgui.menu_item("Delete dataset")[0]:
+                                cfg.se_frames.remove(s)
+                                if cfg.se_active_frame == s:
+                                    cfg.se_active_frame = None
+                            imgui.end_popup()
+                        imgui.pop_id()
+                    imgui.end_child()
+
+            if imgui.collapsing_header("Models", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+                for m in cfg.se_models:
+                    pop_active_colour = False
+                    if cfg.se_active_model == m:
+                        pop_active_colour = True
+                        imgui.push_style_color(imgui.COLOR_CHILD_BACKGROUND, *cfg.COLOUR_FRAME_ACTIVE)
+
+                    panel_height = SegmentationEditor.MODEL_PANEL_HEIGHT_TRAINING if m.active_tab == 0 else SegmentationEditor.MODEL_PANEL_HEIGHT_PREDICTION
+                    panel_height += 10 if m.background_process is not None else 0
+                    if imgui.begin_child(f"SEModel_{m.uid}", 0.0, panel_height, True, imgui.WINDOW_NO_SCROLLBAR):
+                        cw = imgui.get_content_region_available_width()
+
+                        imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                        if m.background_process is None:
+                            # delete button
+                            if imgui.image_button(self.icon_close.renderer_id, 19, 19):
+                                cfg.se_models.remove(m)
+                                if cfg.se_active_model == m:
+                                    cfg.se_active_model = None
+                                m.delete()
+                        else:
+                            if imgui.image_button(self.icon_stop.renderer_id, 19, 19):
+                                m.background_process.stop()
+
+                        imgui.pop_style_var(1)
+
+                        imgui.same_line()
+                        _, m.colour = imgui.color_edit3(m.title, *m.colour[:3], imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
+                        # Title
+                        imgui.same_line()
+                        imgui.set_next_item_width(cw - 55)
+                        _, m.title = imgui.input_text("##title", m.title, 256, imgui.INPUT_TEXT_NO_HORIZONTAL_SCROLL | imgui.INPUT_TEXT_AUTO_SELECT_ALL)
+
+                        # Model selection
+                        imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 2))
+                        imgui.align_text_to_frame_padding()
+                        if m.compiled:
+                            model_info = SEModel.AVAILABLE_MODELS[m.model_enum]+f" ({m.n_parameters}, {m.box_size}, {m.apix:.3f})"
+                            imgui.text(model_info)
+                        else:
+                            imgui.text("Model:")
+                            imgui.same_line()
+                            imgui.set_next_item_width(cw - 51)
+                            _, m.model_enum = imgui.combo("##model_type", m.model_enum, SEModel.AVAILABLE_MODELS)
+                        imgui.pop_style_var()
+
+                        if imgui.begin_tab_bar("##tabs"):
+                            if imgui.begin_tab_item("   Training   ")[0]:
+                                m.active_tab = 0
+                                imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (3, 3))
+                                # Train data selection
+                                cw = imgui.get_content_region_available_width()
+                                imgui.set_next_item_width(cw - 65)
+                                _, m.train_data_path = imgui.input_text("##training_data", m.train_data_path, 256)
+                                imgui.pop_style_var()
+                                imgui.same_line()
+                                if imgui.button("browse", 55, 19):
+                                    m.train_data_path = filedialog.askopenfilename(filetypes=[("scNodes traindata", f"{cfg.filetype_traindata}")])
+
+                                # Training parameters
+                                imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
+                                imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
+                                imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
+                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+
+                                imgui.push_item_width(cw)
+                                _, m.epochs = imgui.slider_int("##epochs", m.epochs, 1, 100, f"{m.epochs} epoch"+("s" if m.epochs>1 else ""))
+                                _, m.batch_size = imgui.slider_int("##batchs", m.batch_size, 1, 128, f"{m.batch_size} batch size")
+                                imgui.pop_item_width()
+                                imgui.pop_style_var(1)
+                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 2))
+
+                                # Load, save, train buttons.
+                                block_buttons = False
+                                if m.background_process is not None:
+                                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_NEUTRAL_LIGHT)
+                                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *cfg.COLOUR_NEUTRAL_LIGHT)
+                                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_NEUTRAL_LIGHT)
+                                    imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_NEUTRAL)
+                                    block_buttons = True
+                                if imgui.button("load", (cw - 16) / 3, 20):
+                                    if not block_buttons:
+                                        model_path = filedialog.askopenfilename(filetypes=[("scNodes CNN", f"{cfg.filetype_semodel}")])
+                                        if model_path is not None:
+                                            m.load(model_path)
+                                imgui.same_line(spacing=8)
+                                block_save_button = False
+                                if m.model is None:
+                                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_NEUTRAL_LIGHT)
+                                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED,*cfg.COLOUR_NEUTRAL_LIGHT)
+                                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE,*cfg.COLOUR_NEUTRAL_LIGHT)
+                                    imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_NEUTRAL)
+                                    block_save_button = True
+                                if imgui.button("save", (cw - 16) / 3, 20):
+                                    if not block_buttons or block_save_button:
+                                        model_path = filedialog.asksaveasfilename()
+                                        if model_path is not None:
+                                            if model_path[-len(cfg.filetype_semodel):] != cfg.filetype_semodel:
+                                                model_path += cfg.filetype_semodel
+                                            m.save(model_path)
+                                if block_save_button:
+                                    imgui.pop_style_color(4)
+                                imgui.same_line(spacing=8)
+                                if imgui.button("train", (cw - 16) / 3, 20):
+                                    if not block_buttons:
+                                        m.train()
+                                if block_buttons:
+                                    imgui.pop_style_color(4)
+
+                                imgui.pop_style_var(5)
+                                imgui.end_tab_item()
+
+                            if imgui.begin_tab_item("    Prediction   ")[0]:
+                                m.active_tab = 1
+                                # Checkboxes and sliders
+                                imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
+                                imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
+                                imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
+                                imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                                imgui.push_style_color(imgui.COLOR_CHECK_MARK, *cfg.COLOUR_TEXT)
+
+                                imgui.push_item_width(imgui.get_content_region_available_width())
+                                _, m.alpha = imgui.slider_float("##alpha", m.alpha, 0.0, 1.0, format=f"{m.alpha:.2f} alpha")
+                                _, m.overlap = imgui.slider_float("##overlap", m.overlap, 0.0, 0.5, format=f"{m.overlap:.2f} overlap")
+                                _, m.threshold = imgui.slider_float("##thershold", m.threshold, 0.0, 1.0, format=f"{m.threshold:.2f} threshold")
+                                imgui.pop_item_width()
+
+                                _, m.active = imgui.checkbox("active    ", m.active)
+                                if _ and m.active:
+                                    m.set_slice(cfg.se_active_frame.data)
+                                imgui.same_line()
+                                _, m.blend = imgui.checkbox("blend    ", m.blend)
+                                imgui.same_line()
+                                _, m.show = imgui.checkbox("show    ", m.show)
+                                imgui.pop_style_var(5)
+                                imgui.pop_style_color(1)
+                                imgui.end_tab_item()
+                            imgui.end_tab_bar()
+
+                        if m.background_process is not None:
+                            SegmentationEditor._gui_background_process_progress_bar(m.background_process)
+                            if m.background_process.progress >= 1.0:
+                                m.background_process = None
+                        imgui.end_child()
+                    if pop_active_colour:
+                        imgui.pop_style_color(1)
+
+                cw = imgui.get_content_region_available_width()
+                imgui.new_line()
+                imgui.same_line(spacing=(cw - 120) / 2)
+                imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
+                imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
+                imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+                if imgui.button("Add model", 120, 23):
+                    cfg.se_models.append(SEModel())
+                imgui.pop_style_var(3)
 
         def menu_bar():
             imgui.push_style_color(imgui.COLOR_MENUBAR_BACKGROUND, *cfg.COLOUR_MAIN_MENU_BAR)
@@ -533,17 +686,19 @@ class SegmentationEditor:
                 if imgui.begin_menu("File"):
                     if imgui.menu_item("Import dataset")[0]:
                         try:
-                            filename = filedialog.askopenfilename(filetypes=[("scNodes segmentable", ".mrc .scns")])
+                            filename = filedialog.askopenfilename(filetypes=[("scNodes segmentable", f".mrc {cfg.filetype_segmentation}")])
                             if filename != '':
                                 if filename[-4:] == ".mrc":
                                     cfg.se_frames.append(SEFrame(filename))
                                     self.set_active_dataset(cfg.se_frames[-1])
                                 elif filename[-5:] == ".scns":
                                     with open(filename, 'rb') as pickle_file:
-                                        segmentation = pickle.load(pickle_file)
-                                        segmentation.on_load()
-                                        cfg.se_frames.append(segmentation)
+                                        seframe = pickle.load(pickle_file)
+                                        seframe.on_load()
+                                        seframe.slice_changed = False
+                                        cfg.se_frames.append(seframe)
                                         self.set_active_dataset(cfg.se_frames[-1])
+                            self.parse_available_features()
                         except Exception as e:
                             print(e)
                     if imgui.menu_item("Save dataset")[0]:
@@ -601,13 +756,35 @@ class SegmentationEditor:
         menu_bar()
         # Render the currently active frame
 
-        if cfg.se_active_frame is not None and self.active_tab == "Segmentation":
-            pxd = self.renderer.render_frame(cfg.se_active_frame, self.camera, self.window, cfg.se_active_frame.filters)
-            if pxd is not None:
-                cfg.se_active_frame.compute_histogram(pxd)
-                if cfg.se_active_frame.autocontrast:
-                    cfg.se_active_frame.compute_autocontrast(None, pxd)
-                cfg.se_active_frame.requires_histogram_update = False
+        if cfg.se_active_frame is not None:
+            if self.active_tab == "Segmentation":
+                pxd = self.renderer.render_frame_with_segmentations(cfg.se_active_frame, self.camera, self.window, cfg.se_active_frame.filters)
+                if pxd is not None:
+                    cfg.se_active_frame.compute_histogram(pxd)
+                    if cfg.se_active_frame.autocontrast:
+                        cfg.se_active_frame.compute_autocontrast(None, pxd)
+                    cfg.se_active_frame.requires_histogram_update = False
+
+                # render drawing ROI indicator
+                active_feature = cfg.se_active_frame.active_feature
+                if active_feature is not None:
+                    radius = active_feature.brush_size * active_feature.parent.pixel_size
+                    world_position = self.camera.cursor_to_world_position(self.window.cursor_pos)
+                    if not imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
+                        self.renderer.add_circle(world_position, radius, active_feature.colour)
+                    else:
+                        self.renderer.add_square(world_position, active_feature.box_size_nm, active_feature.colour)
+                for f in cfg.se_active_frame.features:
+                    frame_xy = f.parent.transform.translation
+                    if f.show_boxes and not f.hide:
+                        for box in f.boxes[f.current_slice]:
+                            box_x_pos = frame_xy[0] + (box[0] - f.parent.width / 2) * f.parent.pixel_size
+                            box_y_pos = frame_xy[1] + (box[1] - f.parent.height / 2) * f.parent.pixel_size
+                            self.renderer.add_square((box_x_pos, box_y_pos), f.box_size_nm, f.colour)
+
+            if self.active_tab == "Models":
+                self.renderer.render_frame_with_models(cfg.se_active_frame, self.camera)
+
         # MAIN WINDOW
         imgui.set_next_window_position(0, 17, imgui.ONCE)
         imgui.set_next_window_size(SegmentationEditor.MAIN_WINDOW_WIDTH, self.window.height - 17)
@@ -620,20 +797,7 @@ class SegmentationEditor:
                 imgui.end_tab_item()
             if imgui.begin_tab_item("Models")[0]:
                 if self.active_tab != "Models":
-                    # upon opening Models tab.
-                    self.all_feature_names = list()
-                    for sef in cfg.se_frames:
-                        for ftr in sef.features:
-                            if ftr.title not in self.all_feature_names:
-                                self.all_feature_names.append(ftr.title)
-                            if ftr.title not in self.trainset_feature_selection:
-                                self.trainset_feature_selection[ftr.title] = 0.0
-                    to_pop = list()
-                    for key in self.trainset_feature_selection.keys():
-                        if key not in self.all_feature_names:
-                            to_pop.append(key)
-                    for key in to_pop:
-                        self.trainset_feature_selection.pop(key)
+                    self.parse_available_features()
                 self.active_tab = "Models"
                 models_tab()
                 imgui.end_tab_item()
@@ -641,19 +805,48 @@ class SegmentationEditor:
 
         imgui.end()
 
-        # SLICER
-        if self.active_tab == "Segmentation":
-            slicer_window()
+        slicer_window()
 
         imgui.pop_style_color(32)
         imgui.pop_style_var(1)
 
+    def parse_available_features(self):
+        # upon opening Models tab.
+        self.all_feature_names = list()
+        for sef in cfg.se_frames:
+            for ftr in sef.features:
+                if ftr.title not in self.all_feature_names:
+                    self.all_feature_names.append(ftr.title)
+                if ftr.title not in self.trainset_feature_selection:
+                    self.trainset_feature_selection[ftr.title] = 0.0
+        to_pop = list()
+        for key in self.trainset_feature_selection.keys():
+            if key not in self.all_feature_names:
+                to_pop.append(key)
+        for key in to_pop:
+            self.trainset_feature_selection.pop(key)
+
+    @staticmethod
+    def _gui_background_process_progress_bar(process):
+        cw = imgui.get_content_region_available_width()
+        origin = imgui.get_window_position()
+        y = imgui.get_cursor_screen_pos()[1]
+        drawlist = imgui.get_window_draw_list()
+        drawlist.add_rect_filled(8 + origin[0], y,
+                                 8 + origin[0] + cw,
+                                 y + SegmentationEditor.PROGRESS_BAR_HEIGHT,
+                                 imgui.get_color_u32_rgba(*cfg.COLOUR_NEUTRAL))
+        drawlist.add_rect_filled(8 + origin[0], y,
+                                 8 + origin[0] + cw * min([1.0, process.progress]),
+                                 y + SegmentationEditor.PROGRESS_BAR_HEIGHT,
+                                 imgui.get_color_u32_rgba(*cfg.COLOUR_POSITIVE))
+        imgui.dummy(0, SegmentationEditor.PROGRESS_BAR_HEIGHT)
 
     def launch_create_training_set(self):
         path = filedialog.asksaveasfilename()
         if path is None:
             return
-        path += ".tif"
+        path += cfg.filetype_traindata
         #
         positive_feature_names = list()
         negative_feature_names = list()
@@ -728,13 +921,12 @@ class SegmentationEditor:
                                 if is_positive:
                                     positive.append([image, segmentation])
                                 else:
-                                    negative.append([image, np.zeros_like(segmentation)])  # TODO: warn when negative img contains positively segmented features
+                                    negative.append([image, np.zeros_like(segmentation)])
                             n_done += 1
                             process.set_progress(n_done / n_boxes)
 
         all_imgs = np.array(positive + negative)
-        tifffile.imwrite(path, all_imgs)
-
+        tifffile.imwrite(path, all_imgs, description=f"apix={apix}")
 
     def camera_control(self):
         if imgui.get_io().want_capture_mouse or imgui.get_io().want_capture_keyboard:
@@ -763,6 +955,7 @@ class SEFrame:
         self.title = os.path.splitext(os.path.basename(self.path))[0]
         self.n_slices = 0
         self.current_slice = -1
+        self.slice_changed = False
         self.data = None
         self.features = list()
         self.active_feature = None
@@ -842,6 +1035,7 @@ class SEFrame:
         self.requires_histogram_update = True
         if requested_slice == self.current_slice:
             return
+        self.slice_changed = True
         mrc = mrcfile.mmap(self.path, mode="r")
         self.n_slices = mrc.data.shape[0]
         requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
@@ -1156,10 +1350,10 @@ class Filter:
 
 
 class Renderer:
-
     def __init__(self):
         self.quad_shader = Shader(os.path.join(cfg.root, "shaders", "se_quad_shader.glsl"))
-        self.segmentation_shader = Shader(os.path.join(cfg.root, "shaders", "se_segmentation_shader.glsl"))
+        self.b_segmentation_shader = Shader(os.path.join(cfg.root, "shaders", "se_binary_segmentation_shader.glsl"))
+        self.f_segmentation_shader = Shader(os.path.join(cfg.root, "shaders", "se_float_segmentation_shader.glsl"))
         self.border_shader = Shader(os.path.join(cfg.root, "shaders", "se_border_shader.glsl"))
         self.kernel_filter = Shader(os.path.join(cfg.root, "shaders", "se_compute_kernel_filter.glsl"))
         self.mix_filtered = Shader(os.path.join(cfg.root, "shaders", "se_compute_mix.glsl"))
@@ -1171,7 +1365,73 @@ class Renderer:
         self.fbo2 = FrameBuffer()
         self.fbo3 = FrameBuffer()
 
-    def render_frame(self, se_frame, camera, window, filters=[]):
+    def render_frame_with_models(self, se_frame, camera):
+        se_frame.update_model_matrix()
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendEquation(GL_FUNC_ADD)
+
+        self.quad_shader.bind()
+        se_frame.quad_va.bind()
+        se_frame.texture.bind()
+        self.quad_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
+        self.quad_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
+        self.quad_shader.uniform1f("alpha", se_frame.alpha)
+        self.quad_shader.uniform1f("contrastMin", se_frame.contrast_lims[0])
+        self.quad_shader.uniform1f("contrastMax", se_frame.contrast_lims[1])
+        glDrawElements(GL_TRIANGLES, se_frame.quad_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        self.quad_shader.unbind()
+        se_frame.quad_va.unbind()
+        glActiveTexture(GL_TEXTURE0)
+
+        # render overlays (from models)
+        se_frame.quad_va.bind()
+        self.f_segmentation_shader.bind()
+        self.f_segmentation_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
+        self.f_segmentation_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
+        render_list = copy(cfg.se_models)
+        if cfg.se_active_model in render_list:
+            render_list.remove(cfg.se_active_model)
+            render_list.append(cfg.se_active_model)
+        for model in render_list:
+            if not model.active or not model.show:
+                continue
+            if model.data is None:
+                continue
+            if model.blend:
+                glBlendFunc(GL_DST_COLOR, GL_DST_ALPHA)
+                glBlendEquation(GL_FUNC_ADD)
+            else:
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+                glBlendEquation(GL_FUNC_ADD)
+            self.f_segmentation_shader.uniform1f("alpha", model.alpha)
+            clr = model.colour
+            alpha = model.alpha
+            self.f_segmentation_shader.uniform3f("colour", (clr[0] * alpha, clr[1] * alpha, clr[2] * alpha))
+            self.f_segmentation_shader.uniform1f("threshold", model.threshold)
+            model.texture.bind(0)
+            glDrawElements(GL_TRIANGLES, se_frame.quad_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        se_frame.quad_va.unbind()
+        self.f_segmentation_shader.unbind()
+        glActiveTexture(GL_TEXTURE0)
+
+        # render border
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendEquation(GL_FUNC_ADD)
+        self.border_shader.bind()
+        se_frame.border_va.bind()
+        self.border_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
+        self.border_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
+        glDrawElements(GL_LINES, se_frame.border_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        self.border_shader.unbind()
+        se_frame.border_va.unbind()
+
+    def render_frame_with_segmentations(self, se_frame, camera, window, filters=[]):
+        """
+        se_frame: the SEFrame object to render.
+        camera: a Camera object to render with.
+        window: the Window object (to which the viewport size will be reset)
+        filters: a list of Filter objectm, to apply to the se_frame pixeldata.
+        """
         se_frame.update_model_matrix()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glBlendEquation(GL_FUNC_ADD)
@@ -1180,7 +1440,7 @@ class Renderer:
         self.fbo2.clear((0.0, 0.0, 0.0, 1.0))
         self.fbo3.clear((0.0, 0.0, 0.0, 2.0))
 
-        # render the image to a framebuffer (todo: no need to render, just use a compute shader and imageload).
+        # render the image to a framebuffer
         fake_camera_matrix = np.matrix([[2 / self.fbo1.width, 0, 0, 0], [0, 2 / self.fbo1.height, 0, 0], [0, 0, -2 / 100, 0], [0, 0, 0, 1]])
         self.fbo1.bind()
         self.quad_shader.bind()
@@ -1259,9 +1519,9 @@ class Renderer:
 
         # render overlays
         se_frame.quad_va.bind()
-        self.segmentation_shader.bind()
-        self.segmentation_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
-        self.segmentation_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
+        self.b_segmentation_shader.bind()
+        self.b_segmentation_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
+        self.b_segmentation_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
         render_list = copy(se_frame.features)
         if se_frame.active_feature in render_list:
             render_list.remove(se_frame.active_feature)
@@ -1277,16 +1537,16 @@ class Renderer:
             else:
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
                 glBlendEquation(GL_FUNC_ADD)
-            self.segmentation_shader.uniform1f("alpha", segmentation.alpha)
+            self.b_segmentation_shader.uniform1f("alpha", segmentation.alpha)
             clr = segmentation.colour
             alpha = segmentation.alpha
-            self.segmentation_shader.uniform3f("colour", (clr[0] * alpha, clr[1] * alpha, clr[2] * alpha))
-            self.segmentation_shader.uniform1i("contour", int(segmentation.contour))
+            self.b_segmentation_shader.uniform3f("colour", (clr[0] * alpha, clr[1] * alpha, clr[2] * alpha))
+            self.b_segmentation_shader.uniform1i("contour", int(segmentation.contour))
 
             segmentation.texture.bind(0)
             glDrawElements(GL_TRIANGLES, se_frame.quad_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
         se_frame.quad_va.unbind()
-        self.segmentation_shader.unbind()
+        self.b_segmentation_shader.unbind()
         glActiveTexture(GL_TEXTURE0)
 
         # render border
@@ -1493,4 +1753,3 @@ class BackgroundProcess:
 
     def __str__(self):
         return f"BackgroundProcess {self.uid} with function {self.function} and args {self.args}"
-

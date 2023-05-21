@@ -16,3 +16,4 @@ pyperclip==1.8.2
 pystackreg==0.2.6.post1
 scikit-image==0.19.3
 tifffile==2022.8.12
+tensorflow>=2.12.0

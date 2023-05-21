@@ -13,6 +13,9 @@ logpath = "scNodes.log"
 filetype_project = ".scnp"
 filetype_node_setup = ".scn"
 filetype_scene = ".scnscene"
+filetype_segmentation = ".scns"
+filetype_traindata = ".scnt"
+filetype_semodel = ".scnm"
 
 controls = [
     ("0/H/V", "Toggle frame visibility"),
@@ -85,6 +88,8 @@ ce_va_subdivision = 8
 
 se_frames = list()
 se_active_frame = None
+se_models = list()
+se_active_model = None
 se_path = "..."
 
 
