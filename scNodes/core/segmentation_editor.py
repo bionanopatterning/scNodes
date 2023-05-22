@@ -220,7 +220,7 @@ class SegmentationEditor:
                             if _change and _selected:
                                 self.set_active_dataset(s)
                             if imgui.begin_popup_context_item("##datasetContext"):
-                                if imgui.menu_item("Delete dataset")[0]:
+                                if imgui.menu_item("Unlink dataset")[0]:
                                     cfg.se_frames.remove(s)
                                     if cfg.se_active_frame == s:
                                         cfg.se_active_frame = None
@@ -374,8 +374,9 @@ class SegmentationEditor:
                                 imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *cfg.COLOUR_HEADER_HOVERED)
                                 imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_HEADER_ACTIVE)
                                 imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_HEADER)
-                                imgui.text("Active slices")
-                                if imgui.begin_child("active_slices", 180, SegmentationEditor.ACTIVE_SLICES_CHILD_HEIGHT, True):
+                                n_boxes = sum([len(boxlist) for boxlist in f.boxes.values()])
+                                imgui.text(f"Active slices ({len(f.edited_slices)}, {n_boxes} boxes)")
+                                if imgui.begin_child("active_slices", 200, SegmentationEditor.ACTIVE_SLICES_CHILD_HEIGHT, True):
                                     cw = imgui.get_content_region_available_width()
                                     for i in f.edited_slices:
                                         imgui.push_id(f"{f.uid}{i}")
@@ -850,7 +851,8 @@ class SegmentationEditor:
         path = filedialog.asksaveasfilename()
         if path is None:
             return
-        path += cfg.filetype_traindata
+        if path[-len(cfg.filetype_traindata):] != cfg.filetype_traindata:
+            path += cfg.filetype_traindata
         #
         positive_feature_names = list()
         negative_feature_names = list()
@@ -881,7 +883,6 @@ class SegmentationEditor:
         n_done = 0
         target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
 
-        crop_nm = boxsize * apix
         for d in datasets:
             mrcf = mrcfile.mmap(d.path, mode="r")
             raw_type = type(mrcf.data[0, 0, 0])
@@ -965,7 +966,7 @@ class SEFrame:
         self.active_feature = None
         self.height, self.width = mrcfile.mmap(self.path, mode="r").data.shape[1:3]
         self.pixel_size = mrcfile.open(self.path, header_only=True).voxel_size.x / 10.0
-        self.title += f" ({self.pixel_size * 10.0:.2f} A/pix)"
+        self.title = f"({self.pixel_size * 10.0:.2f} A/pix)" + self.title
         self.transform = Transform()
         self.texture = None
         self.quad_va = None
