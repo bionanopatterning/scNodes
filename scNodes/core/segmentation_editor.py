@@ -120,7 +120,7 @@ class SegmentationEditor:
                 for model in active_models:
                     model.data[model.data != maxima] = 0
                     model.update_texture()
-            else:
+            elif len(active_models) == 1:
                 active_models[0].update_texture()
             cfg.se_active_frame.slice_changed = False
         imgui.get_io().display_size = self.window.width, self.window.height
@@ -351,7 +351,7 @@ class SegmentationEditor:
                             imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
                             imgui.set_next_item_width(cw - 40)
                             pxs = cfg.se_active_frame.pixel_size
-                            _, f.brush_size = imgui.slider_float("brush", f.brush_size, 1.0, 25.0 / pxs / 2,
+                            _, f.brush_size = imgui.slider_float("brush", f.brush_size, 1.0, 25.0 / pxs,
                                                                  format=f"{f.brush_size:.1f} px / {2 * f.brush_size * pxs:.1f} nm ")
                             f.brush_size = int(f.brush_size)
                             imgui.set_next_item_width(cw - 40)
@@ -519,6 +519,8 @@ class SegmentationEditor:
                         _change, _selected = imgui.selectable(s.title, cfg.se_active_frame == s)
                         if _change and _selected:
                             self.set_active_dataset(s)
+                            for model in cfg.se_models:
+                                model.reset_textures()
                         if imgui.begin_popup_context_item("##datasetContext"):
                             if imgui.menu_item("Delete dataset")[0]:
                                 cfg.se_frames.remove(s)
@@ -662,7 +664,9 @@ class SegmentationEditor:
 
                                 _, m.active = imgui.checkbox("active    ", m.active)
                                 if _ and m.active:
-                                    m.set_slice(cfg.se_active_frame.data)
+                                    if cfg.se_active_frame is not None:
+                                        m.set_slice(cfg.se_active_frame.data)
+                                        cfg.se_active_frame.slice_changed = True
                                 imgui.same_line()
                                 _, m.blend = imgui.checkbox("blend    ", m.blend)
                                 imgui.same_line()
@@ -796,7 +800,7 @@ class SegmentationEditor:
                         self.renderer.add_square(world_position, active_feature.box_size_nm, active_feature.colour)
                 for f in cfg.se_active_frame.features:
                     frame_xy = f.parent.transform.translation
-                    if f.show_boxes and not f.hide:
+                    if f.show_boxes and not f.hide and f.current_slice in f.boxes:
                         for box in f.boxes[f.current_slice]:
                             box_x_pos = frame_xy[0] + (box[0] - f.parent.width / 2) * f.parent.pixel_size
                             box_y_pos = frame_xy[1] + (box[1] - f.parent.height / 2) * f.parent.pixel_size
@@ -869,7 +873,7 @@ class SegmentationEditor:
 
     def launch_create_training_set(self):
         path = filedialog.asksaveasfilename()
-        if path is None:
+        if path == "":
             return
         if path[-len(cfg.filetype_traindata):] != cfg.filetype_traindata:
             path += cfg.filetype_traindata
@@ -920,7 +924,7 @@ class SegmentationEditor:
             # find all boxes
             for f in d.features:
                 if f.title in positives:
-                    pass
+                    is_positive = True
                 elif f.title in negatives:
                     is_positive = False
                 else:
@@ -937,16 +941,20 @@ class SegmentationEditor:
                             if x_min > 0 and y_min > 0 and x_max < w and y_max < h:
                                 image = np.flipud(mrcf.data[z, y_min:y_max, x_min:x_max])
                                 image = np.array(image.astype(out_type, copy=False), dtype=float)
-                                segmentation = np.flipud(f.slices[z][y_min:y_max, x_min:x_max])
-                                # scale image to the requested pixel size
                                 image = zoom(image, scale_fac)
-                                segmentation = zoom(segmentation, scale_fac)
                                 image = image[:boxsize, :boxsize]
-                                segmentation = segmentation[:boxsize, :boxsize]
+                                if z in f.slices and f.slices[z] is not None and is_positive:
+                                    segmentation = np.flipud(f.slices[z][y_min:y_max, x_min:x_max])
+                                    segmentation = zoom(segmentation, scale_fac)
+                                    segmentation = segmentation[:boxsize, :boxsize]
+                                    segmentation = zoom(segmentation, scale_fac)
+                                    segmentation = segmentation[:boxsize, :boxsize]
+                                else:
+                                    segmentation = np.zeros_like(image)
                                 if is_positive:
                                     positive.append([image, segmentation])
                                 else:
-                                    negative.append([image, np.zeros_like(segmentation)])
+                                    negative.append([image, segmentation])
                             n_done += 1
                             process.set_progress(n_done / n_boxes)
 
@@ -1198,8 +1206,8 @@ class Segmentation:
         self.box_size_nm = self.box_size * self.parent.pixel_size
 
     def add_box(self, pixel_coordinates):
-        if len(self.boxes[self.current_slice]) == 0:
-            self.request_draw_in_current_slice()
+        if self.current_slice not in self.boxes:
+            self.boxes[self.current_slice] = list()
         self.boxes[self.current_slice].append(pixel_coordinates)
         self.n_boxes += 1
 
@@ -1229,7 +1237,6 @@ class Segmentation:
             else:
                 self.texture.update(self.data)
         else:
-            self.boxes[requested_slice] = list()
             self.slices[requested_slice] = None
             self.data = None
             self.texture.update(self.data, self.width, self.height)

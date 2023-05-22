@@ -233,6 +233,9 @@ class SEModel:
             cfg.set_error(e, "Could not train model - see details below.")
             process.stop()
 
+    def reset_textures(self):
+        pass
+
     def compile(self, box_size):
         model_module_name = SEModel.AVAILABLE_MODELS[self.model_enum]
         self.model = SEModel.MODELS[model_module_name]((box_size, box_size, 1))
