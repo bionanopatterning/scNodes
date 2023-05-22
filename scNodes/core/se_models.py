@@ -11,10 +11,10 @@ import importlib
 import threading
 import json
 from scNodes.core.opengl_classes import Texture
-
+from scipy.ndimage import rotate
 # Note 230522: getting tensorflow to use the GPU is a pain. Eventually it worked with: CUDA D11.8, cuDNN 8.6, tensorflow 2.8.0, protobuf 3.20.0, and adding LIBRARY_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\lib\x64 to the PyCharm run configuration environment variables.
 
-# TODO: make n positive and n negative samples the same in training
+# TODO: make n positive and n negative samples the same in training - def augment_data(data)
 #
 
 
@@ -54,6 +54,7 @@ class SEModel:
         self.active_tab = 0
         self.background_process = None
         self.n_parameters = 0
+        self.n_copies = 4
 
         self.data = None
         self.texture = Texture(format="r32f")
@@ -94,7 +95,8 @@ class SEModel:
             'threshold': self.threshold,
             'overlap': self.overlap,
             'active_tab': self.active_tab,
-            'n_parameters': self.n_parameters
+            'n_parameters': self.n_parameters,
+            'n_copies': self.n_copies,
         }
         with open(file_path, 'w') as f:
             json.dump(metadata, f)
@@ -129,23 +131,92 @@ class SEModel:
         self.overlap = metadata['overlap']
         self.active_tab = metadata['active_tab']
         self.n_parameters = metadata['n_parameters']
+        self.n_copies = metadata['n_copies']
 
     def train(self):
         process = BackgroundProcess(self._train, (), name=f"{self.title} training")
         self.background_process = process
         process.start()
 
+    def load_training_data(self):
+        with tifffile.TiffFile(self.train_data_path) as train_data:
+            train_data_apix = float(train_data.pages[0].description.split("=")[1])
+            if self.apix == -1.0:
+                self.apix = train_data_apix
+            elif self.apix != train_data_apix:
+                print(f"Note: the selected training data has a different pixel size {train_data_apix:.3f} than what the model was previously trained with ({self.apix:.3f}).")
+        train_data = tifffile.imread(self.train_data_path)
+        train_x = train_data[:, 0, :, :, None]
+        train_y = train_data[:, 1, :, :, None]
+        n_samples = train_x.shape[0]
+
+        # split up the positive and negative indices
+        positive_indices = list()
+        negative_indices = list()
+        for i in range(n_samples):
+            if np.any(train_y[i]):
+                positive_indices.append(i)
+            else:
+                negative_indices.append(i)
+
+        n_pos = len(positive_indices)
+        n_neg = len(negative_indices)
+        positive_x = list()
+        positive_y = list()
+        for i in positive_indices:
+            for _ in range(self.n_copies):
+                if self.n_copies == 1:
+                    norm_train_x = train_x[i] - np.mean(train_x[i])
+                    denom = np.std(norm_train_x)
+                    if denom != 0.0:
+                        norm_train_x /= denom
+                    positive_x.append(norm_train_x)
+                    positive_y.append(train_y[i])
+                else:
+                    angle = np.random.uniform(0, 360)
+                    x_rotated = rotate(train_x[i], angle, reshape=False, cval=np.mean(train_x[i]))
+                    y_rotated = rotate(train_y[i], angle, reshape=False, cval=0.0)
+
+                    x_rotated = (x_rotated - np.mean(x_rotated))
+                    denom = np.std(x_rotated)
+                    if denom != 0.0:
+                        x_rotated /= np.std(x_rotated)
+
+                    positive_x.append(x_rotated)
+                    positive_y.append(y_rotated)
+
+        if n_neg == 0:
+            return np.array(positive_x), np.array(positive_y)
+
+        negative_sample_indices = negative_indices * int(self.n_copies * n_pos // n_neg) + negative_indices[:int(self.n_copies * n_pos) % n_neg]
+
+        negative_x = list()
+        negative_y = list()
+        n_neg_copied = 0
+        for i in negative_sample_indices:
+            angle = np.random.uniform(0, 360)
+            if self.n_copies == 1:
+                angle = (n_neg_copied // n_neg) * 90.0
+            x_rotated = rotate(train_x[i], angle, reshape=False, cval=np.mean(train_x[i]))
+
+            x_rotated = (x_rotated - np.mean(x_rotated))
+            denom = np.std(x_rotated)
+            if denom != 0.0:
+                x_rotated /= denom
+
+            negative_x.append(x_rotated)
+            negative_y.append(train_y[i])
+            n_neg_copied += 1
+        return np.array(positive_x + negative_x), np.array(positive_y + negative_y)
+
     def _train(self, process):
         try:
-            # get box size for the selected data
-            train_data = tifffile.imread(self.train_data_path)
-            train_x = train_data[:, 0, :, :, None]
-            train_y = train_data[:, 1, :, :, None]
+            train_x, train_y = self.load_training_data()
             n_samples = train_x.shape[0]
             box_size = train_x.shape[1]
             # compile, if not compiled yet
             if not self.compiled:
-                self.compile(box_size) # TODO: fix the models apix at this point
+                self.compile(box_size)
             # if training data box size is not compatible with the compiled model, abort.
             if box_size != self.box_size:
                 self.train_data_path = f"DATA HAS WRONG BOX SIZE ({box_size[0]} x {box_size[1]})"
@@ -157,6 +228,7 @@ class SEModel:
                            callbacks=[TrainingProgressCallback(process, n_samples, self.batch_size),
                                       StopTrainingCallback(process.stop_request)])
             process.set_progress(1.0)
+
         except Exception as e:
             cfg.set_error(e, "Could not train model - see details below.")
             process.stop()
@@ -170,10 +242,15 @@ class SEModel:
 
     def set_slice(self, slice_data):
         if not self.compiled:
-            return
+            return False
         if not self.active:
-            return
+            return False
         self.data = self.apply_to_slice(slice_data)
+        return True
+
+    def update_texture(self):
+        if not self.compiled or not self.active:
+            return
         self.texture.update(self.data)
 
     def apply_to_slice(self, image):
@@ -190,7 +267,12 @@ class SEModel:
             for y in range(0, h - self.box_size + 1, stride):
                 boxes.append(image[x:x + self.box_size, y:y + self.box_size])
         boxes = np.array(boxes)
-        print(type(boxes[0, 0, 0]))
+
+        mu = np.mean(boxes, axis=(1, 2), keepdims=True)
+        std = np.std(boxes, axis=(1, 2), keepdims=True)
+        std[std == 0] = 1.0
+        boxes = (boxes - mu) / std
+
         # apply model
         segmentations = np.squeeze(self.model.predict(boxes))
 
@@ -208,43 +290,6 @@ class SEModel:
         outimage = outimage / count
         return outimage[:w, :h]
 
-    def apply_to_tomogram(self, path_or_volume):
-        # todo: resize the slices to the model's apix!
-        if isinstance(path_or_volume, str):
-            data = mrcfile.mmap(path_or_volume, mode='r').data
-        else:
-            data = path_or_volume
-        d, w, h = data.shape
-        self.overlap = min([0.67, self.overlap])
-        pad_w = self.box_size - (w % self.box_size)
-        pad_h = self.box_size - (h % self.box_size)
-
-        # tile
-        stride = int(self.box_size * (1.0 - self.overlap))
-        boxes = list()
-        for z in range(d):
-            slice = np.pad(data[z, :, :], ((0, pad_w), (0, pad_h)))
-            for x in range(0, w - self.box_size + 1, stride):
-                for y in range(0, h - self.box_size + 1, stride):
-                    boxes.append(slice[x:x+self.box_size, y:y+self.box_size])
-        boxes = np.array(boxes)
-
-        # apply model
-        segmentations = np.squeeze(self.model.predict(boxes))
-
-        # detile
-        volume = np.zeros((d, w + pad_w, h + pad_h))
-        count = np.zeros((d, w + pad_w, h + pad_h), dtype=int)
-        i = 0
-        for z in range(d):
-            for x in range(0, w - self.box_size + 1, stride):
-                for y in range(0, h - self.box_size + 1, stride):
-                    volume[z, x:x+self.box_size, y:y+self.box_size] += segmentations[i]
-                    count[z, x:x+self.box_size, y:y+self.box_size] += 1
-                    i += 1
-        count[count == 0] = 1
-        volume = volume / count
-        return volume[:, :w, :h]
 
     @staticmethod
     def load_models():

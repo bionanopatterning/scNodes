@@ -107,8 +107,21 @@ class SegmentationEditor:
             self.camera.set_projection_matrix(cfg.window_width, cfg.window_height)
 
         if self.active_tab == "Models" and cfg.se_active_frame is not None and cfg.se_active_frame.slice_changed:
+            active_models = list()
+            pxd_arrays = list()
             for model in cfg.se_models:
-                model.set_slice(cfg.se_active_frame.data)
+                # launch all active models
+                if model.set_slice(cfg.se_active_frame.data):
+                    active_models.append(model)
+                    pxd_arrays.append(model.data)
+            if len(active_models) > 1:
+                stacked_array = np.stack(pxd_arrays)
+                maxima = np.max(stacked_array, axis=0)
+                for model in active_models:
+                    model.data[model.data != maxima] = 0
+                    model.update_texture()
+            else:
+                active_models[0].update_texture()
             cfg.se_active_frame.slice_changed = False
         imgui.get_io().display_size = self.window.width, self.window.height
         imgui.new_frame()
@@ -213,7 +226,7 @@ class SegmentationEditor:
         def segmentation_tab():
             def datasets_panel():
                 if imgui.collapsing_header("Available datasets", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
-                    if imgui.begin_child("dataset", 0.0, 80, True, imgui.WINDOW_ALWAYS_VERTICAL_SCROLLBAR):
+                    if imgui.begin_child("se_av_dataset", 0.0, 80, True, imgui.WINDOW_ALWAYS_VERTICAL_SCROLLBAR):
                         for s in cfg.se_frames:
                             imgui.push_id(f"se{s.uid}")
                             _change, _selected = imgui.selectable(s.title, cfg.se_active_frame == s)
@@ -318,7 +331,7 @@ class SegmentationEditor:
                         if cfg.se_active_frame.active_feature == f:
                             imgui.push_style_color(imgui.COLOR_CHILD_BACKGROUND, *cfg.COLOUR_FRAME_ACTIVE)
                             pop_active_colour = True
-                        if imgui.begin_child(f"##{f.uid}", 0.0, SegmentationEditor.FEATURE_PANEL_HEIGHT, True):
+                        if imgui.begin_child(f"##feat_{f.uid}", 0.0, SegmentationEditor.FEATURE_PANEL_HEIGHT, True):
                             cw = imgui.get_content_region_available_width()
 
                             # Colour picker
@@ -441,7 +454,7 @@ class SegmentationEditor:
                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 2))
 
                 imgui.text("Features of interest")
-                if imgui.begin_child("features", 0.0, 1 + len(self.all_feature_names) * 20, False, imgui.WINDOW_NO_SCROLLBAR):
+                if imgui.begin_child("select_features", 0.0, 1 + len(self.all_feature_names) * 20, False, imgui.WINDOW_NO_SCROLLBAR):
                     imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_NEUTRAL_LIGHT)
                     cw = imgui.get_content_region_available_width()
                     imgui.push_item_width(cw)
@@ -465,7 +478,7 @@ class SegmentationEditor:
 
                 imgui.text("Datasets to sample")
                 imgui.push_style_color(imgui.COLOR_CHECK_MARK, 0.0, 0.0, 0.0, 1.0)
-                if imgui.begin_child("datasets", 0.0, min([80, 10 + len(cfg.se_frames)*20]), True):
+                if imgui.begin_child("datasets_to_sample", 0.0, min([80, 10 + len(cfg.se_frames)*20]), True):
                     for s in cfg.se_frames:
                         imgui.push_id(f"{s.uid}")
                         _, s.sample = imgui.checkbox(s.title, s.sample)
@@ -500,7 +513,7 @@ class SegmentationEditor:
                 imgui.pop_style_var(6)
 
             if imgui.collapsing_header("Available datasets", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
-                if imgui.begin_child("dataset", 0.0, 80, True, imgui.WINDOW_ALWAYS_VERTICAL_SCROLLBAR):
+                if imgui.begin_child("available_datasets", 0.0, 80, True, imgui.WINDOW_ALWAYS_VERTICAL_SCROLLBAR):
                     for s in cfg.se_frames:
                         imgui.push_id(f"se{s.uid}")
                         _change, _selected = imgui.selectable(s.title, cfg.se_active_frame == s)
@@ -581,9 +594,12 @@ class SegmentationEditor:
                                 imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
                                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
 
-                                imgui.push_item_width(cw)
+                                imgui.set_next_item_width(cw)
                                 _, m.epochs = imgui.slider_int("##epochs", m.epochs, 1, 50, f"{m.epochs} epoch"+("s" if m.epochs>1 else ""))
+                                imgui.push_item_width((cw - 5) / 2)
                                 _, m.batch_size = imgui.slider_int("##batchs", m.batch_size, 1, 128, f"{m.batch_size} batch size")
+                                imgui.same_line()
+                                _, m.n_copies = imgui.slider_int("##copies", m.n_copies, 1, 10, f"{m.n_copies} copies")
                                 imgui.pop_item_width()
                                 imgui.pop_style_var(1)
                                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 2))
@@ -611,7 +627,7 @@ class SegmentationEditor:
                                     block_save_button = True
                                 if imgui.button("save", (cw - 16) / 3, 20):
                                     if not block_buttons or block_save_button:
-                                        model_path = filedialog.asksaveasfilename()
+                                        model_path = filedialog.asksaveasfilename(filetypes=[("scNodes traindata", f"{cfg.filetype_traindata}")])
                                         if model_path is not None:
                                             if model_path[-len(cfg.filetype_semodel):] != cfg.filetype_semodel:
                                                 model_path += cfg.filetype_semodel
@@ -663,7 +679,6 @@ class SegmentationEditor:
 
                         if imgui.is_window_hovered() and imgui.is_mouse_clicked(0):
                             cfg.se_active_model = m
-
                         imgui.end_child()
                     if pop_active_colour:
                         imgui.pop_style_color(1)
@@ -807,6 +822,11 @@ class SegmentationEditor:
                 models_tab()
                 imgui.end_tab_item()
             imgui.end_tab_bar()
+
+        if imgui.begin_child("##dummychild"):
+            imgui.end_child()
+        else:
+            imgui.end_child()
 
         imgui.end()
 
@@ -966,7 +986,7 @@ class SEFrame:
         self.active_feature = None
         self.height, self.width = mrcfile.mmap(self.path, mode="r").data.shape[1:3]
         self.pixel_size = mrcfile.open(self.path, header_only=True).voxel_size.x / 10.0
-        self.title = f"({self.pixel_size * 10.0:.2f} A/pix)" + self.title
+        self.title = f"({self.pixel_size * 10.0:.2f} A/pix) " + self.title
         self.transform = Transform()
         self.texture = None
         self.quad_va = None
