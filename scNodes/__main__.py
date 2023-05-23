@@ -53,6 +53,7 @@ if __name__ == "__main__":
         node_editor.delete_temporary_files()
         cfg.node_editor = node_editor
         cfg.correlation_editor = correlation_editor
+        cfg.segmentation_editor = segmentation_editor
         cfg.image_viewer = image_viewer
 
         try:

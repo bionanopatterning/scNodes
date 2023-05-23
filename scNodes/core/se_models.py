@@ -46,6 +46,7 @@ class SEModel:
         self.batch_size = 32
         self.train_data_path = "..."
         self.active = True
+        self.export = True
         self.blend = False
         self.show = True
         self.alpha = 0.75
@@ -55,6 +56,8 @@ class SEModel:
         self.background_process = None
         self.n_parameters = 0
         self.n_copies = 4
+        self.info = ""
+        self.info_short = ""
 
         self.data = None
         self.texture = Texture(format="r32f")
@@ -102,36 +105,39 @@ class SEModel:
             json.dump(metadata, f)
 
     def load(self, file_path):
-        # Split the file_path into directory and file
-        directory = os.path.dirname(file_path)
-        base_name = os.path.basename(file_path)
+        try:
+            # Split the file_path into directory and file
+            directory = os.path.dirname(file_path)
+            base_name = os.path.basename(file_path)
 
-        # Load the Keras model
-        model_path = os.path.join(directory, base_name + '_weights.h5')
-        self.model = tf.keras.models.load_model(model_path)
+            # Load the Keras model
+            model_path = os.path.join(directory, base_name + '_weights.h5')
+            self.model = tf.keras.models.load_model(model_path)
 
-        # Load metadata
-        with open(file_path, 'r') as f:
-            metadata = json.load(f)
-        self.uid = metadata['uid']
-        self.title = metadata['title']
-        self.colour = metadata['colour']
-        self.apix = metadata['apix']
-        self.compiled = metadata['compiled']
-        self.box_size = metadata['box_size']
-        self.model_enum = metadata['model_enum']
-        self.epochs = metadata['epochs']
-        self.batch_size = metadata['batch_size']
-        self.train_data_path = metadata['train_data_path']
-        self.active = metadata['active']
-        self.blend = metadata['blend']
-        self.show = metadata['show']
-        self.alpha = metadata['alpha']
-        self.threshold = metadata['threshold']
-        self.overlap = metadata['overlap']
-        self.active_tab = metadata['active_tab']
-        self.n_parameters = metadata['n_parameters']
-        self.n_copies = metadata['n_copies']
+            # Load metadata
+            with open(file_path, 'r') as f:
+                metadata = json.load(f)
+            self.uid = metadata['uid']
+            self.title = metadata['title']
+            self.colour = metadata['colour']
+            self.apix = metadata['apix']
+            self.compiled = metadata['compiled']
+            self.box_size = metadata['box_size']
+            self.model_enum = metadata['model_enum']
+            self.epochs = metadata['epochs']
+            self.batch_size = metadata['batch_size']
+            self.train_data_path = metadata['train_data_path']
+            self.active = metadata['active']
+            self.blend = metadata['blend']
+            self.show = metadata['show']
+            self.alpha = metadata['alpha']
+            self.threshold = metadata['threshold']
+            self.overlap = metadata['overlap']
+            self.active_tab = metadata['active_tab']
+            self.n_parameters = metadata['n_parameters']
+            self.n_copies = metadata['n_copies']
+        except Exception as e:
+            print("Error loading model - see details below", print(e))
 
     def train(self):
         process = BackgroundProcess(self._train, (), name=f"{self.title} training")
@@ -242,6 +248,8 @@ class SEModel:
         self.compiled = True
         self.box_size = box_size
         self.n_parameters = self.model.count_params()
+        self.info = SEModel.AVAILABLE_MODELS[self.model_enum] + f" ({self.n_parameters}, {self.box_size}, {self.apix:.3f})"
+        self.info_short = "(" + SEModel.AVAILABLE_MODELS[self.model_enum] + f" {self.box_size}, {self.apix:.3f})"
 
     def set_slice(self, slice_data):
         if not self.compiled:
@@ -275,7 +283,6 @@ class SEModel:
         std = np.std(boxes, axis=(1, 2), keepdims=True)
         std[std == 0] = 1.0
         boxes = (boxes - mu) / std
-
         # apply model
         segmentations = np.squeeze(self.model.predict(boxes))
 

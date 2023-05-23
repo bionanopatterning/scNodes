@@ -1063,6 +1063,8 @@ class CorrelationEditor:
             _c, f.title = imgui.input_text("##fname", f.title, 30)
         if f.title == "":
             f.title = str(f.uid)
+        if imgui.menu_item("Add to Segmentation Editor")[0]:
+            cfg.segmentation_editor.seframe_from_clemframe(f)
         if imgui.menu_item("Send to top")[0]:
             f.move_to_front()
         elif imgui.menu_item("Send to bottom")[0]:

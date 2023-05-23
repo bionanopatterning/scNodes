@@ -71,6 +71,7 @@ batch_size = n_cpus_max * 3
 image_viewer = None
 node_editor = None
 correlation_editor = None
+segmentation_editor = None
 ce_tool_menu_names = {'Transform': True, 'Visuals': True, 'Export': True, 'Measure': True, 'Plugins': True, 'Particle picking': True}
 node_editor_relink = False
 correlation_editor_relink = False
