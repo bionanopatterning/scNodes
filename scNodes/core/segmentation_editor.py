@@ -769,14 +769,16 @@ class SegmentationEditor:
                     _, self.export_compete = imgui.checkbox("competing models", self.export_compete)
                     imgui.end_child()
 
+
+                if widgets.centred_button("Start export", 120, 23):
+                    self.launch_export_volumes()
+
                 # export progress:
                 if self.queued_exports:
                     imgui.text(f"Tomograms remaining: {len(self.queued_exports)}")
                     imgui.text(f"This tomogram progress:")
                     self._gui_background_process_progress_bar(self.queued_exports[0].process, (*self.queued_exports[0].colour, 1.0))
 
-                if widgets.centred_button("Start export", 120, 23):
-                    self.launch_export_volumes()
                 imgui.pop_style_var(3)
 
         def menu_bar():
@@ -1489,7 +1491,7 @@ class QueuedExport:
     def do_export(self, process):
         mrcd = mrcfile.open(self.dataset.path, mode='r').data
         n_slices = mrcd.shape[0]
-        n_slices_total = mrcd.shape[0] * (len(self.models) + 2)
+        n_slices_total = mrcd.shape[0] * len(self.models)
         n_slices_complete = 0
         segmentations = np.zeros((len(self.models), *mrcd.shape), dtype=np.uint8)
         i = 0
@@ -1498,9 +1500,8 @@ class QueuedExport:
             for z in range(n_slices):
                 segmentations[i, z, :, :] = m.apply_to_slice(mrcd[z, :, :]) * 255
                 n_slices_complete += 1
-                self.process.set_progress(n_slices_complete / n_slices_total)
+                self.process.set_progress(max([0.999, n_slices_complete / n_slices_total]))
             i += 1
-
 
         # apply competition
         if self.compete and len(self.models) > 1:
@@ -1510,7 +1511,7 @@ class QueuedExport:
                     mask = segmentations[i, z, :, :] == max_img
                     segmentations[i, z, :, :][mask == 0] = 0.0
                 n_slices_complete += 1
-                self.process.set_progress(n_slices_complete / n_slices_total)
+                self.process.set_progress(max([0.999, n_slices_complete / n_slices_total]))
 
         # save the mrc files
         i = 0
