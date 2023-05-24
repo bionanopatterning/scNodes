@@ -374,97 +374,99 @@ class SegmentationEditor:
                         if cfg.se_active_frame.active_feature == f:
                             imgui.push_style_color(imgui.COLOR_CHILD_BACKGROUND, *cfg.COLOUR_FRAME_ACTIVE)
                             pop_active_colour = True
-                        if imgui.begin_child(f"##feat_{f.uid}", 0.0, SegmentationEditor.FEATURE_PANEL_HEIGHT, True):
+                        imgui.begin_child(f"##feat_{f.uid}", 0.0, SegmentationEditor.FEATURE_PANEL_HEIGHT, True)
+                        cw = imgui.get_content_region_available_width()
+
+                        # Colour picker
+                        _, f.colour = imgui.color_edit3(f.title, *f.colour[:3],
+                                                        imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
+                        if _:
+                            self.parse_available_features()
+                        # Title
+                        imgui.same_line()
+                        imgui.set_next_item_width(cw - 25)
+                        _, f.title = imgui.input_text("##title", f.title, 256, imgui.INPUT_TEXT_NO_HORIZONTAL_SCROLL | imgui.INPUT_TEXT_AUTO_SELECT_ALL)
+                        if _:
+                            self.parse_available_features()
+                        self._gui_feature_title_context_menu(f)
+                        # Alpha slider and brush size
+                        imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                        imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
+                        imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
+                        imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
+                        imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+                        imgui.set_next_item_width(cw - 40)
+                        pxs = cfg.se_active_frame.pixel_size
+                        _, f.brush_size = imgui.slider_float("brush", f.brush_size, 1.0, 25.0 / pxs,
+                                                             format=f"{f.brush_size:.1f} px / {2 * f.brush_size * pxs:.1f} nm ")
+                        f.brush_size = int(f.brush_size)
+                        imgui.set_next_item_width(cw - 40)
+                        _, f.alpha = imgui.slider_float("alpha", f.alpha, 0.0, 1.0, format="%.2f")
+                        imgui.set_next_item_width(cw - 40)
+                        _, f.box_size = imgui.slider_int("boxes", f.box_size, 8, 128, format=f"{f.box_size} pixel")
+                        if _:
+                            f.set_box_size(f.box_size)
+                        # Show / fill checkboxes
+                        _, show = imgui.checkbox("show", not f.hide)
+                        f.hide = not show
+                        imgui.same_line()
+                        _, fill = imgui.checkbox("fill", not f.contour)
+                        f.contour = not fill
+                        imgui.same_line()
+                        _, hide_boxes = imgui.checkbox("hide boxes", not f.show_boxes)
+                        f.show_boxes = not hide_boxes
+                        f.contour = not fill
+                        imgui.same_line()
+
+                        # delete feature button
+                        imgui.same_line(position=cw - 20)
+                        delete_feature = False
+                        if imgui.image_button(self.icon_close.renderer_id, 13, 13):
+                            delete_feature = True
+                        imgui.same_line(position=cw - 20)
+
+                        imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *cfg.COLOUR_TRANSPARENT)
+                        imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_TRANSPARENT)
+                        imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_TRANSPARENT)
+
+                        if imgui.begin_menu("##asdc"):
+                            imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *cfg.COLOUR_HEADER_HOVERED)
+                            imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_HEADER_ACTIVE)
+                            imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_HEADER)
+                            n_boxes = sum([len(boxlist) for boxlist in f.boxes.values()])
+                            imgui.text(f"Active slices ({len(f.edited_slices)}, {n_boxes} boxes)")
+
+                            imgui.begin_child("active_slices", 200, SegmentationEditor.ACTIVE_SLICES_CHILD_HEIGHT, True)
                             cw = imgui.get_content_region_available_width()
+                            for i in f.edited_slices:
+                                imgui.push_id(f"{f.uid}{i}")
 
-                            # Colour picker
-                            _, f.colour = imgui.color_edit3(f.title, *f.colour[:3],
-                                                            imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
-                            if _:
-                                self.parse_available_features()
-                            # Title
-                            imgui.same_line()
-                            imgui.set_next_item_width(cw - 25)
-                            _, f.title = imgui.input_text("##title", f.title, 256, imgui.INPUT_TEXT_NO_HORIZONTAL_SCROLL | imgui.INPUT_TEXT_AUTO_SELECT_ALL)
-                            if _:
-                                self.parse_available_features()
-                            self._gui_feature_title_context_menu(f)
-                            # Alpha slider and brush size
-                            imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
-                            imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
-                            imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
-                            imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
-                            imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
-                            imgui.set_next_item_width(cw - 40)
-                            pxs = cfg.se_active_frame.pixel_size
-                            _, f.brush_size = imgui.slider_float("brush", f.brush_size, 1.0, 25.0 / pxs,
-                                                                 format=f"{f.brush_size:.1f} px / {2 * f.brush_size * pxs:.1f} nm ")
-                            f.brush_size = int(f.brush_size)
-                            imgui.set_next_item_width(cw - 40)
-                            _, f.alpha = imgui.slider_float("alpha", f.alpha, 0.0, 1.0, format="%.2f")
-                            imgui.set_next_item_width(cw - 40)
-                            _, f.box_size = imgui.slider_int("boxes", f.box_size, 8, 128, format=f"{f.box_size} pixel")
-                            if _:
-                                f.set_box_size(f.box_size)
-                            # Show / fill checkboxes
-                            _, show = imgui.checkbox("show", not f.hide)
-                            f.hide = not show
-                            imgui.same_line()
-                            _, fill = imgui.checkbox("fill", not f.contour)
-                            f.contour = not fill
-                            imgui.same_line()
-                            _, hide_boxes = imgui.checkbox("hide boxes", not f.show_boxes)
-                            f.show_boxes = not hide_boxes
-                            f.contour = not fill
-                            imgui.same_line()
-
-                            # delete feature button
-                            imgui.same_line(position=cw - 20)
-                            delete_feature = False
-                            if imgui.image_button(self.icon_close.renderer_id, 13, 13):
-                                delete_feature = True
-                            imgui.same_line(position=cw - 20)
-
-                            imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *cfg.COLOUR_TRANSPARENT)
-                            imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_TRANSPARENT)
-                            imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_TRANSPARENT)
-
-                            if imgui.begin_menu("##asdc"):
-                                imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *cfg.COLOUR_HEADER_HOVERED)
-                                imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_HEADER_ACTIVE)
-                                imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_HEADER)
-                                n_boxes = sum([len(boxlist) for boxlist in f.boxes.values()])
-                                imgui.text(f"Active slices ({len(f.edited_slices)}, {n_boxes} boxes)")
-                                if imgui.begin_child("active_slices", 200, SegmentationEditor.ACTIVE_SLICES_CHILD_HEIGHT, True):
-                                    cw = imgui.get_content_region_available_width()
-                                    for i in f.edited_slices:
-                                        imgui.push_id(f"{f.uid}{i}")
-
-                                        _, jumpto = imgui.selectable(f"Slice {i} ({len(f.boxes[i])} boxes)", f.current_slice == i, width=cw - 23)
-                                        if jumpto:
-                                            f.parent.set_slice(i)
-                                        imgui.same_line(position=cw - 5)
-                                        if imgui.image_button(self.icon_close.renderer_id, 13, 13):
-                                            f.remove_slice(i)
-                                        imgui.pop_id()
-                                    imgui.end_child()
-                                imgui.pop_style_color(3)
-                                imgui.end_menu()
+                                _, jumpto = imgui.selectable(f"Slice {i} ({len(f.boxes[i])} boxes)", f.current_slice == i, width=cw - 23)
+                                if jumpto:
+                                    f.parent.set_slice(i)
+                                imgui.same_line(position=cw - 5)
+                                if imgui.image_button(self.icon_close.renderer_id, 13, 13):
+                                    f.remove_slice(i)
+                                imgui.pop_id()
+                            imgui.end_child()
 
                             imgui.pop_style_color(3)
+                            imgui.end_menu()
 
-                            imgui.pop_style_var(5)
-                            if pop_active_colour:
-                                imgui.pop_style_color(1)
+                        imgui.pop_style_color(3)
 
-                            if delete_feature:
-                                cfg.se_active_frame.features.remove(f)
-                                if cfg.se_active_frame.active_feature == f:
-                                    cfg.se_active_frame.active_feature = None
+                        imgui.pop_style_var(5)
+                        if pop_active_colour:
+                            imgui.pop_style_color(1)
 
-                            if imgui.is_window_hovered() and imgui.is_mouse_clicked(0):
-                                cfg.se_active_frame.active_feature = f
-                            imgui.end_child()
+                        if delete_feature:
+                            cfg.se_active_frame.features.remove(f)
+                            if cfg.se_active_frame.active_feature == f:
+                                cfg.se_active_frame.active_feature = None
+
+                        if imgui.is_window_hovered() and imgui.is_mouse_clicked(0):
+                            cfg.se_active_frame.active_feature = f
+                        imgui.end_child()
 
                     # 'Add feature' button
                     cw = imgui.get_content_region_available_width()
@@ -1489,21 +1491,27 @@ class QueuedExport:
         print("QE made", self.dataset)
 
     def do_export(self, process):
+        print(f"QueuedExport - loading dataset {self.dataset.path}")
         mrcd = mrcfile.open(self.dataset.path, mode='r').data
         n_slices = mrcd.shape[0]
         n_slices_total = mrcd.shape[0] * len(self.models)
         n_slices_complete = 0
         segmentations = np.zeros((len(self.models), *mrcd.shape), dtype=np.uint8)
         i = 0
+
         for m in self.models:
+            print(f"QueuedExport - applying model {m.info}")
             self.colour = m.colour
             for z in range(n_slices):
-                segmentations[i, z, :, :] = m.apply_to_slice(mrcd[z, :, :]) * 255
+                outslice = m.apply_to_slice(mrcd[z, :, :]) * 255
+                outslice = np.clip(outslice, 0.0, 255.0)
+                segmentations[i, z, :, :] = outslice
                 n_slices_complete += 1
-                self.process.set_progress(max([0.999, n_slices_complete / n_slices_total]))
+                self.process.set_progress(min([0.999, n_slices_complete / n_slices_total]))
             i += 1
 
         # apply competition
+        print(f"QueuedExport - have models compete")
         if self.compete and len(self.models) > 1:
             for z in range(n_slices):
                 max_img = np.max(segmentations[:, z, :, :], axis=0)
@@ -1511,11 +1519,12 @@ class QueuedExport:
                     mask = segmentations[i, z, :, :] == max_img
                     segmentations[i, z, :, :][mask == 0] = 0.0
                 n_slices_complete += 1
-                self.process.set_progress(max([0.999, n_slices_complete / n_slices_total]))
+                self.process.set_progress(min([0.999, n_slices_complete / n_slices_total]))
 
         # save the mrc files
         i = 0
         for m in self.models:
+            print(f"QueuedExport - saving output of model {m.info}")
             self.colour = m.colour
             out_path = os.path.join(self.directory, self.dataset.title[13:]+"_"+m.title+".mrc")
             with mrcfile.new(out_path) as mrc:

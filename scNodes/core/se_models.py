@@ -1,7 +1,6 @@
 from tensorflow.keras.callbacks import Callback
 import tensorflow as tf
 import tifffile
-import mrcfile
 import numpy as np
 from itertools import count
 import glob
@@ -12,10 +11,9 @@ import threading
 import json
 from scNodes.core.opengl_classes import Texture
 from scipy.ndimage import rotate
+
 # Note 230522: getting tensorflow to use the GPU is a pain. Eventually it worked with: CUDA D11.8, cuDNN 8.6, tensorflow 2.8.0, protobuf 3.20.0, and adding LIBRARY_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\lib\x64 to the PyCharm run configuration environment variables.
 
-# TODO: make n positive and n negative samples the same in training - def augment_data(data)
-#
 
 
 class SEModel:
@@ -57,7 +55,7 @@ class SEModel:
         self.n_parameters = 0
         self.n_copies = 4
         self.info = ""
-        self.info_short = ""
+        self.info_short = ""  ## TODO: add loss to info strings
 
         self.data = None
         self.texture = Texture(format="r32f")
@@ -100,6 +98,8 @@ class SEModel:
             'active_tab': self.active_tab,
             'n_parameters': self.n_parameters,
             'n_copies': self.n_copies,
+            'info': self.info,
+            'info_short': self.info_short,
         }
         with open(file_path, 'w') as f:
             json.dump(metadata, f)
@@ -136,6 +136,8 @@ class SEModel:
             self.active_tab = metadata['active_tab']
             self.n_parameters = metadata['n_parameters']
             self.n_copies = metadata['n_copies']
+            self.info = metadata['info']
+            self.info_short = metadata['info_short']
         except Exception as e:
             print("Error loading model - see details below", print(e))
 
