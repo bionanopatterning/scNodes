@@ -11,6 +11,7 @@ import threading
 import json
 from scNodes.core.opengl_classes import Texture
 from scipy.ndimage import rotate
+import datetime
 
 # Note 230522: getting tensorflow to use the GPU is a pain. Eventually it worked with: CUDA D11.8, cuDNN 8.6, tensorflow 2.8.0, protobuf 3.20.0, and adding LIBRARY_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\lib\x64 to the PyCharm run configuration environment variables.
 
@@ -32,9 +33,10 @@ class SEModel:
                        (0 / 255, 255 / 255, 0 / 255)]
 
     def __init__(self):
-        self.uid = next(SEModel.idgen)
+        uid_counter = next(SEModel.idgen)
+        self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f') + "000") + uid_counter
         self.title = "Unnamed model"
-        self.colour = SEModel.DEFAULT_COLOURS[self.uid % len(SEModel.DEFAULT_COLOURS)]
+        self.colour = SEModel.DEFAULT_COLOURS[uid_counter % len(SEModel.DEFAULT_COLOURS)]
         self.apix = -1.0
         self.compiled = False
         self.box_size = -1
@@ -271,6 +273,7 @@ class SEModel:
         self.overlap = min([0.67, self.overlap])
         pad_w = self.box_size - (w % self.box_size)
         pad_h = self.box_size - (h % self.box_size)
+        print(self.box_size, pad_w, pad_h)
         # tile
         stride = int(self.box_size * (1.0 - self.overlap))
         boxes = list()
