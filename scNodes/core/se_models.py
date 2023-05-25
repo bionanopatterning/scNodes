@@ -42,7 +42,7 @@ class SEModel:
         self.model_enum = 6
         self.epochs = 25
         self.batch_size = 32
-        self.train_data_path = "..."
+        self.train_data_path = "training_dataset.scnt"
         self.active = True
         self.export = True
         self.blend = False
@@ -51,7 +51,8 @@ class SEModel:
         self.threshold = 0.5
         self.overlap = 0.2
         self.active_tab = 0
-        self.background_process = None
+        self.background_process_train = None
+        self.background_process_apply = None
         self.n_parameters = 0
         self.n_copies = 4
         self.info = ""
@@ -60,7 +61,6 @@ class SEModel:
         self.data = None
         self.texture = Texture(format="r32f")
         self.texture.set_linear_mipmap_interpolation()
-        # openGL stuff
 
         if not SEModel.MODELS_LOADED:
             SEModel.load_models()
@@ -88,7 +88,6 @@ class SEModel:
             'model_enum': self.model_enum,
             'epochs': self.epochs,
             'batch_size': self.batch_size,
-            'train_data_path': self.train_data_path,
             'active': self.active,
             'blend': self.blend,
             'show': self.show,
@@ -126,7 +125,6 @@ class SEModel:
             self.model_enum = metadata['model_enum']
             self.epochs = metadata['epochs']
             self.batch_size = metadata['batch_size']
-            self.train_data_path = metadata['train_data_path']
             self.active = metadata['active']
             self.blend = metadata['blend']
             self.show = metadata['show']
@@ -139,11 +137,12 @@ class SEModel:
             self.info = metadata['info']
             self.info_short = metadata['info_short']
         except Exception as e:
+            raise e
             print("Error loading model - see details below", print(e))
 
     def train(self):
         process = BackgroundProcess(self._train, (), name=f"{self.title} training")
-        self.background_process = process
+        self.background_process_train = process
         process.start()
 
     def load_training_data(self):
@@ -251,7 +250,7 @@ class SEModel:
         self.box_size = box_size
         self.n_parameters = self.model.count_params()
         self.info = SEModel.AVAILABLE_MODELS[self.model_enum] + f" ({self.n_parameters}, {self.box_size}, {self.apix:.3f})"
-        self.info_short = "(" + SEModel.AVAILABLE_MODELS[self.model_enum] + f" {self.box_size}, {self.apix:.3f})"
+        self.info_short = "(" + SEModel.AVAILABLE_MODELS[self.model_enum] + f", {self.box_size}, {self.apix:.3f})"
 
     def set_slice(self, slice_data):
         if not self.compiled:
@@ -266,7 +265,7 @@ class SEModel:
             return
         self.texture.update(self.data)
 
-    def apply_to_slice(self, image):
+    def slice_to_boxes(self, image, as_array=True):
         # TODO: resize the slice to the model's apix!
         w, h = image.shape
         self.overlap = min([0.67, self.overlap])
@@ -278,30 +277,57 @@ class SEModel:
         image = np.pad(image, ((0, pad_w), (0, pad_h)))
         for x in range(0, w - self.box_size + 1, stride):
             for y in range(0, h - self.box_size + 1, stride):
-                boxes.append(image[x:x + self.box_size, y:y + self.box_size])
-        boxes = np.array(boxes)
+                box = image[x:x + self.box_size, y:y + self.box_size]
+                mu = np.mean(box, axis=(0, 1), keepdims=True)
+                std = np.std(box, axis=(0, 1), keepdims=True)
+                std[std == 0] = 1.0
+                box = (box - mu) / std
+                boxes.append(box)
+        if as_array:
+            boxes = np.array(boxes)
+        return boxes, (w, h), (pad_w, pad_h), stride
 
-        mu = np.mean(boxes, axis=(1, 2), keepdims=True)
-        std = np.std(boxes, axis=(1, 2), keepdims=True)
-        std[std == 0] = 1.0
-        boxes = (boxes - mu) / std
-        # apply model
-        segmentations = np.squeeze(self.model.predict(boxes))
-
-        # detile
-        outimage = np.zeros((w + pad_w, h + pad_h))
+    def boxes_to_slice(self, boxes, size, padding, stride):
+        pad_w, pad_h = padding
+        w, h = size
+        out_image = np.zeros((w + pad_w, h + pad_h))
         count = np.zeros((w + pad_w, h + pad_h), dtype=int)
         i = 0
         for x in range(0, w - self.box_size + 1, stride):
             for y in range(0, h - self.box_size + 1, stride):
-                outimage[x:x + self.box_size, y:y + self.box_size] += segmentations[i]
+                out_image[x:x + self.box_size, y:y + self.box_size] += boxes[i]
                 count[x:x + self.box_size, y:y + self.box_size] += 1
                 i += 1
-
         count[count == 0] = 1
-        outimage = outimage / count
-        return outimage[:w, :h]
+        out_image = out_image / count
+        return out_image[:w, :h]
 
+    def apply_to_slice(self, image):
+        # tile
+        boxes, image_size, padding, stride = self.slice_to_boxes(image)
+        # apply model
+        seg_boxes = np.squeeze(self.model.predict(boxes))
+        # detile
+        segmentation = self.boxes_to_slice(seg_boxes, image_size, padding, stride)
+        return segmentation
+
+    def apply_to_multiple_slices(self, slice_list):
+        all_boxes = list()
+        n_boxes_per_slice = 0
+        image_size = (0, 0)
+        padding = (0, 0)
+        stride = 0
+        for image in slice_list:
+            boxes, image_size, padding, stride = self.slice_to_boxes(image, as_array=False)
+            n_boxes_per_slice = len(boxes)
+            all_boxes += boxes
+        all_boxes = np.array(all_boxes)
+        seg_boxes = np.squeeze(self.model.predict(all_boxes))
+        image_list = list()
+        for i in range(len(slice_list)):
+            image_seg_boxes = seg_boxes[i * n_boxes_per_slice: (i+1) * n_boxes_per_slice]
+            image_list.append(self.boxes_to_slice(image_seg_boxes, image_size, padding, stride))
+        return image_list
 
     @staticmethod
     def load_models():

@@ -2198,6 +2198,10 @@ class ImportedFrameData:
                 with mrcfile.open(self.path, header_only=True) as mrc:
                     self.pixel_size = float(mrc.voxel_size.x / 10.0)
                     self.pixel_size_z = float(mrc.voxel_size.z / 10.0)
+                    if self.pixel_size == 0.0:
+                        self.pixel_size = 1.0
+                    if self.pixel_size_z == 0.0:
+                        self.pixel_size = 1.0
                 mrc = mrcfile.mmap(self.path, mode="r")
                 if len(mrc.data.shape) == 2:
                     self.pxd = mrc.data
