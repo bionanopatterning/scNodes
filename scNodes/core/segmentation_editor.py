@@ -265,22 +265,22 @@ class SegmentationEditor:
 
         def available_datasets():
             if imgui.collapsing_header("Datasets", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
-                if imgui.begin_child("available_datasets", 0.0, 120, True, imgui.WINDOW_ALWAYS_VERTICAL_SCROLLBAR):
-                    for s in cfg.se_frames:
-                        imgui.push_id(f"se{s.uid}")
-                        _change, _selected = imgui.selectable(s.title, cfg.se_active_frame == s)
-                        if _change and _selected:
-                            self.set_active_dataset(s)
-                            for model in cfg.se_models:
-                                model.reset_textures()
-                        if imgui.begin_popup_context_item("##datasetContext"):
-                            if imgui.menu_item("Unlink dataset")[0]:
-                                cfg.se_frames.remove(s)
-                                if cfg.se_active_frame == s:
-                                    cfg.se_active_frame = None
-                            imgui.end_popup()
-                        imgui.pop_id()
-                    imgui.end_child()
+                imgui.begin_child("available_datasets", 0.0, 120, True, imgui.WINDOW_ALWAYS_VERTICAL_SCROLLBAR)
+                for s in cfg.se_frames:
+                    imgui.push_id(f"se{s.uid}")
+                    _change, _selected = imgui.selectable(s.title, cfg.se_active_frame == s)
+                    if _change and _selected:
+                        self.set_active_dataset(s)
+                        for model in cfg.se_models:
+                            model.reset_textures()
+                    if imgui.begin_popup_context_item("##datasetContext"):
+                        if imgui.menu_item("Unlink dataset")[0]:
+                            cfg.se_frames.remove(s)
+                            if cfg.se_active_frame == s:
+                                cfg.se_active_frame = None
+                        imgui.end_popup()
+                    imgui.pop_id()
+                imgui.end_child()
 
         def segmentation_tab():
 
@@ -505,27 +505,27 @@ class SegmentationEditor:
                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 2))
 
                 imgui.text("Features of interest")
-                if imgui.begin_child("select_features", 0.0, 1 + len(self.all_feature_names) * 21, False, imgui.WINDOW_NO_SCROLLBAR):
-                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_NEUTRAL_LIGHT)
-                    cw = imgui.get_content_region_available_width()
-                    imgui.push_item_width(cw)
-                    for fname in self.all_feature_names:
-                        val = self.trainset_feature_selection[fname]
-                        if val == 1:
-                            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.COLOUR_POSITIVE)
-                            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.COLOUR_POSITIVE)
-                        elif val == 0:
-                            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.COLOUR_NEUTRAL)
-                            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.COLOUR_NEUTRAL)
-                        elif val == -1:
-                            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.COLOUR_NEGATIVE)
-                            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.COLOUR_NEGATIVE)
-                        _, self.trainset_feature_selection[fname] = imgui.slider_int(f"##{fname}", val, -1, 1, format=f"{fname}")
-                        imgui.pop_style_color(2)
-                    imgui.pop_style_color(1)
-                    imgui.pop_style_var(1)
-                    imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
-                    imgui.end_child()
+                imgui.begin_child("select_features", 0.0, 1 + len(self.all_feature_names) * 21, False, imgui.WINDOW_NO_SCROLLBAR)
+                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_NEUTRAL_LIGHT)
+                cw = imgui.get_content_region_available_width()
+                imgui.push_item_width(cw)
+                for fname in self.all_feature_names:
+                    val = self.trainset_feature_selection[fname]
+                    if val == 1:
+                        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.COLOUR_POSITIVE)
+                        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.COLOUR_POSITIVE)
+                    elif val == 0:
+                        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.COLOUR_NEUTRAL)
+                        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.COLOUR_NEUTRAL)
+                    elif val == -1:
+                        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.COLOUR_NEGATIVE)
+                        imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.COLOUR_NEGATIVE)
+                    _, self.trainset_feature_selection[fname] = imgui.slider_int(f"##{fname}", val, -1, 1, format=f"{fname}")
+                    imgui.pop_style_color(2)
+                imgui.pop_style_color(1)
+                imgui.pop_style_var(1)
+                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                imgui.end_child()
 
                 imgui.text("Datasets to sample")
                 imgui.push_style_color(imgui.COLOR_CHECK_MARK, 0.0, 0.0, 0.0, 1.0)
@@ -541,15 +541,15 @@ class SegmentationEditor:
 
 
                 imgui.text("Set parameters")
-                if imgui.begin_child("params", 0.0, 80, True):
-                    imgui.push_item_width(cw - 53)
-                    _, self.trainset_boxsize = imgui.slider_int("boxes", self.trainset_boxsize, 8, 128, format=f"{self.trainset_boxsize} pixel")
-                    _, self.trainset_apix = imgui.slider_float("A/pix", self.trainset_apix, 1.0, 20.0, format=f"{self.trainset_apix:.2f}")
-                    imgui.pop_item_width()
-                    calculate_number_of_boxes()
-                    imgui.text(f"Positive samples: {self.trainset_num_boxes_positive}")
-                    imgui.text(f"Negative samples: {self.trainset_num_boxes_negative}")
-                    imgui.end_child()
+                imgui.begin_child("params", 0.0, 80, True)
+                imgui.push_item_width(cw - 53)
+                _, self.trainset_boxsize = imgui.slider_int("boxes", self.trainset_boxsize, 8, 128, format=f"{self.trainset_boxsize} pixel")
+                _, self.trainset_apix = imgui.slider_float("A/pix", self.trainset_apix, 1.0, 20.0, format=f"{self.trainset_apix:.2f}")
+                imgui.pop_item_width()
+                calculate_number_of_boxes()
+                imgui.text(f"Positive samples: {self.trainset_num_boxes_positive}")
+                imgui.text(f"Negative samples: {self.trainset_num_boxes_negative}")
+                imgui.end_child()
 
                 # progress bars
                 for process in self.active_trainset_exports:
@@ -571,152 +571,153 @@ class SegmentationEditor:
 
                     panel_height = SegmentationEditor.MODEL_PANEL_HEIGHT_TRAINING if m.active_tab == 0 else SegmentationEditor.MODEL_PANEL_HEIGHT_PREDICTION
                     panel_height += 10 if m.background_process is not None else 0
-                    if imgui.begin_child(f"SEModel_{m.uid}", 0.0, panel_height, True, imgui.WINDOW_NO_SCROLLBAR):
-                        cw = imgui.get_content_region_available_width()
 
-                        imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
-                        if m.background_process is None:
-                            # delete button
-                            if imgui.image_button(self.icon_close.renderer_id, 19, 19):
-                                cfg.se_models.remove(m)
-                                if cfg.se_active_model == m:
-                                    cfg.se_active_model = None
-                                m.delete()
-                        else:
-                            if imgui.image_button(self.icon_stop.renderer_id, 19, 19):
-                                m.background_process.stop()
+                    imgui.begin_child(f"SEModel_{m.uid}", 0.0, panel_height, True, imgui.WINDOW_NO_SCROLLBAR)
+                    cw = imgui.get_content_region_available_width()
 
-                        imgui.pop_style_var(1)
+                    imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                    if m.background_process is None:
+                        # delete button
+                        if imgui.image_button(self.icon_close.renderer_id, 19, 19):
+                            cfg.se_models.remove(m)
+                            if cfg.se_active_model == m:
+                                cfg.se_active_model = None
+                            m.delete()
+                    else:
+                        if imgui.image_button(self.icon_stop.renderer_id, 19, 19):
+                            m.background_process.stop()
 
+                    imgui.pop_style_var(1)
+
+                    imgui.same_line()
+                    _, m.colour = imgui.color_edit3(m.title, *m.colour[:3], imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
+                    # Title
+                    imgui.same_line()
+                    imgui.set_next_item_width(cw - 55)
+                    _, m.title = imgui.input_text("##title", m.title, 256, imgui.INPUT_TEXT_NO_HORIZONTAL_SCROLL | imgui.INPUT_TEXT_AUTO_SELECT_ALL)
+                    self._gui_feature_title_context_menu(m)
+                    # Model selection
+                    imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 2))
+                    imgui.align_text_to_frame_padding()
+                    if m.compiled:
+                        imgui.text(m.info)
+                    else:
+                        imgui.text("Model:")
                         imgui.same_line()
-                        _, m.colour = imgui.color_edit3(m.title, *m.colour[:3], imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
-                        # Title
-                        imgui.same_line()
-                        imgui.set_next_item_width(cw - 55)
-                        _, m.title = imgui.input_text("##title", m.title, 256, imgui.INPUT_TEXT_NO_HORIZONTAL_SCROLL | imgui.INPUT_TEXT_AUTO_SELECT_ALL)
-                        self._gui_feature_title_context_menu(m)
-                        # Model selection
-                        imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 2))
-                        imgui.align_text_to_frame_padding()
-                        if m.compiled:
-                            imgui.text(m.info)
-                        else:
-                            imgui.text("Model:")
+                        imgui.set_next_item_width(cw - 51)
+                        _, m.model_enum = imgui.combo("##model_type", m.model_enum, SEModel.AVAILABLE_MODELS)
+                    imgui.pop_style_var()
+
+                    if imgui.begin_tab_bar("##tabs"):
+                        if imgui.begin_tab_item("   Training   ")[0]:
+                            m.active_tab = 0
+                            imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+                            imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (3, 3))
+                            # Train data selection
+                            cw = imgui.get_content_region_available_width()
+                            imgui.set_next_item_width(cw - 65)
+                            _, m.train_data_path = imgui.input_text("##training_data", m.train_data_path, 256)
+                            imgui.pop_style_var()
                             imgui.same_line()
-                            imgui.set_next_item_width(cw - 51)
-                            _, m.model_enum = imgui.combo("##model_type", m.model_enum, SEModel.AVAILABLE_MODELS)
-                        imgui.pop_style_var()
+                            if imgui.button("browse", 55, 19):
+                                selected_file = filedialog.askopenfilename(filetypes=[("scNodes traindata", f"{cfg.filetype_traindata}")])
+                                if selected_file is not None:
+                                    m.train_data_path = selected_file
 
-                        if imgui.begin_tab_bar("##tabs"):
-                            if imgui.begin_tab_item("   Training   ")[0]:
-                                m.active_tab = 0
-                                imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
-                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (3, 3))
-                                # Train data selection
-                                cw = imgui.get_content_region_available_width()
-                                imgui.set_next_item_width(cw - 65)
-                                _, m.train_data_path = imgui.input_text("##training_data", m.train_data_path, 256)
-                                imgui.pop_style_var()
-                                imgui.same_line()
-                                if imgui.button("browse", 55, 19):
-                                    selected_file = filedialog.askopenfilename(filetypes=[("scNodes traindata", f"{cfg.filetype_traindata}")])
-                                    if selected_file is not None:
-                                        m.train_data_path = selected_file
+                            # Training parameters
+                            imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
+                            imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
+                            imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
+                            imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
 
-                                # Training parameters
-                                imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
-                                imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
-                                imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
-                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                            imgui.set_next_item_width(cw)
+                            _, m.epochs = imgui.slider_int("##epochs", m.epochs, 1, 50, f"{m.epochs} epoch"+("s" if m.epochs>1 else ""))
+                            imgui.push_item_width((cw - 5) / 2)
+                            _, m.batch_size = imgui.slider_int("##batchs", m.batch_size, 1, 128, f"{m.batch_size} batch size")
+                            imgui.same_line()
+                            _, m.n_copies = imgui.slider_int("##copies", m.n_copies, 1, 10, f"{m.n_copies} copies")
+                            imgui.pop_item_width()
+                            imgui.pop_style_var(1)
+                            imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 2))
 
-                                imgui.set_next_item_width(cw)
-                                _, m.epochs = imgui.slider_int("##epochs", m.epochs, 1, 50, f"{m.epochs} epoch"+("s" if m.epochs>1 else ""))
-                                imgui.push_item_width((cw - 5) / 2)
-                                _, m.batch_size = imgui.slider_int("##batchs", m.batch_size, 1, 128, f"{m.batch_size} batch size")
-                                imgui.same_line()
-                                _, m.n_copies = imgui.slider_int("##copies", m.n_copies, 1, 10, f"{m.n_copies} copies")
-                                imgui.pop_item_width()
-                                imgui.pop_style_var(1)
-                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 2))
+                            # Load, save, train buttons.
+                            block_buttons = False
+                            if m.background_process is not None:
+                                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_NEUTRAL_LIGHT)
+                                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *cfg.COLOUR_NEUTRAL_LIGHT)
+                                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_NEUTRAL_LIGHT)
+                                imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_NEUTRAL)
+                                block_buttons = True
+                            if imgui.button("load", (cw - 16) / 3, 20):
+                                if not block_buttons:
+                                    model_path = filedialog.askopenfilename(filetypes=[("scNodes CNN", f"{cfg.filetype_semodel}")])
+                                    if model_path != "":
+                                        m.load(model_path)
+                            imgui.same_line(spacing=8)
+                            block_save_button = False
+                            if m.model is None:
+                                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_NEUTRAL_LIGHT)
+                                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED,*cfg.COLOUR_NEUTRAL_LIGHT)
+                                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE,*cfg.COLOUR_NEUTRAL_LIGHT)
+                                imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_NEUTRAL)
+                                block_save_button = True
+                            if imgui.button("save", (cw - 16) / 3, 20):
+                                if not block_buttons or block_save_button:
+                                    model_path = filedialog.asksaveasfilename(filetypes=[("scNodes model", f"{cfg.filetype_semodel}")])
+                                    if model_path is not None:
+                                        if model_path[-len(cfg.filetype_semodel):] != cfg.filetype_semodel:
+                                            model_path += cfg.filetype_semodel
+                                        m.save(model_path)
+                            if block_save_button:
+                                imgui.pop_style_color(4)
+                            imgui.same_line(spacing=8)
+                            if imgui.button("train", (cw - 16) / 3, 20):
+                                if not block_buttons:
+                                    m.train()
+                            if block_buttons:
+                                imgui.pop_style_color(4)
 
-                                # Load, save, train buttons.
-                                block_buttons = False
-                                if m.background_process is not None:
-                                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_NEUTRAL_LIGHT)
-                                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *cfg.COLOUR_NEUTRAL_LIGHT)
-                                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_NEUTRAL_LIGHT)
-                                    imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_NEUTRAL)
-                                    block_buttons = True
-                                if imgui.button("load", (cw - 16) / 3, 20):
-                                    if not block_buttons:
-                                        model_path = filedialog.askopenfilename(filetypes=[("scNodes CNN", f"{cfg.filetype_semodel}")])
-                                        if model_path != "":
-                                            m.load(model_path)
-                                imgui.same_line(spacing=8)
-                                block_save_button = False
-                                if m.model is None:
-                                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_NEUTRAL_LIGHT)
-                                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED,*cfg.COLOUR_NEUTRAL_LIGHT)
-                                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE,*cfg.COLOUR_NEUTRAL_LIGHT)
-                                    imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_NEUTRAL)
-                                    block_save_button = True
-                                if imgui.button("save", (cw - 16) / 3, 20):
-                                    if not block_buttons or block_save_button:
-                                        model_path = filedialog.asksaveasfilename(filetypes=[("scNodes model", f"{cfg.filetype_semodel}")])
-                                        if model_path is not None:
-                                            if model_path[-len(cfg.filetype_semodel):] != cfg.filetype_semodel:
-                                                model_path += cfg.filetype_semodel
-                                            m.save(model_path)
-                                if block_save_button:
-                                    imgui.pop_style_color(4)
-                                imgui.same_line(spacing=8)
-                                if imgui.button("train", (cw - 16) / 3, 20):
-                                    if not block_buttons:
-                                        m.train()
-                                if block_buttons:
-                                    imgui.pop_style_color(4)
+                            imgui.pop_style_var(5)
+                            imgui.end_tab_item()
 
-                                imgui.pop_style_var(5)
-                                imgui.end_tab_item()
+                        if imgui.begin_tab_item("    Prediction   ")[0]:
+                            m.active_tab = 1
+                            # Checkboxes and sliders
+                            imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
+                            imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
+                            imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
+                            imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+                            imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                            imgui.push_style_color(imgui.COLOR_CHECK_MARK, *cfg.COLOUR_TEXT)
 
-                            if imgui.begin_tab_item("    Prediction   ")[0]:
-                                m.active_tab = 1
-                                # Checkboxes and sliders
-                                imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
-                                imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
-                                imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
-                                imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
-                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
-                                imgui.push_style_color(imgui.COLOR_CHECK_MARK, *cfg.COLOUR_TEXT)
+                            imgui.push_item_width(imgui.get_content_region_available_width())
+                            _, m.alpha = imgui.slider_float("##alpha", m.alpha, 0.0, 1.0, format=f"{m.alpha:.2f} alpha")
+                            _, m.overlap = imgui.slider_float("##overlap", m.overlap, 0.0, 0.5, format=f"{m.overlap:.2f} overlap")
+                            _, m.threshold = imgui.slider_float("##thershold", m.threshold, 0.0, 1.0, format=f"{m.threshold:.2f} threshold")
+                            imgui.pop_item_width()
 
-                                imgui.push_item_width(imgui.get_content_region_available_width())
-                                _, m.alpha = imgui.slider_float("##alpha", m.alpha, 0.0, 1.0, format=f"{m.alpha:.2f} alpha")
-                                _, m.overlap = imgui.slider_float("##overlap", m.overlap, 0.0, 0.5, format=f"{m.overlap:.2f} overlap")
-                                _, m.threshold = imgui.slider_float("##thershold", m.threshold, 0.0, 1.0, format=f"{m.threshold:.2f} threshold")
-                                imgui.pop_item_width()
+                            _, m.active = imgui.checkbox("active    ", m.active)
+                            if _ and m.active:
+                                if cfg.se_active_frame is not None:
+                                    m.set_slice(cfg.se_active_frame.data)
+                                    cfg.se_active_frame.slice_changed = True
+                            imgui.same_line()
+                            _, m.blend = imgui.checkbox("blend    ", m.blend)
+                            imgui.same_line()
+                            _, m.show = imgui.checkbox("show    ", m.show)
+                            imgui.pop_style_var(5)
+                            imgui.pop_style_color(1)
+                            imgui.end_tab_item()
+                        imgui.end_tab_bar()
 
-                                _, m.active = imgui.checkbox("active    ", m.active)
-                                if _ and m.active:
-                                    if cfg.se_active_frame is not None:
-                                        m.set_slice(cfg.se_active_frame.data)
-                                        cfg.se_active_frame.slice_changed = True
-                                imgui.same_line()
-                                _, m.blend = imgui.checkbox("blend    ", m.blend)
-                                imgui.same_line()
-                                _, m.show = imgui.checkbox("show    ", m.show)
-                                imgui.pop_style_var(5)
-                                imgui.pop_style_color(1)
-                                imgui.end_tab_item()
-                            imgui.end_tab_bar()
+                    if m.background_process is not None:
+                        SegmentationEditor._gui_background_process_progress_bar(m.background_process)
+                        if m.background_process.progress >= 1.0:
+                            m.background_process = None
 
-                        if m.background_process is not None:
-                            SegmentationEditor._gui_background_process_progress_bar(m.background_process)
-                            if m.background_process.progress >= 1.0:
-                                m.background_process = None
-
-                        if imgui.is_window_hovered() and imgui.is_mouse_clicked(0):
-                            cfg.se_active_model = m
-                        imgui.end_child()
+                    if imgui.is_window_hovered() and imgui.is_mouse_clicked(0):
+                        cfg.se_active_model = m
+                    imgui.end_child()
                     if pop_active_colour:
                         imgui.pop_style_color(1)
 
@@ -740,36 +741,36 @@ class SegmentationEditor:
                 imgui.text("Models to include")
                 n_available_models = sum([m.compiled for m in cfg.se_models])
                 c_height = (1 if n_available_models == 0 else 9) + n_available_models * 21
-                if imgui.begin_child("models_included", 0.0, c_height, True):
-                    for m in cfg.se_models:
-                        if not m.compiled:
-                            continue
-                        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *m.colour)
-                        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *m.colour)
-                        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *m.colour)
-                        imgui.push_style_color(imgui.COLOR_CHECK_MARK, 0.0, 0.0, 0.0, 1.0)
-                        _, m.export = imgui.checkbox(m.title + " - " + m.info_short, m.export)
-                        imgui.pop_style_color(4)
-                    imgui.end_child()
+                imgui.begin_child("models_included", 0.0, c_height, True)
+                for m in cfg.se_models:
+                    if not m.compiled:
+                        continue
+                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *m.colour)
+                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *m.colour)
+                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *m.colour)
+                    imgui.push_style_color(imgui.COLOR_CHECK_MARK, 0.0, 0.0, 0.0, 1.0)
+                    _, m.export = imgui.checkbox(m.title + " - " + m.info_short, m.export)
+                    imgui.pop_style_color(4)
+                imgui.end_child()
 
                 imgui.text("Datasets to process")
                 imgui.push_style_color(imgui.COLOR_CHECK_MARK, 0.0, 0.0, 0.0, 1.0)
                 c_height = min([120, (1 if len(cfg.se_frames) == 0 else 9) + len(cfg.se_frames) * 21])
-                if imgui.begin_child("datasets_to_sample", 0.0, c_height, True):
-                    for s in cfg.se_frames:
-                        imgui.push_id(f"{s.uid}")
-                        _, s.export = imgui.checkbox(s.title, s.export)
-                        if _:
-                            self.parse_available_features()
-                        imgui.pop_id()
-                    imgui.end_child()
+                imgui.begin_child("datasets_to_sample", 0.0, c_height, True)
+                for s in cfg.se_frames:
+                    imgui.push_id(f"{s.uid}")
+                    _, s.export = imgui.checkbox(s.title, s.export)
+                    if _:
+                        self.parse_available_features()
+                    imgui.pop_id()
+                imgui.end_child()
                 imgui.pop_style_color()
 
                 imgui.text("Export settings")
-                if imgui.begin_child("export_settings", 0.0, 52.0, True):
-                    _, self.export_dir = widgets.select_directory("browse", self.export_dir)
-                    _, self.export_compete = imgui.checkbox("competing models", self.export_compete)
-                    imgui.end_child()
+                imgui.begin_child("export_settings", 0.0, 52.0, True)
+                _, self.export_dir = widgets.select_directory("browse", self.export_dir)
+                _, self.export_compete = imgui.checkbox("competing models", self.export_compete)
+                imgui.end_child()
 
 
                 if widgets.centred_button("Start export", 120, 23):
@@ -906,11 +907,6 @@ class SegmentationEditor:
                 export_tab()
                 imgui.end_tab_item()
             imgui.end_tab_bar()
-
-        if imgui.begin_child("##dummychild"):
-            imgui.end_child()
-        else:
-            imgui.end_child()
 
         imgui.end()
 
