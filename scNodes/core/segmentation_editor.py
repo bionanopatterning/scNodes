@@ -632,9 +632,10 @@ class SegmentationEditor:
                             imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
                             imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
 
-                            imgui.set_next_item_width(cw)
-                            _, m.epochs = imgui.slider_int("##epochs", m.epochs, 1, 50, f"{m.epochs} epoch"+("s" if m.epochs>1 else ""))
                             imgui.push_item_width((cw - 5) / 2)
+                            _, m.epochs = imgui.slider_int("##epochs", m.epochs, 1, 50, f"{m.epochs} epoch"+("s" if m.epochs>1 else ""))
+                            imgui.same_line()
+                            _, m.excess_negative = imgui.slider_int("##excessnegative", m.excess_negative, 0, 100, f"+{m.excess_negative}%% negatives")
                             _, m.batch_size = imgui.slider_int("##batchs", m.batch_size, 1, 128, f"{m.batch_size} batch size")
                             imgui.same_line()
                             _, m.n_copies = imgui.slider_int("##copies", m.n_copies, 1, 10, f"{m.n_copies} copies")
@@ -694,7 +695,7 @@ class SegmentationEditor:
 
                             imgui.push_item_width(imgui.get_content_region_available_width())
                             _, m.alpha = imgui.slider_float("##alpha", m.alpha, 0.0, 1.0, format=f"{m.alpha:.2f} alpha")
-                            _, m.overlap = imgui.slider_float("##overlap", m.overlap, 0.0, 0.5, format=f"{m.overlap:.2f} overlap")
+                            _, m.overlap = imgui.slider_float("##overlap", m.overlap, 0.0, 0.9, format=f"{m.overlap:.2f} overlap")
                             _, m.threshold = imgui.slider_float("##thershold", m.threshold, 0.0, 1.0, format=f"{m.threshold:.2f} threshold")
                             imgui.pop_item_width()
 
@@ -819,7 +820,7 @@ class SegmentationEditor:
                 if imgui.begin_menu("File"):
                     if imgui.menu_item("Import dataset")[0]:
                         try:
-                            filename = filedialog.askopenfilename(filetypes=[("scNodes segmentable", f".mrc {cfg.filetype_segmentation} .tif .tiff")])
+                            filename = filedialog.askopenfilename(filetypes=[("scNodes segmentable", f".mrc {cfg.filetype_segmentation}")])
                             if filename != '':
                                 self.import_dataset(filename)
                         except Exception as e:

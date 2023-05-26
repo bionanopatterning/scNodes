@@ -41,7 +41,7 @@ class SEModel:
         self.compiled = False
         self.box_size = -1
         self.model = None
-        self.model_enum = 6
+        self.model_enum = 3
         self.epochs = 25
         self.batch_size = 32
         self.train_data_path = "training_dataset.scnt"
@@ -57,6 +57,7 @@ class SEModel:
         self.background_process_apply = None
         self.n_parameters = 0
         self.n_copies = 4
+        self.excess_negative = 30
         self.info = ""
         self.info_short = ""  ## TODO: add loss to info strings
 
@@ -101,6 +102,7 @@ class SEModel:
             'n_copies': self.n_copies,
             'info': self.info,
             'info_short': self.info_short,
+            'excess_negative': self.excess_negative
         }
         with open(file_path, 'w') as f:
             json.dump(metadata, f)
@@ -138,6 +140,7 @@ class SEModel:
             self.n_copies = metadata['n_copies']
             self.info = metadata['info']
             self.info_short = metadata['info_short']
+            self.excess_negative = metadata['excess_negative']
         except Exception as e:
             raise e
             print("Error loading model - see details below", print(e))
@@ -197,7 +200,8 @@ class SEModel:
         if n_neg == 0:
             return np.array(positive_x), np.array(positive_y)
 
-        negative_sample_indices = negative_indices * int(self.n_copies * n_pos // n_neg) + negative_indices[:int(self.n_copies * n_pos) % n_neg]
+        extra_negative_factor = 1 + self.excess_negative / 100.0
+        negative_sample_indices = negative_indices * int(extra_negative_factor * self.n_copies * n_pos // n_neg) + negative_indices[:int(extra_negative_factor * self.n_copies * n_pos) % n_neg]
 
         negative_x = list()
         negative_y = list()
@@ -270,16 +274,15 @@ class SEModel:
     def slice_to_boxes(self, image, as_array=True):
         # TODO: resize the slice to the model's apix!
         w, h = image.shape
-        self.overlap = min([0.67, self.overlap])
+        self.overlap = min([0.9, self.overlap])
         pad_w = self.box_size - (w % self.box_size)
         pad_h = self.box_size - (h % self.box_size)
-        print(self.box_size, pad_w, pad_h)
         # tile
         stride = int(self.box_size * (1.0 - self.overlap))
         boxes = list()
         image = np.pad(image, ((0, pad_w), (0, pad_h)))
-        for x in range(0, w - self.box_size + 1, stride):
-            for y in range(0, h - self.box_size + 1, stride):
+        for x in range(0, w + pad_w - self.box_size + 1, stride):
+            for y in range(0, h + pad_h - self.box_size + 1, stride):
                 box = image[x:x + self.box_size, y:y + self.box_size]
                 mu = np.mean(box, axis=(0, 1), keepdims=True)
                 std = np.std(box, axis=(0, 1), keepdims=True)
@@ -296,8 +299,8 @@ class SEModel:
         out_image = np.zeros((w + pad_w, h + pad_h))
         count = np.zeros((w + pad_w, h + pad_h), dtype=int)
         i = 0
-        for x in range(0, w - self.box_size + 1, stride):
-            for y in range(0, h - self.box_size + 1, stride):
+        for x in range(0, w + pad_w - self.box_size + 1, stride):
+            for y in range(0, h + pad_h - self.box_size + 1, stride):
                 out_image[x:x + self.box_size, y:y + self.box_size] += boxes[i]
                 count[x:x + self.box_size, y:y + self.box_size] += 1
                 i += 1
