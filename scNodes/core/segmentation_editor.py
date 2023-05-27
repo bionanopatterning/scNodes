@@ -265,7 +265,7 @@ class SegmentationEditor:
             imgui.push_style_color(imgui.COLOR_SCROLLBAR_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND)
             imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, cfg.WINDOW_ROUNDING)
 
-        def available_datasets():
+        def shared_gui():
             if imgui.collapsing_header("Datasets", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
                 imgui.begin_child("available_datasets", 0.0, 120, True, imgui.WINDOW_ALWAYS_VERTICAL_SCROLLBAR)
                 for s in cfg.se_frames:
@@ -284,87 +284,86 @@ class SegmentationEditor:
                     imgui.pop_id()
                 imgui.end_child()
 
-        def segmentation_tab():
+            if imgui.collapsing_header("Filters", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+                sef = cfg.se_active_frame
+                if sef is not None:
+                    _cw = imgui.get_content_region_available_width()
+                    imgui.plot_histogram("##hist", sef.hist_vals,
+                                         graph_size=(_cw, SegmentationEditor.INFO_HISTOGRAM_HEIGHT))
+                    imgui.push_item_width(_cw)
 
-            def filters_panel():
-                if imgui.collapsing_header("Filters", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
-                    sef = cfg.se_active_frame
-                    if sef is not None:
-                        _cw = imgui.get_content_region_available_width()
-                        imgui.plot_histogram("##hist", sef.hist_vals,
-                                             graph_size=(_cw, SegmentationEditor.INFO_HISTOGRAM_HEIGHT))
-                        imgui.push_item_width(_cw)
+                    imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
+                    imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
+                    imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
+                    imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+                    imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                    imgui.push_style_color(imgui.COLOR_CHECK_MARK, *cfg.COLOUR_TEXT)
 
-                        imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
-                        imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
-                        imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
-                        imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
-                        imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
-                        imgui.push_style_color(imgui.COLOR_CHECK_MARK, *cfg.COLOUR_TEXT)
+                    _minc, sef.contrast_lims[0] = imgui.slider_float("min", sef.contrast_lims[0], sef.hist_bins[0], sef.hist_bins[-1], format='min %.1f')
+                    _maxc, sef.contrast_lims[1] = imgui.slider_float("max", sef.contrast_lims[1], sef.hist_bins[0], sef.hist_bins[-1], format='max %.1f')
+                    if _minc or _maxc:
+                        sef.autocontrast = False
+                    imgui.pop_item_width()
+                    _c, sef.invert = imgui.checkbox("inverted", sef.invert)
+                    imgui.same_line(spacing=21)
+                    _c, sef.autocontrast = imgui.checkbox("auto", sef.autocontrast)
+                    if _c and sef.autocontrast:
+                        sef.requires_histogram_update = True
+                    imgui.same_line(spacing=21)
+                    _c, sef.interpolate = imgui.checkbox("interpolate", sef.interpolate)
+                    if _c:
+                        if sef.interpolate:
+                            sef.texture.set_linear_interpolation()
+                            self.renderer.fbo1.texture.set_linear_interpolation()
+                            self.renderer.fbo2.texture.set_linear_interpolation()
+                        else:
+                            sef.texture.set_no_interpolation()
+                            self.renderer.fbo1.texture.set_no_interpolation()
+                            self.renderer.fbo2.texture.set_no_interpolation()
 
-                        _minc, sef.contrast_lims[0] = imgui.slider_float("min", sef.contrast_lims[0], sef.hist_bins[0], sef.hist_bins[-1], format='min %.1f')
-                        _maxc, sef.contrast_lims[1] = imgui.slider_float("max", sef.contrast_lims[1], sef.hist_bins[0], sef.hist_bins[-1], format='max %.1f')
-                        if _minc or _maxc:
-                            sef.autocontrast = False
-                        imgui.pop_item_width()
-                        _c, sef.invert = imgui.checkbox("inverted", sef.invert)
-                        imgui.same_line(spacing=21)
-                        _c, sef.autocontrast = imgui.checkbox("auto", sef.autocontrast)
-                        if _c and sef.autocontrast:
-                            sef.requires_histogram_update = True
-                        imgui.same_line(spacing=21)
-                        _c, sef.interpolate = imgui.checkbox("interpolate", sef.interpolate)
-                        if _c:
-                            if sef.interpolate:
-                                sef.texture.set_linear_interpolation()
-                                self.renderer.fbo1.texture.set_linear_interpolation()
-                                self.renderer.fbo2.texture.set_linear_interpolation()
-                            else:
-                                sef.texture.set_no_interpolation()
-                                self.renderer.fbo1.texture.set_no_interpolation()
-                                self.renderer.fbo2.texture.set_no_interpolation()
+                    imgui.separator()
+                    fidx = 0
+                    for ftr in sef.filters:
+                        fidx += 1
+                        imgui.push_id(f"filter{fidx}")
+                        cw = imgui.get_content_region_available_width()
 
-                        imgui.separator()
-                        fidx = 0
-                        for ftr in sef.filters:
-                            fidx += 1
-                            imgui.push_id(f"filter{fidx}")
-                            cw = imgui.get_content_region_available_width()
-
-                            # Filter type selection combo
-                            imgui.set_next_item_width(cw - 60)
-                            imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 2))
-                            _c, ftrtype = imgui.combo("##filtertype", ftr.type, Filter.TYPES)
-                            if _c:
-                                sef.filters[sef.filters.index(ftr)] = Filter(sef, ftrtype)
-                            imgui.same_line()
-                            _, ftr.enabled = imgui.checkbox("##enabled", ftr.enabled)
-                            if _:
-                                ftr.parent.requires_histogram_update = True
-                            # Delete button
-                            imgui.same_line()
-                            if imgui.image_button(self.icon_close.renderer_id, 13, 13):
-                                sef.filters.remove(ftr)
-                            imgui.pop_style_var(1)
-                            # Parameter and strength sliders
-                            imgui.push_item_width(cw)
-                            if Filter.PARAMETER_NAME[ftr.type] is not None:
-                                _c, ftr.param = imgui.slider_float("##param", ftr.param, 0.1, 10.0, format=f"{Filter.PARAMETER_NAME[ftr.type]}: {ftr.param:.1f}")
-                                if _c:
-                                    ftr.fill_kernel()
-                            _, ftr.strength = imgui.slider_float("##strength", ftr.strength, -1.0, 1.0, format=f"weight: {ftr.strength:.2f}")
-                            if _:
-                                ftr.parent.requires_histogram_update = True
-                            imgui.pop_item_width()
-
-                            imgui.pop_id()
-                        imgui.set_next_item_width(imgui.get_content_region_available_width())
+                        # Filter type selection combo
+                        imgui.set_next_item_width(cw - 60)
                         imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 2))
-                        _c, new_filter_type = imgui.combo("##filtertype", 0, ["Add filter"] + Filter.TYPES)
-                        if _c and not new_filter_type == 0:
-                            sef.filters.append(Filter(sef, new_filter_type - 1))
-                        imgui.pop_style_var(6)
-                        imgui.pop_style_color(1)
+                        _c, ftrtype = imgui.combo("##filtertype", ftr.type, Filter.TYPES)
+                        if _c:
+                            sef.filters[sef.filters.index(ftr)] = Filter(sef, ftrtype)
+                        imgui.same_line()
+                        _, ftr.enabled = imgui.checkbox("##enabled", ftr.enabled)
+                        if _:
+                            ftr.parent.requires_histogram_update = True
+                        # Delete button
+                        imgui.same_line()
+                        if imgui.image_button(self.icon_close.renderer_id, 13, 13):
+                            sef.filters.remove(ftr)
+                        imgui.pop_style_var(1)
+                        # Parameter and strength sliders
+                        imgui.push_item_width(cw)
+                        if Filter.PARAMETER_NAME[ftr.type] is not None:
+                            _c, ftr.param = imgui.slider_float("##param", ftr.param, 0.1, 10.0, format=f"{Filter.PARAMETER_NAME[ftr.type]}: {ftr.param:.1f}")
+                            if _c:
+                                ftr.fill_kernel()
+                        _, ftr.strength = imgui.slider_float("##strength", ftr.strength, -1.0, 1.0, format=f"weight: {ftr.strength:.2f}")
+                        if _:
+                            ftr.parent.requires_histogram_update = True
+                        imgui.pop_item_width()
+
+                        imgui.pop_id()
+                    imgui.set_next_item_width(imgui.get_content_region_available_width())
+                    imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 2))
+                    _c, new_filter_type = imgui.combo("##filtertype", 0, ["Add filter"] + Filter.TYPES)
+                    if _c and not new_filter_type == 0:
+                        sef.filters.append(Filter(sef, new_filter_type - 1))
+                    imgui.pop_style_var(6)
+                    imgui.pop_style_color(1)
+
+        def segmentation_tab():
 
             def features_panel():
                 if imgui.collapsing_header("Features", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
@@ -483,8 +482,7 @@ class SegmentationEditor:
                         self.parse_available_features()
                     imgui.pop_style_var(1)
 
-            available_datasets()
-            filters_panel()
+
             features_panel()
 
         def models_tab():
@@ -499,7 +497,7 @@ class SegmentationEditor:
                             elif self.trainset_feature_selection[f.title] == -1:
                                 self.trainset_num_boxes_negative += f.n_boxes
 
-            available_datasets()
+
 
             if imgui.collapsing_header("Create a training set", None)[0]:
                 imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
@@ -754,7 +752,7 @@ class SegmentationEditor:
                 imgui.pop_style_var(3)
 
         def export_tab():
-            available_datasets()
+
 
             if imgui.collapsing_header("Export volumes", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
                 imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
@@ -795,6 +793,8 @@ class SegmentationEditor:
                 imgui.set_next_item_width(imgui.get_content_region_available_width())
                 _, self.export_batch_size = imgui.slider_int("##batch_size", self.export_batch_size, 1, 32, f"{self.export_batch_size} batch size")
                 _, self.export_compete = imgui.checkbox("competing models", self.export_compete)
+                imgui.same_line(spacing=40)
+                _, self.export_limit_range = imgui.checkbox("limit range", self.export_limit_range)
                 imgui.end_child()
 
                 if widgets.centred_button("Start export", 120, 23):
@@ -919,13 +919,14 @@ class SegmentationEditor:
         # Render the currently active frame
 
         if cfg.se_active_frame is not None:
+            pxd = self.renderer.render_filtered_frame(cfg.se_active_frame, self.camera, self.window, cfg.se_active_frame.filters)
+            if pxd is not None:
+                cfg.se_active_frame.compute_histogram(pxd)
+                if cfg.se_active_frame.autocontrast:
+                    cfg.se_active_frame.compute_autocontrast(None, pxd)
+                cfg.se_active_frame.requires_histogram_update = False
             if self.active_tab == "Segmentation":
-                pxd = self.renderer.render_frame_with_segmentations(cfg.se_active_frame, self.camera, self.window, cfg.se_active_frame.filters)
-                if pxd is not None:
-                    cfg.se_active_frame.compute_histogram(pxd)
-                    if cfg.se_active_frame.autocontrast:
-                        cfg.se_active_frame.compute_autocontrast(None, pxd)
-                    cfg.se_active_frame.requires_histogram_update = False
+                self.renderer.render_segmentations(cfg.se_active_frame, self.camera)
 
                 # render drawing ROI indicator
                 active_feature = cfg.se_active_frame.active_feature
@@ -943,15 +944,15 @@ class SegmentationEditor:
                             box_x_pos = frame_xy[0] + (box[0] - f.parent.width / 2) * f.parent.pixel_size
                             box_y_pos = frame_xy[1] + (box[1] - f.parent.height / 2) * f.parent.pixel_size
                             self.renderer.add_square((box_x_pos, box_y_pos), f.box_size_nm, f.colour)
-
             if self.active_tab in ["Models", "Export"]:
-                self.renderer.render_frame_with_models(cfg.se_active_frame, self.camera)
+                self.renderer.render_models(cfg.se_active_frame, self.camera)
 
         # MAIN WINDOW
         imgui.set_next_window_position(0, 17, imgui.ONCE)
         imgui.set_next_window_size(SegmentationEditor.MAIN_WINDOW_WIDTH, self.window.height - 17)
 
         imgui.begin("##se_main", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE)
+        shared_gui()
         if imgui.begin_tab_bar("##tabs"):
             if imgui.begin_tab_item(" Segmentation ")[0]:
                 segmentation_tab()
@@ -1219,73 +1220,7 @@ class Renderer:
         self.fbo2 = FrameBuffer()
         self.fbo3 = FrameBuffer()
 
-    def render_frame_with_models(self, se_frame, camera):
-        se_frame.update_model_matrix()
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glBlendEquation(GL_FUNC_ADD)
-
-        self.quad_shader.bind()
-        se_frame.quad_va.bind()
-        se_frame.texture.bind()
-        self.quad_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
-        self.quad_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
-        self.quad_shader.uniform1f("alpha", se_frame.alpha)
-        self.quad_shader.uniform1f("contrastMin", se_frame.contrast_lims[0])
-        self.quad_shader.uniform1f("contrastMax", se_frame.contrast_lims[1])
-        glDrawElements(GL_TRIANGLES, se_frame.quad_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
-        self.quad_shader.unbind()
-        se_frame.quad_va.unbind()
-        glActiveTexture(GL_TEXTURE0)
-
-        # render overlays (from models)
-        se_frame.quad_va.bind()
-        self.f_segmentation_shader.bind()
-        self.f_segmentation_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
-        self.f_segmentation_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
-        render_list = copy(cfg.se_models)
-        if cfg.se_active_model in render_list:
-            render_list.remove(cfg.se_active_model)
-            render_list.append(cfg.se_active_model)
-        for model in render_list:
-            if not model.active or not model.show:
-                continue
-            if model.data is None:
-                continue
-            if model.blend:
-                glBlendFunc(GL_DST_COLOR, GL_DST_ALPHA)
-                glBlendEquation(GL_FUNC_ADD)
-            else:
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-                glBlendEquation(GL_FUNC_ADD)
-            self.f_segmentation_shader.uniform1f("alpha", model.alpha)
-            clr = model.colour
-            alpha = model.alpha
-            self.f_segmentation_shader.uniform3f("colour", (clr[0] * alpha, clr[1] * alpha, clr[2] * alpha))
-            self.f_segmentation_shader.uniform1f("threshold", model.threshold)
-            model.texture.bind(0)
-            glDrawElements(GL_TRIANGLES, se_frame.quad_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
-        se_frame.quad_va.unbind()
-        self.f_segmentation_shader.unbind()
-        glActiveTexture(GL_TEXTURE0)
-
-        # render border
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glBlendEquation(GL_FUNC_ADD)
-        self.border_shader.bind()
-        se_frame.border_va.bind()
-        self.border_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
-        self.border_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
-        glDrawElements(GL_LINES, se_frame.border_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
-        self.border_shader.unbind()
-        se_frame.border_va.unbind()
-
-    def render_frame_with_segmentations(self, se_frame, camera, window, filters=[]):
-        """
-        se_frame: the SEFrame object to render.
-        camera: a Camera object to render with.
-        window: the Window object (to which the viewport size will be reset)
-        filters: a list of Filter objectm, to apply to the se_frame pixeldata.
-        """
+    def render_filtered_frame(self, se_frame, camera, window, filters):
         se_frame.update_model_matrix()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glBlendEquation(GL_FUNC_ADD)
@@ -1295,7 +1230,8 @@ class Renderer:
         self.fbo3.clear((0.0, 0.0, 0.0, 2.0))
 
         # render the image to a framebuffer
-        fake_camera_matrix = np.matrix([[2 / self.fbo1.width, 0, 0, 0], [0, 2 / self.fbo1.height, 0, 0], [0, 0, -2 / 100, 0], [0, 0, 0, 1]])
+        fake_camera_matrix = np.matrix(
+            [[2 / self.fbo1.width, 0, 0, 0], [0, 2 / self.fbo1.height, 0, 0], [0, 0, -2 / 100, 0], [0, 0, 0, 1]])
         self.fbo1.bind()
         self.quad_shader.bind()
         se_frame.quad_va.bind()
@@ -1370,6 +1306,58 @@ class Renderer:
         self.quad_shader.unbind()
         se_frame.quad_va.unbind()
         glActiveTexture(GL_TEXTURE0)
+        return pxd
+
+    def render_models(self, se_frame, camera):
+        # render overlays (from models)
+        se_frame.quad_va.bind()
+        self.f_segmentation_shader.bind()
+        self.f_segmentation_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
+        self.f_segmentation_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
+        render_list = copy(cfg.se_models)
+        if cfg.se_active_model in render_list:
+            render_list.remove(cfg.se_active_model)
+            render_list.append(cfg.se_active_model)
+        for model in render_list:
+            if not model.active or not model.show:
+                continue
+            if model.data is None:
+                continue
+            if model.blend:
+                glBlendFunc(GL_DST_COLOR, GL_DST_ALPHA)
+                glBlendEquation(GL_FUNC_ADD)
+            else:
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+                glBlendEquation(GL_FUNC_ADD)
+            self.f_segmentation_shader.uniform1f("alpha", model.alpha)
+            clr = model.colour
+            alpha = model.alpha
+            self.f_segmentation_shader.uniform3f("colour", (clr[0] * alpha, clr[1] * alpha, clr[2] * alpha))
+            self.f_segmentation_shader.uniform1f("threshold", model.threshold)
+            model.texture.bind(0)
+            glDrawElements(GL_TRIANGLES, se_frame.quad_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        se_frame.quad_va.unbind()
+        self.f_segmentation_shader.unbind()
+        glActiveTexture(GL_TEXTURE0)
+
+        # render border
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendEquation(GL_FUNC_ADD)
+        self.border_shader.bind()
+        se_frame.border_va.bind()
+        self.border_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
+        self.border_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
+        glDrawElements(GL_LINES, se_frame.border_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        self.border_shader.unbind()
+        se_frame.border_va.unbind()
+
+    def render_segmentations(self, se_frame, camera):
+        """
+        se_frame: the SEFrame object to render.
+        camera: a Camera object to render with.
+        window: the Window object (to which the viewport size will be reset)
+        filters: a list of Filter objectm, to apply to the se_frame pixeldata.
+        """
 
         # render overlays
         se_frame.quad_va.bind()
@@ -1413,8 +1401,6 @@ class Renderer:
         glDrawElements(GL_LINES, se_frame.border_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
         self.border_shader.unbind()
         se_frame.border_va.unbind()
-
-        return pxd
 
     def add_line(self, start_xy, stop_xy, colour, subtract=False):
         if subtract:
