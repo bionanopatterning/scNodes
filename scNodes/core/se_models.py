@@ -60,7 +60,7 @@ class SEModel:
         self.excess_negative = 30
         self.info = ""
         self.info_short = ""  ## TODO: add loss to info strings
-
+        self.loss = 0.0
         self.data = None
         self.texture = Texture(format="r32f")
         self.texture.set_linear_mipmap_interpolation()
@@ -239,7 +239,8 @@ class SEModel:
             # train
             self.model.fit(train_x, train_y, epochs=self.epochs, batch_size=self.batch_size, shuffle=True, validation_split=0.1,
                            callbacks=[TrainingProgressCallback(process, n_samples, self.batch_size),
-                                      StopTrainingCallback(process.stop_request)])
+                                      StopTrainingCallback(process.stop_request),
+                                      LossCallback(self)])
             process.set_progress(1.0)
 
         except Exception as e:
@@ -255,8 +256,12 @@ class SEModel:
         self.compiled = True
         self.box_size = box_size
         self.n_parameters = self.model.count_params()
-        self.info = SEModel.AVAILABLE_MODELS[self.model_enum] + f" ({self.n_parameters}, {self.box_size}, {self.apix:.3f})"
-        self.info_short = "(" + SEModel.AVAILABLE_MODELS[self.model_enum] + f", {self.box_size}, {self.apix:.3f})"
+        self.info = SEModel.AVAILABLE_MODELS[self.model_enum] + f" ({self.n_parameters}, {self.box_size}, {self.apix:.3f}, {self.loss:2.f})"
+        self.info_short = "(" + SEModel.AVAILABLE_MODELS[self.model_enum] + f", {self.box_size}, {self.apix:.3f}, {self.loss:2.f})"
+
+    def update_info(self):
+        self.info = SEModel.AVAILABLE_MODELS[self.model_enum] + f" ({self.n_parameters}, {self.box_size}, {self.apix:.3f}, {self.loss:2.f})"
+        self.info_short = "(" + SEModel.AVAILABLE_MODELS[self.model_enum] + f", {self.box_size}, {self.apix:.3f}, {self.loss:2.f})"
 
     def set_slice(self, slice_data):
         if not self.compiled:
@@ -381,6 +386,16 @@ class StopTrainingCallback(Callback):
     def on_batch_end(self, batch, logs=None):
         if self.stop_request.is_set():
             self.model.stop_training = True
+
+
+class LossCallback(Callback):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+    def on_epoch_end(self, epoch, logs=None):
+        self.model.loss = logs['loss']
+        self.model.update_info()
 
 
 class BackgroundProcess:
