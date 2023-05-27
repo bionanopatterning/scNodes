@@ -22,6 +22,7 @@ class SEFrame:
         self.slice_changed = False
         self.data = None
         self.features = list()
+        self.feature_counter = 0
         self.active_feature = None
         self.height, self.width = mrcfile.mmap(self.path, mode="r").data.shape[1:3]
         self.pixel_size = mrcfile.open(self.path, header_only=True).voxel_size.x / 10.0
@@ -37,6 +38,8 @@ class SEFrame:
         self.autocontrast = True
         self.sample = True
         self.export = False
+        self.export_bottom = 0
+        self.export_top = None
         self.hist_vals = list()
         self.hist_bins = list()
         self.requires_histogram_update = False
@@ -100,6 +103,8 @@ class SEFrame:
         self.slice_changed = True
         mrc = mrcfile.mmap(self.path, mode="r")
         self.n_slices = mrc.data.shape[0]
+        if self.export_top is None:
+            self.export_top = self.n_slices
         requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
         self.data = mrc.data[requested_slice, :, :]
         target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
@@ -180,8 +185,8 @@ class SEFrame:
 
 class Filter:
 
-    TYPES = ["Gaussian blur", "Box blur", "Sobel vertical", "Sobel horizontal"]
-    PARAMETER_NAME = ["sigma", "box", None, None]
+    TYPES = ["Gaussian blur", "Offset Gaussian blur","Box blur", "Sobel vertical", "Sobel horizontal"]
+    PARAMETER_NAME = ["sigma", "sigma", "box", None, None]
     M = 16
 
     def __init__(self, parent, filter_type):
@@ -226,13 +231,18 @@ class Filter:
             self.k1 /= np.sum(self.k1, dtype=np.float32)
             self.k2 = self.k1
         if self.type == 1:
+            self.k1 = np.exp(-np.linspace(-Filter.M, Filter.M, 2 * Filter.M + 1) ** 2 / self.param ** 2, dtype=np.float32)
+            self.k1 /= np.sum(self.k1, dtype=np.float32)
+            self.k1 -= np.mean(self.k1)
+            self.k2 = self.k1
+        if self.type == 2:
             m = min([int(self.param), 7])
             self.k1 = np.asarray([0] * (Filter.M - 1 - m) + [1] * m + [1] + [1] * m + [0] * (Filter.M - 1 - m)) / (2 * m + 1)
             self.k2 = self.k1
-        if self.type == 2:
+        if self.type == 3:
             self.k1 = np.asarray([0] * (Filter.M - 1) + [1, 2, 1] + [0] * (Filter.M - 1))
             self.k2 = np.asarray([0] * (Filter.M - 1) + [1, 0, -1] + [0] * (Filter.M - 1))
-        if self.type == 3:
+        if self.type == 4:
             self.k1 = np.asarray([0] * (Filter.M - 1) + [1, 0, -1] + [0] * (Filter.M - 1))
             self.k2 = np.asarray([0] * (Filter.M - 1) + [1, 2, 1] + [0] * (Filter.M - 1))
 
@@ -262,10 +272,11 @@ class Segmentation:
         self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f') + "000") + uid_counter
         self.parent = parent_frame
         self.parent.active_feature = self
+        self.parent.feature_counter += 1
         self.width = self.parent.width
         self.height = self.parent.height
         self.title = title
-        self.colour = Segmentation.DEFAULT_COLOURS[(len(self.parent.features)) % len(Segmentation.DEFAULT_COLOURS)]
+        self.colour = Segmentation.DEFAULT_COLOURS[(self.parent.feature_counter - 1) % len(Segmentation.DEFAULT_COLOURS)]
         self.alpha = 0.33
         self.hide = False
         self.contour = False

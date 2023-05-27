@@ -68,6 +68,7 @@ class SegmentationEditor:
 
         # export
         self.export_compete = True
+        self.export_limit_range = True
         self.export_dir = ""
         self.queued_exports = list()
         self.export_batch_size = 5
@@ -859,17 +860,54 @@ class SegmentationEditor:
             imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_PANEL_BACKGROUND)
             imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *cfg.COLOUR_PANEL_BACKGROUND)
             imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_PANEL_BACKGROUND)
-            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.COLOUR_TITLE_BACKGROUND)
-            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.COLOUR_TITLE_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *cfg.COLOUR_FRAME_EXTRA_DARK[0:3], 0.8)
+            imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *cfg.COLOUR_FRAME_EXTRA_DARK[0:3], 0.8)
             imgui.set_next_window_size(SegmentationEditor.SLICER_WINDOW_WIDTH, 0.0)
             window_x_pos = SegmentationEditor.MAIN_WINDOW_WIDTH + (self.window.width - SegmentationEditor.MAIN_WINDOW_WIDTH - SegmentationEditor.SLICER_WINDOW_WIDTH) / 2
-            imgui.set_next_window_position(window_x_pos, self.window.height - SegmentationEditor.SLICER_WINDOW_VERTICAL_OFFSET)
+
+            export_mode = self.export_limit_range and self.active_tab == "Export"
+            vertical_offset = self.window.height - SegmentationEditor.SLICER_WINDOW_VERTICAL_OFFSET - (40 if export_mode else 23)
+            imgui.set_next_window_position(window_x_pos, vertical_offset)
             imgui.begin("##slicer", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_BACKGROUND)
-            imgui.set_next_item_width(imgui.get_content_region_available_width())
+
+            cw = imgui.get_content_region_available_width()
+            imgui.push_item_width(cw)
+
             frame = cfg.se_active_frame
-            slice_idx_changed, requested_slice = imgui.slider_int("##slicer_slider", frame.current_slice, 0, frame.n_slices, format=f"slice {1+frame.current_slice}/{frame.n_slices}")
-            if slice_idx_changed:
+            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_FRAME_BACKGROUND[0:3], 0.7)
+            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_FRAME_BACKGROUND[0:3], 0.7)
+            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *cfg.COLOUR_FRAME_BACKGROUND[0:3], 0.7)
+            imgui.push_style_color(imgui.COLOR_BORDER, 0.3, 0.3, 0.3, 1.0)
+
+            if export_mode:
+                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                _, frame.export_top = imgui.slider_int("##export_top", frame.export_top, 1, frame.n_slices, format=f"export stop {frame.export_top + 1}")
+                imgui.pop_style_var(1)
+                if _:
+                    frame.set_slice(frame.export_top)
+                    frame.export_bottom = min([frame.export_bottom, frame.export_top - 1])
+                    frame.export_bottom = max([frame.export_bottom, 1])
+                origin = imgui.get_window_position()
+                y = imgui.get_cursor_screen_pos()[1]
+                draw_list = imgui.get_background_draw_list()
+                left = 8 + origin[0] + cw * frame.export_bottom / frame.n_slices
+                right = 8 + origin[0] + cw * frame.export_top / frame.n_slices
+                draw_list.add_rect_filled(left, y, right, y + 18, imgui.get_color_u32_rgba(*cfg.COLOUR_POSITIVE), 10)
+
+            _, requested_slice = imgui.slider_int("##slicer_slider", frame.current_slice, 0, frame.n_slices, format=f"slice {1+frame.current_slice}/{frame.n_slices}")
+            if _:
                 frame.set_slice(requested_slice)
+
+            if export_mode:
+                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                _, frame.export_bottom = imgui.slider_int("##export_bottom", frame.export_bottom, 0, frame.n_slices - 1, format=f"export start {frame.export_bottom + 1}")
+                imgui.pop_style_var(1)
+                if _:
+                    frame.set_slice(frame.export_bottom)
+                    frame.export_top = max([frame.export_top, frame.export_bottom + 1])
+                    frame.export_top = min([frame.export_top, frame.n_slices])
+            imgui.pop_style_color(4)
+            imgui.pop_item_width()
             imgui.end()
 
             imgui.pop_style_var(3)
@@ -906,7 +944,7 @@ class SegmentationEditor:
                             box_y_pos = frame_xy[1] + (box[1] - f.parent.height / 2) * f.parent.pixel_size
                             self.renderer.add_square((box_x_pos, box_y_pos), f.box_size_nm, f.colour)
 
-            if self.active_tab == "Models":
+            if self.active_tab in ["Models", "Export"]:
                 self.renderer.render_frame_with_models(cfg.se_active_frame, self.camera)
 
         # MAIN WINDOW
@@ -1512,6 +1550,7 @@ class QueuedExport:
 
     def do_export(self, process):
         print(f"QueuedExport - loading dataset {self.dataset.path}")
+
         mrcd = np.array(mrcfile.open(self.dataset.path, mode='r').data[:, :, :])
         target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
         if type(mrcd[0, 0, 0]) not in target_type_dict:
@@ -1528,7 +1567,7 @@ class QueuedExport:
         for m in self.models:
             print(f"QueuedExport - applying model {m.info}")
             self.colour = m.colour
-            slices_to_process = list(range(n_slices))  # todo make adjustable
+            slices_to_process = list(range(self.dataset.export_min, self.dataset.export_max))
             while len(slices_to_process) > 0:
                 indices = list()
                 images = list()

@@ -21,5 +21,5 @@ in vec2 fXY;
 
 void main()
 {
-    fragmentColour = vec4(1.0, 1.0, 1.0, 1.0);
+    fragmentColour = vec4(0.0, 0.0, 0.0, 1.0);
 }
