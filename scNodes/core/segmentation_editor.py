@@ -12,6 +12,7 @@ from copy import copy
 from tkinter import filedialog
 import threading
 import tifffile
+import time
 import dill as pickle
 from scipy.ndimage import zoom
 from scNodes.core.se_models import *
@@ -38,6 +39,11 @@ class SegmentationEditor:
         MODEL_PANEL_HEIGHT_TRAINING = 158
         MODEL_PANEL_HEIGHT_PREDICTION = 145
 
+        TOOLTIP_APPEAR_DELAY = 1.0
+        TOOLTIP_HOVERED_TIMER = 0.0
+        TOOLTIP_HOVERED_START_TIME = 0.0
+
+
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
         self.window.clear_color = cfg.COLOUR_WINDOW_BACKGROUND
@@ -61,6 +67,7 @@ class SegmentationEditor:
         self.trainset_num_boxes_negative = 0
         self.trainset_boxsize = 32
         self.trainset_apix = 10.0
+        self.show_trainset_boxes = False
         self.active_trainset_exports = list()
 
         # drop files
@@ -127,12 +134,12 @@ class SegmentationEditor:
             cfg.window_height = self.window.height
             self.camera.set_projection_matrix(cfg.window_width, cfg.window_height)
 
-        if self.active_tab == "Models" and cfg.se_active_frame is not None and cfg.se_active_frame.slice_changed:
+        if self.active_tab in ["Export", "Models"] and cfg.se_active_frame is not None and cfg.se_active_frame.slice_changed:
             active_models = list()
             pxd_arrays = list()
             for model in cfg.se_models:
                 # launch all active models
-                if model.set_slice(cfg.se_active_frame.data):
+                if model.set_slice(cfg.se_active_frame.data, cfg.se_active_frame.pixel_size):
                     active_models.append(model)
                     pxd_arrays.append(model.data)
             if len(active_models) > 1:
@@ -206,6 +213,7 @@ class SegmentationEditor:
                 if not imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
                     if imgui.is_mouse_down(0):
                         Brush.apply_circular(active_feature, pixel_coordinate, True)
+                        active_feature.hide = False
                     elif imgui.is_mouse_down(1):
                         Brush.apply_circular(active_feature, pixel_coordinate, False)
                 else:
@@ -270,17 +278,29 @@ class SegmentationEditor:
                 imgui.begin_child("available_datasets", 0.0, 120, True, imgui.WINDOW_ALWAYS_VERTICAL_SCROLLBAR)
                 for s in cfg.se_frames:
                     imgui.push_id(f"se{s.uid}")
-                    _change, _selected = imgui.selectable(s.title, cfg.se_active_frame == s)
-                    if _change and _selected:
-                        self.set_active_dataset(s)
-                        for model in cfg.se_models:
-                            model.reset_textures()
+
+                    base_title = s.title.split(".")[0]
+                    _change, _selected = imgui.selectable(base_title[-17:] + f" - {s.pixel_size * 10.0:.2f} A/pix ", cfg.se_active_frame == s)
                     if imgui.begin_popup_context_item("##datasetContext"):
                         if imgui.menu_item("Unlink dataset")[0]:
                             cfg.se_frames.remove(s)
                             if cfg.se_active_frame == s:
                                 cfg.se_active_frame = None
+                            self.parse_available_features()
                         imgui.end_popup()
+                    self.tooltip(f"{s.title}\nPixel size: {s.pixel_size * 10.0:.4f} Angstrom\nLocation: {s.path}")
+                    if _change and _selected:
+                        self.set_active_dataset(s)
+                        for model in cfg.se_models:
+                            model.reset_textures()
+                    if _change or _selected:
+                        self.trainset_apix = s.pixel_size * 10.0
+
+                    for f in s.features:
+                        imgui.same_line(spacing=1)
+                        if imgui.color_button(f"##{f.uid}", f.colour[0], f.colour[1], f.colour[2], 1, imgui.COLOR_EDIT_NO_TOOLTIP, 6, 13):
+                            s.active_feature = f
+
                     imgui.pop_id()
                 imgui.end_child()
 
@@ -500,6 +520,7 @@ class SegmentationEditor:
 
 
             if imgui.collapsing_header("Create a training set", None)[0]:
+                self.show_trainset_boxes = True
                 imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
                 imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
@@ -563,7 +584,8 @@ class SegmentationEditor:
                 if widgets.centred_button("Generate set", 120, 23):
                     self.launch_create_training_set()
                 imgui.pop_style_var(5)
-
+            else:
+                self.show_trainset_boxes = False
             if imgui.collapsing_header("Models", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
                 for m in cfg.se_models:
                     pop_active_colour = False
@@ -665,7 +687,8 @@ class SegmentationEditor:
                                 block_save_button = True
                             if imgui.button("save", (cw - 16) / 3, 20):
                                 if not block_buttons or block_save_button:
-                                    model_path = filedialog.asksaveasfilename(filetypes=[("scNodes model", f"{cfg.filetype_semodel}")])
+                                    proposed_filename = f"{m.apix:.2f}_{m.box_size}_{m.loss:.4f}_{m.title}"
+                                    model_path = filedialog.asksaveasfilename(filetypes=[("scNodes model", f"{cfg.filetype_semodel}")], initialfile=proposed_filename)
                                     if model_path is not None:
                                         if model_path[-len(cfg.filetype_semodel):] != cfg.filetype_semodel:
                                             model_path += cfg.filetype_semodel
@@ -694,14 +717,14 @@ class SegmentationEditor:
 
                             imgui.push_item_width(imgui.get_content_region_available_width())
                             _, m.alpha = imgui.slider_float("##alpha", m.alpha, 0.0, 1.0, format=f"{m.alpha:.2f} alpha")
-                            _, m.overlap = imgui.slider_float("##overlap", m.overlap, 0.0, 0.9, format=f"{m.overlap:.2f} overlap")
+                            _, m.overlap = imgui.slider_float("##overlap", m.overlap, 0.0, 0.67, format=f"{m.overlap:.2f} overlap")
                             _, m.threshold = imgui.slider_float("##thershold", m.threshold, 0.0, 1.0, format=f"{m.threshold:.2f} threshold")
                             imgui.pop_item_width()
 
                             _, m.active = imgui.checkbox("active    ", m.active)
                             if _ and m.active:
                                 if cfg.se_active_frame is not None:
-                                    m.set_slice(cfg.se_active_frame.data)
+                                    m.set_slice(cfg.se_active_frame.data, cfg.se_active_frame.pixel_size)
                                     cfg.se_active_frame.slice_changed = True
                             imgui.same_line()
                             _, m.blend = imgui.checkbox("blend    ", m.blend)
@@ -769,7 +792,10 @@ class SegmentationEditor:
                     imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *m.colour)
                     imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *m.colour)
                     imgui.push_style_color(imgui.COLOR_CHECK_MARK, 0.0, 0.0, 0.0, 1.0)
-                    _, m.export = imgui.checkbox(m.title + " - " + m.info_short, m.export)
+                    _, m.export = imgui.checkbox(m.title + " " + m.info_short, m.export)
+                    if _:
+                        m.active = m.export
+                        m.show = m.export
                     imgui.pop_style_color(4)
                 imgui.end_child()
 
@@ -828,7 +854,7 @@ class SegmentationEditor:
                             print(e)
                     if imgui.menu_item("Save dataset")[0]:
                         try:
-                            filename = filedialog.asksaveasfilename(filetypes=[("scNodes segmentation", ".scns")])
+                            filename = filedialog.asksaveasfilename(filetypes=[("scNodes segmentation", ".scns")], initialfile = os.path.basename(cfg.se_active_frame.path))
                             if filename != '':
                                 if filename[-5:] != ".scns":
                                     filename += ".scns"
@@ -946,6 +972,19 @@ class SegmentationEditor:
                             self.renderer.add_square((box_x_pos, box_y_pos), f.box_size_nm, f.colour)
             if self.active_tab in ["Models", "Export"]:
                 self.renderer.render_models(cfg.se_active_frame, self.camera)
+            if self.active_tab == "Models" and self.show_trainset_boxes:
+                for f in cfg.se_active_frame.features:
+                    frame_xy = f.parent.transform.translation
+                    if f.current_slice in f.boxes and f.title in self.trainset_feature_selection:
+                        sval = self.trainset_feature_selection[f.title]
+                        if sval == 0.0:
+                            continue
+                        clr = cfg.COLOUR_POSITIVE if sval == 1.0 else cfg.COLOUR_NEGATIVE
+                        for box in f.boxes[f.current_slice]:
+                            box_x_pos = frame_xy[0] + (box[0] - f.parent.width / 2) * f.parent.pixel_size
+                            box_y_pos = frame_xy[1] + (box[1] - f.parent.height / 2) * f.parent.pixel_size
+                            box_size = self.trainset_apix * self.trainset_boxsize / 10.0
+                            self.renderer.add_square((box_x_pos, box_y_pos), box_size, clr)
 
         # MAIN WINDOW
         imgui.set_next_window_position(0, 17, imgui.ONCE)
@@ -1022,6 +1061,19 @@ class SegmentationEditor:
                     feature_or_model.colour = self.feature_colour_dict[t]
             imgui.end_popup()
 
+    @staticmethod
+    def tooltip(text):
+        if imgui.is_item_hovered():
+            if SegmentationEditor.TOOLTIP_HOVERED_TIMER == 0.0:
+                SegmentationEditor.TOOLTIP_HOVERED_START_TIME = time.time()
+                SegmentationEditor.TOOLTIP_HOVERED_TIMER = 0.001  # add a fake 1 ms to get out of this if clause
+            elif SegmentationEditor.TOOLTIP_HOVERED_TIMER > SegmentationEditor.TOOLTIP_APPEAR_DELAY:
+                imgui.set_tooltip(text)
+            else:
+                SegmentationEditor.TOOLTIP_HOVERED_TIMER = time.time() - SegmentationEditor.TOOLTIP_HOVERED_START_TIME
+        if not imgui.is_any_item_hovered():
+            SegmentationEditor.TOOLTIP_HOVERED_TIMER = 0.0
+
     def launch_export_volumes(self):
         if not os.path.isdir(self.export_dir):
             os.makedirs(self.export_dir)
@@ -1038,7 +1090,7 @@ class SegmentationEditor:
             self.queued_exports[0].start()
 
     def launch_create_training_set(self):
-        path = filedialog.asksaveasfilename(filetypes=[("scNodes traindata", cfg.filetype_traindata)])
+        path = filedialog.asksaveasfilename(filetypes=[("scNodes traindata", cfg.filetype_traindata)], initialfile=f"{self.trainset_boxsize}_{self.trainset_apix:.3f}_")
         if path == "":
             return
         if path[-len(cfg.filetype_traindata):] != cfg.filetype_traindata:
@@ -1535,66 +1587,72 @@ class QueuedExport:
         self.batch_size = batch_size
 
     def do_export(self, process):
-        print(f"QueuedExport - loading dataset {self.dataset.path}")
+        try:
+            print(f"QueuedExport - loading dataset {self.dataset.path}")
 
-        mrcd = np.array(mrcfile.open(self.dataset.path, mode='r').data[:, :, :])
-        target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
-        if type(mrcd[0, 0, 0]) not in target_type_dict:
-            mrcd = mrcd.astype(float, copy=False)
-        else:
-            mrcd = np.array(mrcd.astype(target_type_dict[type(mrcd[0, 0, 0])], copy=False), dtype=float)
+            mrcd = np.array(mrcfile.open(self.dataset.path, mode='r').data[:, :, :])
+            target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
+            if type(mrcd[0, 0, 0]) not in target_type_dict:
+                mrcd = mrcd.astype(float, copy=False)
+            else:
+                mrcd = np.array(mrcd.astype(target_type_dict[type(mrcd[0, 0, 0])], copy=False), dtype=float)
 
-        n_slices = mrcd.shape[0]
-        n_slices_total = mrcd.shape[0] * len(self.models)
-        n_slices_complete = 0
-        segmentations = np.zeros((len(self.models), *mrcd.shape), dtype=float)
-        m_idx = 0
+            n_slices = mrcd.shape[0]
+            n_slices_total = (self.dataset.export_top - self.dataset.export_bottom) * len(self.models)
+            n_slices_complete = 0
+            segmentations = np.zeros((len(self.models), *mrcd.shape), dtype=float)
+            m_idx = 0
 
-        for m in self.models:
-            print(f"QueuedExport - applying model {m.info}")
-            self.colour = m.colour
-            slices_to_process = list(range(self.dataset.export_min, self.dataset.export_max))
-            while len(slices_to_process) > 0:
-                indices = list()
-                images = list()
-                for i in range(self.batch_size):
-                    if len(slices_to_process) > 0:
-                        indices.append(slices_to_process.pop(0))
-                        images.append(mrcd[indices[-1], :, :])
-                seg_images = m.apply_to_multiple_slices(images)
-                for i in range(len(indices)):
-                    segmentations[m_idx, indices[i], :, :] = np.clip(seg_images[i] * 65535, 0, 65535)
+            for m in self.models:
+                print(f"QueuedExport - applying model {m.info}")
+                self.colour = m.colour
+                slices_to_process = list(range(self.dataset.export_bottom, self.dataset.export_top))
+                while len(slices_to_process) > 0:
+                    indices = list()
+                    images = list()
+                    for i in range(self.batch_size):
+                        if len(slices_to_process) > 0:
+                            indices.append(slices_to_process.pop(0))
+                            images.append(mrcd[indices[-1], :, :])
+                    seg_images = m.apply_to_multiple_slices(images, self.dataset.pixel_size)
+                    for i in range(len(indices)):
+                        segmentations[m_idx, indices[i], :, :] = np.clip(seg_images[i] * 65535, 0, 65535)
+                        n_slices_complete += 1
+                        self.process.set_progress(min([0.999, n_slices_complete / n_slices_total]))
+
+                m_idx += 1
+
+            # apply competition
+            print(f"QueuedExport - let models compete")
+            if self.compete and len(self.models) > 1:
+                for z in range(n_slices):
+                    max_img = np.max(segmentations[:, z, :, :], axis=0)
+                    for i in range(len(self.models)):
+                        mask = segmentations[i, z, :, :] == max_img
+                        segmentations[i, z, :, :][mask == 0] = 0
                     n_slices_complete += 1
                     self.process.set_progress(min([0.999, n_slices_complete / n_slices_total]))
 
-            m_idx += 1
+            # save the mrc files
+            i = 0
+            self.colour = cfg.COLOUR_POSITIVE[0:3]
+            for m in self.models:
+                print(f"QueuedExport - saving output of model {m.info}")
+                out_path = os.path.join(self.directory, self.dataset.title+"_"+m.title+".mrc")
+                with mrcfile.new(out_path, overwrite=True) as mrc:
+                    s = segmentations[i, :, :, :].squeeze()
+                    s = np.clip(s, 0, 65535).astype(np.uint16)
+                    mrc.set_data(s)
+                    mrc.voxel_size = self.dataset.pixel_size * 10.0
+                n_slices_complete += n_slices
+                i += 1
 
-        # apply competition
-        print(f"QueuedExport - let models compete")
-        if self.compete and len(self.models) > 1:
-            for z in range(n_slices):
-                max_img = np.max(segmentations[:, z, :, :], axis=0)
-                for i in range(len(self.models)):
-                    mask = segmentations[i, z, :, :] == max_img
-                    segmentations[i, z, :, :][mask == 0] = 0
-                n_slices_complete += 1
-                self.process.set_progress(min([0.999, n_slices_complete / n_slices_total]))
-
-        # save the mrc files
-        i = 0
-        self.colour = cfg.COLOUR_POSITIVE[0:3]
-        for m in self.models:
-            print(f"QueuedExport - saving output of model {m.info}")
-            out_path = os.path.join(self.directory, self.dataset.title[14:]+"_"+m.title+".mrc")
-            with mrcfile.new(out_path, overwrite=True) as mrc:
-                s = segmentations[i, :, :, :].squeeze()
-                s = np.clip(s, 0, 65535).astype(np.uint16)
-                mrc.set_data(s)
-                mrc.voxel_size = self.dataset.pixel_size * 10.0
-            n_slices_complete += n_slices
-            i += 1
-
-        self.process.set_progress(1.0)
+            self.process.set_progress(1.0)
+        except Exception as e:
+            print("An issue was encountered during export\n"
+                  f"\tDataset: {self.dataset.path}\n"
+                  f"\tError:\n", e)
+            self.process.set_progress(1.0)
 
     def start(self):
         self.process.start()

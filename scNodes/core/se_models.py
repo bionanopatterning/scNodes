@@ -12,7 +12,7 @@ import json
 from scNodes.core.opengl_classes import Texture
 from scipy.ndimage import rotate
 import datetime
-
+from scipy.ndimage import zoom
 # Note 230522: getting tensorflow to use the GPU is a pain. Eventually it worked with: CUDA D11.8, cuDNN 8.6, tensorflow 2.8.0, protobuf 3.20.0, and adding LIBRARY_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\lib\x64 to the PyCharm run configuration environment variables.
 
 
@@ -238,9 +238,8 @@ class SEModel:
 
             # train
             self.model.fit(train_x, train_y, epochs=self.epochs, batch_size=self.batch_size, shuffle=True, validation_split=0.1,
-                           callbacks=[TrainingProgressCallback(process, n_samples, self.batch_size),
-                                      StopTrainingCallback(process.stop_request),
-                                      LossCallback(self)])
+                           callbacks=[TrainingProgressCallback(process, n_samples, self.batch_size, self),
+                                      StopTrainingCallback(process.stop_request)])
             process.set_progress(1.0)
 
         except Exception as e:
@@ -256,19 +255,18 @@ class SEModel:
         self.compiled = True
         self.box_size = box_size
         self.n_parameters = self.model.count_params()
-        self.info = SEModel.AVAILABLE_MODELS[self.model_enum] + f" ({self.n_parameters}, {self.box_size}, {self.apix:.3f}, {self.loss:2.f})"
-        self.info_short = "(" + SEModel.AVAILABLE_MODELS[self.model_enum] + f", {self.box_size}, {self.apix:.3f}, {self.loss:2.f})"
+        self.update_info()
 
     def update_info(self):
-        self.info = SEModel.AVAILABLE_MODELS[self.model_enum] + f" ({self.n_parameters}, {self.box_size}, {self.apix:.3f}, {self.loss:2.f})"
-        self.info_short = "(" + SEModel.AVAILABLE_MODELS[self.model_enum] + f", {self.box_size}, {self.apix:.3f}, {self.loss:2.f})"
+        self.info = SEModel.AVAILABLE_MODELS[self.model_enum] + f" ({self.n_parameters}, {self.box_size}, {self.apix:.3f}, {self.loss:.4f})"
+        self.info_short = "(" + SEModel.AVAILABLE_MODELS[self.model_enum] + f", {self.box_size}, {self.apix:.3f}, {self.loss:.4f})"
 
-    def set_slice(self, slice_data):
+    def set_slice(self, slice_data, slice_pixel_size):
         if not self.compiled:
             return False
         if not self.active:
             return False
-        self.data = self.apply_to_slice(slice_data)
+        self.data = self.apply_to_slice(slice_data, slice_pixel_size)
         return True
 
     def update_texture(self):
@@ -276,8 +274,9 @@ class SEModel:
             return
         self.texture.update(self.data)
 
-    def slice_to_boxes(self, image, as_array=True):
-        # TODO: resize the slice to the model's apix!
+    def slice_to_boxes(self, image, pixel_size, as_array=True):
+        scale_fac = pixel_size * 10.0 / self.apix
+        image = zoom(image, scale_fac)
         w, h = image.shape
         self.overlap = min([0.9, self.overlap])
         pad_w = self.box_size - (w % self.box_size)
@@ -298,7 +297,7 @@ class SEModel:
             boxes = np.array(boxes)
         return boxes, (w, h), (pad_w, pad_h), stride
 
-    def boxes_to_slice(self, boxes, size, padding, stride):
+    def boxes_to_slice(self, boxes, size, original_pixel_size, padding, stride):
         pad_w, pad_h = padding
         w, h = size
         out_image = np.zeros((w + pad_w, h + pad_h))
@@ -311,25 +310,28 @@ class SEModel:
                 i += 1
         count[count == 0] = 1
         out_image = out_image / count
+        out_image = out_image[:w, :h]
+        scale_fac = self.apix / (original_pixel_size * 10.0)
+        out_image = zoom(out_image, scale_fac)
         return out_image[:w, :h]
 
-    def apply_to_slice(self, image):
+    def apply_to_slice(self, image, pixel_size):
         # tile
-        boxes, image_size, padding, stride = self.slice_to_boxes(image)
+        boxes, image_size, padding, stride = self.slice_to_boxes(image, pixel_size)
         # apply model
         seg_boxes = np.squeeze(self.model.predict(boxes))
         # detile
-        segmentation = self.boxes_to_slice(seg_boxes, image_size, padding, stride)
+        segmentation = self.boxes_to_slice(seg_boxes, image_size, pixel_size, padding, stride)
         return segmentation
 
-    def apply_to_multiple_slices(self, slice_list):
+    def apply_to_multiple_slices(self, slice_list, pixel_size):
         all_boxes = list()
         n_boxes_per_slice = 0
         image_size = (0, 0)
         padding = (0, 0)
         stride = 0
         for image in slice_list:
-            boxes, image_size, padding, stride = self.slice_to_boxes(image, as_array=False)
+            boxes, image_size, padding, stride = self.slice_to_boxes(image, pixel_size, as_array=False)
             n_boxes_per_slice = len(boxes)
             all_boxes += boxes
         all_boxes = np.array(all_boxes)
@@ -337,7 +339,7 @@ class SEModel:
         image_list = list()
         for i in range(len(slice_list)):
             image_seg_boxes = seg_boxes[i * n_boxes_per_slice: (i+1) * n_boxes_per_slice]
-            image_list.append(self.boxes_to_slice(image_seg_boxes, image_size, padding, stride))
+            image_list.append(self.boxes_to_slice(image_seg_boxes, image_size, pixel_size, padding, stride))
         return image_list
 
     @staticmethod
@@ -360,13 +362,14 @@ class SEModel:
 
 
 class TrainingProgressCallback(Callback):
-    def __init__(self, process, n_samples, batch_size):
+    def __init__(self, process, n_samples, batch_size, model):
         super().__init__()
         self.process = process
         self.batch_size = batch_size
         self.n_samples = n_samples
         self.batches_in_epoch = 0
         self.current_epoch = 0
+        self.se_model = model
 
     def on_epoch_begin(self, epoch, logs=None):
         self.batches_in_epoch = self.n_samples // self.batch_size
@@ -376,6 +379,8 @@ class TrainingProgressCallback(Callback):
         progress_in_current_epoch = (batch + 1) / self.batches_in_epoch
         total_progress = (self.current_epoch + progress_in_current_epoch) / self.params['epochs']
         self.process.set_progress(total_progress)
+        self.se_model.loss = logs['loss']
+        self.se_model.update_info()
 
 
 class StopTrainingCallback(Callback):
@@ -386,16 +391,6 @@ class StopTrainingCallback(Callback):
     def on_batch_end(self, batch, logs=None):
         if self.stop_request.is_set():
             self.model.stop_training = True
-
-
-class LossCallback(Callback):
-    def __init__(self, model):
-        super().__init__()
-        self.model = model
-
-    def on_epoch_end(self, epoch, logs=None):
-        self.model.loss = logs['loss']
-        self.model.update_info()
 
 
 class BackgroundProcess:

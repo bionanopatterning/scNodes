@@ -26,7 +26,6 @@ class SEFrame:
         self.active_feature = None
         self.height, self.width = mrcfile.mmap(self.path, mode="r").data.shape[1:3]
         self.pixel_size = mrcfile.open(self.path, header_only=True).voxel_size.x / 10.0
-        self.title = f"({self.pixel_size * 10.0:.2f} A/pix) " + self.title
         self.transform = Transform()
         self.texture = None
         self.quad_va = None
