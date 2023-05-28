@@ -56,7 +56,7 @@ class SegmentationEditor:
         SegmentationEditor.DEFAULT_WORLD_PIXEL_SIZE = 1.0 / SegmentationEditor.DEFAULT_ZOOM
         self.camera.zoom = SegmentationEditor.DEFAULT_ZOOM
         self.renderer = Renderer()
-
+        self.filters = list()
         self.active_tab = "Segmentation"
         # training dataset params
         self.all_feature_names = list()
@@ -343,7 +343,7 @@ class SegmentationEditor:
 
                     imgui.separator()
                     fidx = 0
-                    for ftr in sef.filters:
+                    for ftr in self.filters:
                         fidx += 1
                         imgui.push_id(f"filter{fidx}")
                         cw = imgui.get_content_region_available_width()
@@ -353,15 +353,15 @@ class SegmentationEditor:
                         imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 2))
                         _c, ftrtype = imgui.combo("##filtertype", ftr.type, Filter.TYPES)
                         if _c:
-                            sef.filters[sef.filters.index(ftr)] = Filter(sef, ftrtype)
+                            self.filters[self.filters.index(ftr)] = Filter(ftrtype)
                         imgui.same_line()
                         _, ftr.enabled = imgui.checkbox("##enabled", ftr.enabled)
                         if _:
-                            ftr.parent.requires_histogram_update = True
+                            cfg.se_active_frame.requires_histogram_update = True
                         # Delete button
                         imgui.same_line()
                         if imgui.image_button(self.icon_close.renderer_id, 13, 13):
-                            sef.filters.remove(ftr)
+                            self.filters.remove(ftr)
                         imgui.pop_style_var(1)
                         # Parameter and strength sliders
                         imgui.push_item_width(cw)
@@ -369,9 +369,10 @@ class SegmentationEditor:
                             _c, ftr.param = imgui.slider_float("##param", ftr.param, 0.1, 10.0, format=f"{Filter.PARAMETER_NAME[ftr.type]}: {ftr.param:.1f}")
                             if _c:
                                 ftr.fill_kernel()
+                                cfg.se_active_frame.requires_histogram_update = True
                         _, ftr.strength = imgui.slider_float("##strength", ftr.strength, -1.0, 1.0, format=f"weight: {ftr.strength:.2f}")
                         if _:
-                            ftr.parent.requires_histogram_update = True
+                            cfg.se_active_frame.requires_histogram_update = True
                         imgui.pop_item_width()
 
                         imgui.pop_id()
@@ -379,7 +380,7 @@ class SegmentationEditor:
                     imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 2))
                     _c, new_filter_type = imgui.combo("##filtertype", 0, ["Add filter"] + Filter.TYPES)
                     if _c and not new_filter_type == 0:
-                        sef.filters.append(Filter(sef, new_filter_type - 1))
+                        self.filters.append(Filter(new_filter_type - 1))
                     imgui.pop_style_var(6)
                     imgui.pop_style_color(1)
 
@@ -945,7 +946,7 @@ class SegmentationEditor:
         # Render the currently active frame
 
         if cfg.se_active_frame is not None:
-            pxd = self.renderer.render_filtered_frame(cfg.se_active_frame, self.camera, self.window, cfg.se_active_frame.filters)
+            pxd = self.renderer.render_filtered_frame(cfg.se_active_frame, self.camera, self.window, self.filters)
             if pxd is not None:
                 cfg.se_active_frame.compute_histogram(pxd)
                 if cfg.se_active_frame.autocontrast:

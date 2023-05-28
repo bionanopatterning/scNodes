@@ -143,7 +143,7 @@ class SEFrame:
         saturation_pct = settings.autocontrast_saturation
         if saturation:
             saturation_pct = saturation
-        subsample = data[::settings.autocontrast_subsample, ::settings.autocontrast_subsample]
+        subsample = data[Filter.M:-Filter.M:settings.autocontrast_subsample, Filter.M:-Filter.M:settings.autocontrast_subsample]
         n = subsample.shape[0] * subsample.shape[1]
         sorted_pixelvals = np.sort(subsample.flatten())
 
@@ -156,9 +156,10 @@ class SEFrame:
         self.requires_histogram_update = False
         data = self.data if pxd is None else pxd
         # ignore very bright pixels
-        mean = np.mean(data)
-        std = np.std(data)
-        self.hist_vals, self.hist_bins = np.histogram(data[data < (mean + 20 * std)], bins=SEFrame.HISTOGRAM_BINS)
+        subsample = data[Filter.M:-Filter.M:settings.autocontrast_subsample, Filter.M:-Filter.M:settings.autocontrast_subsample]
+        mean = np.mean(subsample)
+        std = np.std(subsample)
+        self.hist_vals, self.hist_bins = np.histogram(subsample[subsample < (mean + 20 * std)], bins=SEFrame.HISTOGRAM_BINS)
 
         self.hist_vals = self.hist_vals.astype('float32')
         self.hist_bins = self.hist_bins.astype('float32')
@@ -170,8 +171,6 @@ class SEFrame:
         self.setup_opengl_objects()
         for f in self.features:
             f.on_load()
-        for f in self.filters:
-            f.fill_kernel()
 
 
 
@@ -188,8 +187,7 @@ class Filter:
     PARAMETER_NAME = ["sigma", "sigma", "box", None, None]
     M = 16
 
-    def __init__(self, parent, filter_type):
-        self.parent = parent
+    def __init__(self, filter_type):
         self.type = filter_type  # integer, corresponding to an index in the Filter.TYPES list
         self.k1 = np.zeros((Filter.M*2+1, 1), dtype=np.float32)
         self.k2 = np.zeros((Filter.M * 2 + 1, 1), dtype=np.float32)
@@ -249,7 +247,6 @@ class Filter:
         self.k2 = np.asarray(self.k2, dtype=np.float32)
         self.upload_buffer()
 
-        self.parent.requires_histogram_update = True
 
 
 class Segmentation:
