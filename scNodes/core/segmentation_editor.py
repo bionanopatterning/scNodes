@@ -43,6 +43,7 @@ class SegmentationEditor:
         TOOLTIP_HOVERED_TIMER = 0.0
         TOOLTIP_HOVERED_START_TIME = 0.0
 
+        renderer = None
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -55,7 +56,7 @@ class SegmentationEditor:
         SegmentationEditor.DEFAULT_ZOOM = cfg.window_height / SegmentationEditor.DEFAULT_HORIZONTAL_FOV_WIDTH  # now it is DEFAULT_HORIZONTAL_FOV_WIDTH
         SegmentationEditor.DEFAULT_WORLD_PIXEL_SIZE = 1.0 / SegmentationEditor.DEFAULT_ZOOM
         self.camera.zoom = SegmentationEditor.DEFAULT_ZOOM
-        self.renderer = Renderer()
+        SegmentationEditor.renderer = Renderer()
         self.filters = list()
         self.active_tab = "Segmentation"
         # training dataset params
@@ -95,19 +96,20 @@ class SegmentationEditor:
             self.icon_stop.update(pxd_icon_stop)
             self.icon_stop.set_linear_interpolation()
 
-    def set_active_dataset(self, dataset):
+    @staticmethod
+    def set_active_dataset(dataset):
         cfg.se_active_frame = dataset
         cfg.se_active_frame.requires_histogram_update = True
         cfg.se_active_frame.slice_changed = True
-        self.renderer.fbo1 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
-        self.renderer.fbo2 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
-        self.renderer.fbo3 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
+        SegmentationEditor.renderer.fbo1 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
+        SegmentationEditor.renderer.fbo2 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
+        SegmentationEditor.renderer.fbo3 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
         if dataset.interpolate:
-            self.renderer.fbo1.texture.set_linear_interpolation()
-            self.renderer.fbo2.texture.set_linear_interpolation()
+            SegmentationEditor.renderer.fbo1.texture.set_linear_interpolation()
+            SegmentationEditor.renderer.fbo2.texture.set_linear_interpolation()
         else:
-            self.renderer.fbo1.texture.set_no_interpolation()
-            self.renderer.fbo2.texture.set_no_interpolation()
+            SegmentationEditor.renderer.fbo1.texture.set_no_interpolation()
+            SegmentationEditor.renderer.fbo2.texture.set_no_interpolation()
 
     def on_update(self):
         imgui.set_current_context(self.imgui_context)
@@ -164,7 +166,7 @@ class SegmentationEditor:
         self.camera_control()
         self.camera.on_update()
         self.gui_main()
-        self.renderer.render_overlay(self.camera)
+        SegmentationEditor.renderer.render_overlay(self.camera)
         self.input()
 
         imgui.render()
@@ -226,7 +228,7 @@ class SegmentationEditor:
         _, ext = os.path.splitext(filename)
         if ext == ".mrc":
             cfg.se_frames.append(SEFrame(filename))
-            self.set_active_dataset(cfg.se_frames[-1])
+            SegmentationEditor.set_active_dataset(cfg.se_frames[-1])
             self.parse_available_features()
         elif ext == cfg.filetype_segmentation:
             with open(filename, 'rb') as pickle_file:
@@ -234,7 +236,7 @@ class SegmentationEditor:
                 seframe.on_load()
                 seframe.slice_changed = False
                 cfg.se_frames.append(seframe)
-                self.set_active_dataset(cfg.se_frames[-1])
+                SegmentationEditor.set_active_dataset(cfg.se_frames[-1])
             self.parse_available_features()
 
     def gui_main(self):
@@ -290,10 +292,9 @@ class SegmentationEditor:
                         imgui.end_popup()
                     self.tooltip(f"{s.title}\nPixel size: {s.pixel_size * 10.0:.4f} Angstrom\nLocation: {s.path}")
                     if _change and _selected:
-                        self.set_active_dataset(s)
+                        SegmentationEditor.set_active_dataset(s)
                         for model in cfg.se_models:
                             model.reset_textures()
-                    if _change or _selected:
                         self.trainset_apix = s.pixel_size * 10.0
 
                     for f in s.features:
@@ -334,12 +335,12 @@ class SegmentationEditor:
                     if _c:
                         if sef.interpolate:
                             sef.texture.set_linear_interpolation()
-                            self.renderer.fbo1.texture.set_linear_interpolation()
-                            self.renderer.fbo2.texture.set_linear_interpolation()
+                            SegmentationEditor.renderer.fbo1.texture.set_linear_interpolation()
+                            SegmentationEditor.renderer.fbo2.texture.set_linear_interpolation()
                         else:
                             sef.texture.set_no_interpolation()
-                            self.renderer.fbo1.texture.set_no_interpolation()
-                            self.renderer.fbo2.texture.set_no_interpolation()
+                            SegmentationEditor.renderer.fbo1.texture.set_no_interpolation()
+                            SegmentationEditor.renderer.fbo2.texture.set_no_interpolation()
 
                     imgui.separator()
                     fidx = 0
@@ -871,6 +872,8 @@ class SegmentationEditor:
                         if select:
                             cfg.active_editor = i
                     imgui.end_menu()
+
+
                 imgui.end_main_menu_bar()
 
             imgui.pop_style_color(6)
@@ -946,14 +949,14 @@ class SegmentationEditor:
         # Render the currently active frame
 
         if cfg.se_active_frame is not None:
-            pxd = self.renderer.render_filtered_frame(cfg.se_active_frame, self.camera, self.window, self.filters)
+            pxd = SegmentationEditor.renderer.render_filtered_frame(cfg.se_active_frame, self.camera, self.window, self.filters)
             if pxd is not None:
                 cfg.se_active_frame.compute_histogram(pxd)
                 if cfg.se_active_frame.autocontrast:
                     cfg.se_active_frame.compute_autocontrast(None, pxd)
                 cfg.se_active_frame.requires_histogram_update = False
             if self.active_tab == "Segmentation":
-                self.renderer.render_segmentations(cfg.se_active_frame, self.camera)
+                SegmentationEditor.renderer.render_segmentations(cfg.se_active_frame, self.camera)
 
                 # render drawing ROI indicator
                 active_feature = cfg.se_active_frame.active_feature
@@ -961,18 +964,18 @@ class SegmentationEditor:
                     radius = active_feature.brush_size * active_feature.parent.pixel_size
                     world_position = self.camera.cursor_to_world_position(self.window.cursor_pos)
                     if not imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
-                        self.renderer.add_circle(world_position, radius, active_feature.colour)
+                        SegmentationEditor.renderer.add_circle(world_position, radius, active_feature.colour)
                     else:
-                        self.renderer.add_square(world_position, active_feature.box_size_nm, active_feature.colour)
+                        SegmentationEditor.renderer.add_square(world_position, active_feature.box_size_nm, active_feature.colour)
                 for f in cfg.se_active_frame.features:
                     frame_xy = f.parent.transform.translation
                     if f.show_boxes and not f.hide and f.current_slice in f.boxes:
                         for box in f.boxes[f.current_slice]:
                             box_x_pos = frame_xy[0] + (box[0] - f.parent.width / 2) * f.parent.pixel_size
                             box_y_pos = frame_xy[1] + (box[1] - f.parent.height / 2) * f.parent.pixel_size
-                            self.renderer.add_square((box_x_pos, box_y_pos), f.box_size_nm, f.colour)
+                            SegmentationEditor.renderer.add_square((box_x_pos, box_y_pos), f.box_size_nm, f.colour)
             if self.active_tab in ["Models", "Export"]:
-                self.renderer.render_models(cfg.se_active_frame, self.camera)
+                SegmentationEditor.renderer.render_models(cfg.se_active_frame, self.camera)
             if self.active_tab == "Models" and self.show_trainset_boxes:
                 for f in cfg.se_active_frame.features:
                     frame_xy = f.parent.transform.translation
@@ -985,7 +988,9 @@ class SegmentationEditor:
                             box_x_pos = frame_xy[0] + (box[0] - f.parent.width / 2) * f.parent.pixel_size
                             box_y_pos = frame_xy[1] + (box[1] - f.parent.height / 2) * f.parent.pixel_size
                             box_size = self.trainset_apix * self.trainset_boxsize / 10.0
-                            self.renderer.add_square((box_x_pos, box_y_pos), box_size, clr)
+                            SegmentationEditor.renderer.add_square((box_x_pos, box_y_pos), box_size, clr)
+            if cfg.se_active_frame.overlay is not None:
+                cfg.se_active_frame.overlay.render(self.camera)
 
         # MAIN WINDOW
         imgui.set_next_window_position(0, 17, imgui.ONCE)
@@ -993,6 +998,7 @@ class SegmentationEditor:
 
         imgui.begin("##se_main", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE)
         shared_gui()
+
         if imgui.begin_tab_bar("##tabs"):
             if imgui.begin_tab_item(" Segmentation ")[0]:
                 segmentation_tab()
@@ -1152,13 +1158,14 @@ class SegmentationEditor:
                 # find boxes
                 for z in f.boxes.keys():
                     if f.boxes[z] is not None:
+                        slice_data = d.get_slice(z)
                         for (x, y) in f.boxes[z]:
                             x_min = (x-nm)
                             x_max = (x+pm)
                             y_min = (y-nm)
                             y_max = (y+pm)
                             if x_min > 0 and y_min > 0 and x_max < w and y_max < h:
-                                image = np.flipud(mrcf.data[z, y_min:y_max, x_min:x_max])
+                                image = np.flipud(slice_data[y_min:y_max, x_min:x_max])
                                 image = np.array(image.astype(out_type, copy=False), dtype=float)
                                 image = zoom(image, scale_fac)
                                 image = image[:boxsize, :boxsize]
@@ -1184,12 +1191,23 @@ class SegmentationEditor:
         tifffile.imwrite(path, all_imgs, description=f"apix={apix}")
 
     @staticmethod
-    def seframe_from_clemframe( clemframe):
+    def seframe_from_clemframe(clemframe):
         new_se_frame = SEFrame(clemframe.path)
         new_se_frame.pixel_size = clemframe.pixel_size
+        new_se_frame.flip_h = clemframe.flip_h
+        new_se_frame.flip_v = clemframe.flip_v
         apix = clemframe.pixel_size * 10.0
-        new_se_frame.title = f"({apix:.2f} A/pix)" + clemframe.title
+        new_se_frame.title = clemframe.title
+
+        new_se_frame.set_slice(clemframe.current_slice)
         cfg.se_frames.append(new_se_frame)
+        SegmentationEditor.set_active_dataset(cfg.se_frames[-1])
+
+    @staticmethod
+    def overlay_from_clemframe(clemframe, overlay_render_function):
+        if cfg.se_active_frame is not None:
+            cfg.se_active_frame.overlay = Overlay(clemframe, overlay_render_function)
+
 
     def camera_control(self):
         if imgui.get_io().want_capture_mouse or imgui.get_io().want_capture_keyboard:
@@ -1455,6 +1473,7 @@ class Renderer:
         self.border_shader.unbind()
         se_frame.border_va.unbind()
 
+
     def add_line(self, start_xy, stop_xy, colour, subtract=False):
         if subtract:
             self.line_list_s.append((start_xy, stop_xy, colour))
@@ -1587,16 +1606,11 @@ class QueuedExport:
         self.colour = self.models[0].colour
         self.batch_size = batch_size
 
-    def do_export(self, process):
+    def do_export(self):
         try:
             print(f"QueuedExport - loading dataset {self.dataset.path}")
 
-            mrcd = np.array(mrcfile.open(self.dataset.path, mode='r').data[:, :, :])
-            target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
-            if type(mrcd[0, 0, 0]) not in target_type_dict:
-                mrcd = mrcd.astype(float, copy=False)
-            else:
-                mrcd = np.array(mrcd.astype(target_type_dict[type(mrcd[0, 0, 0])], copy=False), dtype=float)
+            mrcd = self.dataset.get_volume()
 
             n_slices = mrcd.shape[0]
             n_slices_total = (self.dataset.export_top - self.dataset.export_bottom) * len(self.models)

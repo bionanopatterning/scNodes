@@ -36,7 +36,7 @@ class SEModel:
         uid_counter = next(SEModel.idgen)
         self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f') + "000") + uid_counter
         self.title = "Unnamed model"
-        self.colour = SEModel.DEFAULT_COLOURS[uid_counter % len(SEModel.DEFAULT_COLOURS)]
+        self.colour = SEModel.DEFAULT_COLOURS[(uid_counter - 1) % len(SEModel.DEFAULT_COLOURS)]
         self.apix = -1.0
         self.compiled = False
         self.box_size = -1

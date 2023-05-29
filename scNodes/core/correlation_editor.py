@@ -1057,14 +1057,11 @@ class CorrelationEditor:
         else:
             export_tiff_stack()
 
-    @staticmethod
-    def _frame_context_menu(f, title_edit_field=True):
+    def _frame_context_menu(self, f, title_edit_field=True):
         if title_edit_field:
             _c, f.title = imgui.input_text("##fname", f.title, 30)
         if f.title == "":
             f.title = str(f.uid)
-        if imgui.menu_item("Add to Segmentation Editor")[0]:
-            cfg.segmentation_editor.seframe_from_clemframe(f)
         if imgui.menu_item("Send to top")[0]:
             f.move_to_front()
         elif imgui.menu_item("Send to bottom")[0]:
@@ -1105,6 +1102,12 @@ class CorrelationEditor:
             elif imgui.menu_item("8 x", selected=f.binning == 8)[0]:
                 f.binning = 8
             imgui.end_menu()
+        if imgui.begin_menu("add to Segmentation Editor"):
+            if imgui.menu_item("as dataset")[0]:
+                cfg.segmentation_editor.seframe_from_clemframe(f)
+            if imgui.menu_item("as overlay")[0]:
+                cfg.segmentation_editor.overlay_from_clemframe(f, self.renderer.render_frame_quad)
+            imgui.end_menu()
 
     def objects_info_window(self):
         content_width = 0
@@ -1139,7 +1142,7 @@ class CorrelationEditor:
             if f.hide:
                 imgui.pop_style_color(1)
             if imgui.begin_popup_context_item():
-                CorrelationEditor._frame_context_menu(f)
+                self._frame_context_menu(f)
                 imgui.end_popup()
             if selected:
                 CorrelationEditor.active_frame = f
@@ -1729,7 +1732,7 @@ class CorrelationEditor:
                 imgui.set_next_window_position(self.context_menu_position[0] - 3, self.context_menu_position[1] - 3)
                 imgui.begin("##ce_cm", False, imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_SAVED_SETTINGS)
                 ## context menu options
-                CorrelationEditor._frame_context_menu(frame, title_edit_field=False)
+                self._frame_context_menu(frame, title_edit_field=False)
                 if self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT) and not imgui.is_window_hovered(imgui.HOVERED_CHILD_WINDOWS | imgui.HOVERED_ALLOW_WHEN_BLOCKED_BY_POPUP):
                     self.context_menu_open = False
                 imgui.end()
@@ -1808,8 +1811,9 @@ class CorrelationEditor:
 
     @staticmethod
     def delete_frame(frame):
-        for child in frame.children:
-            child.parent_to(frame.parent)
+        for c in cfg.ce_frames:
+            if c.parent == frame:
+                c.parent_to(frame.parent)
         frame.unparent()
         if CorrelationEditor.active_frame == frame:
             CorrelationEditor.active_frame = None
