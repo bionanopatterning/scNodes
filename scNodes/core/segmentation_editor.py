@@ -1158,14 +1158,13 @@ class SegmentationEditor:
                 # find boxes
                 for z in f.boxes.keys():
                     if f.boxes[z] is not None:
-                        slice_data = d.get_slice(z)
                         for (x, y) in f.boxes[z]:
                             x_min = (x-nm)
                             x_max = (x+pm)
                             y_min = (y-nm)
                             y_max = (y+pm)
                             if x_min > 0 and y_min > 0 and x_max < w and y_max < h:
-                                image = np.flipud(slice_data[y_min:y_max, x_min:x_max])
+                                image = np.flipud(mrcf.data[z, y_min:y_max, x_min:x_max])
                                 image = np.array(image.astype(out_type, copy=False), dtype=float)
                                 image = zoom(image, scale_fac)
                                 image = image[:boxsize, :boxsize]
@@ -1194,11 +1193,8 @@ class SegmentationEditor:
     def seframe_from_clemframe(clemframe):
         new_se_frame = SEFrame(clemframe.path)
         new_se_frame.pixel_size = clemframe.pixel_size
-        new_se_frame.flip_h = clemframe.flip_h
-        new_se_frame.flip_v = clemframe.flip_v
         apix = clemframe.pixel_size * 10.0
         new_se_frame.title = clemframe.title
-
         new_se_frame.set_slice(clemframe.current_slice)
         cfg.se_frames.append(new_se_frame)
         SegmentationEditor.set_active_dataset(cfg.se_frames[-1])
@@ -1606,11 +1602,16 @@ class QueuedExport:
         self.colour = self.models[0].colour
         self.batch_size = batch_size
 
-    def do_export(self):
+    def do_export(self, process):
         try:
             print(f"QueuedExport - loading dataset {self.dataset.path}")
 
-            mrcd = self.dataset.get_volume()
+            mrcd = np.array(mrcfile.open(self.dataset.path, mode='r').data[:, :, :])
+            target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
+            if type(mrcd[0, 0, 0]) not in target_type_dict:
+                mrcd = mrcd.astype(float, copy=False)
+            else:
+                mrcd = np.array(mrcd.astype(target_type_dict[type(mrcd[0, 0, 0])], copy=False), dtype=float)
 
             n_slices = mrcd.shape[0]
             n_slices_total = (self.dataset.export_top - self.dataset.export_bottom) * len(self.models)

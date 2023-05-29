@@ -35,8 +35,6 @@ class SEFrame:
         self.filters = list()
         self.overlay = None
         self.invert = True
-        self.flip_h = False
-        self.flip_v = False
         self.autocontrast = True
         self.sample = True
         self.export = False
@@ -108,38 +106,18 @@ class SEFrame:
         if self.export_top is None:
             self.export_top = self.n_slices
         requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
-        self.data = self.get_slice(requested_slice)
+        self.data = mrc.data[requested_slice, :, :]
+        target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
+        if type(self.data[0, 0]) not in target_type_dict:
+            target_type = float
+        else:
+            target_type = target_type_dict[type(self.data[0, 0])]
+        self.data = np.array(self.data.astype(target_type, copy=False), dtype=float)
         self.current_slice = requested_slice
         for s in self.features:
             s.set_slice(self.current_slice)
         if update_texture:
             self.update_image_texture()
-
-    def get_slice(self, slice_idx):
-        img = np.array(mrcfile.open(self.path, mode='r').data[slice_idx, :, :])
-        target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
-        if type(img[0, 0]) not in target_type_dict:
-            img = img.astype(float, copy=False)
-        else:
-            img = np.array(img.astype(target_type_dict[type(img[0, 0])], copy=False), dtype=float)
-        if self.flip_h:
-            img = np.flip(img, axis=1)
-        if self.flip_v:
-            img = np.flip(img, axis=0)
-        return img
-
-    def get_volume(self):
-        volume = np.array(mrcfile.open(self.path, mode='r').data[:, :, :])
-        target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
-        if type(volume[0, 0, 0]) not in target_type_dict:
-            volume = volume.astype(float, copy=False)
-        else:
-            volume = np.array(volume.astype(target_type_dict[type(volume[0, 0, 0])], copy=False), dtype=float)
-        if self.flip_h:
-            volume = np.flip(volume, axis=2)
-        if self.flip_v:
-            volume = np.flip(volume, axis=1)
-        return volume
 
     def update_image_texture(self):
         self.texture.update(self.data.astype(np.float32))
