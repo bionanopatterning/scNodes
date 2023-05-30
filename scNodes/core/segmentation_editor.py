@@ -472,7 +472,13 @@ class SegmentationEditor:
                                     f.remove_slice(i)
                                 imgui.pop_id()
                             imgui.end_child()
-
+                            imgui.text("Export:")
+                            cw = imgui.get_content_region_available_width()
+                            if imgui.button("coordinates", (cw - 10) / 2, 15):
+                                f.save_particle_positions()
+                            imgui.same_line(spacing=10)
+                            if imgui.button("slice", (cw - 10) / 2, 15):
+                                f.save_current_slice()
                             imgui.pop_style_color(3)
                             imgui.end_menu()
 

@@ -119,6 +119,24 @@ class SEFrame:
         if update_texture:
             self.update_image_texture()
 
+    def get_slice(self, requested_slice=None, as_float=True):
+        if requested_slice is None:
+            requested_slice = self.current_slice
+        mrc = mrcfile.mmap(self.path, mode="r")
+        self.n_slices = mrc.data.shape[0]
+        if self.export_top is None:
+            self.export_top = self.n_slices
+        requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
+        out_data = mrc.data[requested_slice, :, :]
+        if as_float:
+            target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
+            if type(out_data) not in target_type_dict:
+                target_type = float
+            else:
+                target_type = target_type_dict[type(out_data[0, 0])]
+            out_data = np.array(out_data.astype(target_type, copy=False), dtype=float)
+        return out_data
+
     def update_image_texture(self):
         self.texture.update(self.data.astype(np.float32))
 
@@ -292,7 +310,7 @@ class Segmentation:
         self.expanded = False
         self.brush_size = 10.0
         self.show_boxes = True
-        self.box_size = 32
+        self.box_size = 64
         self.box_size_nm = self.box_size * self.parent.pixel_size
         self.slices = dict()
         self.boxes = dict()
@@ -379,6 +397,29 @@ class Segmentation:
             self.data = self.slices[self.current_slice]
             self.texture.update(self.data, self.width, self.height)
             self.edited_slices.append(self.current_slice)
+
+    def save_particle_positions(self):
+        fpath = os.path.splitext(self.parent.path)[0] + "_" + self.title + "_particles.txt"
+        try:
+            with open(fpath, 'w') as f:
+                for z in self.boxes:
+                    box_list = self.boxes[z]
+                    if len(box_list) > 0:
+                        for box in box_list:
+                            f.write(f"{box[0]}\t{box[1]}\t{z}\n")
+        except Exception as e:
+            print(e)
+
+    def save_current_slice(self):
+        fpath = os.path.splitext(self.parent.path)[0] + "_" + self.title + f"_slice_{self.current_slice}.mrc"
+        try:
+            with mrcfile.new(fpath, overwrite=True) as mrc:
+                image = self.parent.get_slice(as_float=False)
+                annotation = np.zeros_like(image) if self.data is None else self.data.astype(image.dtype)
+                mrc.set_data(np.array([image, annotation]))
+                mrc.voxel_size = self.parent.pixel_size * 10.0
+        except Exception as e:
+            print(e)
 
 
 class Transform:
