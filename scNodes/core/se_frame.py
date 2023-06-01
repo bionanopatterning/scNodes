@@ -108,10 +108,10 @@ class SEFrame:
         requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
         self.data = mrc.data[requested_slice, :, :]
         target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
-        if type(self.data[0, 0]) not in target_type_dict:
+        if self.data.dtype not in target_type_dict:
             target_type = float
         else:
-            target_type = target_type_dict[type(self.data[0, 0])]
+            target_type = target_type_dict[self.data.dtype]
         self.data = np.array(self.data.astype(target_type, copy=False), dtype=float)
         self.current_slice = requested_slice
         for s in self.features:
@@ -130,10 +130,10 @@ class SEFrame:
         out_data = mrc.data[requested_slice, :, :]
         if as_float:
             target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
-            if type(out_data) not in target_type_dict:
+            if out_data.dtype not in target_type_dict:
                 target_type = float
             else:
-                target_type = target_type_dict[type(out_data[0, 0])]
+                target_type = target_type_dict[out_data.dtype]
             out_data = np.array(out_data.astype(target_type, copy=False), dtype=float)
         return out_data
 

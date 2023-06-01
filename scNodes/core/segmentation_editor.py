@@ -66,7 +66,7 @@ class SegmentationEditor:
         self.trainset_selection = list()
         self.trainset_num_boxes_positive = 0
         self.trainset_num_boxes_negative = 0
-        self.trainset_boxsize = 32
+        self.trainset_boxsize = 64
         self.trainset_apix = 10.0
         self.show_trainset_boxes = False
         self.active_trainset_exports = list()
@@ -225,19 +225,22 @@ class SegmentationEditor:
                         active_feature.remove_box(pixel_coordinate)
 
     def import_dataset(self, filename):
-        _, ext = os.path.splitext(filename)
-        if ext == ".mrc":
-            cfg.se_frames.append(SEFrame(filename))
-            SegmentationEditor.set_active_dataset(cfg.se_frames[-1])
-            self.parse_available_features()
-        elif ext == cfg.filetype_segmentation:
-            with open(filename, 'rb') as pickle_file:
-                seframe = pickle.load(pickle_file)
-                seframe.on_load()
-                seframe.slice_changed = False
-                cfg.se_frames.append(seframe)
+        try:
+            _, ext = os.path.splitext(filename)
+            if ext == ".mrc":
+                cfg.se_frames.append(SEFrame(filename))
                 SegmentationEditor.set_active_dataset(cfg.se_frames[-1])
-            self.parse_available_features()
+                self.parse_available_features()
+            elif ext == cfg.filetype_segmentation:
+                with open(filename, 'rb') as pickle_file:
+                    seframe = pickle.load(pickle_file)
+                    seframe.on_load()
+                    seframe.slice_changed = False
+                    cfg.se_frames.append(seframe)
+                    SegmentationEditor.set_active_dataset(cfg.se_frames[-1])
+                self.parse_available_features()
+        except Exception as e:
+            print("Error importing dataset, see details below:\n", e)
 
     def gui_main(self):
         if True:
@@ -813,7 +816,12 @@ class SegmentationEditor:
                 imgui.begin_child("datasets_to_sample", 0.0, c_height, True)
                 for s in cfg.se_frames:
                     imgui.push_id(f"{s.uid}")
-                    _, s.export = imgui.checkbox(s.title, s.export)
+                    if s == cfg.se_active_frame:
+                        imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_TEXT_ACTIVE)
+                        _, s.export = imgui.checkbox(s.title, s.export)
+                        imgui.pop_style_color()
+                    else:
+                        _, s.export = imgui.checkbox(s.title, s.export)
                     if _:
                         self.parse_available_features()
                     imgui.pop_id()
@@ -1137,10 +1145,9 @@ class SegmentationEditor:
 
         n_done = 0
         target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
-
         for d in datasets:
             mrcf = mrcfile.mmap(d.path, mode="r")
-            raw_type = type(mrcf.data[0, 0, 0])
+            raw_type = mrcf.data.dtype
             out_type = float
             if raw_type in target_type_dict:
                 out_type = target_type_dict[raw_type]
@@ -1614,10 +1621,10 @@ class QueuedExport:
 
             mrcd = np.array(mrcfile.open(self.dataset.path, mode='r').data[:, :, :])
             target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
-            if type(mrcd[0, 0, 0]) not in target_type_dict:
+            if mrcd.dtype not in target_type_dict:
                 mrcd = mrcd.astype(float, copy=False)
             else:
-                mrcd = np.array(mrcd.astype(target_type_dict[type(mrcd[0, 0, 0])], copy=False), dtype=float)
+                mrcd = np.array(mrcd.astype(target_type_dict[mrcd.dtype], copy=False), dtype=float)
 
             n_slices = mrcd.shape[0]
             n_slices_total = (self.dataset.export_top - self.dataset.export_bottom) * len(self.models)

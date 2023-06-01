@@ -158,10 +158,10 @@ class CLEMFrame:
                 self.n_slices = mrc.data.shape[0]
                 self.data = mrc.data[slices.pop(0), :, :]
                 target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
-                if type(self.data[0, 0]) not in target_type_dict:
+                if self.data.dtype not in target_type_dict:
                     target_type = float
                 else:
-                    target_type = target_type_dict[type(self.data[0, 0])]
+                    target_type = target_type_dict[self.data.dtype]
                 self.data = np.array(self.data.astype(target_type, copy=False), dtype=float)
                 for idx in slices:
                     self.data += np.array(mrc.data[idx, :, :].astype(target_type, copy=False), dtype=float)
