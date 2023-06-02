@@ -162,8 +162,9 @@ def write_to_log(text):
 def start_log():
     if os.path.join(root, logpath):
         os.path.join(root, logpath)
-    with open(os.path.join(root, logpath), "a") as f:
+    with open(os.path.join(root, logpath), "w") as f:
         f.write(app_name+" version "+version+" "+license+"\n"+datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
+
 
 COLOUR_TEST_A = (1.0, 0.0, 1.0, 1.0)
 COLOUR_TEST_B = (0.0, 1.0, 1.0, 1.0)

@@ -15,7 +15,7 @@ import tifffile
 import time
 import dill as pickle
 from scipy.ndimage import zoom
-from scNodes.core.se_models import *
+from scNodes.core.se_model import *
 from scNodes.core.se_frame import *
 import scNodes.core.widgets as widgets
 
@@ -385,6 +385,7 @@ class SegmentationEditor:
                     _c, new_filter_type = imgui.combo("##filtertype", 0, ["Add filter"] + Filter.TYPES)
                     if _c and not new_filter_type == 0:
                         self.filters.append(Filter(new_filter_type - 1))
+                        cfg.se_active_frame.requires_histogram_update = True
                     imgui.pop_style_var(6)
                     imgui.pop_style_color(1)
 
@@ -1003,8 +1004,8 @@ class SegmentationEditor:
                             box_y_pos = frame_xy[1] + (box[1] - f.parent.height / 2) * f.parent.pixel_size
                             box_size = self.trainset_apix * self.trainset_boxsize / 10.0
                             SegmentationEditor.renderer.add_square((box_x_pos, box_y_pos), box_size, clr)
-            if cfg.se_active_frame.overlay is not None:
-                cfg.se_active_frame.overlay.render(self.camera)
+            #if cfg.se_active_frame.overlay is not None:  TODO
+            #    cfg.se_active_frame.overlay.render(self.camera)
 
         # MAIN WINDOW
         imgui.set_next_window_position(0, 17, imgui.ONCE)
@@ -1144,7 +1145,7 @@ class SegmentationEditor:
         negative = list()
 
         n_done = 0
-        target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
+        target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'), np.dtype('int16'): np.dtype('float32')}
         for d in datasets:
             mrcf = mrcfile.mmap(d.path, mode="r")
             raw_type = mrcf.data.dtype
@@ -1620,7 +1621,7 @@ class QueuedExport:
             print(f"QueuedExport - loading dataset {self.dataset.path}")
 
             mrcd = np.array(mrcfile.open(self.dataset.path, mode='r').data[:, :, :])
-            target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
+            target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'), np.dtype('int16'): np.dtype('float32')}
             if mrcd.dtype not in target_type_dict:
                 mrcd = mrcd.astype(float, copy=False)
             else:

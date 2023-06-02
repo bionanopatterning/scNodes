@@ -33,7 +33,7 @@ class SEFrame:
         self.interpolate = False
         self.alpha = 1.0
         self.filters = list()
-        self.overlay = None
+        #self.overlay = None
         self.invert = True
         self.autocontrast = True
         self.sample = True
@@ -107,7 +107,7 @@ class SEFrame:
             self.export_top = self.n_slices
         requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
         self.data = mrc.data[requested_slice, :, :]
-        target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
+        target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'), np.dtype('int16'): np.dtype('float32')}
         if self.data.dtype not in target_type_dict:
             target_type = float
         else:
@@ -129,7 +129,7 @@ class SEFrame:
         requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
         out_data = mrc.data[requested_slice, :, :]
         if as_float:
-            target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
+            target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'), np.dtype('int16'): np.dtype('float32')}
             if out_data.dtype not in target_type_dict:
                 target_type = float
             else:
@@ -190,8 +190,8 @@ class SEFrame:
         self.setup_opengl_objects()
         for f in self.features:
             f.on_load()
-        if self.overlay is not None:
-            self.overlay.setup_opengl_objects()
+        #if self.overlay is not None:
+            #self.overlay.setup_opengl_objects()
 
     def __eq__(self, other):
         if isinstance(other, SEFrame):

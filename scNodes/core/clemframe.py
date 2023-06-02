@@ -157,7 +157,7 @@ class CLEMFrame:
                 mrc = mrcfile.mmap(self.path, mode="r")
                 self.n_slices = mrc.data.shape[0]
                 self.data = mrc.data[slices.pop(0), :, :]
-                target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
+                target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'), np.dtype('int16'): np.dtype('float32')}
                 if self.data.dtype not in target_type_dict:
                     target_type = float
                 else:
