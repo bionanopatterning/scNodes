@@ -535,7 +535,7 @@ class CorrelationEditor:
                                          graph_size=(_cw, CorrelationEditor.INFO_HISTOGRAM_HEIGHT // 2))
                     _c, af.rgb_contrast_lims[0] = imgui.slider_float("#minr", af.rgb_contrast_lims[0], 0, 255,
                                                                      format='min %.0f')
-                    _c, af.rgb_contrast_lims[1] = imgui.slider_float("#maxr", af.rgb_contrast_lims[1], 0, 255,
+                    _c, af.rgfb_contrast_lims[1] = imgui.slider_float("#maxr", af.rgb_contrast_lims[1], 0, 255,
                                                                      format='max %.0f')
                     imgui.pop_style_color(3)
 
@@ -1676,6 +1676,7 @@ class CorrelationEditor:
             elif imgui.is_key_pressed(glfw.KEY_C):
                 if CorrelationEditor.active_frame:
                     CorrelationEditor.active_frame.lut_clamp_mode = (CorrelationEditor.active_frame.lut_clamp_mode + 1) % 3
+                    CorrelationEditor.active_frame.update_lut()
 
     def _warning_window(self):
         def ww_context_menu():

@@ -9,6 +9,7 @@ from joblib import Parallel, delayed
 from joblib.externals.loky import set_loky_pickler
 set_loky_pickler("dill")
 
+
 class Node:
     title = "NullNode"
     group = "Ungrouped"
@@ -213,6 +214,8 @@ class Node:
             if imgui.begin_menu("About this node"):
                 imgui.text(self.description)
                 imgui.end_menu()
+
+            self.extra_context_menu_options()
             imgui.end_popup()
         if cfg.profiling and self.does_profiling_time:
             imgui.separator()
@@ -470,6 +473,8 @@ class Node:
     def on_receive_drop(self, files):
         pass
 
+    def extra_context_menu_options(self):
+        pass
 
 class NullNode(Node):
     def __init__(self):
