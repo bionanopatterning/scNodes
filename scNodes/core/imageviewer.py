@@ -463,8 +463,8 @@ class ImageViewer:
         elif self.window.get_key_event(glfw.KEY_DELETE, glfw.PRESS, 0) or self.window.get_key_event(glfw.KEY_DELETE, glfw.REPEAT, 0):
             self.current_dataset.delete_by_index(self.current_dataset.current_frame)
             self.new_image_requested = True
-        elif self.window.get_key_event(glfw.KEY_TAB, glfw.PRESS):
-            if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
+        if self.window.get_key_event(glfw.KEY_TAB, glfw.PRESS):
+            if self.window.get_key(glfw.KEY_LEFT_SHIFT):  # todo: fix - maybe get rid of input via Window, use imgui instead.
                 cfg.active_editor = (cfg.active_editor - 1) % len(cfg.editors)
             else:
                 cfg.active_editor = (cfg.active_editor + 1) % len(cfg.editors)

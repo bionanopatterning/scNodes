@@ -296,8 +296,12 @@ class ParticleFittingNode(Node):
                 particles["intensity [counts]"] = intensity
             frame.particles = particles
             new_maxima = list()
-            new_maxima_x = frame.particles["x [nm]"]
-            new_maxima_y = frame.particles["y [nm]"]
+            new_maxima_x = list()
+            new_maxima_y = list()
+            if "x [nm]" in frame.particles:
+                new_maxima_x = frame.particles["x [nm]"]
+            if "y [nm]" in frame.particles:
+                new_maxima_y = frame.particles["y [nm]"]
             for _x, _y in zip(new_maxima_x, new_maxima_y):
                 new_maxima.append([_y, _x])
             frame.maxima = new_maxima

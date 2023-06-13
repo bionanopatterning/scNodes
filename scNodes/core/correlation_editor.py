@@ -535,7 +535,7 @@ class CorrelationEditor:
                                          graph_size=(_cw, CorrelationEditor.INFO_HISTOGRAM_HEIGHT // 2))
                     _c, af.rgb_contrast_lims[0] = imgui.slider_float("#minr", af.rgb_contrast_lims[0], 0, 255,
                                                                      format='min %.0f')
-                    _c, af.rgfb_contrast_lims[1] = imgui.slider_float("#maxr", af.rgb_contrast_lims[1], 0, 255,
+                    _c, af.rgb_contrast_lims[1] = imgui.slider_float("#maxr", af.rgb_contrast_lims[1], 0, 255,
                                                                      format='max %.0f')
                     imgui.pop_style_color(3)
 
