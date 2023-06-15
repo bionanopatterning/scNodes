@@ -2205,7 +2205,7 @@ class ImportedFrameData:
                     if self.pixel_size == 0.0:
                         self.pixel_size = 1.0
                     if self.pixel_size_z == 0.0:
-                        self.pixel_size = 1.0
+                        self.pixel_size_z = 1.0
                 mrc = mrcfile.mmap(self.path, mode="r")
                 if len(mrc.data.shape) == 2:
                     self.pxd = mrc.data
