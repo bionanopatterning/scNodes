@@ -83,6 +83,7 @@ class Dataset:
         Note that when positive and negative tags contradict, preference is given to the positive filter. I.e., the frame is not discarded.
         :return: Nothing, dataset object itself is affected
         """
+        original_active_frame = self.frames[self.current_frame]
         discard = [False] * len(self.frames)
         neg_tags = negative_filter_string.split(';')
         pos_tags = positive_filter_string.split(';')
@@ -103,9 +104,10 @@ class Dataset:
             i += 1
         for i in range(len(self.frames) - 1, -1, -1):
             if discard[i]:
-
                 self.frames.pop(i)
         self.n_frames = len(self.frames)
+        if original_active_frame in self.frames:
+            self.current_frame = self.frames.index(original_active_frame)
 
     def append_frame(self, frame):
         """
@@ -117,6 +119,19 @@ class Dataset:
             self.initialized = True
         self.frames.append(frame)
         self.n_frames += 1
+
+    def append_dataset(self, path):
+        new_dataset = Dataset(path, self.pixel_size)
+        if not self.initialized or not new_dataset.initialized:
+            return
+        if self.img_width != new_dataset.img_width:
+            return
+        if self.img_height != new_dataset.img_height:
+            return
+        for f in new_dataset.frames:
+            self.frames.append(f)
+            self.n_frames += 1
+
 
     def delete_by_index(self, idx):
         if 0 <= idx < len(self.frames):

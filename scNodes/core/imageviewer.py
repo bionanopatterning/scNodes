@@ -463,8 +463,11 @@ class ImageViewer:
         elif self.window.get_key_event(glfw.KEY_DELETE, glfw.PRESS, 0) or self.window.get_key_event(glfw.KEY_DELETE, glfw.REPEAT, 0):
             self.current_dataset.delete_by_index(self.current_dataset.current_frame)
             self.new_image_requested = True
-        elif self.window.get_key_event(glfw.KEY_TAB, glfw.PRESS):
-            cfg.active_editor = 1 - cfg.active_editor
+        if self.window.get_key_event(glfw.KEY_TAB, glfw.PRESS):
+            if self.window.get_key(glfw.KEY_LEFT_SHIFT):  # todo: fix - maybe get rid of input via Window, use imgui instead.
+                cfg.active_editor = (cfg.active_editor - 1) % len(cfg.editors)
+            else:
+                cfg.active_editor = (cfg.active_editor + 1) % len(cfg.editors)
 
     def _context_menu(self):
         imgui.set_next_window_position(self.context_menu_position[0] - 3, self.context_menu_position[1] - 3)

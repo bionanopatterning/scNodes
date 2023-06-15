@@ -173,3 +173,9 @@ class LoadDataNode(Node):
     def on_load(self):
         self.on_select_file()
 
+    def extra_context_menu_options(self):
+        if imgui.menu_item("Append dataset")[0]:
+            selected_file = filedialog.askopenfilename()
+            if type(selected_file) is str:
+                if get_filetype(selected_file) in ['.tiff', '.tif']:
+                    self.dataset.append_dataset(selected_file)
