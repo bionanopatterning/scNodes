@@ -89,6 +89,9 @@ class CLEMFrame:
         my_copy.setup_opengl_objects()
         return my_copy
 
+    def _flip_along_axis(self, axis):
+        pass # TODO.
+
     def flip(self, horizontally=True, include_children=False):
         if horizontally:
             self.flip_h = not self.flip_h

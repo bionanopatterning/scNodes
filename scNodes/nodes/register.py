@@ -34,7 +34,7 @@ class RegisterNode(Node):
 
         # Set up node-specific vars
         self.buffer_last_output = True
-        self.params["register_method"] = 0
+        self.params["register_method"] = 2
         self.params["reference_method"] = 1
         self.reference_image = None
         self.params["frame"] = 0
@@ -172,6 +172,17 @@ class RegisterNode(Node):
         if data_source:
             input_img = data_source.get_image(idx)
             if self.params["reference_method"] == 1 and self.params["frame"] == idx:
+                if self.params["add_drift_metrics"]:
+                    if self.params["metric_nm_or_px"] == 0:
+                        input_img.scalar_metrics["drift (nm)"] = (input_img.translation[0] ** 2 + input_img.translation[
+                            1] ** 2) ** 0.5 * input_img.pixel_size
+                        input_img.scalar_metrics["x drift (nm)"] = input_img.translation[0] * input_img.pixel_size
+                        input_img.scalar_metrics["y drift (nm)"] = input_img.translation[1] * input_img.pixel_size
+                    else:
+                        input_img.scalar_metrics["drift (px)"] = (input_img.translation[0] ** 2 + input_img.translation[
+                            1] ** 2) ** 0.5
+                        input_img.scalar_metrics["x drift (px)"] = input_img.translation[0]
+                        input_img.scalar_metrics["y drift (px)"] = input_img.translation[1]
                 return input_img
             if self.params["register_method"] in [0, 1]:
                 if self.reference_image is None:
