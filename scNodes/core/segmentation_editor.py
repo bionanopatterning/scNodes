@@ -1630,7 +1630,7 @@ class QueuedExport:
             n_slices = mrcd.shape[0]
             n_slices_total = (self.dataset.export_top - self.dataset.export_bottom) * len(self.models)
             n_slices_complete = 0
-            segmentations = np.zeros((len(self.models), *mrcd.shape), dtype=float)
+            segmentations = np.zeros((len(self.models), *mrcd.shape), dtype=np.uint8)
             m_idx = 0
 
             for m in self.models:
@@ -1646,7 +1646,7 @@ class QueuedExport:
                             images.append(mrcd[indices[-1], :, :])
                     seg_images = m.apply_to_multiple_slices(images, self.dataset.pixel_size)
                     for i in range(len(indices)):
-                        segmentations[m_idx, indices[i], :, :] = np.clip(seg_images[i] * 65535, 0, 65535)
+                        segmentations[m_idx, indices[i], :, :] = np.clip(seg_images[i] * 255, 0, 255)
                         n_slices_complete += 1
                         self.process.set_progress(min([0.999, n_slices_complete / n_slices_total]))
 
@@ -1671,7 +1671,7 @@ class QueuedExport:
                 out_path = os.path.join(self.directory, self.dataset.title+"_"+m.title+".mrc")
                 with mrcfile.new(out_path, overwrite=True) as mrc:
                     s = segmentations[i, :, :, :].squeeze()
-                    s = np.clip(s, 0, 65535).astype(np.uint16)
+                    s = np.clip(s, 0, 255).astype(np.uint8)
                     mrc.set_data(s)
                     mrc.voxel_size = self.dataset.pixel_size * 10.0
                 n_slices_complete += n_slices
@@ -1681,7 +1681,7 @@ class QueuedExport:
         except Exception as e:
             print("An issue was encountered during export\n"
                   f"\tDataset: {self.dataset.path}\n"
-                  f"\tError:\n", e)
+                  f"\tError: ", e)
             self.process.set_progress(1.0)
 
     def start(self):

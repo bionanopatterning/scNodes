@@ -46,6 +46,7 @@ if __name__ == "__main__":
         correlation_editor = CorrelationEditor(main_window, main_window_imgui_context, main_window_imgui_glfw_implementation)
         if cfg.se_enabled:
             segmentation_editor = SegmentationEditor(main_window, main_window_imgui_context, main_window_imgui_glfw_implementation)
+            cfg.editors += ["Segmentation Editor"]
         image_viewer_window = Window(cfg.iv_window_width, cfg.iv_window_height, settings.iv_window_title)
         image_viewer_window_imgui_context = imgui.create_context(main_window_imgui_glfw_implementation.io.fonts)
         image_viewer_window_glfw_implementation = GlfwRenderer(image_viewer_window.glfw_window)

@@ -25,6 +25,7 @@ class CorrelationEditor:
         BLEND_MODES[" Subtract (inverted)"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_SUBTRACT)
         BLEND_MODES[" Retain minimum"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_MIN)
         BLEND_MODES[" Retain maximum"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_MAX)
+        BLEND_MODES[" Colourize"] = (GL_DST_COLOR, GL_DST_ALPHA, GL_FUNC_ADD)
         BLEND_MODES_LIST = list(BLEND_MODES.keys())
         N_BLEND_MODES = len(BLEND_MODES_LIST)
 
