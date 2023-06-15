@@ -74,8 +74,6 @@ class CorrelationEditor:
         # editing
         MOUSE_SHORT_PRESS_MAX_DURATION = 0.25  # seconds
         ARROW_KEY_TRANSLATION = 100.0  # nm
-        ARROW_KEY_TRANSLATION_FAST = 1000.0  # nm
-        ARROW_KEY_TRANSLATION_SLOW = 10.0
         LONG_MOUSE_PRESS_EVENT_DURATION = 0.55
         mouse_left_press_world_pos = [0, 0]
         mouse_left_release_world_pos = [0, 0]
@@ -1610,8 +1608,8 @@ class CorrelationEditor:
             ctrl = imgui.is_key_down(glfw.KEY_LEFT_CONTROL) or imgui.is_key_down(glfw.KEY_RIGHT_CONTROL)
             shift = imgui.is_key_down(glfw.KEY_LEFT_SHIFT) or imgui.is_key_down(glfw.KEY_RIGHT_SHIFT)
             translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION
-            if ctrl: translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION_SLOW
-            if shift: translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION_FAST
+            if ctrl: translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION * 0.1
+            if shift: translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION * 10.0
             if imgui.is_key_pressed(glfw.KEY_LEFT, repeat=True):
                 CorrelationEditor.active_frame.transform.translation[0] -= translation_step
                 CorrelationEditor.active_frame.pivot_point[0] -= translation_step
