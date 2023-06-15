@@ -1672,7 +1672,7 @@ class CorrelationEditor:
             elif imgui.is_key_pressed(glfw.KEY_SPACE):
                 self.camera.focus_on_frame(CorrelationEditor.active_frame)
             elif imgui.is_key_pressed(glfw.KEY_S):
-                self.snap_enabled = not self.snap_enabled
+                CorrelationEditor.snap_enabled = not CorrelationEditor.snap_enabled
             elif imgui.is_key_pressed(glfw.KEY_C):
                 if CorrelationEditor.active_frame:
                     CorrelationEditor.active_frame.lut_clamp_mode = (CorrelationEditor.active_frame.lut_clamp_mode + 1) % 3
