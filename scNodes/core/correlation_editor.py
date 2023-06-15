@@ -236,7 +236,8 @@ class CorrelationEditor:
         if cfg.correlation_editor_relink:
             CorrelationEditor.relink_after_load()
             cfg.correlation_editor_relink = False
-            self.camera.focus_on_frame(cfg.ce_frames[0])
+            self.camera.focus_on_frame(cfg.ce_frames[-1])
+
 
         cfg.ce_active_frame = CorrelationEditor.active_frame
         CorrelationEditor.incoming_files += deepcopy(self.window.dropped_files)
@@ -404,6 +405,13 @@ class CorrelationEditor:
                             cfg.load_scene(filename)
                     except Exception as e:
                         cfg.set_error(e, "Error loading scene - see details below")
+                if imgui.menu_item("Append scene")[0]:
+                    try:
+                        filename = filedialog.askopenfilename(filetypes=[("scNodes scene", cfg.filetype_scene)])
+                        if filename != '':
+                            cfg.load_scene(filename, append=True)
+                    except Exception as e:
+                        cfg.set_error(e, "Error appending scene - see details below")
                 if imgui.menu_item("Import data")[0]:
                     try:
                         filenames = filedialog.askopenfilenames(filetypes=[("Compatible image types", ".mrc .tif .tiff .png")])

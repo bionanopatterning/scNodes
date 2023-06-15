@@ -136,18 +136,22 @@ def save_scene(filename):
         pickle.dump(ce_frames, pickle_file)
 
 
-def load_scene(filename):
+def load_scene(filename, append=False):
     global ce_frames, correlation_editor_relink
     try:
         with open(filename, 'rb') as pickle_file:
-            ce_frames = pickle.load(pickle_file)
-            for cef in ce_frames:
+            imported_ce_frames = pickle.load(pickle_file)
+            for cef in imported_ce_frames:
                 if not hasattr(cef, "sum_slices"):
                     cef.sum_slices = 1
                 if not hasattr(cef, "current_sum_slices"):
                     cef.current_sum_slices = 1
                 if not hasattr(cef, "locked"):
                     cef.locked = False
+            if append:
+                ce_frames += imported_ce_frames
+            else:
+                ce_frames = imported_ce_frames
             correlation_editor_relink = True
     except Exception as e:
         set_error(e, "Error loading scene")
