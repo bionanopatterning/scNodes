@@ -149,3 +149,4 @@ def tic():
 
 def toc(msg):
     print(msg + f" {(time.time_ns() - timer)*1e-9:.3} seconds")
+

@@ -163,11 +163,12 @@ class SegmentationEditor:
                     self.queued_exports[0].start()
 
         # GUI calls
-        self.camera_control()
-        self.camera.on_update()
-        self.gui_main()
-        SegmentationEditor.renderer.render_overlay(self.camera)
-        self.input()
+        if not self.window.is_minimized():
+            self.camera_control()
+            self.camera.on_update()
+            self.gui_main()
+            SegmentationEditor.renderer.render_overlay(self.camera)
+            self.input()
 
         imgui.render()
         self.imgui_implementation.render(imgui.get_draw_data())
