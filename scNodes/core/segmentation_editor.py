@@ -234,7 +234,8 @@ class SegmentationEditor:
         else:
             for h in self.crop_handles:
                 if h.is_hovered(self.camera, self.window.cursor_pos):
-                    print(h.corner_idx)
+                    ## TODO handle crop mouse input
+                    pass
 
 
     def import_dataset(self, filename):
@@ -366,6 +367,8 @@ class SegmentationEditor:
                         imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_TEXT_DISABLED)
                         imgui.push_style_color(imgui.COLOR_CHECK_MARK, *cfg.COLOUR_TEXT_DISABLED)
                     _c, sef.crop = imgui.checkbox("crop", sef.crop)
+                    if _c and not sef.crop:
+                        sef.crop_roi = [0, 0, sef.width, sef.height]
                     if self.active_tab == "Segmentation":
                         imgui.pop_style_color(2)
                     imgui.separator()
@@ -1400,8 +1403,8 @@ class Renderer:
         self.fbo1.texture.bind(0)
         self.quad_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
         self.quad_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
-        self.quad_shader.uniform2f("xLims", [se_frame.crop_roi[0] / se_frame.width, 1.0 - se_frame.crop_roi[2] / se_frame.width]) ## TODO
-        self.quad_shader.uniform2f("yLims", [se_frame.crop_roi[1] / se_frame.height, 1.0 - se_frame.crop_roi[3] / se_frame.height])  ## TODO
+        self.quad_shader.uniform2f("xLims", [0.5 * se_frame.crop_roi[0] / se_frame.width, 1.0 - 0.5 * (se_frame.width - se_frame.crop_roi[2]) / se_frame.width])
+        self.quad_shader.uniform2f("yLims", [(se_frame.height - se_frame.crop_roi[3]) / se_frame.height * 0.5, 1.0 - 0.5 * se_frame.crop_roi[1] / se_frame.height])
         self.quad_shader.uniform1f("alpha", se_frame.alpha)
         if se_frame.invert:
             self.quad_shader.uniform1f("contrastMin", se_frame.contrast_lims[1])
