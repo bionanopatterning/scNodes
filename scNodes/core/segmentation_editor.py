@@ -82,6 +82,11 @@ class SegmentationEditor:
         self.export_batch_size = 5
         self.n_export = 0
 
+        # crop handles
+        self.crop_handles = list()
+        for i in range(4):
+            self.crop_handles.append(WorldSpaceIcon(i))
+
         if True:
             icon_dir = os.path.join(cfg.root, "icons")
 
@@ -176,7 +181,7 @@ class SegmentationEditor:
 
     def input(self):
         if self.active_tab != "Segmentation" and cfg.se_active_frame is not None and cfg.se_active_frame.crop:
-            SegmentationEditor.renderer.render_crop_handles(cfg.se_active_frame, self.camera)
+            SegmentationEditor.renderer.render_crop_handles(cfg.se_active_frame, self.camera, self.crop_handles)
         if imgui.get_io().want_capture_mouse or imgui.get_io().want_capture_keyboard:
             return
 
@@ -226,7 +231,10 @@ class SegmentationEditor:
                         active_feature.add_box(pixel_coordinate)
                     elif imgui.is_mouse_clicked(1):
                         active_feature.remove_box(pixel_coordinate)
-
+        else:
+            for h in self.crop_handles:
+                if h.is_hovered(self.camera, self.window.cursor_pos):
+                    print(h.corner_idx)
 
 
     def import_dataset(self, filename):
@@ -1317,18 +1325,6 @@ class Renderer:
         self.fbo2 = FrameBuffer()
         self.fbo3 = FrameBuffer()
 
-        # crop icon
-        icon_vertices = [0, 0, 0, 0,
-                         1, 0, 1, 0,
-                         0, -1, 0, 1,
-                         1, -1, 1, 1]
-        icon_indices = [0, 1, 2, 2, 1, 3]
-        self.crop_icon_va = VertexArray(VertexBuffer(icon_vertices), IndexBuffer(icon_indices), attribute_format="xyuv")
-        self.crop_icon_texture = Texture(format="rgba32f")
-        pxd_icon_crop = np.asarray(Image.open(os.path.join(cfg.root, "icons", "icon_crop_256.png"))).astype(np.float32) / 255.0
-        self.crop_icon_texture.update(pxd_icon_crop)
-        self.crop_icon_texture.set_linear_interpolation()
-
     def render_filtered_frame(self, se_frame, camera, window, filters):
         se_frame.update_model_matrix()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -1404,6 +1400,8 @@ class Renderer:
         self.fbo1.texture.bind(0)
         self.quad_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
         self.quad_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
+        self.quad_shader.uniform2f("xLims", [se_frame.crop_roi[0] / se_frame.width, 1.0 - se_frame.crop_roi[2] / se_frame.width]) ## TODO
+        self.quad_shader.uniform2f("yLims", [se_frame.crop_roi[1] / se_frame.height, 1.0 - se_frame.crop_roi[3] / se_frame.height])  ## TODO
         self.quad_shader.uniform1f("alpha", se_frame.alpha)
         if se_frame.invert:
             self.quad_shader.uniform1f("contrastMin", se_frame.contrast_lims[1])
@@ -1511,26 +1509,18 @@ class Renderer:
         self.border_shader.unbind()
         se_frame.border_va.unbind()
 
-    def render_crop_handles(self, se_frame, camera):
+    def render_crop_handles(self, se_frame, camera, handles):
         self.icon_shader.bind()
-        self.crop_icon_va.bind()
-        self.crop_icon_texture.bind(0)
+        h_va = handles[0].get_va()
+        h_va.bind()
+        handles[0].get_texture().bind(0)
         self.icon_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
-        fpos = se_frame.transform.translation
-        fx = [-1, 1, 1, -1]
-        fy = [1, 1, -1, -1]
-        a = []
-        icon_transform = Transform()
-        for i in range(4):
-            icon_transform.translation[0] = fpos[0] + 0.5 * fx[i] * se_frame.width * se_frame.pixel_size
-            icon_transform.translation[1] = fpos[1] + 0.5 * fy[i] * se_frame.height * se_frame.pixel_size
-            icon_transform.rotation = -i * 90.0
-            icon_transform.scale = 20.0 / camera.zoom
-            icon_transform.compute_matrix()
-            self.icon_shader.uniformmat4("modelMatrix", icon_transform.matrix)
-            glDrawElements(GL_TRIANGLES, self.crop_icon_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        for h in handles:
+            h.compute_matrix(se_frame, camera)
+            self.icon_shader.uniformmat4("modelMatrix", h.transform.matrix)
+            glDrawElements(GL_TRIANGLES, h_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
         self.icon_shader.unbind()
-        self.crop_icon_va.unbind()
+        h_va.unbind()
 
     def add_line(self, start_xy, stop_xy, colour, subtract=False):
         if subtract:
@@ -1734,3 +1724,83 @@ class QueuedExport:
 
     def start(self):
         self.process.start()
+
+
+class WorldSpaceIcon:
+    # this class is only used to render and interact with the SegmentationEditor crop handles. fairly specific implementation
+    crop_icon_va = None
+    crop_icon_texture = None
+
+    def __init__(self, corner_idx=0):
+        if WorldSpaceIcon.crop_icon_va is None:
+            WorldSpaceIcon.init_opengl_objs()
+
+        self.transform = Transform()
+        self.corner_idx = corner_idx
+        self.corner_positions_local = [[0, 0], [1, 0], [0, -1], [1, -1]]
+        self.corner_positions = [[0, 0], [1, 0], [0, -1], [1, -1]]
+        self.parent = None
+
+    def get_va(self):
+        return WorldSpaceIcon.crop_icon_va
+
+    def get_texture(self):
+        return WorldSpaceIcon.crop_icon_texture
+
+    @staticmethod
+    def init_opengl_objs():
+        # crop icon
+        icon_vertices = [0, 0, 0, 0,
+                         1, 0, 1, 0,
+                         0, -1, 0, 1,
+                         1, -1, 1, 1]
+        icon_indices = [0, 1, 2, 2, 1, 3]
+        WorldSpaceIcon.crop_icon_va = VertexArray(VertexBuffer(icon_vertices), IndexBuffer(icon_indices),
+                                                  attribute_format="xyuv")
+        WorldSpaceIcon.crop_icon_texture = Texture(format="rgba32f")
+        pxd_icon_crop = np.asarray(Image.open(os.path.join(cfg.root, "icons", "icon_crop_256.png"))).astype(
+            np.float32) / 255.0
+        WorldSpaceIcon.crop_icon_texture.update(pxd_icon_crop)
+
+    def compute_matrix(self, se_frame, camera):
+        self.parent = se_frame
+        fpos = se_frame.transform.translation
+        fx = [-1, 1, 1, -1]
+        fy = [1, 1, -1, -1]
+        # find position of the corner of the frame that this handle belongs to
+        dx = 0
+        dy = 0
+        if self.corner_idx == 0:
+            dx = se_frame.crop_roi[0]
+            dy = -se_frame.crop_roi[1]
+        elif self.corner_idx == 1:
+            dx = -(se_frame.width - se_frame.crop_roi[2])
+            dy = -se_frame.crop_roi[1]
+        elif self.corner_idx == 2:
+            dx = -(se_frame.width - se_frame.crop_roi[2])
+            dy = se_frame.height - se_frame.crop_roi[3]
+        elif self.corner_idx == 3:
+            dx = se_frame.crop_roi[0]
+            dy = se_frame.height - se_frame.crop_roi[3]
+        self.transform.translation[0] = fpos[0] + 0.5 * (fx[self.corner_idx] * se_frame.width + dx) * se_frame.pixel_size
+        self.transform.translation[1] = fpos[1] + 0.5 * (fy[self.corner_idx] * se_frame.height + dy) * se_frame.pixel_size
+        self.transform.rotation = -self.corner_idx * 90.0
+        self.transform.scale = 15.0 / camera.zoom
+        self.transform.compute_matrix()
+
+        # set icon's corner positions
+        for i in range(4):
+            local_corner_pos = tuple(self.corner_positions_local[i])
+            vec = np.matrix([*local_corner_pos, 0.0, 1.0]).T
+            world_corner_pos = self.transform.matrix * vec
+            self.corner_positions[i] = [float(world_corner_pos[0]), float(world_corner_pos[1])]
+
+    def is_hovered(self, camera, cursor_position):
+        P = camera.cursor_to_world_position(cursor_position)
+        A = self.corner_positions[0]
+        B = self.corner_positions[1]
+        D = self.corner_positions[3]
+        ap = [P[0] - A[0], P[1] - A[1]]
+        ab = [B[0] - A[0], B[1] - A[1]]
+        ad = [D[0] - A[0], D[1] - A[1]]
+        return (0 < ap[0] * ab[0] + ap[1] * ab[1] < ab[0] ** 2 + ab[1] ** 2) and (0 < ap[0] * ad[0] + ap[1] * ad[1] < ad[0] ** 2 + ad[1] ** 2)

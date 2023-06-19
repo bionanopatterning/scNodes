@@ -36,7 +36,7 @@ class SEFrame:
         #self.overlay = None
         self.invert = True
         self.crop = True
-        self.crop_roi = [0, 0, self.width, self.height]
+        self.crop_roi = [200, 0, self.width - 0, self.height - 0]
         self.autocontrast = True
         self.sample = True
         self.export = False

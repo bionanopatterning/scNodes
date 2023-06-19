@@ -25,11 +25,21 @@ in vec2 fUV;
 uniform float alpha;
 uniform float contrastMin;
 uniform float contrastMax;
+uniform vec2 xLims;
+uniform vec2 yLims;
 
 void main()
 {
     vec2 uv = fUV;
     float pixelValue = texture(image, uv).r;
     float contrastValue = (pixelValue - contrastMin) / (contrastMax - contrastMin);
-    fragmentColor = vec4(contrastValue, contrastValue, contrastValue, alpha);
+    bool in_roi = (fUV.x > xLims.r) && (fUV.y > yLims.r) && (fUV.x < xLims.g) && (fUV.y < yLims.g);
+    if (in_roi)
+    {
+        fragmentColor = vec4(contrastValue, contrastValue, contrastValue, alpha);
+    }
+    else
+    {
+        fragmentColor= vec4(contrastValue, contrastValue, contrastValue, alpha * 0.5);
+    }
 }
