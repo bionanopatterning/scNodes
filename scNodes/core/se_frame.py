@@ -35,6 +35,8 @@ class SEFrame:
         self.filters = list()
         #self.overlay = None
         self.invert = True
+        self.crop = True
+        self.crop_roi = [0, 0, self.width, self.height]
         self.autocontrast = True
         self.sample = True
         self.export = False

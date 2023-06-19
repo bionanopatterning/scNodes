@@ -175,6 +175,8 @@ class SegmentationEditor:
         imgui.CONFIG_DOCKING_ENABLE = False
 
     def input(self):
+        if self.active_tab != "Segmentation" and cfg.se_active_frame is not None and cfg.se_active_frame.crop:
+            SegmentationEditor.renderer.render_crop_handles(cfg.se_active_frame, self.camera)
         if imgui.get_io().want_capture_mouse or imgui.get_io().want_capture_keyboard:
             return
 
@@ -225,6 +227,8 @@ class SegmentationEditor:
                     elif imgui.is_mouse_clicked(1):
                         active_feature.remove_box(pixel_coordinate)
 
+
+
     def import_dataset(self, filename):
         try:
             _, ext = os.path.splitext(filename)
@@ -239,6 +243,10 @@ class SegmentationEditor:
                     seframe.slice_changed = False
                     cfg.se_frames.append(seframe)
                     SegmentationEditor.set_active_dataset(cfg.se_frames[-1])
+                    # compatibility:
+                    if not hasattr(seframe, 'crop'):
+                        seframe.crop = False
+                        seframe.crop_roi = [0, 0, seframe.width, seframe.height]
                 self.parse_available_features()
         except Exception as e:
             print("Error importing dataset, see details below:\n", e)
@@ -330,12 +338,13 @@ class SegmentationEditor:
                         sef.autocontrast = False
                     imgui.pop_item_width()
                     _c, sef.invert = imgui.checkbox("inverted", sef.invert)
-                    imgui.same_line(spacing=21)
+                    imgui.same_line(spacing=16)
                     _c, sef.autocontrast = imgui.checkbox("auto", sef.autocontrast)
                     if _c and sef.autocontrast:
                         sef.requires_histogram_update = True
-                    imgui.same_line(spacing=21)
+                    imgui.same_line(spacing=16)
                     _c, sef.interpolate = imgui.checkbox("interpolate", sef.interpolate)
+                    imgui.same_line(spacing=16)
                     if _c:
                         if sef.interpolate:
                             sef.texture.set_linear_interpolation()
@@ -345,7 +354,12 @@ class SegmentationEditor:
                             sef.texture.set_no_interpolation()
                             SegmentationEditor.renderer.fbo1.texture.set_no_interpolation()
                             SegmentationEditor.renderer.fbo2.texture.set_no_interpolation()
-
+                    if self.active_tab == "Segmentation":
+                        imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_TEXT_DISABLED)
+                        imgui.push_style_color(imgui.COLOR_CHECK_MARK, *cfg.COLOUR_TEXT_DISABLED)
+                    _c, sef.crop = imgui.checkbox("crop", sef.crop)
+                    if self.active_tab == "Segmentation":
+                        imgui.pop_style_color(2)
                     imgui.separator()
                     fidx = 0
                     for ftr in self.filters:
@@ -959,6 +973,7 @@ class SegmentationEditor:
             imgui.pop_style_var(3)
             imgui.pop_style_color(5)
 
+
         # START GUI:
         # Menu bar
         menu_bar()
@@ -1219,7 +1234,6 @@ class SegmentationEditor:
         if cfg.se_active_frame is not None:
             cfg.se_active_frame.overlay = Overlay(clemframe, overlay_render_function)
 
-
     def camera_control(self):
         if imgui.get_io().want_capture_mouse or imgui.get_io().want_capture_keyboard:
             return None
@@ -1295,12 +1309,25 @@ class Renderer:
         self.kernel_filter = Shader(os.path.join(cfg.root, "shaders", "se_compute_kernel_filter.glsl"))
         self.mix_filtered = Shader(os.path.join(cfg.root, "shaders", "se_compute_mix.glsl"))
         self.line_shader = Shader(os.path.join(cfg.root, "shaders", "ce_line_shader.glsl"))
+        self.icon_shader = Shader(os.path.join(cfg.root, "shaders", "se_icon_shader.glsl"))
         self.line_list = list()
         self.line_list_s = list()
         self.line_va = VertexArray(None, None, attribute_format="xyrgb")
         self.fbo1 = FrameBuffer()
         self.fbo2 = FrameBuffer()
         self.fbo3 = FrameBuffer()
+
+        # crop icon
+        icon_vertices = [0, 0, 0, 0,
+                         1, 0, 1, 0,
+                         0, -1, 0, 1,
+                         1, -1, 1, 1]
+        icon_indices = [0, 1, 2, 2, 1, 3]
+        self.crop_icon_va = VertexArray(VertexBuffer(icon_vertices), IndexBuffer(icon_indices), attribute_format="xyuv")
+        self.crop_icon_texture = Texture(format="rgba32f")
+        pxd_icon_crop = np.asarray(Image.open(os.path.join(cfg.root, "icons", "icon_crop_256.png"))).astype(np.float32) / 255.0
+        self.crop_icon_texture.update(pxd_icon_crop)
+        self.crop_icon_texture.set_linear_interpolation()
 
     def render_filtered_frame(self, se_frame, camera, window, filters):
         se_frame.update_model_matrix()
@@ -1484,6 +1511,26 @@ class Renderer:
         self.border_shader.unbind()
         se_frame.border_va.unbind()
 
+    def render_crop_handles(self, se_frame, camera):
+        self.icon_shader.bind()
+        self.crop_icon_va.bind()
+        self.crop_icon_texture.bind(0)
+        self.icon_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
+        fpos = se_frame.transform.translation
+        fx = [-1, 1, 1, -1]
+        fy = [1, 1, -1, -1]
+        a = []
+        icon_transform = Transform()
+        for i in range(4):
+            icon_transform.translation[0] = fpos[0] + 0.5 * fx[i] * se_frame.width * se_frame.pixel_size
+            icon_transform.translation[1] = fpos[1] + 0.5 * fy[i] * se_frame.height * se_frame.pixel_size
+            icon_transform.rotation = -i * 90.0
+            icon_transform.scale = 20.0 / camera.zoom
+            icon_transform.compute_matrix()
+            self.icon_shader.uniformmat4("modelMatrix", icon_transform.matrix)
+            glDrawElements(GL_TRIANGLES, self.crop_icon_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        self.icon_shader.unbind()
+        self.crop_icon_va.unbind()
 
     def add_line(self, start_xy, stop_xy, colour, subtract=False):
         if subtract:
