@@ -150,3 +150,5 @@ def tic():
 def toc(msg):
     print(msg + f" {(time.time_ns() - timer)*1e-9:.3} seconds")
 
+def clamp(a, _min, _max):
+    return min(max(a, _min), _max)

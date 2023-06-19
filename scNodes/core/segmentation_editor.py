@@ -18,7 +18,7 @@ from scipy.ndimage import zoom
 from scNodes.core.se_model import *
 from scNodes.core.se_frame import *
 import scNodes.core.widgets as widgets
-
+from scNodes.core.util import clamp
 
 class SegmentationEditor:
     if True:
@@ -232,10 +232,30 @@ class SegmentationEditor:
                     elif imgui.is_mouse_clicked(1):
                         active_feature.remove_box(pixel_coordinate)
         else:
-            for h in self.crop_handles:
-                if h.is_hovered(self.camera, self.window.cursor_pos):
-                    ## TODO handle crop mouse input
-                    pass
+            if not self.crop_handles[0].moving_entire_roi:
+                any_handle_active = False
+                for h in self.crop_handles:
+                    if not h.active and h.is_hovered(self.camera, self.window.cursor_pos) and imgui.is_mouse_clicked(0):
+                        h.active = True
+                        any_handle_active = False
+                    if h.active:
+                        any_handle_active = True
+                        world_pos = self.camera.cursor_to_world_position(self.window.cursor_pos)
+                        pixel_pos = active_frame.world_to_pixel_coordinate(world_pos)
+                        h.affect_crop(pixel_pos)
+                        if not imgui.is_mouse_down(0):
+                            h.active = False
+                            h.convert_crop_roi_to_integers()
+                if not any_handle_active and imgui.is_mouse_clicked(0):
+                    self.crop_handles[0].moving_entire_roi = True
+                    self.crop_handles[0].convert_crop_roi_to_integers()
+            else:
+                if not imgui.is_mouse_down(0):
+                    self.crop_handles[0].moving_entire_roi = False
+                else:
+                    world_pos_old = self.camera.cursor_to_world_position(self.window.cursor_pos_previous_frame)
+                    world_pos = self.camera.cursor_to_world_position(self.window.cursor_pos)
+                    self.crop_handles[0].move_crop(-(world_pos_old[0] - world_pos[0]) / 2.0, (world_pos_old[1] - world_pos[1]) / 2.0 )
 
 
     def import_dataset(self, filename):
@@ -244,6 +264,7 @@ class SegmentationEditor:
             if ext == ".mrc":
                 cfg.se_frames.append(SEFrame(filename))
                 SegmentationEditor.set_active_dataset(cfg.se_frames[-1])
+                cfg.se_active_frame.requires_histogram_update = True
                 self.parse_available_features()
             elif ext == cfg.filetype_segmentation:
                 with open(filename, 'rb') as pickle_file:
@@ -1403,8 +1424,8 @@ class Renderer:
         self.fbo1.texture.bind(0)
         self.quad_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
         self.quad_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
-        self.quad_shader.uniform2f("xLims", [0.5 * se_frame.crop_roi[0] / se_frame.width, 1.0 - 0.5 * (se_frame.width - se_frame.crop_roi[2]) / se_frame.width])
-        self.quad_shader.uniform2f("yLims", [(se_frame.height - se_frame.crop_roi[3]) / se_frame.height * 0.5, 1.0 - 0.5 * se_frame.crop_roi[1] / se_frame.height])
+        self.quad_shader.uniform2f("xLims", [se_frame.crop_roi[0] / se_frame.width, 1.0 - (se_frame.width - se_frame.crop_roi[2]) / se_frame.width])
+        self.quad_shader.uniform2f("yLims", [(se_frame.height - se_frame.crop_roi[3]) / se_frame.height, 1.0 - se_frame.crop_roi[1] / se_frame.height])
         self.quad_shader.uniform1f("alpha", se_frame.alpha)
         if se_frame.invert:
             self.quad_shader.uniform1f("contrastMin", se_frame.contrast_lims[1])
@@ -1733,7 +1754,7 @@ class WorldSpaceIcon:
     # this class is only used to render and interact with the SegmentationEditor crop handles. fairly specific implementation
     crop_icon_va = None
     crop_icon_texture = None
-
+    MIN_SIZE = 128
     def __init__(self, corner_idx=0):
         if WorldSpaceIcon.crop_icon_va is None:
             WorldSpaceIcon.init_opengl_objs()
@@ -1743,6 +1764,8 @@ class WorldSpaceIcon:
         self.corner_positions_local = [[0, 0], [1, 0], [0, -1], [1, -1]]
         self.corner_positions = [[0, 0], [1, 0], [0, -1], [1, -1]]
         self.parent = None
+        self.active = False
+        self.moving_entire_roi = False
 
     def get_va(self):
         return WorldSpaceIcon.crop_icon_va
@@ -1765,6 +1788,52 @@ class WorldSpaceIcon:
             np.float32) / 255.0
         WorldSpaceIcon.crop_icon_texture.update(pxd_icon_crop)
 
+    def affect_crop(self, pixel_coordinate):
+        d = WorldSpaceIcon.MIN_SIZE
+        ## this method is called when the crop handle is moved, onto pixel_coordinate
+        if self.corner_idx == 0:
+            self.parent.crop_roi[0] = pixel_coordinate[0]
+            self.parent.crop_roi[0] = clamp(self.parent.crop_roi[0], 0, self.parent.crop_roi[2] - d)
+            self.parent.crop_roi[1] = (self.parent.height - pixel_coordinate[1])
+            self.parent.crop_roi[1] = clamp(self.parent.crop_roi[1], 0, self.parent.crop_roi[3] - d)
+        elif self.corner_idx == 1:
+            self.parent.crop_roi[2] = self.parent.width - (self.parent.width - pixel_coordinate[0])
+            self.parent.crop_roi[2] = clamp(self.parent.crop_roi[2], self.parent.crop_roi[0] + d, self.parent.width)
+            self.parent.crop_roi[1] = (self.parent.height - pixel_coordinate[1])
+            self.parent.crop_roi[1] = clamp(self.parent.crop_roi[1], 0, self.parent.crop_roi[3] - d)
+        elif self.corner_idx == 2:
+            self.parent.crop_roi[2] = self.parent.width - (self.parent.width - pixel_coordinate[0])
+            self.parent.crop_roi[2] = clamp(self.parent.crop_roi[2], self.parent.crop_roi[0] + d, self.parent.width)
+            self.parent.crop_roi[3] = (self.parent.height - pixel_coordinate[1])
+            self.parent.crop_roi[3] = clamp(self.parent.crop_roi[3], self.parent.crop_roi[1] + d, self.parent.height)
+        elif self.corner_idx == 3:
+            self.parent.crop_roi[0] = pixel_coordinate[0]
+            self.parent.crop_roi[0] = clamp(self.parent.crop_roi[0], 0, self.parent.crop_roi[2] - d)
+            self.parent.crop_roi[3] = (self.parent.height - pixel_coordinate[1])
+            self.parent.crop_roi[3] = clamp(self.parent.crop_roi[3], self.parent.crop_roi[1] + d, self.parent.height)
+
+    def move_crop(self, dx, dy):
+        test_roi = copy(self.parent.crop_roi)
+        test_roi[0] += dx
+        test_roi[2] += dx
+        test_roi[1] += dy
+        test_roi[3] += dy
+
+        if test_roi[0] > 0 and test_roi[2] < self.parent.width:
+            self.parent.crop_roi[0] = test_roi[0]
+            self.parent.crop_roi[2] = test_roi[2]
+            self.parent.crop_roi[0] = clamp(self.parent.crop_roi[0], 0, self.parent.width)
+            self.parent.crop_roi[2] = clamp(self.parent.crop_roi[2], 0, self.parent.width)
+        if test_roi[1] > 0 and test_roi[3] < self.parent.height:
+            self.parent.crop_roi[1] = test_roi[1]
+            self.parent.crop_roi[3] = test_roi[3]
+            self.parent.crop_roi[1] = clamp(self.parent.crop_roi[1], 0, self.parent.height)
+            self.parent.crop_roi[3] = clamp(self.parent.crop_roi[3], 0, self.parent.height)
+
+    def convert_crop_roi_to_integers(self):
+        for i in range(4):
+            self.parent.crop_roi[i] = int(self.parent.crop_roi[i])
+
     def compute_matrix(self, se_frame, camera):
         self.parent = se_frame
         fpos = se_frame.transform.translation
@@ -1785,8 +1854,8 @@ class WorldSpaceIcon:
         elif self.corner_idx == 3:
             dx = se_frame.crop_roi[0]
             dy = se_frame.height - se_frame.crop_roi[3]
-        self.transform.translation[0] = fpos[0] + 0.5 * (fx[self.corner_idx] * se_frame.width + dx) * se_frame.pixel_size
-        self.transform.translation[1] = fpos[1] + 0.5 * (fy[self.corner_idx] * se_frame.height + dy) * se_frame.pixel_size
+        self.transform.translation[0] = fpos[0] + (0.5 * fx[self.corner_idx] * se_frame.width + dx) * se_frame.pixel_size
+        self.transform.translation[1] = fpos[1] + (0.5 * fy[self.corner_idx] * se_frame.height + dy) * se_frame.pixel_size
         self.transform.rotation = -self.corner_idx * 90.0
         self.transform.scale = 15.0 / camera.zoom
         self.transform.compute_matrix()

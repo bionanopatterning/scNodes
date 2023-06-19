@@ -44,7 +44,7 @@ class SEFrame:
         self.export_top = None
         self.hist_vals = list()
         self.hist_bins = list()
-        self.requires_histogram_update = False
+        self.requires_histogram_update = True
         self.corner_positions_local = []
         self.set_slice(0, False)
         self.setup_opengl_objects()
