@@ -247,6 +247,7 @@ class SegmentationEditor:
                         if not imgui.is_mouse_down(0):
                             h.active = False
                             h.convert_crop_roi_to_integers()
+                            cfg.se_active_frame.slice_changed = True  # not really, but this flag is also used to trigger a model update.
                 if not any_handle_active and imgui.is_mouse_clicked(0):
                     self.crop_handles[0].moving_entire_roi = True
                     self.crop_handles[0].convert_crop_roi_to_integers()
@@ -254,6 +255,7 @@ class SegmentationEditor:
                 if not imgui.is_mouse_down(0):
                     self.crop_handles[0].moving_entire_roi = False
                     self.crop_handles[0].convert_crop_roi_to_integers()
+                    cfg.se_active_frame.slice_changed = True  # not really, but this flag is also used to trigger a model update.
                 else:
                     world_pos_old = self.camera.cursor_to_world_position(self.window.cursor_pos_previous_frame)
                     world_pos = self.camera.cursor_to_world_position(self.window.cursor_pos)
@@ -882,12 +884,12 @@ class SegmentationEditor:
 
                 imgui.text("Export settings")
                 imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
-                imgui.begin_child("export_settings", 0.0, 72.0, True)
+                imgui.begin_child("export_settings", 0.0, 65.0, True)
                 _, self.export_dir = widgets.select_directory("browse", self.export_dir)
                 imgui.set_next_item_width(imgui.get_content_region_available_width())
                 _, self.export_batch_size = imgui.slider_int("##batch_size", self.export_batch_size, 1, 32, f"{self.export_batch_size} batch size")
                 _, self.export_compete = imgui.checkbox("competing models", self.export_compete)
-                imgui.same_line(spacing=70)
+                imgui.same_line(spacing=62)
                 _, self.export_limit_range = imgui.checkbox("limit range", self.export_limit_range)
                 imgui.end_child()
 
@@ -1699,7 +1701,6 @@ class QueuedExport:
             n_slices_complete = 0
             segmentations = np.zeros((len(self.models), *mrcd.shape), dtype=np.uint8)
             m_idx = 0
-
             for m in self.models:
                 print(f"QueuedExport - applying model {m.info}")
                 self.colour = m.colour
