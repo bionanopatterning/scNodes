@@ -21,8 +21,18 @@ layout(binding = 0) uniform usampler2D image;
 out vec4 fragmentColor;
 
 in vec2 fUV;
+uniform int invert;
 
 void main()
 {
-    fragmentColor = vec4(texture(image, fUV));
+    if (invert == 0)
+    {
+        fragmentColor = vec4(texture(image, fUV));
+    }
+    else
+    {
+        vec4 rgba = texture(image, fUV);
+        fragmentColor = vec4(1.0 - rgba.rgb, rgba.a);
+    }
+
 }

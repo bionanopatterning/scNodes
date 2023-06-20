@@ -263,12 +263,14 @@ class SEModel:
         self.info = SEModel.AVAILABLE_MODELS[self.model_enum] + f" ({self.n_parameters}, {self.box_size}, {self.apix:.3f}, {self.loss:.4f})"
         self.info_short = "(" + SEModel.AVAILABLE_MODELS[self.model_enum] + f", {self.box_size}, {self.apix:.3f}, {self.loss:.4f})"
 
-    def set_slice(self, slice_data, slice_pixel_size):
+    def set_slice(self, slice_data, slice_pixel_size, roi, original_size):
         if not self.compiled:
             return False
         if not self.active:
             return False
-        self.data = self.apply_to_slice(slice_data, slice_pixel_size)
+        self.data = np.zeros(original_size)
+        rx, ry = roi
+        self.data[rx[0]:rx[1], ry[0]:ry[1]] = self.apply_to_slice(slice_data[rx[0]:rx[1], ry[0]:ry[1]], slice_pixel_size)
         return True
 
     def update_texture(self):

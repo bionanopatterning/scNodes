@@ -20,6 +20,7 @@ from scNodes.core.se_frame import *
 import scNodes.core.widgets as widgets
 from scNodes.core.util import clamp
 
+
 class SegmentationEditor:
     if True:
         CAMERA_ZOOM_STEP = 0.1
@@ -146,7 +147,7 @@ class SegmentationEditor:
             pxd_arrays = list()
             for model in cfg.se_models:
                 # launch all active models
-                if model.set_slice(cfg.se_active_frame.data, cfg.se_active_frame.pixel_size):
+                if model.set_slice(cfg.se_active_frame.data, cfg.se_active_frame.pixel_size, cfg.se_active_frame.get_roi_indices(), cfg.se_active_frame.data.shape):
                     active_models.append(model)
                     pxd_arrays.append(model.data)
             if len(active_models) > 1:
@@ -252,10 +253,12 @@ class SegmentationEditor:
             else:
                 if not imgui.is_mouse_down(0):
                     self.crop_handles[0].moving_entire_roi = False
+                    self.crop_handles[0].convert_crop_roi_to_integers()
                 else:
                     world_pos_old = self.camera.cursor_to_world_position(self.window.cursor_pos_previous_frame)
                     world_pos = self.camera.cursor_to_world_position(self.window.cursor_pos)
-                    self.crop_handles[0].move_crop(-(world_pos_old[0] - world_pos[0]) / 2.0, (world_pos_old[1] - world_pos[1]) / 2.0 )
+                    world_delta = np.array([-(world_pos_old[0] - world_pos[0]), world_pos_old[1] - world_pos[1]]) / cfg.se_active_frame.pixel_size
+                    self.crop_handles[0].move_crop_roi(world_delta[0], world_delta[1])
 
 
     def import_dataset(self, filename):
@@ -433,6 +436,7 @@ class SegmentationEditor:
                     if _c and not new_filter_type == 0:
                         self.filters.append(Filter(new_filter_type - 1))
                         cfg.se_active_frame.requires_histogram_update = True
+
                     imgui.pop_style_var(6)
                     imgui.pop_style_color(1)
 
@@ -783,7 +787,7 @@ class SegmentationEditor:
                             _, m.active = imgui.checkbox("active    ", m.active)
                             if _ and m.active:
                                 if cfg.se_active_frame is not None:
-                                    m.set_slice(cfg.se_active_frame.data, cfg.se_active_frame.pixel_size)
+                                    m.set_slice(cfg.se_active_frame.data, cfg.se_active_frame.pixel_size, cfg.se_active_frame.get_roi_indices(), cfg.se_active_frame.data.shape)
                                     cfg.se_active_frame.slice_changed = True
                             imgui.same_line()
                             _, m.blend = imgui.checkbox("blend    ", m.blend)
@@ -883,9 +887,10 @@ class SegmentationEditor:
                 imgui.set_next_item_width(imgui.get_content_region_available_width())
                 _, self.export_batch_size = imgui.slider_int("##batch_size", self.export_batch_size, 1, 32, f"{self.export_batch_size} batch size")
                 _, self.export_compete = imgui.checkbox("competing models", self.export_compete)
-                imgui.same_line(spacing=40)
+                imgui.same_line(spacing=70)
                 _, self.export_limit_range = imgui.checkbox("limit range", self.export_limit_range)
                 imgui.end_child()
+
 
                 if widgets.centred_button("Start export", 120, 23):
                     self.launch_export_volumes()
@@ -1005,7 +1010,6 @@ class SegmentationEditor:
             imgui.pop_style_var(3)
             imgui.pop_style_color(5)
 
-
         # START GUI:
         # Menu bar
         menu_bar()
@@ -1013,6 +1017,7 @@ class SegmentationEditor:
 
         if cfg.se_active_frame is not None:
             pxd = SegmentationEditor.renderer.render_filtered_frame(cfg.se_active_frame, self.camera, self.window, self.filters)
+            ## todo: save the output pxd to the corresponding frame, and render this pxd in subsequent app frames where the data is not changed instead of applying the filters on GPU every frame - which it turns out is fairly expensive
             if pxd is not None:
                 cfg.se_active_frame.compute_histogram(pxd)
                 if cfg.se_active_frame.autocontrast:
@@ -1255,7 +1260,6 @@ class SegmentationEditor:
     def seframe_from_clemframe(clemframe):
         new_se_frame = SEFrame(clemframe.path)
         new_se_frame.pixel_size = clemframe.pixel_size
-        apix = clemframe.pixel_size * 10.0
         new_se_frame.title = clemframe.title
         new_se_frame.set_slice(clemframe.current_slice)
         cfg.se_frames.append(new_se_frame)
@@ -1542,6 +1546,7 @@ class Renderer:
         for h in handles:
             h.compute_matrix(se_frame, camera)
             self.icon_shader.uniformmat4("modelMatrix", h.transform.matrix)
+            self.icon_shader.uniform1i("invert", int(se_frame.invert))
             glDrawElements(GL_TRIANGLES, h_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
         self.icon_shader.unbind()
         h_va.unbind()
@@ -1681,7 +1686,7 @@ class QueuedExport:
     def do_export(self, process):
         try:
             print(f"QueuedExport - loading dataset {self.dataset.path}")
-
+            rx, ry = self.dataset.get_roi_indices()
             mrcd = np.array(mrcfile.open(self.dataset.path, mode='r').data[:, :, :])
             target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'), np.dtype('int16'): np.dtype('float32')}
             if mrcd.dtype not in target_type_dict:
@@ -1705,10 +1710,10 @@ class QueuedExport:
                     for i in range(self.batch_size):
                         if len(slices_to_process) > 0:
                             indices.append(slices_to_process.pop(0))
-                            images.append(mrcd[indices[-1], :, :])
+                            images.append(mrcd[indices[-1], rx[0]:rx[1], ry[0]:ry[1]])
                     seg_images = m.apply_to_multiple_slices(images, self.dataset.pixel_size)
                     for i in range(len(indices)):
-                        segmentations[m_idx, indices[i], :, :] = np.clip(seg_images[i] * 255, 0, 255)
+                        segmentations[m_idx, indices[i], rx[0]:rx[1], ry[0]:ry[1]] = np.clip(seg_images[i] * 255, 0, 255)
                         n_slices_complete += 1
                         self.process.set_progress(min([0.999, n_slices_complete / n_slices_total]))
 
@@ -1755,6 +1760,7 @@ class WorldSpaceIcon:
     crop_icon_va = None
     crop_icon_texture = None
     MIN_SIZE = 128
+
     def __init__(self, corner_idx=0):
         if WorldSpaceIcon.crop_icon_va is None:
             WorldSpaceIcon.init_opengl_objs()
@@ -1812,7 +1818,7 @@ class WorldSpaceIcon:
             self.parent.crop_roi[3] = (self.parent.height - pixel_coordinate[1])
             self.parent.crop_roi[3] = clamp(self.parent.crop_roi[3], self.parent.crop_roi[1] + d, self.parent.height)
 
-    def move_crop(self, dx, dy):
+    def move_crop_roi(self, dx, dy):
         test_roi = copy(self.parent.crop_roi)
         test_roi[0] += dx
         test_roi[2] += dx

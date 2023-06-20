@@ -139,6 +139,12 @@ class SEFrame:
             out_data = np.array(out_data.astype(target_type, copy=False), dtype=float)
         return out_data
 
+    def get_roi_indices(self):
+        """Returns a tuple of tuples (x_indices, y_indices), where x_indices is (x_start, x_stop)"""
+        y_indices = (self.height - self.crop_roi[3], self.height - self.crop_roi[1])
+        x_indices = (self.crop_roi[0], self.crop_roi[2])
+        return y_indices, x_indices
+
     def update_image_texture(self):
         self.texture.update(self.data.astype(np.float32))
 
