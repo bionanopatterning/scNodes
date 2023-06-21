@@ -117,7 +117,7 @@ class CorrelationEditor:
         ex_path = ""
         ex_png = True
         EXPORT_FBO = None
-        EXPORT_TILE_SIZE = 1000
+        EXPORT_TILE_SIZE = 1000 # must be a multiple of 4
         EXPORT_SIZE_CHANGE_SPEED = 0.05
         EXPORT_RESOLUTION_CHANGE_SPEED = 0.05
         EXPORT_ROI_LINE_COLOUR = (255 / 255, 202 / 255, 28 / 255, 1.0)
@@ -955,6 +955,42 @@ class CorrelationEditor:
         imgui.end()
         imgui.pop_style_color(3)
 
+    @staticmethod
+    def render_frame_overlay_to_image(frame):
+        height, width = frame.height, frame.width
+        # Make a texture with the same size as frame, then make a camera to render in an FBO of that size.
+        fbo = FrameBuffer(width, height, texture_format="rgba32f")
+        fbo.clear([0.0, 0.0, 0.0, 1.0])
+        fbo.bind()
+        # Position and orient the camera s.t. frame is exactly contained within FBO.
+        camera = Camera()
+        camera.set_projection_matrix(width, height)
+        camera.zoom = CorrelationEditor.DEFAULT_WORLD_PIXEL_SIZE / frame.pixel_size * CorrelationEditor.DEFAULT_ZOOM
+        camera.position = [-frame.transform.translation[0], -frame.transform.translation[1], 0.0]
+        camera.rotation = -frame.transform.rotation
+        camera.set_pivoted_rotation_matrix([frame.transform.translation[0], frame.transform.translation[1]])  ## TODO: make this work for rotated screens
+
+        found_starting_frame = False
+        for f in reversed(cfg.ce_frames):
+            if not found_starting_frame:  # only render frames higher in the render stack than the frame of interest
+                if f == frame:
+                    found_starting_frame = True
+                continue
+            original_blend_mode = f.blend_mode
+            if f.blend_mode == 7:
+                f.blend_mode = 1
+            CorrelationEditor.renderer.render_frame_quad(camera, f)
+            f.blend_mode = original_blend_mode
+        pxd = glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT)
+        pxd = np.frombuffer(pxd, np.float32).reshape(height, width, 4)
+        pxd = np.flipud(pxd)
+        fbo.unbind()
+        if frame.flip_h:
+            pxd = np.flip(pxd, axis=1)
+        if not frame.flip_v:
+            pxd = np.flip(pxd, axis=0)
+        return pxd
+
     def export_image(self):
         def export_png():
             # Set up
@@ -976,7 +1012,6 @@ class CorrelationEditor:
             out_img = np.zeros((out_size_pixels[0], out_size_pixels[1], 4))
             alpha_mask = np.zeros((out_size_pixels[0], out_size_pixels[1]))
             glEnable(GL_DEPTH_TEST)
-
             glDepthFunc(GL_ALWAYS)
             for i in range(tiles_h):
                 for j in range(tiles_v):
@@ -1109,12 +1144,12 @@ class CorrelationEditor:
             elif imgui.menu_item("8 x", selected=f.binning == 8)[0]:
                 f.binning = 8
             imgui.end_menu()
-        if imgui.begin_menu("add to Segmentation Editor"):
-            if imgui.menu_item("as dataset")[0]:
+        if f.has_slices:
+            if imgui.menu_item("add to Segmentation Editor")[0]:
                 cfg.segmentation_editor.seframe_from_clemframe(f)
-            if imgui.menu_item("as overlay")[0]:
-                cfg.segmentation_editor.overlay_from_clemframe(f, self.renderer.render_frame_quad)
-            imgui.end_menu()
+                overlay = CorrelationEditor.render_frame_overlay_to_image(f)
+                cfg.se_frames[-1].set_overlay(overlay, f, CorrelationEditor.render_frame_overlay_to_image)
+
 
     def objects_info_window(self):
         content_width = 0
@@ -2025,6 +2060,7 @@ class Camera:
         self.projection_matrix = np.identity(4)
         self.view_projection_matrix = np.identity(4)
         self.position = np.zeros(3)
+        self.rotation = 0.0
         self.zoom = 1.0
         self.projection_width = 1
         self.projection_height = 1
@@ -2060,12 +2096,69 @@ class Camera:
         self.projection_height = window_height
 
     def on_update(self):
-        self.view_matrix = np.matrix([
-            [self.zoom, 0.0, 0.0, self.position[0] * self.zoom],
-            [0.0, self.zoom, 0.0, self.position[1] * self.zoom],
+        translation_matrix = np.matrix([
+            [1.0, 0.0, 0.0, self.position[0] * self.zoom],
+            [0.0, 1.0, 0.0, self.position[1] * self.zoom],
             [0.0, 0.0, 1.0, self.position[2]],
             [0.0, 0.0, 0.0, 1.0],
         ])
+
+        scale_matrix = np.matrix([
+            [self.zoom, 0.0, 0.0, 0.0],
+            [0.0, self.zoom, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+
+        theta = np.radians(self.rotation)
+        rotation_matrix = np.matrix([
+            [np.cos(theta), -np.sin(theta), 0.0, 0.0],
+            [np.sin(theta), np.cos(theta), 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+
+        self.view_matrix = translation_matrix * rotation_matrix * scale_matrix
+        self.view_projection_matrix = np.matmul(self.projection_matrix, self.view_matrix)
+
+    def set_pivoted_rotation_matrix(self, pivot):
+        pivot_translation_matrix = np.matrix([
+            [1.0, 0.0, 0.0, pivot[0]],
+            [0.0, 1.0, 0.0, pivot[1]],
+            [0.0, 0.0, 1.0, 0],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+
+        inv_pivot_translation_matrix = np.matrix([
+            [1.0, 0.0, 0.0, -pivot[0]],
+            [0.0, 1.0, 0.0, -pivot[1]],
+            [0.0, 0.0, 1.0, 0],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+
+        translation_matrix = np.matrix([
+            [1.0, 0.0, 0.0, self.position[0] * self.zoom],
+            [0.0, 1.0, 0.0, self.position[1] * self.zoom],
+            [0.0, 0.0, 1.0, self.position[2]],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+
+        scale_matrix = np.matrix([
+            [self.zoom, 0.0, 0.0, 0.0],
+            [0.0, self.zoom, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+
+        theta = np.radians(self.rotation)
+        rotation_matrix = np.matrix([
+            [np.cos(theta), -np.sin(theta), 0.0, 0.0],
+            [np.sin(theta), np.cos(theta), 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+
+        self.view_matrix = translation_matrix * pivot_translation_matrix * rotation_matrix * inv_pivot_translation_matrix * scale_matrix
         self.view_projection_matrix = np.matmul(self.projection_matrix, self.view_matrix)
 
     def focus_on_frame(self, clemframe):

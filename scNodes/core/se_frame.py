@@ -27,13 +27,14 @@ class SEFrame:
         self.height, self.width = mrcfile.mmap(self.path, mode="r").data.shape[1:3]
         self.pixel_size = mrcfile.open(self.path, header_only=True).voxel_size.x / 10.0
         self.transform = Transform()
+        self.clem_frame = None
+        self.overlay = None
         self.texture = None
         self.quad_va = None
         self.border_va = None
         self.interpolate = False
         self.alpha = 1.0
         self.filters = list()
-        #self.overlay = None
         self.invert = True
         self.crop = False
         self.crop_roi = [0, 0, self.width, self.height]
@@ -198,8 +199,11 @@ class SEFrame:
         self.setup_opengl_objects()
         for f in self.features:
             f.on_load()
-        #if self.overlay is not None:
-            #self.overlay.setup_opengl_objects()
+        if self.overlay is not None:
+            self.overlay.setup_opengl_objects()
+
+    def set_overlay(self, pxd, parent_clem_frame, overlay_update_function):
+        self.overlay = Overlay(pxd, parent_clem_frame, self, overlay_update_function)
 
     def __eq__(self, other):
         if isinstance(other, SEFrame):
@@ -274,18 +278,26 @@ class Filter:
         self.upload_buffer()
 
 
-class Overlay:
-    """A class to wrap around CLEMFrames in such a way that they can be overlayed on SEFrames, but without introducing
-    a dependency on the Correlation Editor.
-    """
+class Overlay:  ## TODO (in SegmentationEditor) add some way of 'refreshing' an overlay
+
     idgen = count(0)
 
-    def __init__(self, clemframe, render_function):
-        self.clem_frame = clemframe
-        self.render_function = render_function
+    def __init__(self, pxd, parent_clem_frame, parent_se_frame, update_function):
+        self.uid = next(Overlay.idgen)
+        self.pxd = pxd
+        self.texture = Texture(format="rgba32f")
+        self.texture.update(pxd)
+        self.clem_frame = parent_clem_frame
+        self.se_frame = parent_se_frame
+        self.update_function = update_function
 
-    def render(self, camera):
-        self.render_function(camera, self.clem_frame)
+    def update(self):
+        self.pxd = self.update_function(self.clem_frame)
+        self.texture.update(self.pxd)
+
+    def setup_opengl_objects(self):
+        self.texture = Texture(format="rgba32f")
+        self.texture.update(self.pxd)
 
 
 class Segmentation:

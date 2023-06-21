@@ -1,20 +1,11 @@
 import glfw
 import imgui
-import scNodes.core.config as cfg
 import numpy as np
-from itertools import count
-import mrcfile
-from scNodes.core.opengl_classes import *
-import datetime
-import scNodes.core.settings as settings
 from PIL import Image
 from copy import copy
 from tkinter import filedialog
-import threading
-import tifffile
 import time
 import dill as pickle
-from scipy.ndimage import zoom
 from scNodes.core.se_model import *
 from scNodes.core.se_frame import *
 import scNodes.core.widgets as widgets
@@ -45,6 +36,13 @@ class SegmentationEditor:
         TOOLTIP_HOVERED_START_TIME = 0.0
 
         renderer = None
+
+        BLEND_MODES = dict()  # blend mode template: ((glBlendFunc, ARG1, ARG2), (glBlendEquation, ARG1))
+        BLEND_MODES["Sum"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_ADD, 0)
+        BLEND_MODES["Colourize"] = (GL_DST_COLOR, GL_DST_ALPHA, GL_FUNC_ADD, 1)
+        BLEND_MODES["Threshold"] = (GL_ZERO, GL_SRC_ALPHA, GL_FUNC_ADD, 2)
+        BLEND_MODES["Overlay"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_FUNC_ADD, 3)
+        BLEND_MODES_LIST = list(BLEND_MODES.keys())
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -78,6 +76,7 @@ class SegmentationEditor:
         # export
         self.export_compete = True
         self.export_limit_range = True
+        self.export_overlays = True
         self.export_dir = ""
         self.queued_exports = list()
         self.export_batch_size = 5
@@ -85,6 +84,11 @@ class SegmentationEditor:
 
         # crop handles
         self.crop_handles = list()
+
+        # overlays
+        self.overlay_alpha = 1.0
+        self.overlay_blend_mode = 0
+
         for i in range(4):
             self.crop_handles.append(WorldSpaceIcon(i))
 
@@ -173,7 +177,7 @@ class SegmentationEditor:
             self.camera_control()
             self.camera.on_update()
             self.gui_main()
-            SegmentationEditor.renderer.render_overlay(self.camera)
+            SegmentationEditor.renderer.render_draw_list(self.camera)
             self.input()
 
         imgui.render()
@@ -438,6 +442,15 @@ class SegmentationEditor:
                     if _c and not new_filter_type == 0:
                         self.filters.append(Filter(new_filter_type - 1))
                         cfg.se_active_frame.requires_histogram_update = True
+
+                    if cfg.se_active_frame.overlay is not None:
+                        imgui.separator()
+                        cw = imgui.get_content_region_available_width()
+                        imgui.set_next_item_width(cw - 120)
+                        _, self.overlay_alpha = imgui.slider_float("##alphaslider_se", self.overlay_alpha, 0.0, 1.0, format=f"overlay alpha = {self.overlay_alpha:.2f}")
+                        imgui.same_line()
+                        imgui.set_next_item_width(110)
+                        _, self.overlay_blend_mode = imgui.combo("##overlayblending", self.overlay_blend_mode, SegmentationEditor.BLEND_MODES_LIST)
 
                     imgui.pop_style_var(6)
                     imgui.pop_style_color(1)
@@ -884,13 +897,14 @@ class SegmentationEditor:
 
                 imgui.text("Export settings")
                 imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
-                imgui.begin_child("export_settings", 0.0, 65.0, True)
+                imgui.begin_child("export_settings", 0.0, 90.0, True)
                 _, self.export_dir = widgets.select_directory("browse", self.export_dir)
                 imgui.set_next_item_width(imgui.get_content_region_available_width())
                 _, self.export_batch_size = imgui.slider_int("##batch_size", self.export_batch_size, 1, 32, f"{self.export_batch_size} batch size")
                 _, self.export_compete = imgui.checkbox("competing models", self.export_compete)
                 imgui.same_line(spacing=62)
                 _, self.export_limit_range = imgui.checkbox("limit range", self.export_limit_range)
+                _, self.export_overlays = imgui.checkbox("export overlays", self.export_overlays)
                 imgui.end_child()
 
 
@@ -1059,8 +1073,9 @@ class SegmentationEditor:
                             box_y_pos = frame_xy[1] + (box[1] - f.parent.height / 2) * f.parent.pixel_size
                             box_size = self.trainset_apix * self.trainset_boxsize / 10.0
                             SegmentationEditor.renderer.add_square((box_x_pos, box_y_pos), box_size, clr)
-            #if cfg.se_active_frame.overlay is not None:  TODO
-            #    cfg.se_active_frame.overlay.render(self.camera)
+
+            overlay_blend_mode = SegmentationEditor.BLEND_MODES[SegmentationEditor.BLEND_MODES_LIST[self.overlay_blend_mode]]
+            SegmentationEditor.renderer.render_overlay(cfg.se_active_frame, self.camera, overlay_blend_mode, self.overlay_alpha)
 
         # MAIN WINDOW
         imgui.set_next_window_position(0, 17, imgui.ONCE)
@@ -1160,7 +1175,7 @@ class SegmentationEditor:
             return
 
         for d in datasets:
-            self.queued_exports.append(QueuedExport(self.export_dir, d, models, self.export_compete, self.export_batch_size))
+            self.queued_exports.append(QueuedExport(self.export_dir, d, models, self.export_compete, self.export_batch_size, self.export_overlays))
 
         self.n_export = len(datasets)
         if self.queued_exports:
@@ -1261,16 +1276,12 @@ class SegmentationEditor:
     @staticmethod
     def seframe_from_clemframe(clemframe):
         new_se_frame = SEFrame(clemframe.path)
+        new_se_frame.clem_frame = clemframe
         new_se_frame.pixel_size = clemframe.pixel_size
         new_se_frame.title = clemframe.title
         new_se_frame.set_slice(clemframe.current_slice)
         cfg.se_frames.append(new_se_frame)
         SegmentationEditor.set_active_dataset(cfg.se_frames[-1])
-
-    @staticmethod
-    def overlay_from_clemframe(clemframe, overlay_render_function):
-        if cfg.se_active_frame is not None:
-            cfg.se_active_frame.overlay = Overlay(clemframe, overlay_render_function)
 
     def camera_control(self):
         if imgui.get_io().want_capture_mouse or imgui.get_io().want_capture_keyboard:
@@ -1343,6 +1354,7 @@ class Renderer:
         self.quad_shader = Shader(os.path.join(cfg.root, "shaders", "se_quad_shader.glsl"))
         self.b_segmentation_shader = Shader(os.path.join(cfg.root, "shaders", "se_binary_segmentation_shader.glsl"))
         self.f_segmentation_shader = Shader(os.path.join(cfg.root, "shaders", "se_float_segmentation_shader.glsl"))
+        self.overlay_shader = Shader(os.path.join(cfg.root, "shaders", "se_overlay_shader.glsl"))
         self.border_shader = Shader(os.path.join(cfg.root, "shaders", "se_border_shader.glsl"))
         self.kernel_filter = Shader(os.path.join(cfg.root, "shaders", "se_compute_kernel_filter.glsl"))
         self.mix_filtered = Shader(os.path.join(cfg.root, "shaders", "se_compute_mix.glsl"))
@@ -1354,6 +1366,20 @@ class Renderer:
         self.fbo1 = FrameBuffer()
         self.fbo2 = FrameBuffer()
         self.fbo3 = FrameBuffer()
+
+    def recompile_shaders(self):  # for debugging
+        try:
+            self.quad_shader = Shader(os.path.join(cfg.root, "shaders", "se_quad_shader.glsl"))
+            self.b_segmentation_shader = Shader(os.path.join(cfg.root, "shaders", "se_binary_segmentation_shader.glsl"))
+            self.f_segmentation_shader = Shader(os.path.join(cfg.root, "shaders", "se_float_segmentation_shader.glsl"))
+            self.overlay_shader = Shader(os.path.join(cfg.root, "shaders", "se_overlay_shader.glsl"))
+            self.border_shader = Shader(os.path.join(cfg.root, "shaders", "se_border_shader.glsl"))
+            self.kernel_filter = Shader(os.path.join(cfg.root, "shaders", "se_compute_kernel_filter.glsl"))
+            self.mix_filtered = Shader(os.path.join(cfg.root, "shaders", "se_compute_mix.glsl"))
+            self.line_shader = Shader(os.path.join(cfg.root, "shaders", "ce_line_shader.glsl"))
+            self.icon_shader = Shader(os.path.join(cfg.root, "shaders", "se_icon_shader.glsl"))
+        finally:
+            pass
 
     def render_filtered_frame(self, se_frame, camera, window, filters):
         se_frame.update_model_matrix()
@@ -1496,7 +1522,7 @@ class Renderer:
         filters: a list of Filter objectm, to apply to the se_frame pixeldata.
         """
 
-        # render overlays
+        # render segmentation overlays
         se_frame.quad_va.bind()
         self.b_segmentation_shader.bind()
         self.b_segmentation_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
@@ -1621,8 +1647,28 @@ class Renderer:
         self.line_list_s = list()
         self.line_list = list()
 
-    def render_overlay(self, camera):
+    def render_draw_list(self, camera):
         self.render_lines(camera)
+
+    def render_overlay(self, se_frame, camera, blend_mode, alpha):
+        if se_frame.overlay is None:
+            return
+        if alpha == 0.0:
+            return
+        glBlendFunc(blend_mode[0], blend_mode[1])
+        glBlendEquation(blend_mode[2])
+        shader_blend_code = blend_mode[3]
+        se_frame.quad_va.bind()
+        se_frame.overlay.texture.bind()
+        self.overlay_shader.bind()
+        self.overlay_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
+        self.overlay_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
+        self.overlay_shader.uniform1f("alpha", alpha)
+        self.overlay_shader.uniform1i("shader_blend_code", shader_blend_code)
+        glDrawElements(GL_TRIANGLES, se_frame.quad_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        self.overlay_shader.unbind()
+        se_frame.quad_va.unbind()
+        glActiveTexture(GL_TEXTURE0)
 
 
 class Camera:
@@ -1676,11 +1722,12 @@ class Camera:
 
 
 class QueuedExport:
-    def __init__(self, directory, dataset, models, compete, batch_size):
+    def __init__(self, directory, dataset, models, compete, batch_size, export_overlay):
         self.directory = directory
         self.dataset = dataset
         self.models = models
         self.compete = compete
+        self.export_overlay = export_overlay
         self.process = BackgroundProcess(self.do_export, (), name=f"{self.dataset.title} export")
         self.colour = self.models[0].colour
         self.batch_size = batch_size
@@ -1744,6 +1791,18 @@ class QueuedExport:
                     mrc.voxel_size = self.dataset.pixel_size * 10.0
                 n_slices_complete += n_slices
                 i += 1
+
+            # export overlay
+            if self.export_overlay and self.dataset.overlay is not None:
+                overlay_grayscale = np.sum(self.dataset.overlay.pxd ** 2, axis=2)
+                overlay_grayscale /= np.amax(overlay_grayscale)
+                overlay_grayscale *= 255
+                overlay_grayscale = overlay_grayscale.astype(np.uint8)
+                overlay_volume = np.tile(overlay_grayscale[:, :, np.newaxis], (1, 1, n_slices))
+                out_path = os.path.join(self.directory, self.dataset.title + "_overlay.mrc")
+                with mrcfile.new(out_path, overwrite=True) as mrc:
+                    mrc.set_data(overlay_volume)
+                    mrc.voxel_size = self.dataset.pixel_size * 10.0
 
             self.process.set_progress(1.0)
         except Exception as e:
