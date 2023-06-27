@@ -968,7 +968,7 @@ class CorrelationEditor:
         camera.zoom = CorrelationEditor.DEFAULT_WORLD_PIXEL_SIZE / frame.pixel_size * CorrelationEditor.DEFAULT_ZOOM
         camera.position = [-frame.transform.translation[0], -frame.transform.translation[1], 0.0]
         camera.rotation = -frame.transform.rotation
-        camera.set_pivoted_rotation_matrix([frame.transform.translation[0], frame.transform.translation[1]])  ## TODO: make this work for rotated screens
+        camera.set_pivoted_rotation_matrix([frame.transform.translation[0], frame.transform.translation[1]])  ## TODO: make this work for rotated quads
 
         found_starting_frame = False
         for f in reversed(cfg.ce_frames):
@@ -2300,7 +2300,7 @@ class ImportedFrameData:
                 if CorrelationEditor.flip_images_on_load:
                     self.pxd = np.flip(self.pxd, axis=0)
             elif self.extension == ".mrc":
-                with mrcfile.open(self.path, header_only=True) as mrc:
+                with mrcfile.open(self.path, header_only=True) as mrc:  # TODO: fix the contrast of the first frame that is loaded upon importing .mrc being weird - probably because of wrong datatype / difference in ImportedFrameData and clemframe.set_slice
                     self.pixel_size = float(mrc.voxel_size.x / 10.0)
                     self.pixel_size_z = float(mrc.voxel_size.z / 10.0)
                     if self.pixel_size == 0.0:

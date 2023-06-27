@@ -40,7 +40,7 @@ class SegmentationEditor:
         BLEND_MODES = dict()  # blend mode template: ((glBlendFunc, ARG1, ARG2), (glBlendEquation, ARG1))
         BLEND_MODES["Sum"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_ADD, 0)
         BLEND_MODES["Colourize"] = (GL_DST_COLOR, GL_DST_ALPHA, GL_FUNC_ADD, 1)
-        BLEND_MODES["Threshold"] = (GL_ZERO, GL_SRC_ALPHA, GL_FUNC_ADD, 2)
+        BLEND_MODES["Mask"] = (GL_ZERO, GL_SRC_ALPHA, GL_FUNC_ADD, 2)
         BLEND_MODES["Overlay"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_FUNC_ADD, 3)
         BLEND_MODES_LIST = list(BLEND_MODES.keys())
 
@@ -151,7 +151,7 @@ class SegmentationEditor:
             pxd_arrays = list()
             for model in cfg.se_models:
                 # launch all active models
-                if model.set_slice(cfg.se_active_frame.data, cfg.se_active_frame.pixel_size, cfg.se_active_frame.get_roi_indices(), cfg.se_active_frame.data.shape):
+                if model.set_slice(cfg.se_active_frame.data, cfg.se_active_frame.pixel_size, cfg.se_active_frame.get_roi_indices(), cfg.se_active_frame.data.shape):  ## wrap in Try Except block
                     active_models.append(model)
                     pxd_arrays.append(model.data)
             if len(active_models) > 1:
@@ -236,7 +236,7 @@ class SegmentationEditor:
                         active_feature.add_box(pixel_coordinate)
                     elif imgui.is_mouse_clicked(1):
                         active_feature.remove_box(pixel_coordinate)
-        else:
+        elif active_feature is not None and active_feature.crop:
             if not self.crop_handles[0].moving_entire_roi:
                 any_handle_active = False
                 for h in self.crop_handles:
@@ -340,6 +340,8 @@ class SegmentationEditor:
                             if cfg.se_active_frame == s:
                                 cfg.se_active_frame = None
                             self.parse_available_features()
+                        if s.overlay is not None and imgui.menu_item("Update overlay")[0]:
+                            s.overlay.update()
                         imgui.end_popup()
                     self.tooltip(f"{s.title}\nPixel size: {s.pixel_size * 10.0:.4f} Angstrom\nLocation: {s.path}")
                     if _change and _selected:
@@ -744,7 +746,7 @@ class SegmentationEditor:
 
                             # Load, save, train buttons.
                             block_buttons = False
-                            if m.background_process_train is not None:
+                            if not m.background_process_train is None:
                                 imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_NEUTRAL_LIGHT)
                                 imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *cfg.COLOUR_NEUTRAL_LIGHT)
                                 imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_NEUTRAL_LIGHT)
@@ -759,12 +761,12 @@ class SegmentationEditor:
                             block_save_button = False
                             if m.model is None:
                                 imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *cfg.COLOUR_NEUTRAL_LIGHT)
-                                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED,*cfg.COLOUR_NEUTRAL_LIGHT)
-                                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE,*cfg.COLOUR_NEUTRAL_LIGHT)
+                                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *cfg.COLOUR_NEUTRAL_LIGHT)
+                                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_NEUTRAL_LIGHT)
                                 imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_NEUTRAL)
                                 block_save_button = True
                             if imgui.button("save", (cw - 16) / 3, 20):
-                                if not block_buttons or block_save_button:
+                                if not block_buttons and not block_save_button:
                                     proposed_filename = f"{m.apix:.2f}_{m.box_size}_{m.loss:.4f}_{m.title}"
                                     model_path = filedialog.asksaveasfilename(filetypes=[("scNodes model", f"{cfg.filetype_semodel}")], initialfile=proposed_filename)
                                     if model_path is not None:
@@ -1171,7 +1173,7 @@ class SegmentationEditor:
             os.makedirs(self.export_dir)
         datasets = [d for d in cfg.se_frames if d.export]
         models = [m for m in cfg.se_models if m.export]
-        if not models or not datasets:
+        if not datasets:
             return
 
         for d in datasets:
@@ -1798,7 +1800,7 @@ class QueuedExport:
                 overlay_grayscale /= np.amax(overlay_grayscale)
                 overlay_grayscale *= 255
                 overlay_grayscale = overlay_grayscale.astype(np.uint8)
-                overlay_volume = np.tile(overlay_grayscale[:, :, np.newaxis], (1, 1, n_slices))
+                overlay_volume = np.tile(overlay_grayscale[:, :, np.newaxis], (n_slices, 1, 1))
                 out_path = os.path.join(self.directory, self.dataset.title + "_overlay.mrc")
                 with mrcfile.new(out_path, overwrite=True) as mrc:
                     mrc.set_data(overlay_volume)
