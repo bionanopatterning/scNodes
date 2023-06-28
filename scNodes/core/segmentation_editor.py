@@ -236,7 +236,7 @@ class SegmentationEditor:
                         active_feature.add_box(pixel_coordinate)
                     elif imgui.is_mouse_clicked(1):
                         active_feature.remove_box(pixel_coordinate)
-        elif active_feature is not None and active_feature.crop:
+        elif active_frame is not None and active_frame.crop:
             if not self.crop_handles[0].moving_entire_roi:
                 any_handle_active = False
                 for h in self.crop_handles:
@@ -256,7 +256,7 @@ class SegmentationEditor:
                     self.crop_handles[0].moving_entire_roi = True
                     self.crop_handles[0].convert_crop_roi_to_integers()
             else:
-                if not imgui.is_mouse_down(0):
+                if not imgui.is_mouse_down(0):  ## TODO: if mouse down, AND cursor is within the roi.
                     self.crop_handles[0].moving_entire_roi = False
                     self.crop_handles[0].convert_crop_roi_to_integers()
                     cfg.se_active_frame.slice_changed = True  # not really, but this flag is also used to trigger a model update.
@@ -453,6 +453,7 @@ class SegmentationEditor:
                         imgui.same_line()
                         imgui.set_next_item_width(110)
                         _, self.overlay_blend_mode = imgui.combo("##overlayblending", self.overlay_blend_mode, SegmentationEditor.BLEND_MODES_LIST)
+                        ## Add button with an update icon, to update overlay
 
                     imgui.pop_style_var(6)
                     imgui.pop_style_color(1)
@@ -546,11 +547,14 @@ class SegmentationEditor:
                             imgui.end_child()
                             imgui.text("Export:")
                             cw = imgui.get_content_region_available_width()
-                            if imgui.button("coordinates", (cw - 10) / 2, 15):
+                            if imgui.button("coords", (cw - 15) / 3, 15):
                                 f.save_particle_positions()
-                            imgui.same_line(spacing=10)
-                            if imgui.button("slice", (cw - 10) / 2, 15):
+                            imgui.same_line(spacing=5)
+                            if imgui.button("slice", (cw - 15) / 3, 15):
                                 f.save_current_slice()
+                            imgui.same_line(spacing=5)
+                            if imgui.button("volume", (cw - 15) / 3, 15):
+                                f.save_volume()
                             imgui.pop_style_color(3)
                             imgui.end_menu()
 
@@ -776,7 +780,7 @@ class SegmentationEditor:
                             if block_save_button:
                                 imgui.pop_style_color(4)
                             imgui.same_line(spacing=8)
-                            if imgui.button("train", (cw - 16) / 3, 20):
+                            if imgui.button("train", (cw - 16) / 3, 20):  ## TODO: when no path to training data, pressing 'train' should do both: i) generate a trainset with the current selection, ii) train the model with that set
                                 if not block_buttons:
                                     m.train()
                             if block_buttons:
@@ -1731,7 +1735,10 @@ class QueuedExport:
         self.compete = compete
         self.export_overlay = export_overlay
         self.process = BackgroundProcess(self.do_export, (), name=f"{self.dataset.title} export")
-        self.colour = self.models[0].colour
+        if self.models != []:
+            self.colour = self.models[0].colour
+        else:
+            self.colour = (0.0, 0.0, 0.0)
         self.batch_size = batch_size
 
     def do_export(self, process):
@@ -1795,12 +1802,13 @@ class QueuedExport:
                 i += 1
 
             # export overlay
+            print(f"QueuedExport - exporting overlay")
             if self.export_overlay and self.dataset.overlay is not None:
                 overlay_grayscale = np.sum(self.dataset.overlay.pxd ** 2, axis=2)
                 overlay_grayscale /= np.amax(overlay_grayscale)
                 overlay_grayscale *= 255
                 overlay_grayscale = overlay_grayscale.astype(np.uint8)
-                overlay_volume = np.tile(overlay_grayscale[:, :, np.newaxis], (n_slices, 1, 1))
+                overlay_volume = np.tile(overlay_grayscale[np.newaxis, :, :], (n_slices, 1, 1))
                 out_path = os.path.join(self.directory, self.dataset.title + "_overlay.mrc")
                 with mrcfile.new(out_path, overwrite=True) as mrc:
                     mrc.set_data(overlay_volume)

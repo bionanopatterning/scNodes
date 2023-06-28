@@ -427,6 +427,7 @@ class Segmentation:
                     if len(box_list) > 0:
                         for box in box_list:
                             f.write(f"{box[0]}\t{box[1]}\t{z}\n")
+            print(f"Coordinates saved to: {fpath}")
         except Exception as e:
             print(e)
 
@@ -438,8 +439,23 @@ class Segmentation:
                 annotation = np.zeros_like(image) if self.data is None else self.data.astype(image.dtype)
                 mrc.set_data(np.array([image, annotation]))
                 mrc.voxel_size = self.parent.pixel_size * 10.0
+            print(f"Slice saved to: {fpath}")
         except Exception as e:
             print(e)
+
+    def save_volume(self):
+        fpath = os.path.splitext(self.parent.path)[0] + "_" + self.title + f"_annotated_volume.mrc"
+        try:
+            with mrcfile.new(fpath, overwrite=True) as outf:
+                vol = np.zeros((self.parent.n_slices, self.parent.height, self.parent.width), dtype=np.uint8)
+                for i in self.edited_slices:
+                    vol[i] = self.slices[i]
+                outf.set_data(vol)
+                outf.voxel_size = self.parent.pixel_size * 10.0
+            print(f"Volume saved to: {fpath}")
+        except Exception as e:
+            print(e)
+
 
 
 class Transform:

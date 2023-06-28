@@ -1112,15 +1112,15 @@ class CorrelationEditor:
             f.move_forwards()
         elif imgui.menu_item("Lower one step")[0]:
             f.move_backwards()
-        elif imgui.menu_item("Rotate +90° (ccw)")[0]:
+        elif imgui.menu_item("Rotate +90° (ccw)")[0]:  # TODO: include children
             f.transform.rotation += 90.0
-        elif imgui.menu_item("Rotate -90° (cw)")[0]:
+        elif imgui.menu_item("Rotate -90° (cw)")[0]:  # TODO: include children
             f.transform.rotation -= 90.0
         elif imgui.menu_item("Duplicate")[0]:
             duplicate = f.duplicate()
             duplicate.setup_opengl_objects()
             cfg.ce_frames.insert(0, duplicate)
-        if imgui.begin_menu("Flip"):
+        if imgui.begin_menu("Flip"):  # TODO: flip children properly
             if imgui.menu_item("Horizontally")[0]:
                 f.flip()
             if imgui.menu_item("Vertically")[0]:
@@ -1180,7 +1180,7 @@ class CorrelationEditor:
             label_width = CorrelationEditor.FRAMES_IN_SCENE_WINDOW_WIDTH - indent * CorrelationEditor.FRAME_LIST_INDENT_WIDTH - 87 - (0 if f.is_rgb else 15)
             if f.hide:
                 imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_TEXT_DISABLED)
-            _c, selected = imgui.selectable(""+f.title+f"###fuid{f.uid}", selected=CorrelationEditor.active_frame == f, width=label_width)
+            _c, selected = imgui.selectable(""+f.title+f"###fuid{f.uid}", selected=CorrelationEditor.active_frame == f, width=label_width)  ## TODO: make collapsable
             if f.hide:
                 imgui.pop_style_color(1)
             if imgui.begin_popup_context_item():
@@ -1452,7 +1452,7 @@ class CorrelationEditor:
 
         # particle picking, if active, takes precedence over other input
         if CorrelationEditor.picking_enabled and CorrelationEditor.active_frame is not None:
-
+            # TODO: fix removing particles not working
             if self.window.get_key(glfw.KEY_ESCAPE):
                 CorrelationEditor.picking_enabled = False
                 return
@@ -1646,18 +1646,14 @@ class CorrelationEditor:
             translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION
             if ctrl: translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION * 0.1
             if shift: translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION * 10.0
-            if imgui.is_key_pressed(glfw.KEY_LEFT, repeat=True):
-                CorrelationEditor.active_frame.transform.translation[0] -= translation_step
-                CorrelationEditor.active_frame.pivot_point[0] -= translation_step
+            if imgui.is_key_pressed(glfw.KEY_LEFT, repeat=True): ## TODO: arrow keys should also affect children
+                CorrelationEditor.active_frame.translate([-translation_step, 0])
             elif imgui.is_key_pressed(glfw.KEY_RIGHT, repeat=True):
-                CorrelationEditor.active_frame.transform.translation[0] += translation_step
-                CorrelationEditor.active_frame.pivot_point[0] += translation_step
+                CorrelationEditor.active_frame.translate([translation_step, 0])
             elif imgui.is_key_pressed(glfw.KEY_UP, repeat=True):
-                CorrelationEditor.active_frame.transform.translation[1] += translation_step
-                CorrelationEditor.active_frame.pivot_point[1] += translation_step
+                CorrelationEditor.active_frame.translate([0, translation_step])
             elif imgui.is_key_pressed(glfw.KEY_DOWN, repeat=True):
-                CorrelationEditor.active_frame.transform.translation[1] -= translation_step
-                CorrelationEditor.active_frame.pivot_point[1] -= translation_step
+                CorrelationEditor.active_frame.translate([0, -translation_step])
             elif imgui.is_key_pressed(glfw.KEY_DELETE, repeat=True):
                 if CorrelationEditor.active_frame is not None:
                     CorrelationEditor.delete_frame(CorrelationEditor.active_frame)

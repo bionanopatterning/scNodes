@@ -114,8 +114,11 @@ class LoadDataNode(Node):
                      "Separate by a semicolon. When the positive and negative\n"
                      "selection criteria contradict, frames are retained.")
         if imgui.button("Filter", av_width / 2 - 5, 25):
-            self.dataset.filter_frames_by_title(self.params["file_filter_positive_raw"], self.params["file_filter_negative_raw"])
-            self.any_change = True
+            try:
+                self.dataset.filter_frames_by_title(self.params["file_filter_positive_raw"], self.params["file_filter_negative_raw"])
+                self.any_change = True
+            except Exception as e:
+                cfg.set_error(e, "Could not apply filter in LoadImage node, see details below.")
         imgui.same_line(spacing=10)
         if imgui.button("Reset", av_width / 2 - 5, 25):
             self.on_select_file()
