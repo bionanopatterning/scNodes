@@ -1122,13 +1122,13 @@ class CorrelationEditor:
             cfg.ce_frames.insert(0, duplicate)
         if imgui.begin_menu("Flip"):  # TODO: flip children properly
             if imgui.menu_item("Horizontally")[0]:
-                f.flip()
-            if imgui.menu_item("Vertically")[0]:
-                f.flip(horizontally=False)
-            if imgui.menu_item("Horizontally (+ children)")[0]:
                 f.flip(include_children=True)
-            if imgui.menu_item("Vertically (+ children)")[0]:
+            if imgui.menu_item("Vertically")[0]:
                 f.flip(horizontally=False, include_children=True)
+            if imgui.menu_item("Horizontally (- children)")[0]:
+                f.flip()
+            if imgui.menu_item("Vertically (- children)")[0]:
+                f.flip(horizontally=False)
             imgui.end_menu()
         if imgui.begin_menu("Render binned"):
             if imgui.menu_item("None", selected=f.binning == 1)[0]:

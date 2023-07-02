@@ -89,25 +89,48 @@ class CLEMFrame:
         my_copy.setup_opengl_objects()
         return my_copy
 
-    def _flip_along_axis(self, axis):
-        pass # TODO.
+    def adjust_position_on_flip(self, axis):
+        P = np.array(self.transform.translation[0:2])
+        A = np.array(axis[0:2])
+        U = np.array(axis[2:4])
+        AP = np.subtract(P, A)
+        print(P, A, AP, U)
+        P_new = np.add(A, AP - 2 * np.dot(AP, U) * U)
+        self.transform.translation[0] = P_new[0]
+        self.transform.translation[1] = P_new[1]
 
-    def flip(self, horizontally=True, include_children=False):
+    def flip(self, horizontally=True, include_children=False, axis=None):
         if horizontally:
             self.flip_h = not self.flip_h
             self.data = np.flip(self.data, axis=1)
             for group in self.particle_groups:
                 for i in range(len(group.coordinates)):
                     group.coordinates[i][0] = self.width - group.coordinates[i][0]
+            if axis is not None:
+                self.adjust_position_on_flip(axis)
+            else:
+                theta = -self.transform.rotation / 180.0 * np.pi
+                u = (np.cos(theta), -np.sin(theta))
+                a = tuple(self.transform.translation[0:2])
+                axis = (*a, *u)
+                self.adjust_position_on_flip(axis)
         else:
             self.flip_v = not self.flip_v
             self.data = np.flip(self.data, axis=0)
             for group in self.particle_groups:
                 for i in range(len(group.coordinates)):
                     group.coordinates[i][1] = -(self.height + group.coordinates[i][1])
+            if axis is not None:
+                self.adjust_position_on_flip(axis)
+            else:
+                theta = -self.transform.rotation / 180.0 * np.pi
+                u = (np.sin(theta), np.cos(theta))
+                a = tuple(self.transform.translation[0:2])
+                axis = (*a, *u)
+                self.adjust_position_on_flip(axis)
         if include_children:
             for child in self.children:
-                child.flip(horizontally=horizontally, include_children=True)
+                child.flip(horizontally=horizontally, include_children=True, axis=axis)
         self.update_image_texture(compute_histogram=False)
 
     def setup_opengl_objects(self):
