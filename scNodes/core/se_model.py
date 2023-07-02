@@ -61,7 +61,7 @@ class SEModel:
         self.n_copies = 4
         self.excess_negative = 30
         self.info = ""
-        self.info_short = ""  ## TODO: add loss to info strings
+        self.info_short = ""
         self.loss = 0.0
         self.data = None
         self.texture = Texture(format="r32f")

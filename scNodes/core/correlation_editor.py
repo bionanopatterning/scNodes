@@ -1112,15 +1112,15 @@ class CorrelationEditor:
             f.move_forwards()
         elif imgui.menu_item("Lower one step")[0]:
             f.move_backwards()
-        elif imgui.menu_item("Rotate +90° (ccw)")[0]:  # TODO: include children
-            f.transform.rotation += 90.0
-        elif imgui.menu_item("Rotate -90° (cw)")[0]:  # TODO: include children
-            f.transform.rotation -= 90.0
+        elif imgui.menu_item("Rotate +90° (ccw)")[0]:
+            f.pivoted_rotation(f.pivot_point, 90.0)
+        elif imgui.menu_item("Rotate -90° (cw)")[0]:
+            f.pivoted_rotation(f.pivot_point, -90.0)
         elif imgui.menu_item("Duplicate")[0]:
             duplicate = f.duplicate()
             duplicate.setup_opengl_objects()
             cfg.ce_frames.insert(0, duplicate)
-        if imgui.begin_menu("Flip"):  # TODO: flip children properly
+        if imgui.begin_menu("Flip"):
             if imgui.menu_item("Horizontally")[0]:
                 f.flip(include_children=True)
             if imgui.menu_item("Vertically")[0]:
@@ -1646,7 +1646,7 @@ class CorrelationEditor:
             translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION
             if ctrl: translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION * 0.1
             if shift: translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION * 10.0
-            if imgui.is_key_pressed(glfw.KEY_LEFT, repeat=True): ## TODO: arrow keys should also affect children
+            if imgui.is_key_pressed(glfw.KEY_LEFT, repeat=True):
                 CorrelationEditor.active_frame.translate([-translation_step, 0])
             elif imgui.is_key_pressed(glfw.KEY_RIGHT, repeat=True):
                 CorrelationEditor.active_frame.translate([translation_step, 0])
@@ -2296,7 +2296,7 @@ class ImportedFrameData:
                 if CorrelationEditor.flip_images_on_load:
                     self.pxd = np.flip(self.pxd, axis=0)
             elif self.extension == ".mrc":
-                with mrcfile.open(self.path, header_only=True) as mrc:  # TODO: fix the contrast of the first frame that is loaded upon importing .mrc being weird - probably because of wrong datatype / difference in ImportedFrameData and clemframe.set_slice
+                with mrcfile.open(self.path, header_only=True) as mrc:
                     self.pixel_size = float(mrc.voxel_size.x / 10.0)
                     self.pixel_size_z = float(mrc.voxel_size.z / 10.0)
                     if self.pixel_size == 0.0:
@@ -2319,6 +2319,13 @@ class ImportedFrameData:
                     self.pxd = self.pxd.astype(np.uint16)
                 if isinstance(self.pxd, np.memmap):
                     self.pxd = np.asarray(self.pxd)
+                target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'),
+                                    np.dtype('int16'): np.dtype('float32')}
+                if self.pxd.dtype not in target_type_dict:
+                    target_type = float
+                else:
+                    target_type = target_type_dict[self.pxd.dtype]
+                self.pxd = np.array(self.pxd.astype(target_type, copy=False), dtype=float)
             else:
                 raise Exception(f"Could not import file with extension '{self.extension}'")
         except Exception as e:
