@@ -286,9 +286,10 @@ class NodeEditor:
                     cfg.nodes = list()
                 imgui.end_menu()
             if imgui.begin_menu('Settings'):
-                install_node, _ = imgui.menu_item("Install a node")
-                if install_node:
+                if imgui.menu_item("Install a node")[0]:
                     NodeEditor.install_node()
+                if imgui.menu_item("Reinitialize node library")[0]:
+                    NodeEditor.init_node_factory(reinitialize=True)
                 if imgui.begin_menu('Profiling'):
                     _c, cfg.profiling = imgui.checkbox("Track node processing times", cfg.profiling)
                     NodeEditor.tooltip("Keep track of the time that every node in the pipeline takes to process and output a frame.\n")
@@ -328,12 +329,12 @@ class NodeEditor:
                 node_dir = node_dir.replace('\\', '/')
                 node_name = filename[filename.rfind("/")+1:]
                 shutil.copyfile(filename, node_dir+node_name)
-            cfg.set_error(Exception(), "Node installed! Software restart is required for it to become available.\n\n\n")
+                cfg.set_error(Exception(), "Node installed! Software restart is required for it to become available.\n\n\n")
         except Exception as e:
             cfg.set_error(e, "Error upon installing node. Are you sure you selected the right file?")
 
     @staticmethod
-    def init_node_factory():
+    def init_node_factory(reinitialize=False):
         nodeimpls = list()
 
         class NodeImpl:
@@ -359,21 +360,26 @@ class NodeEditor:
             module_name = os.path.basename(nodesrc)[:-3]
             try:
                 # get the module spec and import the module
-                mod = importlib.import_module(("scNodes." if not cfg.frozen else "")+"nodes."+module_name)
+                module_name_full = ("scNodes." if not cfg.frozen else "")+"nodes."+module_name
+                if module_name_full in sys.modules:
+                    mod = importlib.reload(sys.modules[module_name_full])
+                else:
+                    mod = importlib.import_module(module_name_full)
                 impl = NodeImpl(mod.create)
                 if not impl.enabled:
                     continue
                 nodeimpls.append(impl)
             except Exception as e:
                 cfg.nodes = list()
-                delete_all_nodes = True
+                delete_all_nodes = True and not reinitialize  # when reinitialize=True, don't ever delete all nodes
                 cfg.set_error(e, f"Could not import the node at: {nodesrc}. See manual for minimal code requirements.")
         node_ids = list()
 
         for ni in nodeimpls:
             node_ids.append(ni.id)
         sorted_id_indices = np.argsort(node_ids)
-
+        NodeEditor.NODE_FACTORY = dict()
+        NodeEditor.NODE_GROUPS = dict()
         for nid in sorted_id_indices:
             _node = nodeimpls[nid]
             NodeEditor.NODE_FACTORY[_node.title] = _node.create_fn

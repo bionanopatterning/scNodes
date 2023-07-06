@@ -76,7 +76,7 @@ class MathNode(Node):
                 _c, self.params["constant"] = imgui.slider_float("value", self.params["constant"], -1000, 1000, format = "%.0f")
                 self.any_change = self.any_change or _c
             elif self.params["operation"] == 5:
-                _c, self.params["factor"] = imgui.slider_float("factor", self.params["factor"], 0.0, 2.0, format = "%.2f")
+                _c, self.params["factor"] = imgui.drag_float("factor", self.params["factor"], 20.0, 0.0, 0.0, format = "%.2f")
                 self.any_change = self.any_change or _c
             Node.tooltip("Use ctrl + click on a slider to override it and manually enter a value.")
 

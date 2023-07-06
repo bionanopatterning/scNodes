@@ -427,7 +427,7 @@ class CorrelationEditor:
                 _c, CorrelationEditor.ARROW_KEY_TRANSLATION = imgui.input_float("Arrow key step size (nm)", CorrelationEditor.ARROW_KEY_TRANSLATION, 0.0, 0.0, "%.1f")
                 _c, CorrelationEditor.snap_enabled = imgui.checkbox("Allow snapping", CorrelationEditor.snap_enabled)
                 _c, cfg.ce_flip_on_load = imgui.checkbox("Flip images when loading", cfg.ce_flip_on_load)
-                if imgui.menu_item("Re-initialize plugin library")[0]:
+                if imgui.menu_item("Reinitialize plugin library")[0]:
                     CorrelationEditor.selected_tool = 0
                     CorrelationEditor.current_tool = None
                     CorrelationEditor.init_toolkit(reinitialize=True)
