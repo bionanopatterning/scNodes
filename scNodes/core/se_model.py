@@ -66,7 +66,10 @@ class SEModel:
         self.data = None
         self.texture = Texture(format="r32f")
         self.texture.set_linear_mipmap_interpolation()
-
+        self.bcprms = dict()  # backward compatibility params dict.
+        self.l_emit = True
+        self.l_absorb = True
+        self.l_dependencies = list()
         if not SEModel.MODELS_LOADED:
             SEModel.load_models()
 
@@ -239,7 +242,7 @@ class SEModel:
                 return
 
             # train
-            self.model.fit(train_x, train_y, epochs=self.epochs, batch_size=self.batch_size, shuffle=True, validation_split=0.1,
+            self.model.fit(train_x, train_y, epochs=self.epochs, batch_size=self.batch_size, shuffle=True,
                            callbacks=[TrainingProgressCallback(process, n_samples, self.batch_size, self),
                                       StopTrainingCallback(process.stop_request)])
             process.set_progress(1.0)

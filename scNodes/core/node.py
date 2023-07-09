@@ -120,6 +120,8 @@ class Node:
         imgui.push_style_color(imgui.COLOR_CHECK_MARK, *self.colour)
         imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *self.colour)
         imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *self.colour_brighten(self.colour))
+        imgui.push_style_color(imgui.COLOR_TAB_ACTIVE, *self.colour)
+        imgui.push_style_color(imgui.COLOR_TAB, *self.colour_whiten(self.colour))
         if cfg.focused_node == self:
             imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *self.colour_whiten(self.colour))
             imgui.push_style_var(imgui.STYLE_WINDOW_BORDERSIZE, Node.FOCUSED_NODE_BORDER_THICKNESS)
@@ -222,7 +224,7 @@ class Node:
             imgui.separator()
             imgui.text(f"Time processing: {self.profiler_time:.2f}")
             imgui.text(f"Frames requested: {self.profiler_count}")
-        imgui.pop_style_color(23)
+        imgui.pop_style_color(25)
         imgui.pop_style_var(5)
         imgui.pop_id()
         imgui.pop_clip_rect()

@@ -14,7 +14,7 @@ class NoiseGenNode(Node):
     NOISE_TYPES = ["White noise", "Gaussian noise", "Perlin noise"]
 
     def __init__(self):
-        super().__init__()  # Was: super(LoadDataNode, self).__init__()
+        super().__init__()
         self.size = 180
 
         # Set up connectable attributes

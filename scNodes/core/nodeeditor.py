@@ -395,7 +395,7 @@ class NodeEditor:
 
         NodeEditor.node_group_all = list(NodeEditor.NODE_FACTORY.keys())
 
-        if delete_all_nodes:
+        if not reinitialize:
             cfg.nodes = list()
 
     @staticmethod

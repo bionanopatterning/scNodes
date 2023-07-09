@@ -48,3 +48,18 @@ def select_directory(label, path):
             path = selected_dir
     imgui.pop_style_var(2)
     return changed, path
+
+
+def select_file(label, path, filetypes):
+    imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (3, 3))
+    imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 0)
+    cw = imgui.get_content_region_available_width()
+    imgui.set_next_item_width(cw - 63)
+    changed, path = imgui.input_text(f"##_{label}", path, 256)
+    imgui.same_line()
+    if imgui.button(label, 55, 19):
+        selected_dir = filedialog.askopenfilename(filetypes=filetypes)
+        if selected_dir is not None and selected_dir != "":
+            path = selected_dir
+    imgui.pop_style_var(2)
+    return changed, path

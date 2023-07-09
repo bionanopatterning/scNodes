@@ -41,7 +41,7 @@ class CompileTrainsetNode(Node):
 
             if widgets.centred_button("Start", 60, 20, 10):
                 path = filedialog.asksaveasfilename(filetypes=[("scNodes traindata", cfg.filetype_traindata)])
-                self.processes.append(BackgroundProcess(self.compile, (path+cfg.filetype_traindata, self.params["n_samples"], self.params["box_size"])))
+                self.processes.append(BackgroundProcess(self.compile, (path, self.params["n_samples"], self.params["box_size"])))
                 self.processes[-1].start()
 
             for p in self.processes:
@@ -83,6 +83,8 @@ class CompileTrainsetNode(Node):
             out_y.append(img_y[x[i]:x[i] + box_size, y[i]:y[i] + box_size])
             process.set_progress(i / (n_samples - 1))
         all_out = np.array(out_x + out_y)
+        if path[-len(cfg.filetype_traindata):] != cfg.filetype_traindata:
+            path += cfg.filetype_traindata
         tifffile.imwrite(path, all_out)
 
 

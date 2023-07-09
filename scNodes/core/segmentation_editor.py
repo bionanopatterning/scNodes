@@ -716,7 +716,7 @@ class SegmentationEditor:
                     imgui.pop_style_var()
 
                     if imgui.begin_tab_bar("##tabs"):
-                        if imgui.begin_tab_item("   Training   ")[0]:
+                        if imgui.begin_tab_item("  Training  ")[0]:
                             m.active_tab = 0
                             imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
                             imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (3, 3))
@@ -726,7 +726,7 @@ class SegmentationEditor:
                             _, m.train_data_path = imgui.input_text("##training_data", m.train_data_path, 256)
                             imgui.pop_style_var()
                             imgui.same_line()
-                            if imgui.button("browse", 55, 19):
+                            if imgui.button("browse", 56, 19):
                                 selected_file = filedialog.askopenfilename(filetypes=[("scNodes traindata", f"{cfg.filetype_traindata}")])
                                 if selected_file is not None:
                                     m.train_data_path = selected_file
@@ -737,7 +737,7 @@ class SegmentationEditor:
                             imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
                             imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
 
-                            imgui.push_item_width((cw - 5) / 2)
+                            imgui.push_item_width((cw - 7) / 2)
                             _, m.epochs = imgui.slider_int("##epochs", m.epochs, 1, 50, f"{m.epochs} epoch"+("s" if m.epochs>1 else ""))
                             imgui.same_line()
                             _, m.excess_negative = imgui.slider_int("##excessnegative", m.excess_negative, 0, 100, f"+{m.excess_negative}%% negatives")
@@ -789,7 +789,7 @@ class SegmentationEditor:
                             imgui.pop_style_var(5)
                             imgui.end_tab_item()
 
-                        if imgui.begin_tab_item("    Prediction   ")[0]:
+                        if imgui.begin_tab_item("   Prediction  ")[0]:
                             m.active_tab = 1
                             # Checkboxes and sliders
                             imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
@@ -814,6 +814,39 @@ class SegmentationEditor:
                             _, m.blend = imgui.checkbox("blend    ", m.blend)
                             imgui.same_line()
                             _, m.show = imgui.checkbox("show    ", m.show)
+                            imgui.pop_style_var(5)
+                            imgui.pop_style_color(1)
+                            imgui.end_tab_item()
+
+                        if imgui.begin_tab_item("  Logic  ")[0]:
+                            m.active_tab = 2
+
+                            imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
+                            imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
+                            imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
+                            imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+                            imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                            imgui.push_style_color(imgui.COLOR_CHECK_MARK, *cfg.COLOUR_TEXT)
+
+                            imgui.text("Model competition:  ")
+                            imgui.same_line()
+                            _, m.l_emit = imgui.checkbox(" emit ", m.l_emit)
+                            self.tooltip("When checked, this model emits prediction values, meaning it will affect\n"
+                                         "absorbing models by nullifying their prediction wherever the emitting   \n"
+                                         "model's prediction value is higher than that of an absorber.")
+                            imgui.same_line()
+                            _, m.l_absorb = imgui.checkbox(" absorb ", m.l_absorb)
+                            self.tooltip("When checked, this model absorbs predictions by other models, meaning\n"
+                                         "its output is nullified wherever there is any emitting model that \n"
+                                         "predicts a higher value.")
+
+                            imgui.text("Dependencies:")
+                            # list all dependencies. they have options:
+                            # 1) type: adjacent || avoid TODO
+                            # 2) distance: TODO
+                            # 3) partner model TODO
+
+
                             imgui.pop_style_var(5)
                             imgui.pop_style_color(1)
                             imgui.end_tab_item()

@@ -78,8 +78,8 @@ correlation_editor_relink = False
 pickle_temp = dict()
 
 editors = ["Node Editor", "Correlation Editor"]##, "Segmentation Editor"]
-se_enabled = False
-active_editor = 0  # 0 for node editor, 1 for correlation
+se_enabled = True
+active_editor = 2  # 0 for node editor, 1 for correlation, 2 for segmentation editor
 ce_frames = list()
 ce_active_frame = None
 ce_clear_colour = (1.0, 1.0, 1.0, 1.0)
