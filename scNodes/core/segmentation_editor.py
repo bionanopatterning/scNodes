@@ -30,6 +30,7 @@ class SegmentationEditor:
         PROGRESS_BAR_HEIGHT = 8
         MODEL_PANEL_HEIGHT_TRAINING = 158
         MODEL_PANEL_HEIGHT_PREDICTION = 145
+        MODEL_PANEL_HEIGHT_LOGIC = 115
 
         TOOLTIP_APPEAR_DELAY = 1.0
         TOOLTIP_HOVERED_TIMER = 0.0
@@ -37,7 +38,7 @@ class SegmentationEditor:
 
         renderer = None
 
-        BLEND_MODES = dict()  # blend mode template: ((glBlendFunc, ARG1, ARG2), (glBlendEquation, ARG1))
+        BLEND_MODES = dict()  # blend mode template: (glBlendFunc ARG1, ... ARG2, glBlendEquation ARG1, glsl_side_blend_mode_code)
         BLEND_MODES["Sum"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_ADD, 0)
         BLEND_MODES["Colourize"] = (GL_DST_COLOR, GL_DST_ALPHA, GL_FUNC_ADD, 1)
         BLEND_MODES["Mask"] = (GL_ZERO, GL_SRC_ALPHA, GL_FUNC_ADD, 2)
@@ -147,21 +148,29 @@ class SegmentationEditor:
             self.camera.set_projection_matrix(cfg.window_width, cfg.window_height)
 
         if self.active_tab in ["Export", "Models"] and cfg.se_active_frame is not None and cfg.se_active_frame.slice_changed:
-            active_models = list()
-            pxd_arrays = list()
+            emissions = list()
+            absorbing_models = list()
+            # launch the models
             for model in cfg.se_models:
-                # launch all active models
-                if model.set_slice(cfg.se_active_frame.data, cfg.se_active_frame.pixel_size, cfg.se_active_frame.get_roi_indices(), cfg.se_active_frame.data.shape):  ## wrap in Try Except block
-                    active_models.append(model)
-                    pxd_arrays.append(model.data)
-            if len(active_models) > 1:
-                stacked_array = np.stack(pxd_arrays)
+                model.set_slice(cfg.se_active_frame.data, cfg.se_active_frame.pixel_size, cfg.se_active_frame.get_roi_indices(), cfg.se_active_frame.data.shape)
+                if model.emit:
+                    emissions.append(model.data)
+                if model.absorb:
+                    absorbing_models.append(model)
+            # have models compete for pixels
+            if len(emissions) > 1 and len(absorbing_models) > 0:
+                # have models compete
+                for s in emissions:
+                    print(s.shape)
+                stacked_array = np.stack(emissions)
                 maxima = np.max(stacked_array, axis=0)
-                for model in active_models:
-                    model.data[model.data != maxima] = 0
-                    model.update_texture()
-            elif len(active_models) == 1:
-                active_models[0].update_texture()
+                for model in absorbing_models:
+                    model.data[model.data < maxima] = 0
+            # apply interactions
+            for model in cfg.se_models:
+                for interaction in model.interactions:
+                    interaction.apply(cfg.se_active_frame.pixel_size)
+                model.update_texture()
             cfg.se_active_frame.slice_changed = False
         imgui.get_io().display_size = self.window.width, self.window.height
         imgui.new_frame()
@@ -319,9 +328,9 @@ class SegmentationEditor:
             imgui.push_style_color(imgui.COLOR_HEADER, *cfg.COLOUR_HEADER)
             imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, *cfg.COLOUR_HEADER_HOVERED)
             imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, *cfg.COLOUR_HEADER_ACTIVE)
-            imgui.push_style_color(imgui.COLOR_TAB, *cfg.COLOUR_HEADER)
-            imgui.push_style_color(imgui.COLOR_TAB_ACTIVE, *cfg.COLOUR_HEADER_ACTIVE)
-            imgui.push_style_color(imgui.COLOR_TAB_HOVERED, *cfg.COLOUR_HEADER_HOVERED)
+            imgui.push_style_color(imgui.COLOR_TAB, *cfg.COLOUR_HEADER_ACTIVE)
+            imgui.push_style_color(imgui.COLOR_TAB_ACTIVE, *cfg.COLOUR_HEADER)
+            imgui.push_style_color(imgui.COLOR_TAB_HOVERED, *cfg.COLOUR_HEADER)
             imgui.push_style_color(imgui.COLOR_DRAG_DROP_TARGET, *cfg.COLOUR_DROP_TARGET)
             imgui.push_style_color(imgui.COLOR_SCROLLBAR_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND)
             imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, cfg.WINDOW_ROUNDING)
@@ -672,12 +681,13 @@ class SegmentationEditor:
                 self.show_trainset_boxes = False
             if imgui.collapsing_header("Models", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
                 for m in cfg.se_models:
-                    pop_active_colour = False
-                    if cfg.se_active_model == m:
-                        pop_active_colour = True
-                        imgui.push_style_color(imgui.COLOR_CHILD_BACKGROUND, *cfg.COLOUR_FRAME_ACTIVE)
-
-                    panel_height = SegmentationEditor.MODEL_PANEL_HEIGHT_TRAINING if m.active_tab == 0 else SegmentationEditor.MODEL_PANEL_HEIGHT_PREDICTION
+                    panel_height = 0
+                    if m.active_tab == 0:
+                        panel_height = SegmentationEditor.MODEL_PANEL_HEIGHT_TRAINING
+                    elif m.active_tab == 1:
+                        panel_height = SegmentationEditor.MODEL_PANEL_HEIGHT_PREDICTION
+                    elif m.active_tab == 2:
+                        panel_height = SegmentationEditor.MODEL_PANEL_HEIGHT_LOGIC + 57 * len(m.interactions) - 20 * (len(cfg.se_models) < 2)
                     panel_height += 10 if m.background_process_train is not None else 0
                     imgui.begin_child(f"SEModel_{m.uid}", 0.0, panel_height, True, imgui.WINDOW_NO_SCROLLBAR)
                     cw = imgui.get_content_region_available_width()
@@ -706,6 +716,7 @@ class SegmentationEditor:
                     # Model selection
                     imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 2))
                     imgui.align_text_to_frame_padding()
+
                     if m.compiled:
                         imgui.text(m.info)
                     else:
@@ -716,7 +727,7 @@ class SegmentationEditor:
                     imgui.pop_style_var()
 
                     if imgui.begin_tab_bar("##tabs"):
-                        if imgui.begin_tab_item("  Training  ")[0]:
+                        if imgui.begin_tab_item(" Training ")[0]:
                             m.active_tab = 0
                             imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
                             imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (3, 3))
@@ -789,7 +800,7 @@ class SegmentationEditor:
                             imgui.pop_style_var(5)
                             imgui.end_tab_item()
 
-                        if imgui.begin_tab_item("   Prediction  ")[0]:
+                        if imgui.begin_tab_item(" Prediction ")[0]:
                             m.active_tab = 1
                             # Checkboxes and sliders
                             imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
@@ -808,7 +819,6 @@ class SegmentationEditor:
                             _, m.active = imgui.checkbox("active    ", m.active)
                             if _ and m.active:
                                 if cfg.se_active_frame is not None:
-                                    m.set_slice(cfg.se_active_frame.data, cfg.se_active_frame.pixel_size, cfg.se_active_frame.get_roi_indices(), cfg.se_active_frame.data.shape)
                                     cfg.se_active_frame.slice_changed = True
                             imgui.same_line()
                             _, m.blend = imgui.checkbox("blend    ", m.blend)
@@ -818,7 +828,7 @@ class SegmentationEditor:
                             imgui.pop_style_color(1)
                             imgui.end_tab_item()
 
-                        if imgui.begin_tab_item("  Logic  ")[0]:
+                        if imgui.begin_tab_item(" Interaction ")[0]:
                             m.active_tab = 2
 
                             imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
@@ -830,21 +840,86 @@ class SegmentationEditor:
 
                             imgui.text("Model competition:  ")
                             imgui.same_line()
-                            _, m.l_emit = imgui.checkbox(" emit ", m.l_emit)
+                            _, m.emit = imgui.checkbox(" emit ", m.emit)
                             self.tooltip("When checked, this model emits prediction values, meaning it will affect\n"
                                          "absorbing models by nullifying their prediction wherever the emitting   \n"
                                          "model's prediction value is higher than that of an absorber.")
                             imgui.same_line()
-                            _, m.l_absorb = imgui.checkbox(" absorb ", m.l_absorb)
+                            _, m.absorb = imgui.checkbox(" absorb ", m.absorb)
                             self.tooltip("When checked, this model absorbs predictions by other models, meaning\n"
                                          "its output is nullified wherever there is any emitting model that \n"
                                          "predicts a higher value.")
 
-                            imgui.text("Dependencies:")
-                            # list all dependencies. they have options:
-                            # 1) type: adjacent || avoid TODO
-                            # 2) distance: TODO
-                            # 3) partner model TODO
+                            # parse available models
+                            available_partner_models = list()
+                            available_partner_model_names = list()
+                            for partner in cfg.se_models:
+                                if partner != m:
+                                    available_partner_models.append(partner)
+                                    available_partner_model_names.append(partner.title)
+
+                            # interaction GUI
+                            cw = imgui.get_content_region_available_width()
+                            for interaction in m.interactions:
+                                delete_this_inter = False
+                                if interaction.partner not in cfg.se_models:
+                                    m.interactions.remove(interaction)
+                                    continue
+                                imgui.push_id(f"modelinteraction{interaction.uid}")
+                                # delete interaction if model was deleted
+
+                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (8, 1))
+                                # select model to interact with
+                                imgui.set_next_item_width((cw - 6) // 2 - 12)
+                                _, interaction.type = imgui.combo("##type", interaction.type, ModelInteraction.TYPES)
+                                if _:
+                                    cfg.se_active_frame.slice_changed = True
+                                # select interaction type
+                                p_idx = available_partner_model_names.index(interaction.partner.title)
+                                imgui.same_line()
+                                imgui.set_next_item_width((cw - 6) // 2 - 12)
+                                imgui.push_style_color(imgui.COLOR_BUTTON, *interaction.partner.colour)
+                                imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *interaction.partner.colour)
+                                imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *interaction.partner.colour)
+                                _, p_idx = imgui.combo("##partner_model", p_idx, available_partner_model_names)
+                                if _:
+                                    cfg.se_active_frame.slice_changed = True
+                                imgui.pop_style_color(3)
+                                imgui.pop_style_var(1)
+                                interaction.partner = available_partner_models[p_idx]
+
+                                imgui.same_line(position = cw-8)
+                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                                if imgui.image_button(self.icon_close.renderer_id, 15, 15):
+                                    delete_this_inter = True
+                                imgui.pop_style_var(1)
+                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (3, 0))
+                                imgui.set_next_item_width(cw)
+                                _, interaction.radius = imgui.slider_float("##radius", interaction.radius, 0.0, 30.0,
+                                                                           f"radius = {interaction.radius:.1f} nm")
+                                if _:
+                                    cfg.se_active_frame.slice_changed = True
+                                self.tooltip("In the current implementation, the radius is implemented as a Manhattan, not Euclidian, distance.\n"
+                                             "(this enables using binary erode/dilation operations, which is much faster than alternatives)")
+                                imgui.set_next_item_width(cw)
+                                _, interaction.threshold = imgui.slider_float("##threshold", interaction.threshold, 0.0, 1.0,
+                                                                           f"{interaction.partner.title} threshold = {interaction.threshold:.2f}")
+                                if _:
+                                    interaction.partner.threshold = interaction.threshold
+                                    cfg.se_active_frame.slice_changed = True
+                                self.tooltip("Before applying interactions, the partner model's segmentation is thresholded at this value.")
+                                imgui.pop_style_var(1)
+                                imgui.separator()
+                                imgui.pop_id()
+                                if delete_this_inter:
+                                    m.interactions.remove(interaction)
+
+                            # Add interaction
+                            if len(available_partner_models) >= 1:
+                                imgui.new_line()
+                                imgui.same_line(spacing = (cw - 30) // 2)
+                                if imgui.button("+", 30, 18):
+                                    m.interactions.append(ModelInteraction(m, available_partner_models[0]))
 
 
                             imgui.pop_style_var(5)
@@ -878,8 +953,6 @@ class SegmentationEditor:
                     #     imgui.end_popup()
 
                     imgui.end_child()
-                    if pop_active_colour:
-                        imgui.pop_style_color(1)
 
                 cw = imgui.get_content_region_available_width()
                 imgui.new_line()
@@ -892,8 +965,6 @@ class SegmentationEditor:
                 imgui.pop_style_var(3)
 
         def export_tab():
-
-
             if imgui.collapsing_header("Export volumes", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
                 imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
@@ -1194,7 +1265,7 @@ class SegmentationEditor:
 
     @staticmethod
     def tooltip(text):
-        if imgui.is_item_hovered():
+        if imgui.is_item_hovered() and not imgui.is_mouse_down(0):
             if SegmentationEditor.TOOLTIP_HOVERED_TIMER == 0.0:
                 SegmentationEditor.TOOLTIP_HOVERED_START_TIME = time.time()
                 SegmentationEditor.TOOLTIP_HOVERED_TIMER = 0.001  # add a fake 1 ms to get out of this if clause
@@ -1776,6 +1847,7 @@ class QueuedExport:
 
     def do_export(self, process):
         try:
+            ## TODO: model interactions
             print(f"QueuedExport - loading dataset {self.dataset.path}")
             rx, ry = self.dataset.get_roi_indices()
             mrcd = np.array(mrcfile.open(self.dataset.path, mode='r').data[:, :, :])

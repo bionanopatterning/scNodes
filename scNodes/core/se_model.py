@@ -10,7 +10,7 @@ import importlib
 import threading
 import json
 from scNodes.core.opengl_classes import Texture
-from scipy.ndimage import rotate
+from scipy.ndimage import rotate, zoom, binary_dilation
 import datetime
 from scipy.ndimage import zoom
 
@@ -67,9 +67,9 @@ class SEModel:
         self.texture = Texture(format="r32f")
         self.texture.set_linear_mipmap_interpolation()
         self.bcprms = dict()  # backward compatibility params dict.
-        self.l_emit = True
-        self.l_absorb = True
-        self.l_dependencies = list()
+        self.emit = True
+        self.absorb = True
+        self.interactions = list()  # list of ModelInteraction objects.
         if not SEModel.MODELS_LOADED:
             SEModel.load_models()
 
@@ -267,11 +267,11 @@ class SEModel:
         self.info_short = "(" + SEModel.AVAILABLE_MODELS[self.model_enum] + f", {self.box_size}, {self.apix:.3f}, {self.loss:.4f})"
 
     def set_slice(self, slice_data, slice_pixel_size, roi, original_size):
+        self.data = np.zeros(original_size)
         if not self.compiled:
             return False
         if not self.active:
             return False
-        self.data = np.zeros(original_size)
         rx, ry = roi
         self.data[rx[0]:rx[1], ry[0]:ry[1]] = self.apply_to_slice(slice_data[rx[0]:rx[1], ry[0]:ry[1]], slice_pixel_size)
         return True
@@ -366,6 +366,52 @@ class SEModel:
         if isinstance(other, SEModel):
             return self.uid == other.uid
         return False
+
+
+class ModelInteraction:
+    idgen = count(0)
+    TYPES = ["Colocalize", "Avoid"]
+
+    def __init__(self, parent, partner):
+        self.uid = next(ModelInteraction.idgen)
+        self.parent = parent
+        self.partner = partner
+        self.type = 0
+        self.radius = 10.0  # nanometer
+        self.threshold = 0.5
+        self.kernel = np.zeros((1, 1))
+        self.kernel_info = "none"
+
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return self.uid == other.uid
+        return False
+
+    def get_kernel(self, pixel_size):
+        info_str = f"{self.radius}_{pixel_size}"
+        if self.kernel_info == info_str:  # check if the previously generated kernel was the same (i.e. same radius, pixel_size). If so, return it, else, compute the new kernel and return that.
+            return self.kernel
+        else:
+            radius_pixels = int(self.radius // pixel_size)
+            self.kernel = np.zeros((radius_pixels * 2 + 1, radius_pixels * 2 + 1), dtype=np.uint8)
+            r2 = radius_pixels**2
+            for x in range(0, 2*radius_pixels+1):
+                for y in range(0, 2*radius_pixels+1):
+                    self.kernel[x, y] = 1.0 if ((x-radius_pixels)**2 + (y-radius_pixels)**2) < r2 else 0.0
+            self.kernel_info = f"{self.radius}_{pixel_size}"
+            return self.kernel
+
+    def apply(self, pixel_size):
+        # if self.parent and self.partner have both been applied to a slice, applying an interaction is a matter of
+        # filtering the self.parent segmentation with some filter based on the self.partner segmentation.
+        partner_mask = np.where(self.partner.data > self.threshold, 1, 0)
+        kernel = self.get_kernel(pixel_size)
+        if self.type == 0:
+            mask = binary_dilation(partner_mask, structure=kernel)
+            self.parent.data *= mask
+        elif self.type == 1:
+            mask = 1.0 - binary_dilation(partner_mask, structure=kernel)
+            self.parent.data *= mask
 
 
 class TrainingProgressCallback(Callback):
