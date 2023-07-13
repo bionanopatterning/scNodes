@@ -4,6 +4,7 @@ import os
 import importlib
 from tensorflow.keras.callbacks import Callback
 
+
 def create():
     return CNNNode()
 
@@ -41,7 +42,6 @@ class CNNNode(Node):
 
     @staticmethod
     def load_models():
-        print("loading models")
         model_files = glob.glob(os.path.join(cfg.root, "nodes", "cnns", "*.py"))
         for file in model_files:
             try:

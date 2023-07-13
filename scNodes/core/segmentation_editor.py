@@ -75,7 +75,6 @@ class SegmentationEditor:
         self.incoming_files = list()
 
         # export
-        self.export_compete = True
         self.export_limit_range = True
         self.export_overlays = True
         self.export_dir = ""
@@ -158,7 +157,7 @@ class SegmentationEditor:
                 if model.absorb:
                     absorbing_models.append(model)
             # have models compete for pixels
-            if len(emissions) > 1 and len(absorbing_models) > 0:
+            if len(emissions) > 0 and len(absorbing_models) > 0:
                 # have models compete
                 for s in emissions:
                     print(s.shape)
@@ -828,7 +827,7 @@ class SegmentationEditor:
                             imgui.pop_style_color(1)
                             imgui.end_tab_item()
 
-                        if imgui.begin_tab_item(" Interaction ")[0]:
+                        if imgui.begin_tab_item(" Interactions ")[0]:
                             m.active_tab = 2
 
                             imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
@@ -866,18 +865,34 @@ class SegmentationEditor:
                                     m.interactions.remove(interaction)
                                     continue
                                 imgui.push_id(f"modelinteraction{interaction.uid}")
-                                # delete interaction if model was deleted
 
-                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (8, 1))
+                                # model index
+                                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, 1.0, 1.0, 1.0, 1.0)
+                                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, 1.0, 1.0, 1.0, 1.0)
+                                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, 1.0, 1.0, 1.0, 1.0)
+                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (5, 1))
+                                imgui.push_item_width(18)
+                                m_idx = ModelInteraction.all.index(interaction)
+                                _, new_idx = imgui.input_int("##interactionindex", m_idx+1, 0, 0)
+                                if _:
+                                    new_idx -= 1
+                                    new_idx = min(max(0, new_idx), len(ModelInteraction.all) - 1)
+                                    ModelInteraction.all[new_idx], ModelInteraction.all[m_idx] = ModelInteraction.all[m_idx], ModelInteraction.all[new_idx]
+                                imgui.pop_style_color(3)
+                                imgui.pop_style_var(1)
+
                                 # select model to interact with
-                                imgui.set_next_item_width((cw - 6) // 2 - 12)
+                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (8, 1))
+                                imgui.set_next_item_width((cw - 18-9-15) // 2)
+                                imgui.same_line(spacing=3)
                                 _, interaction.type = imgui.combo("##type", interaction.type, ModelInteraction.TYPES)
                                 if _:
-                                    cfg.se_active_frame.slice_changed = True
+                                    if cfg.se_active_frame is not None:
+                                        cfg.se_active_frame.slice_changed = True
                                 # select interaction type
                                 p_idx = available_partner_model_names.index(interaction.partner.title)
-                                imgui.same_line()
-                                imgui.set_next_item_width((cw - 6) // 2 - 12)
+                                imgui.same_line(spacing=3)
+                                imgui.set_next_item_width((cw - 18-9-15) // 2)
                                 imgui.push_style_color(imgui.COLOR_BUTTON, *interaction.partner.colour)
                                 imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *interaction.partner.colour)
                                 imgui.push_style_color(imgui.COLOR_BUTTON_ACTIVE, *interaction.partner.colour)
@@ -888,7 +903,7 @@ class SegmentationEditor:
                                 imgui.pop_style_var(1)
                                 interaction.partner = available_partner_models[p_idx]
 
-                                imgui.same_line(position = cw-8)
+                                imgui.same_line(position = cw-7)
                                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
                                 if imgui.image_button(self.icon_close.renderer_id, 15, 15):
                                     delete_this_inter = True
@@ -906,13 +921,15 @@ class SegmentationEditor:
                                                                            f"{interaction.partner.title} threshold = {interaction.threshold:.2f}")
                                 if _:
                                     interaction.partner.threshold = interaction.threshold
-                                    cfg.se_active_frame.slice_changed = True
+                                    if cfg.se_active_frame is not None:
+                                        cfg.se_active_frame.slice_changed = True
                                 self.tooltip("Before applying interactions, the partner model's segmentation is thresholded at this value.")
                                 imgui.pop_style_var(1)
                                 imgui.separator()
                                 imgui.pop_id()
                                 if delete_this_inter:
                                     m.interactions.remove(interaction)
+                                    ModelInteraction.all.remove(interaction)
 
                             # Add interaction
                             if len(available_partner_models) >= 1:
@@ -1007,13 +1024,12 @@ class SegmentationEditor:
 
                 imgui.text("Export settings")
                 imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
-                imgui.begin_child("export_settings", 0.0, 90.0, True)
+                imgui.begin_child("export_settings", 0.0, 72.0, True)
                 _, self.export_dir = widgets.select_directory("browse", self.export_dir)
                 imgui.set_next_item_width(imgui.get_content_region_available_width())
                 _, self.export_batch_size = imgui.slider_int("##batch_size", self.export_batch_size, 1, 32, f"{self.export_batch_size} batch size")
-                _, self.export_compete = imgui.checkbox("competing models", self.export_compete)
-                imgui.same_line(spacing=62)
                 _, self.export_limit_range = imgui.checkbox("limit range", self.export_limit_range)
+                imgui.same_line(spacing=62)
                 _, self.export_overlays = imgui.checkbox("export overlays", self.export_overlays)
                 imgui.end_child()
 
@@ -1277,19 +1293,22 @@ class SegmentationEditor:
             SegmentationEditor.TOOLTIP_HOVERED_TIMER = 0.0
 
     def launch_export_volumes(self):
-        if not os.path.isdir(self.export_dir):
-            os.makedirs(self.export_dir)
-        datasets = [d for d in cfg.se_frames if d.export]
-        models = [m for m in cfg.se_models if m.export]
-        if not datasets:
-            return
+        try:
+            if not os.path.isdir(self.export_dir):
+                os.makedirs(self.export_dir)
+            datasets = [d for d in cfg.se_frames if d.export]
+            models = [m for m in cfg.se_models if m.export]
+            if not datasets:
+                return
 
-        for d in datasets:
-            self.queued_exports.append(QueuedExport(self.export_dir, d, models, self.export_compete, self.export_batch_size, self.export_overlays))
+            for d in datasets:
+                self.queued_exports.append(QueuedExport(self.export_dir, d, models, self.export_batch_size, self.export_overlays))
 
-        self.n_export = len(datasets)
-        if self.queued_exports:
-            self.queued_exports[0].start()
+            self.n_export = len(datasets)
+            if self.queued_exports:
+                self.queued_exports[0].start()
+        except Exception as e:
+            cfg.set_error(e, "Could not export volumes - see details below:")
 
     def launch_create_training_set(self):
         path = filedialog.asksaveasfilename(filetypes=[("scNodes traindata", cfg.filetype_traindata)], initialfile=f"{self.trainset_boxsize}_{self.trainset_apix:.3f}_")
@@ -1832,11 +1851,10 @@ class Camera:
 
 
 class QueuedExport:
-    def __init__(self, directory, dataset, models, compete, batch_size, export_overlay):
+    def __init__(self, directory, dataset, models, batch_size, export_overlay):
         self.directory = directory
         self.dataset = dataset
         self.models = models
-        self.compete = compete
         self.export_overlay = export_overlay
         self.process = BackgroundProcess(self.do_export, (), name=f"{self.dataset.title} export")
         if self.models != []:
@@ -1847,7 +1865,6 @@ class QueuedExport:
 
     def do_export(self, process):
         try:
-            ## TODO: model interactions
             print(f"QueuedExport - loading dataset {self.dataset.path}")
             rx, ry = self.dataset.get_roi_indices()
             mrcd = np.array(mrcfile.open(self.dataset.path, mode='r').data[:, :, :])
@@ -1858,7 +1875,7 @@ class QueuedExport:
                 mrcd = np.array(mrcd.astype(target_type_dict[mrcd.dtype], copy=False), dtype=float)
 
             n_slices = mrcd.shape[0]
-            n_slices_total = (self.dataset.export_top - self.dataset.export_bottom) * len(self.models)
+            n_slices_total = (self.dataset.export_top - self.dataset.export_bottom) * max(1, len(self.models))
             n_slices_complete = 0
             segmentations = np.zeros((len(self.models), *mrcd.shape), dtype=np.uint8)
             m_idx = 0
@@ -1882,15 +1899,31 @@ class QueuedExport:
                 m_idx += 1
 
             # apply competition
-            print(f"QueuedExport - let models compete")
-            if self.compete and len(self.models) > 1:
-                for z in range(n_slices):
-                    max_img = np.max(segmentations[:, z, :, :], axis=0)
-                    for i in range(len(self.models)):
-                        mask = segmentations[i, z, :, :] == max_img
-                        segmentations[i, z, :, :][mask == 0] = 0
-                    n_slices_complete += 1
-                    self.process.set_progress(min([0.999, n_slices_complete / n_slices_total]))
+            print(f"QueuedExport - model competition")
+            emission_indices = list()
+            absorption_indices = list()
+            i = 0
+            for m in self.models:
+                if m.emit:
+                    emission_indices.append(i)
+                if m.absorb:
+                    absorption_indices.append(i)
+                i += 1
+            if len(emission_indices) >= 1 and len(absorption_indices) >= 1:
+                max_map = np.max(segmentations[emission_indices, :, :, :], axis=0)
+                for i in absorption_indices:
+                    segmentations[i, :, :, :][segmentations[i, :, :, :] < max_map] = 0
+
+            # apply interactions
+            print(f"QueuedExport - model interactions")
+            for interaction in ModelInteraction.all:
+                print(interaction)
+                target_model = interaction.parent
+                source_model = interaction.partner
+                target_idx = self.models.index(target_model)
+                source_idx = self.models.index(source_model)
+                for i in range(self.dataset.export_bottom, self.dataset.export_top):
+                    segmentations[target_idx, i, :, :] = interaction.apply_to_images(self.dataset.pixel_size, segmentations[source_idx, i, :, :], segmentations[target_idx, i, :, :])
 
             # save the mrc files
             i = 0
@@ -1907,8 +1940,8 @@ class QueuedExport:
                 i += 1
 
             # export overlay
-            print(f"QueuedExport - exporting overlay")
             if self.export_overlay and self.dataset.overlay is not None:
+                print(f"QueuedExport - exporting overlay")
                 overlay_grayscale = np.sum(self.dataset.overlay.pxd ** 2, axis=2)
                 overlay_grayscale /= np.amax(overlay_grayscale)
                 overlay_grayscale *= 255

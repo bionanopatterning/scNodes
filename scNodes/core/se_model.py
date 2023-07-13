@@ -107,7 +107,10 @@ class SEModel:
             'n_copies': self.n_copies,
             'info': self.info,
             'info_short': self.info_short,
-            'excess_negative': self.excess_negative
+            'excess_negative': self.excess_negative,
+            'emit': self.emit,
+            'absorb': self.absorb,
+            'loss': self.loss
         }
         with open(file_path, 'w') as f:
             json.dump(metadata, f)
@@ -146,6 +149,9 @@ class SEModel:
             self.info = metadata['info']
             self.info_short = metadata['info_short']
             self.excess_negative = metadata['excess_negative']
+            self.emit = metadata['emit']
+            self.absorb = metadata['absorb']
+            self.loss = metadata['loss']
         except Exception as e:
             raise e
             print("Error loading model - see details below", print(e))
@@ -372,6 +378,8 @@ class ModelInteraction:
     idgen = count(0)
     TYPES = ["Colocalize", "Avoid"]
 
+    all = list()
+
     def __init__(self, parent, partner):
         self.uid = next(ModelInteraction.idgen)
         self.parent = parent
@@ -381,6 +389,7 @@ class ModelInteraction:
         self.threshold = 0.5
         self.kernel = np.zeros((1, 1))
         self.kernel_info = "none"
+        ModelInteraction.all.append(self)
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
@@ -402,16 +411,21 @@ class ModelInteraction:
             return self.kernel
 
     def apply(self, pixel_size):
-        # if self.parent and self.partner have both been applied to a slice, applying an interaction is a matter of
-        # filtering the self.parent segmentation with some filter based on the self.partner segmentation.
-        partner_mask = np.where(self.partner.data > self.threshold, 1, 0)
+        self.parent.data = self.apply_to_images(pixel_size, self.partner.data, self.parent.data)
+
+    def apply_to_images(self, pixel_size, partner_image, parent_image):
+        if partner_image.dtype == np.uint8:
+            partner_mask = np.where(partner_image > self.threshold * 255, 1, 0)
+        else:
+            partner_mask = np.where(partner_image > self.threshold, 1, 0)
         kernel = self.get_kernel(pixel_size)
         if self.type == 0:
-            mask = binary_dilation(partner_mask, structure=kernel)
-            self.parent.data *= mask
+            mask = binary_dilation(partner_mask, structure=kernel).astype(np.uint8)
+            parent_image *= mask
         elif self.type == 1:
-            mask = 1.0 - binary_dilation(partner_mask, structure=kernel)
-            self.parent.data *= mask
+            mask = 1.0 - binary_dilation(partner_mask, structure=kernel).astype(np.uint8)
+            parent_image *= mask
+        return parent_image
 
 
 class TrainingProgressCallback(Callback):
