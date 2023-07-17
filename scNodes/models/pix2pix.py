@@ -1,4 +1,3 @@
-from __future__ import print_function, division
 from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate, UpSampling2D, Conv2D, BatchNormalization, Activation, ZeroPadding2D, LeakyReLU
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.optimizers import Adam

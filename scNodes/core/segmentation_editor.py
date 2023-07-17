@@ -274,7 +274,6 @@ class SegmentationEditor:
                     world_delta = np.array([-(world_pos_old[0] - world_pos[0]), world_pos_old[1] - world_pos[1]]) / cfg.se_active_frame.pixel_size
                     self.crop_handles[0].move_crop_roi(world_delta[0], world_delta[1])
 
-
     def import_dataset(self, filename):
         try:
             _, ext = os.path.splitext(filename)
@@ -610,7 +609,6 @@ class SegmentationEditor:
                                 self.trainset_num_boxes_negative += f.n_boxes
 
 
-
             if imgui.collapsing_header("Create a training set", None)[0]:
                 self.show_trainset_boxes = True
                 imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
@@ -680,6 +678,7 @@ class SegmentationEditor:
                 self.show_trainset_boxes = False
             if imgui.collapsing_header("Models", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
                 for m in cfg.se_models:
+                    imgui.push_id(f"SEModel_{m.uid}_main")
                     panel_height = 0
                     if m.active_tab == 0:
                         panel_height = SegmentationEditor.MODEL_PANEL_HEIGHT_TRAINING
@@ -958,7 +957,7 @@ class SegmentationEditor:
 
 
                     imgui.end_child()
-
+                    imgui.pop_id()
                 cw = imgui.get_content_region_available_width()
                 imgui.new_line()
                 imgui.same_line(spacing=(cw - 120) / 2)

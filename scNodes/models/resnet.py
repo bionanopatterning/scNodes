@@ -15,7 +15,7 @@ def create(input_shape):
     add1 = Add()([shortcut, conv1])
     act1 = Activation('relu')(add1)
 
-    # Residual block 2
+    # Residual block 2I
     conv2 = Conv2D(64, (3, 3), padding='same')(act1)
     conv2 = Conv2D(64, (3, 3), padding='same')(conv2)
     shortcut2 = Conv2D(64, (1, 1), padding='same')(act1)
