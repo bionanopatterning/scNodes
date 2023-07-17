@@ -3,6 +3,7 @@ from tensorflow.keras.layers import Input, Dense, Conv2D, MaxPooling2D, UpSampli
 from tensorflow.keras.optimizers import Adam
 
 title = "UNet deep"
+include = True
 
 def create(input_shape):
     inputs = Input(input_shape)

@@ -956,18 +956,6 @@ class SegmentationEditor:
                     if imgui.is_window_hovered() and imgui.is_mouse_clicked(0):
                         cfg.se_active_model = m
 
-                    # if imgui.begin_popup_context_window("##context_menu_model"):
-                    #     if imgui.menu_item("Save current 2D segmentation")[0]:
-                    #         if m.data is not None:
-                    #             path = filedialog.asksaveasfilename(filetypes=[("mrcfile", ".mrc")])
-                    #             if path != "":
-                    #                 if path[-4:] != ".mrc":
-                    #                     path += ".mrc"
-                    #                 with mrcfile.new(path, overwrite=True) as mrc:
-                    #                     pxd = np.clip(m.data * 65535, 0, 65535).astype(np.uint8).squeeze()
-                    #                     mrc.set_data(pxd)
-                    #                     mrc.voxel_size = cfg.se_active_frame.pixel_size * 10.0
-                    #     imgui.end_popup()
 
                     imgui.end_child()
 
@@ -1277,6 +1265,19 @@ class SegmentationEditor:
                 if imgui.is_item_hovered():
                     feature_or_model.title = t
                     feature_or_model.colour = self.feature_colour_dict[t]
+                imgui.spacing()
+
+            if isinstance(feature_or_model, SEModel) and imgui.menu_item("Save current segmentation")[0]:
+                if feature_or_model.data is not None:
+                    path = filedialog.asksaveasfilename(filetypes=[("mrcfile", ".mrc")], initialfile=os.path.basename(cfg.se_active_frame.path)+"_"+feature_or_model.get_model_title()+f"_slice_{cfg.se_active_frame.current_slice}")
+                    if path != "":
+                        if path[-4:] != ".mrc":
+                            path += ".mrc"
+                        with mrcfile.new(path, overwrite=True) as mrc:
+                            pxd = np.clip(feature_or_model.data * 255, 0, 255).astype(np.uint8).squeeze()
+                            mrc.set_data(pxd)
+                            mrc.voxel_size = cfg.se_active_frame.pixel_size * 10.0
+
             imgui.end_popup()
 
     @staticmethod

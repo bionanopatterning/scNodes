@@ -3,6 +3,7 @@ from tensorflow.keras.layers import Input, Conv2D, Activation, Add
 from tensorflow.keras.optimizers import Adam
 
 title = "ResNet"
+include = True
 
 def create(input_shape):
     inputs = Input(input_shape)

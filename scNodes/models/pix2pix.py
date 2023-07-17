@@ -2,11 +2,12 @@ from __future__ import print_function, division
 from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate, UpSampling2D, Conv2D, BatchNormalization, Activation, ZeroPadding2D, LeakyReLU
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.optimizers import Adam
-import datetime
+import tensorflow as tf
 import numpy as np
 
+# adapted from source: https://github.com/eriklindernoren/Keras-GAN
 title = "Pix2pix"
-
+include = True
 
 def create(input_shape):
     return Pix2Pix(input_shape)
@@ -23,8 +24,9 @@ class Pix2Pix():
         self.disc_patch = (patch, patch, 1)
 
         # Number of filters in the first layer of G and D
-        self.gf = 16
-        self.df = 16
+        self.gf = 32
+        self.df = 32
+        self.LAMBDA = 20.0  # was 100.0
 
         optimizer = Adam(2e-4, 0.5)
 
@@ -52,7 +54,7 @@ class Pix2Pix():
 
         self.combined = Model(inputs=[img_A, img_B], outputs=[valid, fake_A])
         self.combined.compile(loss=['mse', 'mae'],
-                              loss_weights=[1, 100],
+                              loss_weights=[1, self.LAMBDA],
                               optimizer=optimizer)
 
     def build_generator(self):
@@ -80,7 +82,7 @@ class Pix2Pix():
         d0 = Input(shape=self.img_shape)  # (64, 64, 1)
 
         # Downsampling
-        d1 = conv2d(d0, self.gf, bn=False)  # (32, 32, 16)
+        d1 = conv2d(d0, self.gf, bn=True)  # (32, 32, 16)
         d2 = conv2d(d1, self.gf*2)  # (16, 16, 32)
         d3 = conv2d(d2, self.gf*4)  # (8, 8, 64)
         d4 = conv2d(d3, self.gf*8)  # (4, 4, 128)
@@ -99,9 +101,9 @@ class Pix2Pix():
         model = Model(d0, output_img)
         return model
 
-
     def build_discriminator(self):
-        def d_layer(layer_input, filters, f_size=4, bn=True):
+
+        def d_layer(layer_input, filters, f_size=4, bn=False):
             """Discriminator layer"""
             d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
             d = LeakyReLU(alpha=0.2)(d)
@@ -148,12 +150,13 @@ class Pix2Pix():
                 # ---------------------
 
                 # Condition on B and generate a translated version
-                imgs_X = train_x[batch_indices, :, :, :]
-                imgs_Y = train_y[batch_indices, :, :, :]
-                fake_Y = self.generator.predict(imgs_X)
+                imgs_A = train_y[batch_indices, :, :, :]
+                imgs_B = train_x[batch_indices, :, :, :]
+                fake_A = self.generator.predict(imgs_B)
+
                 # Train the discriminators (original images = real / generated = Fake)
-                d_loss_real = self.discriminator.train_on_batch([imgs_X, imgs_Y], valid)
-                d_loss_fake = self.discriminator.train_on_batch([imgs_X, fake_Y], fake)
+                d_loss_real = self.discriminator.train_on_batch([imgs_A, imgs_B], valid)
+                d_loss_fake = self.discriminator.train_on_batch([fake_A, imgs_B], fake)
                 d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
 
                 # -----------------
@@ -161,13 +164,13 @@ class Pix2Pix():
                 # -----------------
 
                 # Train the generators
-                g_loss = self.combined.train_on_batch([imgs_X, imgs_Y], [valid, imgs_X])
+                g_loss = self.combined.train_on_batch([imgs_A, imgs_B], [valid, imgs_A])
 
                 logs = dict()
                 logs['loss'] = g_loss[0]
+                print(f" Epoch {epoch}/{epochs}, batch {batch_i}/{n_samples // batch_size + 1}, generator loss: {g_loss[0]:.3f}, discriminator loss: {d_loss[0]:.3f} + {self.LAMBDA*d_loss[1]:.3f}")
                 for c in callbacks:
                     c.on_batch_end(batch_i, logs)
-
 
     def predict(self, images):
         return self.generator.predict(images)
@@ -175,9 +178,9 @@ class Pix2Pix():
     def count_params(self):
         return self.generator.count_params()
 
+    def save(self, model_path):
+        self.generator.save(model_path)
 
-print ("[Epoch %d/%d] [Batch %d] [D loss: %f, acc: %3d%%] [G loss: %f] time: %s" % (epoch, epochs,
-                                                                        batch_i,
-                                                                        d_loss[0], 100*d_loss[1],
-                                                                        g_loss[0],
-                                                                        elapsed_time))
+    def load(self, model_path):
+        self.generator = tf.keras.models.load_model(model_path)
+

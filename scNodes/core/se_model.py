@@ -12,7 +12,6 @@ import json
 from scNodes.core.opengl_classes import Texture
 from scipy.ndimage import rotate, zoom, binary_dilation
 import datetime
-from scipy.ndimage import zoom
 
 # Note 230522: getting tensorflow to use the GPU is a pain. Eventually it worked with:
 # Python 3.9, CUDA D11.8, cuDNN 8.6, tensorflow 2.8.0, protobuf 3.20.0, and adding
@@ -38,7 +37,7 @@ class SEModel:
         uid_counter = next(SEModel.idgen)
         self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f') + "000") + uid_counter
         self.title = "Unnamed model"
-        self.colour = SEModel.DEFAULT_COLOURS[(uid_counter - 1) % len(SEModel.DEFAULT_COLOURS)]
+        self.colour = SEModel.DEFAULT_COLOURS[(uid_counter) % len(SEModel.DEFAULT_COLOURS)]
         self.apix = -1.0
         self.compiled = False
         self.box_size = -1
@@ -67,8 +66,8 @@ class SEModel:
         self.texture = Texture(format="r32f")
         self.texture.set_linear_mipmap_interpolation()
         self.bcprms = dict()  # backward compatibility params dict.
-        self.emit = True
-        self.absorb = True
+        self.emit = False
+        self.absorb = False
         self.interactions = list()  # list of ModelInteraction objects.
         if not SEModel.MODELS_LOADED:
             SEModel.load_models()
@@ -272,6 +271,9 @@ class SEModel:
         self.info = SEModel.AVAILABLE_MODELS[self.model_enum] + f" ({self.n_parameters}, {self.box_size}, {self.apix:.3f}, {self.loss:.4f})"
         self.info_short = "(" + SEModel.AVAILABLE_MODELS[self.model_enum] + f", {self.box_size}, {self.apix:.3f}, {self.loss:.4f})"
 
+    def get_model_title(self):
+        return SEModel.AVAILABLE_MODELS[self.model_enum]
+
     def set_slice(self, slice_data, slice_pixel_size, roi, original_size):
         self.data = np.zeros(original_size)
         if not self.compiled:
@@ -362,7 +364,8 @@ class SEModel:
             try:
                 module_name = os.path.basename(file)[:-3]
                 mod = importlib.import_module(("scNodes." if not cfg.frozen else "")+"models."+module_name)
-                SEModel.MODELS[mod.title] = mod.create
+                if mod.include:
+                    SEModel.MODELS[mod.title] = mod.create
             except Exception as e:
                 cfg.set_error(e, "Could not load SegmentationEditor model at path: "+file)
         SEModel.MODELS_LOADED = True

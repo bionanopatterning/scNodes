@@ -3,7 +3,7 @@ from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose
 from tensorflow.keras.optimizers import Adam
 
 title = "VGGNet"
-
+include = True
 
 def create(input_shape):
     inputs = Input(input_shape)
