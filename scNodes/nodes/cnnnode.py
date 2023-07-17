@@ -195,6 +195,7 @@ class CNNNode(Node):
             return frame_out
         # apply CNN to image
 
+
 class TrainingProgressCallback(Callback):
     def __init__(self, process, n_samples, batch_size, node):
         super().__init__()

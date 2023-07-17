@@ -43,7 +43,7 @@ class SEModel:
         self.compiled = False
         self.box_size = -1
         self.model = None
-        self.model_enum = 3
+        self.model_enum = 4
         self.epochs = 25
         self.batch_size = 32
         self.train_data_path = "training_dataset.scnt"
@@ -430,6 +430,8 @@ class ModelInteraction:
 
 class TrainingProgressCallback(Callback):
     def __init__(self, process, n_samples, batch_size, model):
+        self.params = dict()
+        self.params['epochs'] = 1
         super().__init__()
         self.process = process
         self.batch_size = batch_size
@@ -452,8 +454,13 @@ class TrainingProgressCallback(Callback):
 
 class StopTrainingCallback(Callback):
     def __init__(self, stop_request):
+        self.params = dict()
+        self.params['epochs'] = 1
         super().__init__()
         self.stop_request = stop_request
+
+    def on_epoch_begin(self, epoch, logs=None):
+        pass
 
     def on_batch_end(self, batch, logs=None):
         if self.stop_request.is_set():
