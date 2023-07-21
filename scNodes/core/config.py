@@ -4,6 +4,9 @@ import dill as pickle
 import os
 from datetime import datetime
 
+# TODO: add particle picking based on segmentation results
+# TODO: save model groups & interactions
+
 frozen = False
 root = ""
 app_name = "scNodes"
@@ -16,6 +19,7 @@ filetype_scene = ".scnscene"
 filetype_segmentation = ".scns"
 filetype_traindata = ".scnt"
 filetype_semodel = ".scnm"
+filetype_semodel_group = ".scnmgroup"
 
 controls = [
     ("0/H/V", "Toggle frame visibility"),

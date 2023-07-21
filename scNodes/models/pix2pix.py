@@ -23,9 +23,9 @@ class Pix2Pix():
         self.disc_patch = (patch, patch, 1)
 
         # Number of filters in the first layer of G and D
-        self.gf = 32
-        self.df = 32
-        self.LAMBDA = 20.0  # was 100.0
+        self.gf = 64
+        self.df = 64
+        self.LAMBDA = 100.0  # was 100.0
 
         optimizer = Adam(2e-4, 0.5)
 
@@ -102,7 +102,7 @@ class Pix2Pix():
 
     def build_discriminator(self):
 
-        def d_layer(layer_input, filters, f_size=4, bn=False):
+        def d_layer(layer_input, filters, f_size=4, bn=True):
             """Discriminator layer"""
             d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
             d = LeakyReLU(alpha=0.2)(d)
@@ -129,6 +129,7 @@ class Pix2Pix():
         for c in callbacks:
             c.params['epochs'] = epochs
         n_samples = train_x.shape[0]
+        bce_loss = 1.000
         for epoch in range(epochs):
             for c in callbacks:
                 c.on_epoch_begin(epoch)
@@ -166,10 +167,22 @@ class Pix2Pix():
                 g_loss = self.combined.train_on_batch([imgs_A, imgs_B], [valid, imgs_A])
 
                 logs = dict()
-                logs['loss'] = g_loss[0]
-                print(f" Epoch {epoch}/{epochs}, batch {batch_i}/{n_samples // batch_size + 1}, generator loss: {g_loss[0]:.3f}, discriminator loss: {d_loss[0]:.3f} + {self.LAMBDA*d_loss[1]:.3f}")
+                logs['loss'] = bce_loss
+                print(f" Epoch {epoch+1}/{epochs}, batch {batch_i+1}/{n_samples // batch_size + 1}, generator loss: {g_loss[0]:.3f}, discriminator loss: {d_loss[0]:.3f} + {self.LAMBDA*d_loss[1]:.3f}")
                 for c in callbacks:
                     c.on_batch_end(batch_i, logs)
+            bce_loss = self.calculate_loss(train_x, train_y)
+
+
+    def calculate_loss(self, train_x, train_y):
+        bce = tf.keras.losses.BinaryCrossentropy(from_logits=False)
+        loss = 0
+        n = 0
+        for i in range(len(train_x) // 32):
+            fake_y = self.generator(train_x[i*32:(i+1)*32])
+            loss += bce(train_y[i*32:(i+1)*32], fake_y).numpy()
+            n += 1
+        return loss
 
     def predict(self, images):
         return self.generator.predict(images)

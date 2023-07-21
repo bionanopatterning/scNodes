@@ -12,7 +12,7 @@ import json
 from scNodes.core.opengl_classes import Texture
 from scipy.ndimage import rotate, zoom, binary_dilation
 import datetime
-
+import time
 # Note 230522: getting tensorflow to use the GPU is a pain. Eventually it worked with:
 # Python 3.9, CUDA D11.8, cuDNN 8.6, tensorflow 2.8.0, protobuf 3.20.0, and adding
 # LIBRARY_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\lib\x64 to the PyCharm run configuration environment variables.
@@ -73,7 +73,8 @@ class SEModel:
             SEModel.load_models()
 
     def delete(self):
-        pass
+        for interaction in self.interactions:
+            ModelInteraction.all.remove(interaction)
 
     def save(self, file_path):
         # Split the file_path into directory and file
@@ -86,7 +87,6 @@ class SEModel:
 
         # Save metadata
         metadata = {
-            'uid': self.uid,
             'title': self.title,
             'colour': self.colour,
             'apix': self.apix,
@@ -127,7 +127,6 @@ class SEModel:
             # Load metadata
             with open(file_path, 'r') as f:
                 metadata = json.load(f)
-            self.uid = metadata['uid']
             self.title = metadata['title']
             self.colour = metadata['colour']
             self.apix = metadata['apix']
@@ -234,6 +233,7 @@ class SEModel:
 
     def _train(self, process):
         try:
+            start_time = time.time()
             train_x, train_y = self.load_training_data()
             n_samples = train_x.shape[0]
             box_size = train_x.shape[1]
@@ -251,7 +251,7 @@ class SEModel:
                            callbacks=[TrainingProgressCallback(process, n_samples, self.batch_size, self),
                                       StopTrainingCallback(process.stop_request)])
             process.set_progress(1.0)
-
+            print(self.info + f" {time.time() - start_time:.1f} seconds of training.")
         except Exception as e:
             cfg.set_error(e, "Could not train model - see details below.")
             process.stop()
@@ -334,7 +334,9 @@ class SEModel:
         # tile
         boxes, image_size, padding, stride = self.slice_to_boxes(image, pixel_size)
         # apply model
+        start_time = time.time()
         seg_boxes = np.squeeze(self.model.predict(boxes))
+        print(self.info + f" cost for {image.shape[0]}x{image.shape[1]} slice: {time.time()-start_time:.3f} s.")
         # detile
         segmentation = self.boxes_to_slice(seg_boxes, image_size, pixel_size, padding, stride)
         return segmentation
@@ -384,7 +386,7 @@ class ModelInteraction:
     all = list()
 
     def __init__(self, parent, partner):
-        self.uid = next(ModelInteraction.idgen)
+        self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f') + "000") + next(ModelInteraction.idgen)
         self.parent = parent
         self.partner = partner
         self.type = 0
@@ -405,7 +407,7 @@ class ModelInteraction:
             return self.kernel
         else:
             radius_pixels = int(self.radius // pixel_size)
-            self.kernel = np.zeros((radius_pixels * 2 + 1, radius_pixels * 2 + 1), dtype=np.uint8)
+            self.kernel = np.zeros((radius_pixels * 2 + 1, radius_pixels * 2 + 1), dtype=np.float32)
             r2 = radius_pixels**2
             for x in range(0, 2*radius_pixels+1):
                 for y in range(0, 2*radius_pixels+1):
@@ -414,21 +416,52 @@ class ModelInteraction:
             return self.kernel
 
     def apply(self, pixel_size):
-        self.parent.data = self.apply_to_images(pixel_size, self.partner.data, self.parent.data)
+        if self.parent.active:
+            self.parent.data = self.apply_to_images(pixel_size, self.partner.data, self.parent.data)
 
     def apply_to_images(self, pixel_size, partner_image, parent_image):
+        int_mask = False
         if partner_image.dtype == np.uint8:
             partner_mask = np.where(partner_image > self.threshold * 255, 1, 0)
+            int_mask = True
         else:
             partner_mask = np.where(partner_image > self.threshold, 1, 0)
         kernel = self.get_kernel(pixel_size)
         if self.type == 0:
-            mask = binary_dilation(partner_mask, structure=kernel).astype(np.uint8)
-            parent_image *= mask
+            mask = binary_dilation(partner_mask, structure=kernel).astype(np.float32 if not int_mask else np.uint8)
+            parent_image = parent_image * mask  # this might be sped up by in place multiplication; [] *= []
         elif self.type == 1:
-            mask = 1.0 - binary_dilation(partner_mask, structure=kernel).astype(np.uint8)
-            parent_image *= mask
+            mask = 1.0 - binary_dilation(partner_mask, structure=kernel).astype(np.float32 if not int_mask else np.uint8)
+            parent_image = parent_image * mask
         return parent_image
+
+    def as_dict(self):
+        mdict = dict()
+        mdict['parent_title'] = self.parent.title
+        mdict['partner_title'] = self.partner.title
+        mdict['type'] = self.type
+        mdict['radius'] = self.radius
+        mdict['threshold'] = self.threshold
+        return mdict
+
+    @staticmethod
+    def from_dict(mdict):
+        parent_title = mdict['parent_title']
+        partner_title = mdict['partner_title']
+        partner_model = None
+        parent_model = None
+        for m in cfg.se_models:
+            if m.title == parent_title:
+                parent_model = m
+            elif m.title == partner_title:
+                partner_model = m
+        if partner_model is None or parent_model is None:
+            return
+        interaction = ModelInteraction(parent_model, partner_model)
+        interaction.type = mdict['type']
+        interaction.radius = mdict['radius']
+        interaction.threshold = mdict['threshold']
+        parent_model.interactions.append(interaction)
 
 
 class TrainingProgressCallback(Callback):

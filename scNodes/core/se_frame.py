@@ -100,6 +100,9 @@ class SEFrame:
         self.border_va.update(VertexBuffer(vertex_attributes), IndexBuffer(indices))
 
     def set_slice(self, requested_slice, update_texture=True):
+        if not os.path.isfile(self.path):
+            print(f"Parent .mrc file at {self.path} does not exist!")
+            return
         self.requires_histogram_update = True
         if requested_slice == self.current_slice:
             return
