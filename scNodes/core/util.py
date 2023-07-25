@@ -138,7 +138,6 @@ def get_maxima_3d(mrcpath, threshold=128, min_volume=None, min_weight=None, min_
 
     return len(coordinates)
 
-
 class Blob:
     def __init__(self):
         self.x = list()
@@ -311,3 +310,4 @@ def toc(msg):
 
 def clamp(a, _min, _max):
     return min(max(a, _min), _max)
+

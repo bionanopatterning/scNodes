@@ -97,6 +97,7 @@ se_active_frame = None
 se_models = list()
 se_active_model = None
 se_path = "..."
+se_surface_models = list()
 
 
 def set_active_node(node, keep_active=False):

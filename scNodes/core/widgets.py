@@ -40,7 +40,7 @@ def select_directory(label, path):
     imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 0)
     cw = imgui.get_content_region_available_width()
     imgui.set_next_item_width(cw - 65)
-    changed, path = imgui.input_text(f"##_{label}", path, 256)
+    changed, path = imgui.input_text(f"##_{path}", path, 256)
     imgui.same_line()
     if imgui.button(label, 55, 19):
         selected_dir = filedialog.askdirectory()

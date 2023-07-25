@@ -1,15 +1,14 @@
 import glfw
 import imgui
-import numpy as np
 from PIL import Image
 from copy import copy
 from tkinter import filedialog
-import time
 import dill as pickle
 from scNodes.core.se_model import *
 from scNodes.core.se_frame import *
 import scNodes.core.widgets as widgets
 from scNodes.core.util import clamp
+import pyperclip
 
 
 class SegmentationEditor:
@@ -44,6 +43,8 @@ class SegmentationEditor:
         BLEND_MODES["Mask"] = (GL_ZERO, GL_SRC_ALPHA, GL_FUNC_ADD, 2)
         BLEND_MODES["Overlay"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_FUNC_ADD, 3)
         BLEND_MODES_LIST = list(BLEND_MODES.keys())
+
+        pick_tab_index_datasets_segs = False
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -88,6 +89,10 @@ class SegmentationEditor:
         self.overlay_alpha = 1.0
         self.overlay_blend_mode = 0
 
+        # picking / 3d renders
+        self.seg_folder = ""
+        self.pick_same_folder = True
+
         for i in range(4):
             self.crop_handles.append(WorldSpaceIcon(i))
 
@@ -107,6 +112,7 @@ class SegmentationEditor:
 
     @staticmethod
     def set_active_dataset(dataset):
+        SegmentationEditor.pick_tab_index_datasets_segs = True
         cfg.se_active_frame = dataset
         cfg.se_active_frame.requires_histogram_update = True
         cfg.se_active_frame.slice_changed = True
@@ -347,6 +353,8 @@ class SegmentationEditor:
                         if imgui.menu_item("Relink dataset")[0]:
                             selected_file = filedialog.askopenfilename(filetypes=[("mrcfile", ".mrc")])
                             s.path = selected_file
+                        if imgui.menu_item("Copy path to .mrc")[0]:
+                            pyperclip.copy(cfg.se_active_frame.path)
                         if s.overlay is not None and imgui.menu_item("Update overlay")[0]:
                             s.overlay.update()
                         imgui.end_popup()
@@ -1050,7 +1058,68 @@ class SegmentationEditor:
 
                 imgui.pop_style_var(4)
 
+        def picking_tab():
+            imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
+            imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+            imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+            imgui.push_style_color(imgui.COLOR_CHECK_MARK, 0.0, 0.0, 0.0)
+            if not self.pick_same_folder:
+                imgui.text("Segmentation (.mrc) folder:")
+                _, self.seg_folder = widgets.select_directory('browse', self.seg_folder)
+            _, self.pick_same_folder = imgui.checkbox("original & segmentations in same folder", self.pick_same_folder)
 
+            # list the segmentations found for the currently selected dataset.
+            if SegmentationEditor.pick_tab_index_datasets_segs:
+                for s in cfg.se_surface_models:
+                    s.delete()
+                se_frame = cfg.se_active_frame
+                SegmentationEditor.pick_tab_index_datasets_segs = False
+                # find segmentations in the selected dataset's folder.
+                if self.pick_same_folder:
+                    files = glob.glob(os.path.join(os.path.dirname(se_frame.path), se_frame.title + "_*.mrc"))
+                    print(os.path.join(os.path.dirname(se_frame.title), se_frame.path + "_*.mrc"))
+                else:
+                    files = glob.glob(os.path.join(self.seg_folder, se_frame.title + "_*.mrc"))
+                    print(os.path.join(self.seg_folder, se_frame.title + "_*.mrc"))
+                for f in files:
+                    cfg.se_surface_models.append(SurfaceModel(f))
+
+            imgui.text("Features found for this dataset:")
+
+            for s in cfg.se_surface_models:
+                s.on_update()
+                imgui.begin_child(f"{s.title}_surfm", 0.0, 100, True)
+                cw = imgui.get_content_region_available_width()
+                _, s.colour = imgui.color_edit3(s.title, *s.colour[:3], imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
+                imgui.same_line()
+                imgui.text(f"Feature: {s.title}")
+                # progress bar
+                if s.process is not None:
+                    imgui.same_line()
+                    self._gui_background_process_progress_bar(s.process)
+
+                imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
+                imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
+                imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+
+                imgui.push_item_width(cw)
+                _, s.level = imgui.slider_int("##level", s.level, 0, 256, f"level = {s.level}")
+                _, s.dust = imgui.slider_float("##dust", s.dust, 0, 1000.0, f"dust = {s.dust:.1f} nm^3")
+                _, s.alpha = imgui.slider_float("##alpha", s.alpha, 0, 1.0, f"alpha = {s.alpha:.1f}")
+                imgui.pop_item_width()
+
+                _, s.hide = imgui.checkbox("hide  ", s.hide)
+                # imgui.same_line()
+                # _, s.contour = imgui.checkbox("contour  ", s.contour)
+                imgui.pop_style_var(3)
+
+                imgui.same_line()
+                if imgui.button('test', 40, 15):
+                    s.launch_generate_model()
+                imgui.end_child()
+
+            imgui.pop_style_var(3)
+            imgui.pop_style_color(1)
 
         def menu_bar():
             imgui.push_style_color(imgui.COLOR_MENUBAR_BACKGROUND, *cfg.COLOUR_MAIN_MENU_BAR)
@@ -1247,6 +1316,10 @@ class SegmentationEditor:
             if imgui.begin_tab_item(" Export ")[0]:
                 self.active_tab = "Export"
                 export_tab()
+                imgui.end_tab_item()
+            if imgui.begin_tab_item(" Pick ")[0]:
+                self.active_tab = "Picking"
+                picking_tab()
                 imgui.end_tab_item()
             imgui.end_tab_bar()
 

@@ -5,7 +5,8 @@ from scNodes.core.opengl_classes import *
 import datetime
 import scNodes.core.config as cfg
 import scNodes.core.settings as settings
-
+from scNodes.core.se_model import BackgroundProcess
+from skimage import measure
 
 class SEFrame:
     idgen = count(0)
@@ -460,7 +461,6 @@ class Segmentation:
             print(e)
 
 
-
 class Transform:
     def __init__(self):
         self.translation = np.array([0.0, 0.0])
@@ -504,3 +504,111 @@ class Transform:
         out.translation[1] = self.translation[1] - other.translation[1]
         out.rotation = self.rotation - other.rotation
         return out
+
+
+class SurfaceModel:
+    COLOURS = dict()
+
+    DEFAULT_COLOURS = [(66 / 255, 214 / 255, 164 / 255),
+                       (255 / 255, 243 / 255, 0 / 255),
+                       (255 / 255, 104 / 255, 0 / 255),
+                       (255 / 255, 13 / 255, 0 / 255),
+                       (174 / 255, 0 / 255, 255 / 255),
+                       (21 / 255, 0 / 255, 255 / 255),
+                       (0 / 255, 136 / 255, 266 / 255),
+                       (0 / 255, 247 / 255, 255 / 255),
+                       (0 / 255, 255 / 255, 0 / 255)]
+    DEFAULT_COLOURS_IDX = 0
+
+    TILE_SIZE = 128
+
+    def __init__(self, path):
+        print(f"Creating new SurfaceModel object from data at path: {path}")
+        self.path = path
+        self.title = os.path.splitext(os.path.basename(self.path))[0]
+        self.title = self.title[1+self.title.rfind("_"):]
+        self.colour = (0.0, 0.0, 0.0)
+        self.vertices = list()
+        self.indices = list()
+
+        # check whether there are any models or features with the same name, if so, give it that color:
+        self.set_colour()
+        self.va = VertexArray(attribute_format="xyznxnynz")
+        self.mmap = mrcfile.mmap(self.path, mode='r')
+        self.n_slices, self.height, self.width = self.mmap.data.shape
+
+        self.level = 128
+        self.dust = 100
+        self.hide = False
+        self.alpha = 1.0
+        self.process = None
+        self.requires_va_update = False
+
+
+    def set_colour(self):
+        if self.title in SurfaceModel.COLOURS:
+            self.colour = SurfaceModel.COLOURS[self.title]
+            return
+        for frame in cfg.se_frames:
+            for feature in frame.features:
+                if self.title in feature.title:
+                    self.colour = feature.colour
+                    return
+        for model in cfg.se_models:
+            if self.title in model.title:
+                self.colour = model.colour
+                return
+        self.colour = SurfaceModel.DEFAULT_COLOURS[SurfaceModel.DEFAULT_COLOURS_IDX % len(SurfaceModel.DEFAULT_COLOURS)]
+        SurfaceModel.DEFAULT_COLOURS_IDX += 1
+        SurfaceModel.COLOURS[self.title] = self.colour
+
+    def launch_generate_model(self):
+        self.process = BackgroundProcess(self._generate_model, (), name=f"{self.title} cube marching")
+        self.process.start()
+
+    def _generate_model(self, process):
+        ## TODO: this is a mess.
+        vertices = list()
+        indices = list()
+
+        tiles = list()  # list with tile coordinates and sizes: [y, x, height, width]
+        t = SurfaceModel.TILE_SIZE
+        for x in range(0, self.width, t):
+            for y in range(0, self.height, t):
+                tiles.append((y, x, min(t, self.height - y), min(t, self.width - x)))
+
+        # tile by tile, start marching.
+        for i in range(len(tiles)):
+            print(i)
+            y, x, h, w = tiles[i]
+            verts, idxs = self.march_subvolume(self.mmap.data[:, y:y+h, x:x+w], offset=(y, x), index_offset=(0 if indices == [] else np.amax(indices)+1))
+
+            vertices += verts
+            indices += idxs
+
+            # update VA
+            self.requires_va_update = True
+            self.process.set_progress(min(0.999, i / (len(tiles) - 1.0)))
+
+
+    def march_subvolume(self, data, offset=(0.0, 0.0), index_offset=0):
+        print(np.amax(data))
+        print(np.amin(data))
+        verts, faces, norms, _ = measure.marching_cubes(data, level=self.level)
+        vn = np.hstack((verts + np.array([*offset, 0.0]), norms))
+        faces += index_offset
+        return vn.tolist(), faces.tolist()
+        # TODO: implement custom version that's better suited for our purpose
+
+    def delete(self):
+        if self.va.initialized:
+            glDeleteBuffers(1, self.va.vertexBuffer.vertexBufferObject)
+            glDeleteBuffers(1, self.va.indexBuffer.indexBufferObject)
+            glDeleteVertexArrays(1, self.va.vertexArrayObject)
+
+    def update_va(self):
+        self.va.update(VertexBuffer(self.vertices), IndexBuffer(self.indices))
+
+    def on_update(self):
+        if self.requires_va_update:
+            self.update_va()
