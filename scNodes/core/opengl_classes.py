@@ -174,6 +174,10 @@ class Shader:
         uniformLocation = glGetUniformLocation(self.shaderProgram, uniformName)
         glUniform3f(uniformLocation, uniformFloat3Value[0], uniformFloat3Value[1], uniformFloat3Value[2])
 
+    def uniform4f(self, uniformName, uniformFloat4Value):
+        uniformLocation = glGetUniformLocation(self.shaderProgram, uniformName)
+        glUniform4f(uniformLocation, uniformFloat4Value[0], uniformFloat4Value[1], uniformFloat4Value[2], uniformFloat4Value[3])
+
     def uniformmat4(self, uniformName, uniformMat4):
         uniformLocation = glGetUniformLocation(self.shaderProgram, uniformName)
         glUniformMatrix4fv(uniformLocation, 1, GL_TRUE, uniformMat4)
@@ -213,9 +217,12 @@ class VertexBuffer:
 
 class IndexBuffer:
     """Note that indices must be a default python list. It is turned in to a np.array along the 2nd dimension with type np.uint16 before sending to GPU"""
-    def __init__(self, indices):
+    def __init__(self, indices, long=False):
         self.indexBufferObject = glGenBuffers(1)
-        self.indices = np.asarray([indices], dtype = np.uint16)
+        if not long:
+            self.indices = np.asarray([indices], dtype = np.uint16)
+        else:
+            self.indices = np.asarray([indices], dtype = np.uint32)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.indexBufferObject)
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, self.indices, GL_STATIC_DRAW)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
@@ -263,6 +270,10 @@ class VertexArray:
         elif self.attribute_format == "xy":
             glEnableVertexAttribArray(0)
             glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 8, ctypes.cast(0, ctypes.c_void_p))
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer.indexBufferObject)
+        elif self.attribute_format == "xyz":
+            glEnableVertexAttribArray(0)
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12, ctypes.cast(0, ctypes.c_void_p))
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer.indexBufferObject)
         elif self.attribute_format == "xyuv":
             glEnableVertexAttribArray(0)

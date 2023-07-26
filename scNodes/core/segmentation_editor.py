@@ -9,13 +9,14 @@ from scNodes.core.se_frame import *
 import scNodes.core.widgets as widgets
 from scNodes.core.util import clamp
 import pyperclip
+from math import log2
 
 
 class SegmentationEditor:
     if True:
         CAMERA_ZOOM_STEP = 0.1
         CAMERA_MAX_ZOOM = 100.0
-        DEFAULT_HORIZONTAL_FOV_WIDTH = 1000  # upon init, camera zoom is such that from left to right of window = 50 micron.
+        DEFAULT_HORIZONTAL_FOV_WIDTH = 1000
         DEFAULT_ZOOM = 1.0  # adjusted in init
         DEFAULT_WORLD_PIXEL_SIZE = 1.0  # adjusted on init
 
@@ -45,6 +46,8 @@ class SegmentationEditor:
         BLEND_MODES_LIST = list(BLEND_MODES.keys())
 
         pick_tab_index_datasets_segs = False
+        VIEW_3D_PIVOT_SPEED = 0.3
+        VIEW_3D_MOVE_SPEED = 2000.0
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -54,6 +57,7 @@ class SegmentationEditor:
         self.imgui_implementation = imgui_impl
 
         self.camera = Camera()
+        self.camera3d = Camera3D()
         SegmentationEditor.DEFAULT_ZOOM = cfg.window_height / SegmentationEditor.DEFAULT_HORIZONTAL_FOV_WIDTH  # now it is DEFAULT_HORIZONTAL_FOV_WIDTH
         SegmentationEditor.DEFAULT_WORLD_PIXEL_SIZE = 1.0 / SegmentationEditor.DEFAULT_ZOOM
         self.camera.zoom = SegmentationEditor.DEFAULT_ZOOM
@@ -150,6 +154,7 @@ class SegmentationEditor:
             cfg.window_width = self.window.width
             cfg.window_height = self.window.height
             self.camera.set_projection_matrix(cfg.window_width, cfg.window_height)
+            self.camera3d.set_projection_matrix(cfg.window_width, cfg.window_height)
 
         if self.active_tab in ["Export", "Models"] and cfg.se_active_frame is not None and cfg.se_active_frame.slice_changed:
             emissions = list()
@@ -187,6 +192,7 @@ class SegmentationEditor:
         if not self.window.is_minimized():
             self.camera_control()
             self.camera.on_update()
+            self.camera3d.on_update()
             self.gui_main()
             SegmentationEditor.renderer.render_draw_list(self.camera)
             self.input()
@@ -1062,11 +1068,9 @@ class SegmentationEditor:
             imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
             imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
             imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+
             imgui.push_style_color(imgui.COLOR_CHECK_MARK, 0.0, 0.0, 0.0)
-            if not self.pick_same_folder:
-                imgui.text("Segmentation (.mrc) folder:")
-                _, self.seg_folder = widgets.select_directory('browse', self.seg_folder)
-            _, self.pick_same_folder = imgui.checkbox("original & segmentations in same folder", self.pick_same_folder)
+
 
             # list the segmentations found for the currently selected dataset.
             if SegmentationEditor.pick_tab_index_datasets_segs:
@@ -1077,47 +1081,66 @@ class SegmentationEditor:
                 # find segmentations in the selected dataset's folder.
                 if self.pick_same_folder:
                     files = glob.glob(os.path.join(os.path.dirname(se_frame.path), se_frame.title + "_*.mrc"))
-                    print(os.path.join(os.path.dirname(se_frame.title), se_frame.path + "_*.mrc"))
                 else:
                     files = glob.glob(os.path.join(self.seg_folder, se_frame.title + "_*.mrc"))
-                    print(os.path.join(self.seg_folder, se_frame.title + "_*.mrc"))
                 for f in files:
-                    cfg.se_surface_models.append(SurfaceModel(f))
+                    cfg.se_surface_models.append(SurfaceModel(f, se_frame.pixel_size))
 
-            imgui.text("Features found for this dataset:")
+            if cfg.se_surface_models == []:
+                imgui.text("No segmentations found for this dataset")
 
             for s in cfg.se_surface_models:
                 s.on_update()
-                imgui.begin_child(f"{s.title}_surfm", 0.0, 100, True)
+                imgui.push_style_color(imgui.COLOR_CHILD_BACKGROUND, *s.colour, 0.0 if s.hide else 0.2)
+                imgui.begin_child(f"{s.title}_surfm", 0.0, 80 + (20 if s.process is not None else 0), True)
                 cw = imgui.get_content_region_available_width()
                 _, s.colour = imgui.color_edit3(s.title, *s.colour[:3], imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
-                imgui.same_line()
-                imgui.text(f"Feature: {s.title}")
-                # progress bar
-                if s.process is not None:
-                    imgui.same_line()
-                    self._gui_background_process_progress_bar(s.process)
 
+                imgui.same_line()
+                imgui.text(f"{s.title}")
                 imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
                 imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
 
+                imgui.same_line(position = cw - 40)
+                _, s.hide = imgui.checkbox("hide  ", s.hide)
+
+
+
                 imgui.push_item_width(cw)
                 _, s.level = imgui.slider_int("##level", s.level, 0, 256, f"level = {s.level}")
+                if _:
+                    s.generate_model()
                 _, s.dust = imgui.slider_float("##dust", s.dust, 0, 1000.0, f"dust = {s.dust:.1f} nm^3")
+                imgui.pop_item_width()
+                imgui.push_item_width((cw - 7) / 2)
                 _, s.alpha = imgui.slider_float("##alpha", s.alpha, 0, 1.0, f"alpha = {s.alpha:.1f}")
+                imgui.same_line()
+                log_bin = int(log2(s.bin))
+                _, log_bin = imgui.slider_int("##bin", log_bin, 0, 4, f"bin {2**log_bin}")
+                s.bin = 2**log_bin
                 imgui.pop_item_width()
 
-                _, s.hide = imgui.checkbox("hide  ", s.hide)
-                # imgui.same_line()
-                # _, s.contour = imgui.checkbox("contour  ", s.contour)
+                # progress bar
+                if s.process is not None:
+                    self._gui_background_process_progress_bar(s.process)
+                    if s.process.progress == 1.0:
+                        s.process = None
+
                 imgui.pop_style_var(3)
 
-                imgui.same_line()
-                if imgui.button('test', 40, 15):
-                    s.launch_generate_model()
                 imgui.end_child()
+                imgui.pop_style_color()
 
+
+            if not self.pick_same_folder:
+                imgui.text("Segmentation (.mrc) folder:")
+                _, self.seg_folder = widgets.select_directory('browse', self.seg_folder)
+            _, self.pick_same_folder = imgui.checkbox("shared folder", self.pick_same_folder)
+
+            if imgui.button('recompile shaders', 100, 20):
+                self.renderer.recompile_shaders()
+            _, self.camera3d.clip_far = imgui.slider_float("clip far", self.camera3d.clip_far, 0.0, 1000.0)
             imgui.pop_style_var(3)
             imgui.pop_style_color(1)
 
@@ -1250,7 +1273,10 @@ class SegmentationEditor:
         # Render the currently active frame
 
         if cfg.se_active_frame is not None:
-            pxd = SegmentationEditor.renderer.render_filtered_frame(cfg.se_active_frame, self.camera, self.window, self.filters)
+            #camera = self.camera if self.active_tab != "Pick" else self.camera3d
+            pxd = None
+            if self.active_tab != "Pick":
+                pxd = SegmentationEditor.renderer.render_filtered_frame(cfg.se_active_frame, self.camera, self.window, self.filters)
             ## todo: save the output pxd to the corresponding frame, and render this pxd in subsequent app frames where the data is not changed instead of applying the filters on GPU every frame - which it turns out is fairly expensive
             if pxd is not None:
                 cfg.se_active_frame.compute_histogram(pxd)
@@ -1291,9 +1317,11 @@ class SegmentationEditor:
                             box_y_pos = frame_xy[1] + (box[1] - f.parent.height / 2) * f.parent.pixel_size
                             box_size = self.trainset_apix * self.trainset_boxsize / 10.0
                             SegmentationEditor.renderer.add_square((box_x_pos, box_y_pos), box_size, clr)
-
-            overlay_blend_mode = SegmentationEditor.BLEND_MODES[SegmentationEditor.BLEND_MODES_LIST[self.overlay_blend_mode]]
-            SegmentationEditor.renderer.render_overlay(cfg.se_active_frame, self.camera, overlay_blend_mode, self.overlay_alpha)
+            if self.active_tab != "Pick":
+                overlay_blend_mode = SegmentationEditor.BLEND_MODES[SegmentationEditor.BLEND_MODES_LIST[self.overlay_blend_mode]]
+                SegmentationEditor.renderer.render_overlay(cfg.se_active_frame, self.camera, overlay_blend_mode, self.overlay_alpha)
+            else:
+                self.renderer.render_surface_models(cfg.se_surface_models, self.camera3d)
 
         # MAIN WINDOW
         imgui.set_next_window_position(0, 17, imgui.ONCE)
@@ -1318,7 +1346,7 @@ class SegmentationEditor:
                 export_tab()
                 imgui.end_tab_item()
             if imgui.begin_tab_item(" Pick ")[0]:
-                self.active_tab = "Picking"
+                self.active_tab = "Pick"
                 picking_tab()
                 imgui.end_tab_item()
             imgui.end_tab_bar()
@@ -1566,13 +1594,31 @@ class SegmentationEditor:
     def camera_control(self):
         if imgui.get_io().want_capture_mouse or imgui.get_io().want_capture_keyboard:
             return None
-        if self.window.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE):
-            delta_cursor = self.window.cursor_delta
-            self.camera.position[0] += delta_cursor[0] / self.camera.zoom
-            self.camera.position[1] -= delta_cursor[1] / self.camera.zoom
-        if self.window.get_key(glfw.KEY_LEFT_SHIFT):
-            self.camera.zoom *= (1.0 + self.window.scroll_delta[1] * SegmentationEditor.CAMERA_ZOOM_STEP)
-            self.camera.zoom = min([self.camera.zoom, SegmentationEditor.CAMERA_MAX_ZOOM])
+        if self.active_tab != "Pick":
+            if self.window.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE):
+                delta_cursor = self.window.cursor_delta
+                self.camera.position[0] += delta_cursor[0] / self.camera.zoom
+                self.camera.position[1] -= delta_cursor[1] / self.camera.zoom
+            if self.window.get_key(glfw.KEY_LEFT_SHIFT):
+                self.camera.zoom *= (1.0 + self.window.scroll_delta[1] * SegmentationEditor.CAMERA_ZOOM_STEP)
+                self.camera.zoom = min([self.camera.zoom, SegmentationEditor.CAMERA_MAX_ZOOM])
+        else:
+            if self.window.get_key(glfw.KEY_LEFT_SHIFT):
+                if self.window.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE):
+                    self.camera3d.pitch += self.window.cursor_delta[1] * SegmentationEditor.VIEW_3D_PIVOT_SPEED
+                    self.camera3d.yaw += self.window.cursor_delta[0] * SegmentationEditor.VIEW_3D_PIVOT_SPEED
+                    self.camera3d.pitch = clamp(self.camera3d.pitch, 1.0, 89.0)
+                self.camera3d.distance -= self.window.scroll_delta[1] * SegmentationEditor.VIEW_3D_MOVE_SPEED
+                self.camera3d.distance = max(10.0, self.camera3d.distance)
+            elif self.window.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE):
+                dx = -self.window.cursor_delta[0]
+                dy = -self.window.cursor_delta[1]
+                world_delta = self.camera3d.cursor_delta_to_world_delta((dx, dy))
+                self.camera3d.focus[0] += world_delta[0]
+                self.camera3d.focus[1] += world_delta[1]
+
+
+
 
     def end_frame(self):
         self.window.end_frame()
@@ -1640,6 +1686,7 @@ class Renderer:
         self.mix_filtered = Shader(os.path.join(cfg.root, "shaders", "se_compute_mix.glsl"))
         self.line_shader = Shader(os.path.join(cfg.root, "shaders", "ce_line_shader.glsl"))
         self.icon_shader = Shader(os.path.join(cfg.root, "shaders", "se_icon_shader.glsl"))
+        self.surface_model_shader = Shader(os.path.join(cfg.root, "shaders", "se_surface_model_shader.glsl"))
         self.line_list = list()
         self.line_list_s = list()
         self.line_va = VertexArray(None, None, attribute_format="xyrgb")
@@ -1658,6 +1705,7 @@ class Renderer:
             self.mix_filtered = Shader(os.path.join(cfg.root, "shaders", "se_compute_mix.glsl"))
             self.line_shader = Shader(os.path.join(cfg.root, "shaders", "ce_line_shader.glsl"))
             self.icon_shader = Shader(os.path.join(cfg.root, "shaders", "se_icon_shader.glsl"))
+            self.surface_model_shader = Shader(os.path.join(cfg.root, "shaders", "se_surface_model_shader.glsl"))
         finally:
             pass
 
@@ -1859,6 +1907,21 @@ class Renderer:
         self.icon_shader.unbind()
         h_va.unbind()
 
+    def render_surface_models(self, surface_models, camera):
+        self.surface_model_shader.bind()
+        self.surface_model_shader.uniformmat4("vpMat", camera.matrix)
+        for s in surface_models:
+            if s.hide:
+                continue
+            self.surface_model_shader.uniform4f("color", [*s.colour, s.alpha])
+            for blob in s.blobs.values():
+                if blob.complete:
+                    blob.va.bind()
+                    glDrawElements(GL_TRIANGLES, blob.va.indexBuffer.getCount(), GL_UNSIGNED_INT, None)
+                    blob.va.unbind()
+        self.surface_model_shader.unbind()
+
+
     def add_line(self, start_xy, stop_xy, colour, subtract=False):
         if subtract:
             self.line_list_s.append((start_xy, stop_xy, colour))
@@ -2000,6 +2063,134 @@ class Camera:
         ])
         self.view_projection_matrix = np.matmul(self.projection_matrix, self.view_matrix)
 
+
+class Camera3D:
+    def __init__(self):
+        self.view_matrix = np.eye(4)
+        self.projection_matrix = np.eye(4)
+        self.view_projection_matrix = np.eye(4)
+        self.focus = np.zeros(3)
+        self.pitch = 45.0
+        self.yaw = 0.0
+        self.distance = 20000.0
+        self.clip_near = 1e-1
+        self.clip_far = 1e6
+        self.projection_width = 1
+        self.projection_height = 1
+
+    def set_projection_matrix(self, window_width, window_height):
+        self.projection_width = window_width
+        self.projection_height = window_height
+        self.update_projection_matrix()
+
+    def cursor_delta_to_world_delta(self, cursor_delta):
+        camera_right = np.cross([0, 1, 0], self.get_forward())
+        camera_up = np.cross(self.get_forward(), camera_right)
+        return cursor_delta[0] * camera_right + cursor_delta[1] * camera_up
+
+    def get_forward(self):
+        # Calculate the camera forward vector based on pitch and yaw
+        cos_pitch = np.cos(np.radians(self.pitch))
+        sin_pitch = np.sin(np.radians(self.pitch))
+        cos_yaw = np.cos(np.radians(self.yaw))
+        sin_yaw = np.sin(np.radians(self.yaw))
+
+        forward = np.array([-cos_pitch * sin_yaw, sin_pitch, -cos_pitch * cos_yaw])
+        return forward
+
+    @property
+    def matrix(self):
+        return self.view_projection_matrix
+
+    def on_update(self):
+        self.update_projection_matrix()
+        self.update_view_projection_matrix()
+
+    def update_projection_matrix(self):
+        aspect_ratio = self.projection_width / self.projection_height
+        fov = 45.0
+        self.projection_matrix = Camera3D.create_perspective_matrix(fov, aspect_ratio, self.clip_near, self.clip_far)
+        self.update_view_projection_matrix()
+
+    @staticmethod
+    def create_perspective_matrix(fov, aspect_ratio, near, far):
+        top = np.tan(np.radians(fov / 2.0)) * near
+        right = top * aspect_ratio
+
+        projection_matrix = np.zeros((4, 4))
+        projection_matrix[0, 0] = near / right
+        projection_matrix[1, 1] = near / top
+        projection_matrix[2, 2] = -(far + near) / (far - near)
+        projection_matrix[2, 3] = -(2 * far * near) / (far - near)
+        projection_matrix[3, 2] = -1.0
+        return projection_matrix
+
+    def update_view_projection_matrix(self):
+        eye_position = self.calculate_relative_position(self.focus, self.pitch, self.yaw, self.distance)
+        self.view_matrix = self.create_look_at_matrix(eye_position, self.focus)
+        self.view_projection_matrix = self.projection_matrix @ self.view_matrix
+
+    @staticmethod
+    def calculate_relative_position(base_position, pitch, yaw, distance):
+        cos_pitch = np.cos(np.radians(pitch))
+        sin_pitch = np.sin(np.radians(pitch))
+        cos_yaw = np.cos(np.radians(yaw))
+        sin_yaw = np.sin(np.radians(yaw))
+
+        forward = np.array([
+            cos_pitch * sin_yaw,
+            sin_pitch,
+            -cos_pitch * cos_yaw
+        ])
+        forward = forward / np.linalg.norm(forward)
+
+        relative_position = base_position + forward * distance
+
+        return relative_position
+
+    @staticmethod
+    def create_look_at_matrix(eye, position):
+        forward = Camera3D.normalize(position - eye)
+        right = Camera3D.normalize(np.cross(forward, np.array([0, 1, 0])))
+        up = np.cross(right, forward)
+
+        look_at_matrix = np.eye(4)
+        look_at_matrix[0, :3] = right
+        look_at_matrix[1, :3] = up
+        look_at_matrix[2, :3] = -forward
+        look_at_matrix[:3, 3] = -np.dot(look_at_matrix[:3, :3], eye)
+        return look_at_matrix
+
+    @staticmethod
+    def normalize(v):
+        norm = np.linalg.norm(v)
+        if norm == 0:
+            return v
+        return v / norm
+
+class CameraController:
+    PIVOT_SPEED = 0.3
+    MOVE_SPEED = 200.0
+
+    def __init__(self, camera):
+        self.camera = camera
+
+    def on_update(self):
+        if self.camera.window.get_mouse_button(2):
+            self.camera.pitch += self.camera.window.cursor_delta[1] * CameraController.PIVOT_SPEED
+            self.camera.yaw -= self.camera.window.cursor_delta[0] * CameraController.PIVOT_SPEED
+            self.camera.pitch = max(min(self.camera.pitch, 120.0), -10.0)
+        if self.camera.window.get_key(glfw.KEY_UP):
+            self.camera.pitch += CameraController.PIVOT_SPEED * 2.0
+        elif self.camera.window.get_key(glfw.KEY_DOWN):
+            self.camera.pitch -= CameraController.PIVOT_SPEED * 2.0
+        elif self.camera.window.get_key(glfw.KEY_LEFT):
+            self.camera.yaw += CameraController.PIVOT_SPEED * 2.0
+        elif self.camera.window.get_key(glfw.KEY_RIGHT):
+            self.camera.yaw -= CameraController.PIVOT_SPEED * 2.0
+        self.camera.pitch = max(min(self.camera.pitch, 80.0), 10.0)
+        self.camera.distance -= self.camera.window.scroll_delta[1] * CameraController.MOVE_SPEED
+        self.camera.distance = max([10.0, self.camera.distance])
 
 class QueuedExport:
     def __init__(self, directory, dataset, models, batch_size, export_overlay):

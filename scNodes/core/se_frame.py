@@ -7,6 +7,7 @@ import scNodes.core.config as cfg
 import scNodes.core.settings as settings
 from scNodes.core.se_model import BackgroundProcess
 from skimage import measure
+from scipy.ndimage import label
 
 class SEFrame:
     idgen = count(0)
@@ -282,8 +283,7 @@ class Filter:
         self.upload_buffer()
 
 
-class Overlay:  ## TODO (in SegmentationEditor) add some way of 'refreshing' an overlay
-
+class Overlay:
     idgen = count(0)
 
     def __init__(self, pxd, parent_clem_frame, parent_se_frame, update_function):
@@ -507,6 +507,7 @@ class Transform:
 
 
 class SurfaceModel:
+    idgen = count(0)
     COLOURS = dict()
 
     DEFAULT_COLOURS = [(66 / 255, 214 / 255, 164 / 255),
@@ -522,7 +523,8 @@ class SurfaceModel:
 
     TILE_SIZE = 128
 
-    def __init__(self, path):
+    def __init__(self, path, pixel_size):
+        self.uid = next(SurfaceModel.idgen)
         print(f"Creating new SurfaceModel object from data at path: {path}")
         self.path = path
         self.title = os.path.splitext(os.path.basename(self.path))[0]
@@ -533,17 +535,16 @@ class SurfaceModel:
 
         # check whether there are any models or features with the same name, if so, give it that color:
         self.set_colour()
-        self.va = VertexArray(attribute_format="xyznxnynz")
-        self.mmap = mrcfile.mmap(self.path, mode='r')
-        self.n_slices, self.height, self.width = self.mmap.data.shape
+        self.data = None
 
+        self.blobs = dict()
         self.level = 128
         self.dust = 100
+        self.bin = 2
         self.hide = False
         self.alpha = 1.0
         self.process = None
-        self.requires_va_update = False
-
+        self.pixel_size = pixel_size
 
     def set_colour(self):
         if self.title in SurfaceModel.COLOURS:
@@ -562,53 +563,127 @@ class SurfaceModel:
         SurfaceModel.DEFAULT_COLOURS_IDX += 1
         SurfaceModel.COLOURS[self.title] = self.colour
 
-    def launch_generate_model(self):
-        self.process = BackgroundProcess(self._generate_model, (), name=f"{self.title} cube marching")
-        self.process.start()
+    def generate_model(self):
+        if self.process is None:
+            self.process = BackgroundProcess(self._generate_model, (), name=f"{self.title} generate model (SurfaceModel)")
+            self.process.start()
 
     def _generate_model(self, process):
-        ## TODO: this is a mess.
-        vertices = list()
-        indices = list()
+        try:
+            if self.data is None:
+                print('loading data')
+                self.data = mrcfile.read(self.path)
+            process.set_progress(0.05)
+            # TODO: bin data, if necessary
 
-        tiles = list()  # list with tile coordinates and sizes: [y, x, height, width]
-        t = SurfaceModel.TILE_SIZE
-        for x in range(0, self.width, t):
-            for y in range(0, self.height, t):
-                tiles.append((y, x, min(t, self.height - y), min(t, self.width - x)))
+            # # Try just doing a single cube march.
+            # vertices, faces, normals, _ = measure.marching_cubes(self.data, self.level)
+            # vertices *= self.pixel_size
+            # vertices = np.hstack((vertices, normals)).flatten().tolist()
+            # indices = faces.flatten().tolist()
+            # self.blobs = dict()
+            # self.blobs[1] = SurfaceModelBlob(self.pixel_size * self.bin)
+            # self.blobs[1].va_requires_update = True
+            # self.blobs[1].vertices = vertices
+            # self.blobs[1].indices = indices
+            new_blobs = dict()
 
-        # tile by tile, start marching.
-        for i in range(len(tiles)):
-            print(i)
-            y, x, h, w = tiles[i]
-            verts, idxs = self.march_subvolume(self.mmap.data[:, y:y+h, x:x+w], offset=(y, x), index_offset=(0 if indices == [] else np.amax(indices)+1))
+            # 1: scipy.ndimage.label
+            labels, N = label(self.data > self.level)
+            process.set_progress(0.1)
+            # 2: convert nonzero blobs to SurfaceBlob objects.
+            Z, Y, X = np.nonzero(labels)
 
-            vertices += verts
-            indices += idxs
+            for i in range(len(Z)):
+                z = Z[i]
+                y = Y[i]
+                x = X[i]
+                l = labels[z, y, x]
+                if l not in new_blobs:
+                    new_blobs[l] = SurfaceModelBlob(self.pixel_size * self.bin)
+                new_blobs[l].x.append(x)
+                new_blobs[l].y.append(y)
+                new_blobs[l].z.append(z)
+            process.set_progress(0.2)
 
-            # update VA
-            self.requires_va_update = True
-            self.process.set_progress(min(0.999, i / (len(tiles) - 1.0)))
+            # 3: upload surface blobs one by one.
+            for i in new_blobs:
+                new_blobs[i].compute_mesh()
+                process.set_progress(0.2 + 0.699 * ((i + 1) / len(new_blobs)))
+
+            for i in self.blobs:
+                self.blobs[i].delete()
+            self.blobs = new_blobs
+        except Exception as e:
+            print(e)
+        process.set_progress(1.0)
+
+    def delete(self):
+        cfg.se_surface_models.remove(self)
+        for i in self.blobs:
+            self.blobs[i].delete()
+
+    def on_update(self):
+        for i in self.blobs:
+            self.blobs[i].update_if_necessary()
+
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return self.uid == other.uid
+        return False
 
 
-    def march_subvolume(self, data, offset=(0.0, 0.0), index_offset=0):
-        print(np.amax(data))
-        print(np.amin(data))
-        verts, faces, norms, _ = measure.marching_cubes(data, level=self.level)
-        vn = np.hstack((verts + np.array([*offset, 0.0]), norms))
-        faces += index_offset
-        return vn.tolist(), faces.tolist()
-        # TODO: implement custom version that's better suited for our purpose
+class SurfaceModelBlob:
+    def __init__(self, pixel_size):
+        self.pixel_size = pixel_size
+        self.x = list()
+        self.y = list()
+        self.z = list()
+        self.indices = list()
+        self.vertices = list()
+        self.va = VertexArray(attribute_format="xyz")
+        self.va_requires_update = False
+        self.complete = False
+
+    def compute_mesh(self):
+        # make a box that contains this voxel model
+        self.x = np.array(self.x)
+        self.y = np.array(self.y)
+        self.z = np.array(self.z)
+        dx = np.amin(self.x)
+        dy = np.amin(self.y)
+        dz = np.amin(self.z)
+
+        self.x -= dx
+        self.y -= dy
+        self.z -= dz
+
+        box_size = (np.amax(self.z), np.amax(self.y), np.amax(self.x))
+        if len(np.nonzero(box_size)[0]) != 3:
+            return
+        box = np.zeros((box_size[0] + 1, box_size[1] + 1, box_size[2] + 1))
+
+        for i in range(len(self.x)):
+            box[self.z[i], self.y[i], self.x[i]] = 1.0
+
+        vertices, faces, normals, _ = measure.marching_cubes(box, level=0.5)
+
+        vertices += np.array([dz, dy, dx])
+        vertices *= self.pixel_size
+        self.vertices = vertices.tolist()
+        #self.vertices = np.hstack((vertices, normals)).flatten().tolist()  # TODO: test whether tolist can be removed.
+        self.indices = faces.flatten().tolist()
+        self.va_requires_update = True
+
+    def update_if_necessary(self):
+        if self.va_requires_update:
+            self.va.update(VertexBuffer(self.vertices), IndexBuffer(self.indices, long=True))
+            self.va_requires_update = False
+            self.complete = True
 
     def delete(self):
         if self.va.initialized:
-            glDeleteBuffers(1, self.va.vertexBuffer.vertexBufferObject)
-            glDeleteBuffers(1, self.va.indexBuffer.indexBufferObject)
-            glDeleteVertexArrays(1, self.va.vertexArrayObject)
-
-    def update_va(self):
-        self.va.update(VertexBuffer(self.vertices), IndexBuffer(self.indices))
-
-    def on_update(self):
-        if self.requires_va_update:
-            self.update_va()
+            glDeleteBuffers(1, [self.va.vertexBuffer.vertexBufferObject])
+            glDeleteBuffers(1, [self.va.indexBuffer.indexBufferObject])
+            glDeleteVertexArrays(1, [self.va.vertexArrayObject])
+            self.va.initialized = False
