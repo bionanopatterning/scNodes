@@ -2307,7 +2307,7 @@ class QueuedExport:
                 out_path = os.path.join(self.directory, self.dataset.title+"_"+m.title+".mrc")
                 with mrcfile.new(out_path, overwrite=True) as mrc:
                     s = segmentations[i, :, :, :].squeeze()
-                    s = np.clip(s, 0, 255).astype(np.uint8)
+                    s = np.clip(s, -128, 127).astype(np.int8)
                     mrc.set_data(s)
                     mrc.voxel_size = self.dataset.pixel_size * 10.0
                 n_slices_complete += n_slices
@@ -2330,6 +2330,7 @@ class QueuedExport:
 
             self.process.set_progress(1.0)
             print(f"QueuedExport - done! ({time.time() - start_time:.2f} s.)\n")
+
         except Exception as e:
             cfg.set_error(e, "")
             print("An issue was encountered during export\n"
