@@ -36,14 +36,7 @@ def create(input_shape):
     add4 = Add()([shortcut4, conv4])
     act4 = Activation('relu')(add4)
 
-    # Residual block 5
-    conv5 = Conv2D(512, (3, 3), padding='same')(act4)
-    conv5 = Conv2D(512, (3, 3), padding='same')(conv5)
-    shortcut5 = Conv2D(512, (1, 1), padding='same')(act4)
-    add5 = Add()([shortcut5, conv5])
-    act5 = Activation('relu')(add5)
-
-    output = Conv2D(1, (1, 1), activation='sigmoid')(act5)
+    output = Conv2D(1, (1, 1), activation='sigmoid')(act4)
 
     # create the model
     model = Model(inputs=[inputs], outputs=[output])

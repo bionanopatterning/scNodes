@@ -47,7 +47,7 @@ class SegmentationEditor:
 
         pick_tab_index_datasets_segs = False
         VIEW_3D_PIVOT_SPEED = 0.3
-        VIEW_3D_MOVE_SPEED = 2000.0
+        VIEW_3D_MOVE_SPEED = 500.0
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -84,7 +84,7 @@ class SegmentationEditor:
         self.export_overlays = True
         self.export_dir = ""
         self.queued_exports = list()
-        self.export_batch_size = 5
+        self.export_batch_size = 1
 
         # crop handles
         self.crop_handles = list()
@@ -826,6 +826,7 @@ class SegmentationEditor:
                             imgui.push_item_width(imgui.get_content_region_available_width())
                             _, m.alpha = imgui.slider_float("##alpha", m.alpha, 0.0, 1.0, format=f"{m.alpha:.2f} alpha")
                             _, m.overlap = imgui.slider_float("##overlap", m.overlap, 0.0, 0.67, format=f"{m.overlap:.2f} overlap")
+                            m.overlap = max(0.0, m.overlap)
                             _, m.threshold = imgui.slider_float("##thershold", m.threshold, 0.0, 1.0, format=f"{m.threshold:.2f} threshold")
                             imgui.pop_item_width()
 
@@ -1043,7 +1044,7 @@ class SegmentationEditor:
                 imgui.begin_child("export_settings", 0.0, 72.0, True)
                 _, self.export_dir = widgets.select_directory("browse", self.export_dir)
                 imgui.set_next_item_width(imgui.get_content_region_available_width())
-                _, self.export_batch_size = imgui.slider_int("##batch_size", self.export_batch_size, 1, 32, f"{self.export_batch_size} batch size")
+                _, self.export_batch_size = imgui.slider_int("##batch_size", self.export_batch_size, 1, 8, f"{self.export_batch_size} batch size")
                 _, self.export_limit_range = imgui.checkbox("limit range", self.export_limit_range)
                 imgui.same_line(spacing=62)
                 _, self.export_overlays = imgui.checkbox("export overlays", self.export_overlays)
@@ -1074,6 +1075,7 @@ class SegmentationEditor:
 
             # list the segmentations found for the currently selected dataset.
             if SegmentationEditor.pick_tab_index_datasets_segs:
+                ## TODO: set VA for the box to render.
                 for s in cfg.se_surface_models:
                     s.delete()
                 se_frame = cfg.se_active_frame
@@ -1092,7 +1094,7 @@ class SegmentationEditor:
             for s in cfg.se_surface_models:
                 s.on_update()
                 imgui.push_style_color(imgui.COLOR_CHILD_BACKGROUND, *s.colour, 0.0 if s.hide else 0.2)
-                imgui.begin_child(f"{s.title}_surfm", 0.0, 80 + (20 if s.process is not None else 0), True)
+                imgui.begin_child(f"{s.title}_surfm", 0.0, 82, True)
                 cw = imgui.get_content_region_available_width()
                 _, s.colour = imgui.color_edit3(s.title, *s.colour[:3], imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
 
@@ -1104,28 +1106,30 @@ class SegmentationEditor:
 
                 imgui.same_line(position = cw - 40)
                 _, s.hide = imgui.checkbox("hide  ", s.hide)
-
-
+                # progress bar
+                if s.process is not None:
+                    if s.process.progress == 1.0:
+                        s.process = None
 
                 imgui.push_item_width(cw)
+                original_level = s.level
                 _, s.level = imgui.slider_int("##level", s.level, 0, 256, f"level = {s.level}")
-                if _:
+                if _ and original_level != s.level:
                     s.generate_model()
-                _, s.dust = imgui.slider_float("##dust", s.dust, 0, 1000.0, f"dust = {s.dust:.1f} nm^3")
+                _, s.dust = imgui.slider_float("##dust", s.dust, 10.0, 1000000.0, f"dust = {s.dust:.1f} nm³", imgui.SLIDER_FLAGS_LOGARITHMIC)
+                s.hide_dust()
                 imgui.pop_item_width()
                 imgui.push_item_width((cw - 7) / 2)
                 _, s.alpha = imgui.slider_float("##alpha", s.alpha, 0, 1.0, f"alpha = {s.alpha:.1f}")
                 imgui.same_line()
+                original_bin = s.bin
                 log_bin = int(log2(s.bin))
                 _, log_bin = imgui.slider_int("##bin", log_bin, 0, 4, f"bin {2**log_bin}")
                 s.bin = 2**log_bin
+                if _ and original_bin != s.bin:
+                    s.generate_model()
                 imgui.pop_item_width()
 
-                # progress bar
-                if s.process is not None:
-                    self._gui_background_process_progress_bar(s.process)
-                    if s.process.progress == 1.0:
-                        s.process = None
 
                 imgui.pop_style_var(3)
 
@@ -1329,6 +1333,9 @@ class SegmentationEditor:
 
         imgui.begin("##se_main", False, imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE)
         shared_gui()
+        imgui.spacing()
+        imgui.spacing()
+
 
         if imgui.begin_tab_bar("##tabs"):
             if imgui.begin_tab_item(" Segmentation ")[0]:
@@ -1378,7 +1385,8 @@ class SegmentationEditor:
         for key in to_pop:
             self.trainset_feature_selection.pop(key)
 
-    def _gui_background_process_progress_bar(self, process, colour=cfg.COLOUR_POSITIVE, cancellable=False):
+    def _gui_background_process_progress_bar(self, process, colour=cfg.COLOUR_POSITIVE, cancellable=False, height=None):
+        height = SegmentationEditor.PROGRESS_BAR_HEIGHT if height is None else height
         cw = imgui.get_content_region_available_width()
         cancel_button_w = SegmentationEditor.PROGRESS_BAR_HEIGHT + 5 if cancellable else 0
         origin = imgui.get_window_position()
@@ -1386,13 +1394,13 @@ class SegmentationEditor:
         drawlist = imgui.get_window_draw_list()
         drawlist.add_rect_filled(8 + origin[0], y,
                                  8 + origin[0] + cw - cancel_button_w,
-                                 y + SegmentationEditor.PROGRESS_BAR_HEIGHT,
+                                 y + height,
                                  imgui.get_color_u32_rgba(*cfg.COLOUR_NEUTRAL))
         drawlist.add_rect_filled(8 + origin[0], y,
                                  8 + origin[0] + cw * min([1.0, process.progress]) - cancel_button_w,
-                                 y + SegmentationEditor.PROGRESS_BAR_HEIGHT,
+                                 y + height,
                                  imgui.get_color_u32_rgba(*colour))
-        imgui.dummy(cw - cancel_button_w, SegmentationEditor.PROGRESS_BAR_HEIGHT)
+        imgui.dummy(cw - cancel_button_w, height)
         retval = False
         if cancellable:
             imgui.same_line(spacing=5)
@@ -1467,6 +1475,7 @@ class SegmentationEditor:
         process = BackgroundProcess(self._create_training_set, args)
         process.start()
         self.active_trainset_exports.append(process)
+
 
     def _create_training_set(self, path, n_boxes, positives, negatives, datasets, boxsize, apix, process):
         positive = list()
@@ -1607,7 +1616,7 @@ class SegmentationEditor:
                 if self.window.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE):
                     self.camera3d.pitch += self.window.cursor_delta[1] * SegmentationEditor.VIEW_3D_PIVOT_SPEED
                     self.camera3d.yaw += self.window.cursor_delta[0] * SegmentationEditor.VIEW_3D_PIVOT_SPEED
-                    self.camera3d.pitch = clamp(self.camera3d.pitch, 1.0, 89.0)
+                    self.camera3d.pitch = clamp(self.camera3d.pitch, -89.99, 89.99)
                 self.camera3d.distance -= self.window.scroll_delta[1] * SegmentationEditor.VIEW_3D_MOVE_SPEED
                 self.camera3d.distance = max(10.0, self.camera3d.distance)
             elif self.window.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE):
@@ -1908,6 +1917,7 @@ class Renderer:
         h_va.unbind()
 
     def render_surface_models(self, surface_models, camera):
+
         self.surface_model_shader.bind()
         self.surface_model_shader.uniformmat4("vpMat", camera.matrix)
         for s in surface_models:
@@ -1915,7 +1925,7 @@ class Renderer:
                 continue
             self.surface_model_shader.uniform4f("color", [*s.colour, s.alpha])
             for blob in s.blobs.values():
-                if blob.complete:
+                if blob.complete and not blob.hide:
                     blob.va.bind()
                     glDrawElements(GL_TRIANGLES, blob.va.indexBuffer.getCount(), GL_UNSIGNED_INT, None)
                     blob.va.unbind()
@@ -2072,7 +2082,7 @@ class Camera3D:
         self.focus = np.zeros(3)
         self.pitch = 45.0
         self.yaw = 0.0
-        self.distance = 20000.0
+        self.distance = 10000.0
         self.clip_near = 1e-1
         self.clip_far = 1e6
         self.projection_width = 1
@@ -2085,8 +2095,8 @@ class Camera3D:
 
     def cursor_delta_to_world_delta(self, cursor_delta):
         camera_right = np.cross([0, 1, 0], self.get_forward())
-        camera_up = np.cross(self.get_forward(), camera_right)
-        return cursor_delta[0] * camera_right + cursor_delta[1] * camera_up
+        camera_forward = np.cross(camera_right, self.get_forward())
+        return cursor_delta[0] * camera_right + cursor_delta[1] * camera_forward
 
     def get_forward(self):
         # Calculate the camera forward vector based on pitch and yaw

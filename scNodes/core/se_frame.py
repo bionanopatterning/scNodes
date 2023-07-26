@@ -9,6 +9,7 @@ from scNodes.core.se_model import BackgroundProcess
 from skimage import measure
 from scipy.ndimage import label
 
+
 class SEFrame:
     idgen = count(0)
 
@@ -51,7 +52,7 @@ class SEFrame:
         self.corner_positions_local = []
         self.set_slice(0, False)
         self.setup_opengl_objects()
-        self.contrast_lims = [0, 65535.0]
+        self.contrast_lims = [0, 512.0]
         self.compute_autocontrast()
         self.compute_histogram()
 
@@ -536,11 +537,14 @@ class SurfaceModel:
         # check whether there are any models or features with the same name, if so, give it that color:
         self.set_colour()
         self.data = None
+        self.binned_data = None
 
         self.blobs = dict()
         self.level = 128
+        self.last_level = 0
         self.dust = 100
         self.bin = 2
+        self.latest_bin = -1
         self.hide = False
         self.alpha = 1.0
         self.process = None
@@ -563,60 +567,73 @@ class SurfaceModel:
         SurfaceModel.DEFAULT_COLOURS_IDX += 1
         SurfaceModel.COLOURS[self.title] = self.colour
 
+    def hide_dust(self):
+        for i in self.blobs:
+            self.blobs[i].hide = self.blobs[i].volume < self.dust
+
     def generate_model(self):
         if self.process is None:
             self.process = BackgroundProcess(self._generate_model, (), name=f"{self.title} generate model (SurfaceModel)")
             self.process.start()
 
     def _generate_model(self, process):
-        try:
-            if self.data is None:
-                print('loading data')
-                self.data = mrcfile.read(self.path)
-            process.set_progress(0.05)
-            # TODO: bin data, if necessary
+        if self.data is None:
+            print('loading data')
+            self.data = mrcfile.read(self.path)
+        if self.latest_bin != self.bin and self.bin != 1:
+            print('binning data')
+            self.latest_bin = self.bin
+            self.binned_data = SurfaceModel.bin_data(self.data, self.bin)
+        data = self.data if self.bin == 1 else self.binned_data
 
-            # # Try just doing a single cube march.
-            # vertices, faces, normals, _ = measure.marching_cubes(self.data, self.level)
-            # vertices *= self.pixel_size
-            # vertices = np.hstack((vertices, normals)).flatten().tolist()
-            # indices = faces.flatten().tolist()
-            # self.blobs = dict()
-            # self.blobs[1] = SurfaceModelBlob(self.pixel_size * self.bin)
-            # self.blobs[1].va_requires_update = True
-            # self.blobs[1].vertices = vertices
-            # self.blobs[1].indices = indices
-            new_blobs = dict()
+        print('done prepping data')
+        process.set_progress(0.05)
+        # TODO: bin data, if necessary
 
-            # 1: scipy.ndimage.label
-            labels, N = label(self.data > self.level)
-            process.set_progress(0.1)
-            # 2: convert nonzero blobs to SurfaceBlob objects.
-            Z, Y, X = np.nonzero(labels)
+        new_blobs = dict()
 
-            for i in range(len(Z)):
-                z = Z[i]
-                y = Y[i]
-                x = X[i]
-                l = labels[z, y, x]
-                if l not in new_blobs:
-                    new_blobs[l] = SurfaceModelBlob(self.pixel_size * self.bin)
-                new_blobs[l].x.append(x)
-                new_blobs[l].y.append(y)
-                new_blobs[l].z.append(z)
-            process.set_progress(0.2)
+        # 1: scipy.ndimage.label
+        print('start label')
+        labels, N = label(data > self.level)
+        print(data.shape)
+        print('done label')
+        process.set_progress(0.1)
+        # 2: convert nonzero blobs to SurfaceBlob objects.
+        Z, Y, X = np.nonzero(labels)
+        print('found nonzero')
+        for i in range(len(Z)):
+            z = Z[i]
+            y = Y[i]
+            x = X[i]
+            l = labels[z, y, x]
+            if l not in new_blobs:
+                new_blobs[l] = SurfaceModelBlob(self.pixel_size * self.bin)
+            new_blobs[l].x.append(x)
+            new_blobs[l].y.append(y)
+            new_blobs[l].z.append(z)
+        print('parsed blobs')
+        process.set_progress(0.2)
 
-            # 3: upload surface blobs one by one.
-            for i in new_blobs:
+        # 3: upload surface blobs one by one.
+        for i in new_blobs:
+            try:
                 new_blobs[i].compute_mesh()
-                process.set_progress(0.2 + 0.699 * ((i + 1) / len(new_blobs)))
+            except Exception as e:
+                print(e)
+            process.set_progress(0.2 + 0.699 * ((i + 1) / len(new_blobs)))
 
-            for i in self.blobs:
-                self.blobs[i].delete()
-            self.blobs = new_blobs
-        except Exception as e:
-            print(e)
+        for i in self.blobs:
+            self.blobs[i].delete()
+        self.blobs = new_blobs
+        self.hide_dust()
         process.set_progress(1.0)
+
+    @staticmethod
+    def bin_data(data, b):
+        z, y, x = data.shape
+        data = data[:z//b * b, :y//b * b, :x//b * b]
+        data = data.reshape((z // b, b, y//b, b, x//b, b)).mean(5).mean(3).mean(1)
+        return data
 
     def delete(self):
         cfg.se_surface_models.remove(self)
@@ -639,14 +656,17 @@ class SurfaceModelBlob:
         self.x = list()
         self.y = list()
         self.z = list()
+        self.volume = 0
         self.indices = list()
         self.vertices = list()
-        self.va = VertexArray(attribute_format="xyz")
+        self.va = VertexArray(attribute_format="xyznxnynz")
         self.va_requires_update = False
         self.complete = False
+        self.hide = False
 
     def compute_mesh(self):
         # make a box that contains this voxel model
+        self.volume = len(self.x) * self.pixel_size**3
         self.x = np.array(self.x)
         self.y = np.array(self.y)
         self.z = np.array(self.z)
@@ -658,20 +678,19 @@ class SurfaceModelBlob:
         self.y -= dy
         self.z -= dz
 
-        box_size = (np.amax(self.z), np.amax(self.y), np.amax(self.x))
+        box_size = (np.amax(self.y), np.amax(self.z), np.amax(self.x))
         if len(np.nonzero(box_size)[0]) != 3:
             return
         box = np.zeros((box_size[0] + 1, box_size[1] + 1, box_size[2] + 1))
 
         for i in range(len(self.x)):
-            box[self.z[i], self.y[i], self.x[i]] = 1.0
+            box[self.y[i], self.z[i], self.x[i]] = 1.0
 
         vertices, faces, normals, _ = measure.marching_cubes(box, level=0.5)
 
-        vertices += np.array([dz, dy, dx])
+        vertices += np.array([dy, dz, dx])
         vertices *= self.pixel_size
-        self.vertices = vertices.tolist()
-        #self.vertices = np.hstack((vertices, normals)).flatten().tolist()  # TODO: test whether tolist can be removed.
+        self.vertices = np.hstack((vertices, normals)).flatten().tolist()  # TODO: test whether tolist can be removed.
         self.indices = faces.flatten().tolist()
         self.va_requires_update = True
 
@@ -683,7 +702,8 @@ class SurfaceModelBlob:
 
     def delete(self):
         if self.va.initialized:
-            glDeleteBuffers(1, [self.va.vertexBuffer.vertexBufferObject])
-            glDeleteBuffers(1, [self.va.indexBuffer.indexBufferObject])
-            glDeleteVertexArrays(1, [self.va.vertexArrayObject])
+            # TODO: fix issue 'check bool(glDeleteBuffers) before calling'
+            # glDeleteBuffers(1, [self.va.vertexBuffer.vertexBufferObject])
+            # glDeleteBuffers(1, [self.va.indexBuffer.indexBufferObject])
+            # glDeleteVertexArrays(1, [self.va.vertexArrayObject])
             self.va.initialized = False
