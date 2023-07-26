@@ -1116,16 +1116,14 @@ class SegmentationEditor:
                 _, s.level = imgui.slider_int("##level", s.level, 0, 256, f"level = {s.level}")
                 if _ and original_level != s.level:
                     s.generate_model()
-                _, s.dust = imgui.slider_float("##dust", s.dust, 10.0, 1000000.0, f"dust = {s.dust:.1f} nm³", imgui.SLIDER_FLAGS_LOGARITHMIC)
+                _, s.dust = imgui.slider_float("##dust", s.dust, 10.0, 1000000.0, f"dust < {s.dust:.1f} nm³", imgui.SLIDER_FLAGS_LOGARITHMIC)
                 s.hide_dust()
                 imgui.pop_item_width()
                 imgui.push_item_width((cw - 7) / 2)
                 _, s.alpha = imgui.slider_float("##alpha", s.alpha, 0, 1.0, f"alpha = {s.alpha:.1f}")
                 imgui.same_line()
                 original_bin = s.bin
-                log_bin = int(log2(s.bin))
-                _, log_bin = imgui.slider_int("##bin", log_bin, 0, 4, f"bin {2**log_bin}")
-                s.bin = 2**log_bin
+                _, s.bin = imgui.slider_int("##bin", s.bin, 1, 8, f"bin {2**s.bin}")
                 if _ and original_bin != s.bin:
                     s.generate_model()
                 imgui.pop_item_width()
@@ -1917,9 +1915,16 @@ class Renderer:
         h_va.unbind()
 
     def render_surface_models(self, surface_models, camera):
-
+        glEnable(GL_DEPTH_TEST)
+        # TODO: fix flickering when depth test is ON. Maybe clip_far is too high
+        # TODO: fix blinking when updating model; there is now 1 frame where the model is invisible.
+        # TODO: fix moving the camera.
+        # TODO: add volume outline box
+        # TODO: render the frame slice itself.
+        # TODO: add shading styles, as described in the glsl
         self.surface_model_shader.bind()
         self.surface_model_shader.uniformmat4("vpMat", camera.matrix)
+        self.surface_model_shader.uniform3f("lightDir", camera.get_view_direction())
         for s in surface_models:
             if s.hide:
                 continue
@@ -1930,7 +1935,7 @@ class Renderer:
                     glDrawElements(GL_TRIANGLES, blob.va.indexBuffer.getCount(), GL_UNSIGNED_INT, None)
                     blob.va.unbind()
         self.surface_model_shader.unbind()
-
+        glDisable(GL_DEPTH_TEST)
 
     def add_line(self, start_xy, stop_xy, colour, subtract=False):
         if subtract:
@@ -2112,6 +2117,10 @@ class Camera3D:
     def matrix(self):
         return self.view_projection_matrix
 
+    @property
+    def vmatrix(self):
+        return self.view_matrix
+
     def on_update(self):
         self.update_projection_matrix()
         self.update_view_projection_matrix()
@@ -2139,6 +2148,13 @@ class Camera3D:
         eye_position = self.calculate_relative_position(self.focus, self.pitch, self.yaw, self.distance)
         self.view_matrix = self.create_look_at_matrix(eye_position, self.focus)
         self.view_projection_matrix = self.projection_matrix @ self.view_matrix
+
+    def get_view_direction(self):
+        eye_position = self.calculate_relative_position(self.focus, self.pitch, self.yaw, self.distance)
+        focus_position = np.array(self.focus)
+        view_dir = eye_position - focus_position
+        view_dir /= np.sum(view_dir**2)**0.5
+        return view_dir
 
     @staticmethod
     def calculate_relative_position(base_position, pitch, yaw, distance):
