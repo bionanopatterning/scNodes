@@ -182,6 +182,7 @@ class Shader:
         uniformLocation = glGetUniformLocation(self.shaderProgram, uniformName)
         glUniformMatrix4fv(uniformLocation, 1, GL_TRUE, uniformMat4)
 
+
 class VertexBuffer:
     """Not that vertices must be a default 1d python list. In __init__ it is cast into the required shape."""
     def __init__(self, vertex_data = None):

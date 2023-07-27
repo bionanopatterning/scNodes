@@ -542,7 +542,7 @@ class SurfaceModel:
         self.blobs = dict()
         self.level = 128
         self.last_level = 0
-        self.dust = 100
+        self.dust = 10
         self.bin = 2
         self.latest_bin = -1
         self.hide = False
@@ -578,40 +578,31 @@ class SurfaceModel:
 
     def _generate_model(self, process):
         if self.data is None:
-            print('loading data')
             self.data = mrcfile.read(self.path)
         if self.latest_bin != self.bin and self.bin != 1:
-            print('binning data')
             self.latest_bin = self.bin
             self.binned_data = SurfaceModel.bin_data(self.data, self.bin)
         data = self.data if self.bin == 1 else self.binned_data
-
-        print('done prepping data')
+        origin = 0.5 * np.array(self.data.shape) * self.pixel_size
         process.set_progress(0.05)
-        # TODO: bin data, if necessary
-
         new_blobs = dict()
 
         # 1: scipy.ndimage.label
-        print('start label')
         labels, N = label(data > self.level)
-        print(data.shape)
-        print('done label')
         process.set_progress(0.1)
+
         # 2: convert nonzero blobs to SurfaceBlob objects.
         Z, Y, X = np.nonzero(labels)
-        print('found nonzero')
         for i in range(len(Z)):
             z = Z[i]
             y = Y[i]
             x = X[i]
             l = labels[z, y, x]
             if l not in new_blobs:
-                new_blobs[l] = SurfaceModelBlob(self.pixel_size * self.bin)
+                new_blobs[l] = SurfaceModelBlob(self.pixel_size * self.bin, origin)
             new_blobs[l].x.append(x)
             new_blobs[l].y.append(y)
             new_blobs[l].z.append(z)
-        print('parsed blobs')
         process.set_progress(0.2)
 
         # 3: upload surface blobs one by one.
@@ -636,7 +627,6 @@ class SurfaceModel:
         return data
 
     def delete(self):
-        cfg.se_surface_models.remove(self)
         for i in self.blobs:
             self.blobs[i].delete()
 
@@ -651,8 +641,9 @@ class SurfaceModel:
 
 
 class SurfaceModelBlob:
-    def __init__(self, pixel_size):
+    def __init__(self, pixel_size, origin):
         self.pixel_size = pixel_size
+        self.origin = origin
         self.x = list()
         self.y = list()
         self.z = list()
@@ -678,20 +669,21 @@ class SurfaceModelBlob:
         self.y -= dy
         self.z -= dz
 
-        box_size = (np.amax(self.y), np.amax(self.z), np.amax(self.x))
+        box_size = (np.amax(self.x), np.amax(self.y), np.amax(self.z))
         if len(np.nonzero(box_size)[0]) != 3:
             return
-        box = np.zeros((box_size[0] + 1, box_size[1] + 1, box_size[2] + 1))
+        box = np.zeros((box_size[0] + 3, box_size[1] + 3, box_size[2] + 3))
 
         for i in range(len(self.x)):
-            box[self.y[i], self.z[i], self.x[i]] = 1.0
+            box[self.x[i] + 1, self.y[i] + 1, self.z[i] + 1] = 1.0
 
         vertices, faces, normals, _ = measure.marching_cubes(box, level=0.5)
 
-        vertices += np.array([dy, dz, dx])
+        vertices += np.array([dx, dy, dz]) - 1
         vertices *= self.pixel_size
-        self.vertices = np.hstack((vertices, normals)).flatten().tolist()  # TODO: test whether tolist can be removed.
-        self.indices = faces.flatten().tolist()
+        vertices -= np.array([self.origin[2], self.origin[1], self.origin[0]])
+        self.vertices = np.hstack((vertices, normals)).flatten()  # TODO: test whether tolist can be removed.
+        self.indices = faces.flatten()
         self.va_requires_update = True
 
     def update_if_necessary(self):
