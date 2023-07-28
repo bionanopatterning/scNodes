@@ -9,6 +9,7 @@ uniform mat4 cameraMatrix;
 uniform mat4 modelMatrix;
 uniform float z_pos;
 uniform float pixel_size;
+
 void main()
 {
     gl_Position = cameraMatrix * vec4(position.xy * pixel_size, z_pos, 1.0);

@@ -54,6 +54,10 @@ class Texture:
         glActiveTexture(GL_TEXTURE0 + int(slot))
         glBindTexture(GL_TEXTURE_2D, self.renderer_id)
 
+    def bind_image_slot(self, slot=0, rw=0):
+        rwval = [GL_READ_ONLY, GL_WRITE_ONLY, GL_READ_WRITE][rw]
+        glBindImageTexture(slot, self.renderer_id, 0, GL_FALSE, 0, rwval, self.internalformat)
+
     def update(self, pixeldata, width=None, height=None):
         self.bind()
         if width:
@@ -100,8 +104,7 @@ class Texture:
 
 
 class Shader:
-    """Uniforms can only be uploaded when Shaders is first manually bound by user."""
-    def __init__(self, sourcecode = None):
+    def __init__(self, sourcecode=None):
         if sourcecode:
             self.shaderProgram = glCreateProgram()
             self.compile(sourcecode)
@@ -321,16 +324,25 @@ class FrameBuffer:
             self.texture.bind()
             self.texture.update(None, self.width, self.height)
             glBindTexture(GL_TEXTURE_2D, 0)
-            # Set up depth render buffer
-            self.depthRenderbuffer = glGenRenderbuffers(1)
-            glBindRenderbuffer(GL_RENDERBUFFER, self.depthRenderbuffer)
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, self.width, self.height)
-            glBindRenderbuffer(GL_RENDERBUFFER, 0)
+            # # Set up depth render buffer
+            # self.depthRenderbuffer = glGenRenderbuffers(1)
+            # glBindRenderbuffer(GL_RENDERBUFFER, self.depthRenderbuffer)
+            # glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, self.width, self.height)
+            # glBindRenderbuffer(GL_RENDERBUFFER, 0)
+            # Set up depth render texture
+            self.depth_texture_renderer_id = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, self.depth_texture_renderer_id)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, self.width, self.height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, None)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
+            glBindTexture(GL_TEXTURE_2D, 0)
             # Set up frame buffer
             self.framebufferObject = glGenFramebuffers(1)
             glBindFramebuffer(GL_FRAMEBUFFER, self.framebufferObject)
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.texture.renderer_id, 0)
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, self.depthRenderbuffer)
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, self.depth_texture_renderer_id, 0)
 
             if glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE:
                 raise RuntimeError("Framebuffer binding failed, GPU might not support this configuration.")

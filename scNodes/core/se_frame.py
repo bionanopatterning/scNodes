@@ -218,7 +218,6 @@ class SEFrame:
 
 
 class Filter:
-
     TYPES = ["Gaussian blur", "Offset Gaussian blur","Box blur", "Sobel vertical", "Sobel horizontal"]
     PARAMETER_NAME = ["sigma", "sigma", "box", None, None]
     M = 16
@@ -599,7 +598,7 @@ class SurfaceModel:
             x = X[i]
             l = labels[z, y, x]
             if l not in new_blobs:
-                new_blobs[l] = SurfaceModelBlob(self.pixel_size * self.bin, origin)
+                new_blobs[l] = SurfaceModelBlob(data, self.level, self.pixel_size * self.bin, origin)
             new_blobs[l].x.append(x)
             new_blobs[l].y.append(y)
             new_blobs[l].z.append(z)
@@ -641,7 +640,9 @@ class SurfaceModel:
 
 
 class SurfaceModelBlob:
-    def __init__(self, pixel_size, origin):
+    def __init__(self, data, level, pixel_size, origin):
+        self.data = data
+        self.level = level
         self.pixel_size = pixel_size
         self.origin = origin
         self.x = list()
@@ -657,32 +658,42 @@ class SurfaceModelBlob:
 
     def compute_mesh(self):
         # make a box that contains this voxel model
-        self.volume = len(self.x) * self.pixel_size**3
-        self.x = np.array(self.x)
-        self.y = np.array(self.y)
-        self.z = np.array(self.z)
-        dx = np.amin(self.x)
-        dy = np.amin(self.y)
-        dz = np.amin(self.z)
+        if False:
+            self.volume = len(self.x) * self.pixel_size ** 3
+            rx = (np.amin(self.x), np.amax(self.x))
+            ry = (np.amin(self.y), np.amax(self.y))
+            rz = (np.amin(self.z), np.amax(self.z))
+            print(self.x)
+            box = self.data[rz[0]:rz[1], ry[0]:ry[1], rx[0]:rx[1]].transpose(2, 1, 0)
+            vertices, faces, normals, _ = measure.marching_cubes(box, level=self.level)
+            vertices += np.array([rx[0], ry[0], rz[0]])
+        else:
+            self.volume = len(self.x) * self.pixel_size**3
+            self.x = np.array(self.x)
+            self.y = np.array(self.y)
+            self.z = np.array(self.z)
+            dx = np.amin(self.x)
+            dy = np.amin(self.y)
+            dz = np.amin(self.z)
 
-        self.x -= dx
-        self.y -= dy
-        self.z -= dz
+            self.x -= dx
+            self.y -= dy
+            self.z -= dz
 
-        box_size = (np.amax(self.x), np.amax(self.y), np.amax(self.z))
-        if len(np.nonzero(box_size)[0]) != 3:
-            return
-        box = np.zeros((box_size[0] + 3, box_size[1] + 3, box_size[2] + 3))
+            box_size = (np.amax(self.x), np.amax(self.y), np.amax(self.z))
+            if len(np.nonzero(box_size)[0]) != 3:
+                return
+            box = np.zeros((box_size[0] + 3, box_size[1] + 3, box_size[2] + 3))
 
-        for i in range(len(self.x)):
-            box[self.x[i] + 1, self.y[i] + 1, self.z[i] + 1] = 1.0
+            for i in range(len(self.x)):
+                box[self.x[i] + 1, self.y[i] + 1, self.z[i] + 1] = 1.0
 
-        vertices, faces, normals, _ = measure.marching_cubes(box, level=0.5)
+            vertices, faces, normals, _ = measure.marching_cubes(box, level=0.5)
 
-        vertices += np.array([dx, dy, dz]) - 1
+            vertices += np.array([dx, dy, dz]) - 1
         vertices *= self.pixel_size
         vertices -= np.array([self.origin[2], self.origin[1], self.origin[0]])
-        self.vertices = np.hstack((vertices, normals)).flatten()  # TODO: test whether tolist can be removed.
+        self.vertices = np.hstack((vertices, normals)).flatten()
         self.indices = faces.flatten()
         self.va_requires_update = True
 

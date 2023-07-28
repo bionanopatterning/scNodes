@@ -1022,7 +1022,7 @@ class CorrelationEditor:
                     camera.on_update()
                     CorrelationEditor.EXPORT_FBO.clear([*self.window.clear_color[0:3], 1.0])
                     CorrelationEditor.EXPORT_FBO.bind()
-                    glClearDepth(0.0)
+                    glClearDepth(0.0)  ## 0.0 is the minimum, should be 1.0!! But it works, so not touching it now.
                     glClear(GL_DEPTH_BUFFER_BIT)
                     for frame in reversed(cfg.ce_frames):
                         CorrelationEditor.renderer.render_frame_quad(camera, frame)

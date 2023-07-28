@@ -12,6 +12,7 @@ import pyperclip
 
 
 class SegmentationEditor:
+    TEST = False
     if True:
         CAMERA_ZOOM_STEP = 0.1
         CAMERA_MAX_ZOOM = 100.0
@@ -47,6 +48,11 @@ class SegmentationEditor:
         pick_tab_index_datasets_segs = False
         VIEW_3D_PIVOT_SPEED = 0.3
         VIEW_3D_MOVE_SPEED = 100.0
+        PICKING_FRAME_ALPHA = 1.0
+        SELECTED_RENDER_STYLE = 0
+        RENDER_STYLES = ["Cartoon", "Phong", "Flat", "Misc."]
+        RENDER_BOX = True
+        RENDER_CLEAR_COLOUR = cfg.COLOUR_WINDOW_BACKGROUND[:3]
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -96,7 +102,9 @@ class SegmentationEditor:
         self.seg_folder = ""
         self.pick_same_folder = True
         self.pick_box_va = VertexArray(attribute_format="xyz")
+        self.pick_box_quad_va = VertexArray(attribute_format="xyz")
         self.pick_box_va.update(VertexBuffer([0.0, 0.0]), IndexBuffer([]))
+        self.pick_box_quad_va.update(VertexBuffer([0.0, 0.0]), IndexBuffer([]))
         for i in range(4):
             self.crop_handles.append(WorldSpaceIcon(i))
 
@@ -339,7 +347,7 @@ class SegmentationEditor:
             imgui.push_style_color(imgui.COLOR_TAB_ACTIVE, *cfg.COLOUR_HEADER)
             imgui.push_style_color(imgui.COLOR_TAB_HOVERED, *cfg.COLOUR_HEADER)
             imgui.push_style_color(imgui.COLOR_DRAG_DROP_TARGET, *cfg.COLOUR_DROP_TARGET)
-            imgui.push_style_color(imgui.COLOR_SCROLLBAR_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND)
+            imgui.push_style_color(imgui.COLOR_SCROLLBAR_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND[:3], 0.0)
             imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, cfg.WINDOW_ROUNDING)
 
         def shared_gui():
@@ -397,6 +405,8 @@ class SegmentationEditor:
 
                     _minc, sef.contrast_lims[0] = imgui.slider_float("min", sef.contrast_lims[0], sef.hist_bins[0], sef.hist_bins[-1], format='min %.1f')
                     _maxc, sef.contrast_lims[1] = imgui.slider_float("max", sef.contrast_lims[1], sef.hist_bins[0], sef.hist_bins[-1], format='max %.1f')
+                    if self.active_tab == "Pick":
+                        _, SegmentationEditor.PICKING_FRAME_ALPHA = imgui.slider_float("alpha", SegmentationEditor.PICKING_FRAME_ALPHA, 0.0, 1.0, format="alpha %.1f")
                     if _minc or _maxc:
                         sef.autocontrast = False
                     imgui.pop_item_width()
@@ -1000,7 +1010,7 @@ class SegmentationEditor:
                 imgui.pop_style_var(3)
 
         def export_tab():
-            if imgui.collapsing_header("Export volumes", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+            if imgui.collapsing_header("Export volumes", None)[0]:
                 imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
@@ -1067,112 +1077,148 @@ class SegmentationEditor:
                 imgui.pop_style_var(4)
 
         def picking_tab():
-            imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
-            imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
-            imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
-
-            imgui.push_style_color(imgui.COLOR_CHECK_MARK, 0.0, 0.0, 0.0)
-
-            # list the segmentations found for the currently selected dataset.
-            def update_picking_tab_for_new_active_frame():
-                # delete old surface models
-                for s in cfg.se_surface_models:
-                    s.delete()
-                cfg.se_surface_models = list()
-                # index new surface models - find corresponding segmentation .mrc's
-                if cfg.se_active_frame is None:
-                    self.pick_box_va.update(VertexBuffer([0.0, 0.0]), IndexBuffer([]))
-                    return
-                se_frame = cfg.se_active_frame
-                SegmentationEditor.pick_tab_index_datasets_segs = False
-                # find segmentations in the selected dataset's folder.
-
-                if self.pick_same_folder:
-                    files = glob.glob(os.path.join(os.path.dirname(se_frame.path), se_frame.title + "_*.mrc"))
-                else:
-                    files = glob.glob(os.path.join(self.seg_folder, se_frame.title + "_*.mrc"))
-                for f in sorted(files):
-                    cfg.se_surface_models.append(SurfaceModel(f, se_frame.pixel_size))
-
-                # set the size of the volume spanning box
-                w, h, d = se_frame.width / 2, se_frame.height / 2, se_frame.n_slices / 2
-                w *= se_frame.pixel_size
-                h *= se_frame.pixel_size
-                d *= se_frame.pixel_size
-                vertices = [-w, h, d,
-                            w, h, d,
-                            w, -h, d,
-                            -w, -h, d,
-                            -w, h, -d,
-                            w, h, -d,
-                            w, -h, -d,
-                            -w, -h, -d]
-                indices = [0, 1, 1, 2, 2, 3, 3, 0, 0, 4, 1, 5, 2, 6, 3, 7, 4, 5, 5, 6, 6, 7, 7, 4]
-                self.pick_box_va.update(VertexBuffer(vertices), IndexBuffer(indices))
-
-
-            if SegmentationEditor.pick_tab_index_datasets_segs:
-                update_picking_tab_for_new_active_frame()
-
-
-            if cfg.se_surface_models == []:
-                imgui.text("No segmentations found for this dataset")
-
-            for s in cfg.se_surface_models:
-                s.on_update()
-                #imgui.push_style_color(imgui.COLOR_CHILD_BACKGROUND, *s.colour, 0.0 if s.hide else 0.2)
-                imgui.begin_child(f"{s.title}_surfm", 0.0, 82, True)
-                cw = imgui.get_content_region_available_width()
-                _, s.colour = imgui.color_edit3(s.title, *s.colour[:3], imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
-
-                imgui.same_line()
-                imgui.text(f"{s.title}")
-                imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
-                imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
+            if imgui.collapsing_header("Volumes", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+                imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                imgui.push_style_color(imgui.COLOR_CHECK_MARK, 0.0, 0.0, 0.0)
 
-                imgui.same_line(position = cw - 40)
-                _, s.hide = imgui.checkbox("hide  ", s.hide)
-                # progress bar
-                if s.process is not None:
-                    if s.process.progress == 1.0:
-                        s.process = None
+                # list the segmentations found for the currently selected dataset.
+                def update_picking_tab_for_new_active_frame():
+                    sef = cfg.se_active_frame
+                    overlay = Overlay(np.random.uniform(0, 255, (sef.width, sef.height, 4)), None, sef, None)
+                    sef.overlay=overlay
+                    # delete old surface models
+                    for s in cfg.se_surface_models:
+                        s.delete()
+                    cfg.se_surface_models = list()
+                    # index new surface models - find corresponding segmentation .mrc's
+                    if cfg.se_active_frame is None:
+                        self.pick_box_va.update(VertexBuffer([0.0, 0.0]), IndexBuffer([]))
+                        self.pick_box_quad_va.update(VertexBuffer([0.0, 0.0]), IndexBuffer([]))
+                        return
+                    se_frame = cfg.se_active_frame
+                    SegmentationEditor.pick_tab_index_datasets_segs = False
+                    # find segmentations in the selected dataset's folder.
 
-                imgui.push_item_width(cw)
-                original_level = s.level
-                _, s.level = imgui.slider_int("##level", s.level, 0, 256, f"level = {s.level}")
-                if s.process is not None:
-                    s.level = original_level
-                    _ = False
-                if _ and original_level != s.level:
-                    s.generate_model()
-                _, s.dust = imgui.slider_float("##dust", s.dust, 10.0, 1000000.0, f"dust < {s.dust:.1f} nm³", imgui.SLIDER_FLAGS_LOGARITHMIC)
-                s.hide_dust()
-                imgui.pop_item_width()
-                imgui.push_item_width((cw - 7) / 2)
-                _, s.alpha = imgui.slider_float("##alpha", s.alpha, 0, 1.0, f"alpha = {s.alpha:.1f}")
-                imgui.same_line()
-                original_bin = s.bin
-                _, s.bin = imgui.slider_int("##bin", s.bin, 1, 8, f"bin {s.bin}")
-                if _ and original_bin != s.bin:
-                    s.generate_model()
-                imgui.pop_item_width()
+                    if self.pick_same_folder:
+                        files = glob.glob(os.path.join(os.path.dirname(se_frame.path), se_frame.title + "_*.mrc"))
+                    else:
+                        files = glob.glob(os.path.join(self.seg_folder, se_frame.title + "_*.mrc"))
+                    for f in sorted(files):
+                        cfg.se_surface_models.append(SurfaceModel(f, se_frame.pixel_size))
 
+                    # set the size of the volume spanning box
+                    w, h, d = se_frame.width / 2, se_frame.height / 2, se_frame.n_slices / 2
+                    w *= se_frame.pixel_size
+                    h *= se_frame.pixel_size
+                    d *= se_frame.pixel_size
+                    vertices = [-w, h, d,
+                                w, h, d,
+                                w, -h, d,
+                                -w, -h, d,
+                                -w, h, -d,
+                                w, h, -d,
+                                w, -h, -d,
+                                -w, -h, -d]
+                    line_indices = [0, 1, 1, 2, 2, 3, 3, 0, 0, 4, 1, 5, 2, 6, 3, 7, 4, 5, 5, 6, 6, 7, 7, 4]
+                    quad_indices = [0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4, 0, 4, 7, 7, 3, 0, 5, 1, 2, 2, 6, 5, 4, 0, 1, 1, 5, 4, 3, 7, 6, 6, 2, 3]
+                    self.pick_box_va.update(VertexBuffer(vertices), IndexBuffer(line_indices))
+                    self.pick_box_quad_va.update(VertexBuffer(vertices), IndexBuffer(quad_indices))
+
+
+                if SegmentationEditor.pick_tab_index_datasets_segs:
+                    update_picking_tab_for_new_active_frame()
+
+                for s in cfg.se_surface_models:
+                    req_gen_models = False
+                    s.on_update()
+                    #imgui.push_style_color(imgui.COLOR_CHILD_BACKGROUND, *s.colour, 0.0 if s.hide else 0.2)
+                    imgui.begin_child(f"{s.title}_surfm", 0.0, 82, True)
+                    cw = imgui.get_content_region_available_width()
+                    _, s.colour = imgui.color_edit3(s.title, *s.colour[:3], imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
+
+                    imgui.same_line()
+                    imgui.text(f"{s.title}")
+                    imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
+                    imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
+                    imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+
+                    imgui.same_line(position = cw - 40)
+                    _, s.hide = imgui.checkbox("hide  ", s.hide)
+                    # progress bar
+                    if s.process is not None:
+                        if s.process.progress == 1.0:
+                            s.process = None
+
+                    imgui.push_item_width(cw)
+                    original_level = s.level
+                    _, s.level = imgui.slider_int("##level", s.level, 0, 256, f"level = {s.level}")
+                    if s.process is not None:
+                        s.level = original_level
+                        _ = False
+                    if _ and original_level != s.level:
+                        req_gen_models = True
+
+                    _, s.dust = imgui.slider_float("##dust", s.dust, 10.0, 1000000.0, f"dust < {s.dust:.1f} nm³", imgui.SLIDER_FLAGS_LOGARITHMIC)
+                    s.hide_dust()
+                    imgui.pop_item_width()
+                    imgui.push_item_width((cw - 7) / 2)
+                    _, s.alpha = imgui.slider_float("##alpha", s.alpha, 0, 1.0, f"alpha = {s.alpha:.1f}")
+                    imgui.same_line()
+                    original_bin = s.bin
+                    _, s.bin = imgui.slider_int("##bin", s.bin, 1, 8, f"bin {s.bin}")
+                    if _ and original_bin != s.bin:
+                        req_gen_models = True
+
+
+                    if req_gen_models:
+                        s.generate_model()
+
+                    imgui.pop_item_width()
+                    imgui.pop_style_var(3)
+                    imgui.end_child()
 
                 imgui.pop_style_var(3)
+                imgui.pop_style_color(1)
 
-                imgui.end_child()
 
-            if not self.pick_same_folder:
-                imgui.text("Segmentation (.mrc) folder:")
-                _, self.seg_folder = widgets.select_directory('browse', self.seg_folder)
-            _, self.pick_same_folder = imgui.checkbox("shared folder", self.pick_same_folder)
+            if imgui.collapsing_header("Settings", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+                imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+                cw = imgui.get_content_region_available_width()
 
-            if imgui.button('recompile shaders', 100, 20):
-                self.renderer.recompile_shaders()
-            _, self.camera3d.clip_far = imgui.slider_float("clip far", self.camera3d.clip_far, 0.0, 1000.0)
-            imgui.pop_style_var(3)
-            imgui.pop_style_color(1)
+                _, SegmentationEditor.RENDER_CLEAR_COLOUR = imgui.color_edit3("##clrclr", *SegmentationEditor.RENDER_CLEAR_COLOUR[:3], imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
+                imgui.same_line()
+                imgui.align_text_to_frame_padding()
+                imgui.text("Background colour   ")
+                imgui.same_line()
+                imgui.push_item_width(cw - 200)
+                _, SegmentationEditor.SELECTED_RENDER_STYLE = imgui.combo("Style", SegmentationEditor.SELECTED_RENDER_STYLE, SegmentationEditor.RENDER_STYLES)
+                imgui.pop_item_width()
+
+                imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
+
+                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                imgui.push_style_color(imgui.COLOR_CHECK_MARK, 0.0, 0.0, 0.0)
+
+                if not self.pick_same_folder:
+                    imgui.text("Segmentation (.mrc) folder:")
+                    _, self.seg_folder = widgets.select_directory('browse', self.seg_folder)
+                _, self.pick_same_folder = imgui.checkbox("shared folder     ", self.pick_same_folder)
+                imgui.same_line()
+                _, SegmentationEditor.RENDER_BOX = imgui.checkbox("render bounding box", SegmentationEditor.RENDER_BOX)
+
+                imgui.pop_style_var(2)
+                imgui.pop_style_color(1)
+
+                if widgets.centred_button('Recompile Shaders', 150, 20):
+                    self.renderer.recompile_shaders()
+                if widgets.centred_button("RAYTRACE", 50, 50):
+                    SegmentationEditor.TEST = True
+                if hasattr(self.renderer.ray_trace_fbo, 'texture'):
+                    imgui.image(self.renderer.ray_trace_fbo.texture.renderer_id, 256, 256)
+                imgui.pop_style_var(1)
+
 
         def menu_bar():
             imgui.push_style_color(imgui.COLOR_MENUBAR_BACKGROUND, *cfg.COLOUR_MAIN_MENU_BAR)
@@ -1303,16 +1349,13 @@ class SegmentationEditor:
         # Render the currently active frame
 
         if cfg.se_active_frame is not None:
-            #camera = self.camera if self.active_tab != "Pick" else self.camera3d
-            if self.active_tab == "Pick":
-                self.renderer.render_line_va(self.pick_box_va, self.camera3d)
-            pxd = SegmentationEditor.renderer.render_filtered_frame(cfg.se_active_frame, self.camera, self.window, self.filters, camera3d=None if self.active_tab != "Pick" else self.camera3d)
-            ## todo: save the output pxd to the corresponding frame, and render this pxd in subsequent app frames where the data is not changed instead of applying the filters on GPU every frame - which it turns out is fairly expensive
-            if pxd is not None:
-                cfg.se_active_frame.compute_histogram(pxd)
-                if cfg.se_active_frame.autocontrast:
-                    cfg.se_active_frame.compute_autocontrast(None, pxd)
-                cfg.se_active_frame.requires_histogram_update = False
+            if self.active_tab != "Pick":
+                pxd = SegmentationEditor.renderer.render_filtered_frame(cfg.se_active_frame, self.camera, self.window, self.filters) ## todo: save the output pxd to the corresponding frame, and render this pxd in subsequent app frames where the data is not changed instead of applying the filters on GPU every frame - which it turns out is fairly expensive
+                if pxd is not None:
+                    cfg.se_active_frame.compute_histogram(pxd)
+                    if cfg.se_active_frame.autocontrast:
+                        cfg.se_active_frame.compute_autocontrast(None, pxd)
+                    cfg.se_active_frame.requires_histogram_update = False
             if self.active_tab == "Segmentation":
                 SegmentationEditor.renderer.render_segmentations(cfg.se_active_frame, self.camera)
 
@@ -1351,10 +1394,30 @@ class SegmentationEditor:
                 overlay_blend_mode = SegmentationEditor.BLEND_MODES[SegmentationEditor.BLEND_MODES_LIST[self.overlay_blend_mode]]
                 SegmentationEditor.renderer.render_overlay(cfg.se_active_frame, self.camera, overlay_blend_mode, self.overlay_alpha)
             else:
+                if SegmentationEditor.RENDER_BOX:
+                    # Render 3D box around the volume
+                    self.renderer.render_line_va(self.pick_box_va, self.camera3d)
+
+                # Render lines along edges of frame
+                self.renderer.render_frame_border(cfg.se_active_frame, self.camera3d)
+
+                # Render surface models in 3D
                 if not imgui.is_key_down(glfw.KEY_SPACE):
                     self.renderer.render_surface_models(cfg.se_surface_models, self.camera3d)
 
+                # Render the frame
+                pxd = SegmentationEditor.renderer.render_filtered_frame(cfg.se_active_frame, self.camera, self.window, self.filters, camera3d=self.camera3d)
+                if pxd is not None:
+                    cfg.se_active_frame.compute_histogram(pxd)
+                    if cfg.se_active_frame.autocontrast:
+                        cfg.se_active_frame.compute_autocontrast(None, pxd)
+                    cfg.se_active_frame.requires_histogram_update = False
 
+                # Render overlay, if possible:
+                if cfg.se_active_frame.overlay is not None and SegmentationEditor.TEST:
+                    print('tracing overlay once.')
+                    self.renderer.ray_trace_overlay((self.window.width, self.window.height), cfg.se_active_frame, self.camera3d, self.pick_box_quad_va)
+                    SegmentationEditor.TEST = False
         # MAIN WINDOW
         imgui.set_next_window_position(0, 17, imgui.ONCE)
         imgui.set_next_window_size(SegmentationEditor.MAIN_WINDOW_WIDTH, self.window.height - 17)
@@ -1366,6 +1429,7 @@ class SegmentationEditor:
 
 
         if imgui.begin_tab_bar("##tabs"):
+            self.window.clear_color = cfg.COLOUR_WINDOW_BACKGROUND
             if imgui.begin_tab_item(" Segmentation ")[0]:
                 segmentation_tab()
                 self.active_tab = "Segmentation"
@@ -1381,6 +1445,7 @@ class SegmentationEditor:
                 export_tab()
                 imgui.end_tab_item()
             if imgui.begin_tab_item(" Pick ")[0]:
+                self.window.clear_color = [*SegmentationEditor.RENDER_CLEAR_COLOUR, 1.0]
                 self.active_tab = "Pick"
                 picking_tab()
                 imgui.end_tab_item()
@@ -1654,9 +1719,6 @@ class SegmentationEditor:
                 self.camera3d.focus[0] += world_delta[0]
                 self.camera3d.focus[1] += world_delta[1]
 
-
-
-
     def end_frame(self):
         self.window.end_frame()
 
@@ -1726,12 +1788,15 @@ class Renderer:
         self.surface_model_shader = Shader(os.path.join(cfg.root, "shaders", "se_surface_model_shader.glsl"))
         self.line_3d_shader = Shader(os.path.join(cfg.root, "shaders", "se_line_3d_shader.glsl"))
         self.quad_3d_shader = Shader(os.path.join(cfg.root, "shaders", "se_quad_3d_shader.glsl"))
+        self.depth_mask_shader = Shader(os.path.join(cfg.root, "shaders", "se_depth_mask_shader.glsl"))
+        self.ray_trace_shader = Shader(os.path.join(cfg.root, "shaders", "se_overlay_ray_trace_shader.glsl"))
         self.line_list = list()
         self.line_list_s = list()
         self.line_va = VertexArray(None, None, attribute_format="xyrgb")
         self.fbo1 = FrameBuffer()
         self.fbo2 = FrameBuffer()
-        self.fbo3 = FrameBuffer()
+        self.fbo3 = FrameBuffer(100, 100)
+        self.ray_trace_fbo = FrameBuffer()
 
     def recompile_shaders(self):  # for debugging
         try:
@@ -1747,6 +1812,8 @@ class Renderer:
             self.surface_model_shader = Shader(os.path.join(cfg.root, "shaders", "se_surface_model_shader.glsl"))
             self.line_3d_shader = Shader(os.path.join(cfg.root, "shaders", "se_line_3d_shader.glsl"))
             self.quad_3d_shader = Shader(os.path.join(cfg.root, "shaders", "se_quad_3d_shader.glsl"))
+            self.depth_mask_shader = Shader(os.path.join(cfg.root, "shaders", "se_depth_mask_shader.glsl"))
+            self.ray_trace_shader = Shader(os.path.join(cfg.root, "shaders", "se_overlay_ray_trace_shader.glsl"))
         finally:
             pass
 
@@ -1820,10 +1887,9 @@ class Renderer:
             window.set_full_viewport()
 
         # render the framebuffer to the screen
+
         shader = self.quad_shader if not camera3d else self.quad_3d_shader
         vpmat = camera.view_projection_matrix if not camera3d else camera3d.matrix
-        if camera3d is not None:
-            glEnable(GL_DEPTH_TEST)
         shader.bind()
         se_frame.quad_va.bind()
         self.fbo1.texture.bind(0)
@@ -1831,8 +1897,9 @@ class Renderer:
         shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
         shader.uniform2f("xLims", [se_frame.crop_roi[0] / se_frame.width, 1.0 - (se_frame.width - se_frame.crop_roi[2]) / se_frame.width])
         shader.uniform2f("yLims", [(se_frame.height - se_frame.crop_roi[3]) / se_frame.height, 1.0 - se_frame.crop_roi[1] / se_frame.height])
-        shader.uniform1f("alpha", se_frame.alpha)
+        shader.uniform1f("alpha", se_frame.alpha if camera3d is None else SegmentationEditor.PICKING_FRAME_ALPHA)
         if camera3d is not None:
+            glEnable(GL_DEPTH_TEST)
             shader.uniform1f("z_pos", (se_frame.current_slice - se_frame.n_slices / 2) * se_frame.pixel_size)
             shader.uniform1f("pixel_size", se_frame.pixel_size)  # This factor should be in the VA, but fixing that messed up the 2D view - cheap fix for now
         if se_frame.invert:
@@ -1888,6 +1955,8 @@ class Renderer:
         se_frame.border_va.bind()
         self.border_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
         self.border_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
+        self.border_shader.uniform1f("z_pos", 0)
+        self.border_shader.uniform1f("alpha", 1.0)
         glDrawElements(GL_LINES, se_frame.border_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
         self.border_shader.unbind()
         se_frame.border_va.unbind()
@@ -1939,6 +2008,21 @@ class Renderer:
         se_frame.border_va.bind()
         self.border_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
         self.border_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
+        self.border_shader.uniform1f("z_pos", 0)
+        self.border_shader.uniform1f("alpha", 1.0)
+        glDrawElements(GL_LINES, se_frame.border_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        self.border_shader.unbind()
+        se_frame.border_va.unbind()
+
+    def render_frame_border(self, se_frame, camera):
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendEquation(GL_FUNC_ADD)
+        self.border_shader.bind()
+        se_frame.border_va.bind()
+        self.border_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
+        self.border_shader.uniformmat4("modelMatrix", se_frame.transform.matrix)
+        self.border_shader.uniform1f("z_pos", (se_frame.current_slice - se_frame.n_slices / 2))
+        self.border_shader.uniform1f("alpha", SegmentationEditor.PICKING_FRAME_ALPHA)
         glDrawElements(GL_LINES, se_frame.border_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
         self.border_shader.unbind()
         se_frame.border_va.unbind()
@@ -1966,6 +2050,7 @@ class Renderer:
         self.surface_model_shader.bind()
         self.surface_model_shader.uniformmat4("vpMat", camera.matrix)
         self.surface_model_shader.uniform3f("lightDir", camera.get_view_direction())
+        self.surface_model_shader.uniform1i("style", SegmentationEditor.SELECTED_RENDER_STYLE)
         for s in surface_models:
             if s.hide:
                 continue
@@ -1987,6 +2072,50 @@ class Renderer:
         va.unbind()
         self.line_3d_shader.unbind()
         glDisable(GL_DEPTH_TEST)
+
+    def ray_trace_overlay(self, window_size, se_frame, camera, box_va):
+        if se_frame.overlay is None:
+            print("SEFrame doesn't have an overlay; remove function call, wherever it was.")
+            return
+
+        # 1 - Rendering a depth mask to find where to start sampling rays.
+        self.ray_trace_fbo = FrameBuffer(window_size[0], window_size[1], "rgba32f")  ## TODO: don't re-init FBO every frame.
+        self.ray_trace_fbo.bind()
+        glClearDepth(1.0)
+        glClear(GL_DEPTH_BUFFER_BIT)
+        glEnable(GL_DEPTH_TEST)
+
+        self.depth_mask_shader.bind()
+        self.depth_mask_shader.uniformmat4("vpMat", camera.matrix)
+        box_va.bind()
+        glDrawElements(GL_TRIANGLES, box_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        self.depth_mask_shader.unbind()
+        box_va.unbind()
+        self.ray_trace_fbo.unbind((0, 0, window_size[0], window_size[1]))
+
+        # 2 - ray tracing
+        self.ray_trace_shader.bind()
+        self.ray_trace_shader.uniformmat4("ipMat", camera.ipmat)
+        self.ray_trace_shader.uniformmat4("ivMat", camera.ivmat)
+        self.ray_trace_shader.uniform1f("far", camera.clip_far)
+        self.ray_trace_shader.uniform1f("near", camera.clip_near)
+        self.ray_trace_shader.uniform2f("viewportSize", window_size)
+        self.ray_trace_shader.uniform1f("pixelSize", se_frame.pixel_size)
+        se_frame.overlay.texture.bind(0)  # overlay image, to read from
+        glActiveTexture(GL_TEXTURE0 + 1)  # depth buffer, to read from
+        glBindTexture(GL_TEXTURE_2D, self.ray_trace_fbo.depth_texture_renderer_id)
+        self.ray_trace_fbo.texture.bind_image_slot(2, 1)  # fbo texture, to write to
+        glDispatchCompute(int(window_size[0] // 16), int(window_size[1] // 16), 1)
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT)
+        self.ray_trace_fbo.texture.bind(0)
+        glDisable(GL_DEPTH_TEST)
+        img = glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT)
+        img = np.frombuffer(img, np.float32).reshape(window_size[1], window_size[0], 4)
+        import matplotlib.pyplot as plt
+        plt.imshow(img[:, :, :3])
+        plt.show()
+
+
 
     def add_line(self, start_xy, stop_xy, colour, subtract=False):
         if subtract:
@@ -2168,6 +2297,30 @@ class Camera3D:
     @property
     def matrix(self):
         return self.view_projection_matrix
+
+    @property
+    def vpmat(self):
+        return self.view_projection_matrix
+
+    @property
+    def ivpmat(self):
+        return np.linalg.inv(self.view_projection_matrix)
+
+    @property
+    def pmat(self):
+        return self.projection_matrix
+
+    @property
+    def vmat(self):
+        return self.view_matrix
+
+    @property
+    def ipmat(self):
+        return np.linalg.inv(self.projection_matrix)
+
+    @property
+    def ivmat(self):
+        return np.linalg.inv(self.view_matrix)
 
     def on_update(self):
         self.update_projection_matrix()
