@@ -12,7 +12,6 @@ import pyperclip
 
 
 class SegmentationEditor:
-    TEST = False
     if True:
         CAMERA_ZOOM_STEP = 0.1
         CAMERA_MAX_ZOOM = 100.0
@@ -53,6 +52,7 @@ class SegmentationEditor:
         RENDER_STYLES = ["Cartoon", "Phong", "Flat", "Misc."]
         RENDER_BOX = True
         RENDER_CLEAR_COLOUR = cfg.COLOUR_WINDOW_BACKGROUND[:3]
+        VIEW_REQUIRES_UPDATE = True
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -96,6 +96,7 @@ class SegmentationEditor:
 
         # overlays
         self.overlay_alpha = 1.0
+        self.overlay_intensity = 1.0
         self.overlay_blend_mode = 0
 
         # picking / 3d renders
@@ -480,12 +481,18 @@ class SegmentationEditor:
                     if cfg.se_active_frame.overlay is not None:
                         imgui.separator()
                         cw = imgui.get_content_region_available_width()
-                        imgui.set_next_item_width(cw - 120)
-                        _, self.overlay_alpha = imgui.slider_float("##alphaslider_se", self.overlay_alpha, 0.0, 1.0, format=f"overlay alpha = {self.overlay_alpha:.2f}")
-                        imgui.same_line()
-                        imgui.set_next_item_width(110)
-                        _, self.overlay_blend_mode = imgui.combo("##overlayblending", self.overlay_blend_mode, SegmentationEditor.BLEND_MODES_LIST)
-                        ## Add button with an update icon, to update overlay
+                        if self.active_tab != "Pick":
+                            imgui.set_next_item_width(cw - 120)
+                            _, self.overlay_alpha = imgui.slider_float("##alphaslider_se", self.overlay_alpha, 0.0, 1.0, format=f"overlay alpha = {self.overlay_alpha:.2f}")
+                            imgui.same_line()
+                            imgui.set_next_item_width(110)
+                            _, self.overlay_blend_mode = imgui.combo("##overlayblending", self.overlay_blend_mode, SegmentationEditor.BLEND_MODES_LIST)
+                        else:
+                            imgui.set_next_item_width(cw)
+                            _, self.overlay_alpha = imgui.slider_float("##alphaslider_se", self.overlay_alpha, 0.0, 1.0, format=f"overlay alpha = {self.overlay_alpha:.2f}")
+                            imgui.set_next_item_width(cw)
+                            _, self.overlay_intensity = imgui.slider_float("##inensityslider_se", self.overlay_intensity, 0.0, 10.0, format=f"overlay intensity = {self.overlay_intensity:.1f}")
+
 
                     imgui.pop_style_var(6)
                     imgui.pop_style_color(1)
@@ -1085,9 +1092,6 @@ class SegmentationEditor:
 
                 # list the segmentations found for the currently selected dataset.
                 def update_picking_tab_for_new_active_frame():
-                    sef = cfg.se_active_frame
-                    overlay = Overlay(np.random.uniform(0, 255, (sef.width, sef.height, 4)), None, sef, None)
-                    sef.overlay=overlay
                     # delete old surface models
                     for s in cfg.se_surface_models:
                         s.delete()
@@ -1213,10 +1217,8 @@ class SegmentationEditor:
 
                 if widgets.centred_button('Recompile Shaders', 150, 20):
                     self.renderer.recompile_shaders()
-                if widgets.centred_button("RAYTRACE", 50, 50):
-                    SegmentationEditor.TEST = True
-                if hasattr(self.renderer.ray_trace_fbo, 'texture'):
-                    imgui.image(self.renderer.ray_trace_fbo.texture.renderer_id, 256, 256)
+                if hasattr(self.renderer.ray_trace_fbo_a, "texture"):
+                    imgui.image(self.renderer.ray_trace_fbo_a.texture.renderer_id, 256, 256)
                 imgui.pop_style_var(1)
 
 
@@ -1414,10 +1416,11 @@ class SegmentationEditor:
                     cfg.se_active_frame.requires_histogram_update = False
 
                 # Render overlay, if possible:
-                if cfg.se_active_frame.overlay is not None and SegmentationEditor.TEST:
-                    print('tracing overlay once.')
-                    self.renderer.ray_trace_overlay((self.window.width, self.window.height), cfg.se_active_frame, self.camera3d, self.pick_box_quad_va)
-                    SegmentationEditor.TEST = False
+                if cfg.se_active_frame.overlay is not None:
+                    if SegmentationEditor.VIEW_REQUIRES_UPDATE:
+                        self.renderer.ray_trace_overlay((self.window.width, self.window.height), cfg.se_active_frame, self.camera3d, self.pick_box_quad_va)
+                    overlay_blend_mode = SegmentationEditor.BLEND_MODES[SegmentationEditor.BLEND_MODES_LIST[self.overlay_blend_mode]]
+                    self.renderer.render_overlay_3d(self.overlay_alpha, self.overlay_intensity)
         # MAIN WINDOW
         imgui.set_next_window_position(0, 17, imgui.ONCE)
         imgui.set_next_window_size(SegmentationEditor.MAIN_WINDOW_WIDTH, self.window.height - 17)
@@ -1710,7 +1713,11 @@ class SegmentationEditor:
                     self.camera3d.pitch += self.window.cursor_delta[1] * SegmentationEditor.VIEW_3D_PIVOT_SPEED
                     self.camera3d.yaw += self.window.cursor_delta[0] * SegmentationEditor.VIEW_3D_PIVOT_SPEED
                     self.camera3d.pitch = clamp(self.camera3d.pitch, -89.9, 89.9)
+                    if self.window.cursor_delta[0] != 0 or self.window.cursor_delta[1] != 0:
+                        SegmentationEditor.VIEW_REQUIRES_UPDATE = True
                 self.camera3d.distance -= self.window.scroll_delta[1] * SegmentationEditor.VIEW_3D_MOVE_SPEED
+                if self.window.scroll_delta[1] != 0:
+                    SegmentationEditor.VIEW_REQUIRES_UPDATE = True
                 self.camera3d.distance = max(10.0, self.camera3d.distance)
             elif self.window.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE):
                 dx = -self.window.cursor_delta[0]
@@ -1718,6 +1725,8 @@ class SegmentationEditor:
                 world_delta = self.camera3d.cursor_delta_to_world_delta((dx, dy))
                 self.camera3d.focus[0] += world_delta[0]
                 self.camera3d.focus[1] += world_delta[1]
+                if dx != 0 or dy != 0:
+                    SegmentationEditor.VIEW_REQUIRES_UPDATE = True
 
     def end_frame(self):
         self.window.end_frame()
@@ -1790,13 +1799,18 @@ class Renderer:
         self.quad_3d_shader = Shader(os.path.join(cfg.root, "shaders", "se_quad_3d_shader.glsl"))
         self.depth_mask_shader = Shader(os.path.join(cfg.root, "shaders", "se_depth_mask_shader.glsl"))
         self.ray_trace_shader = Shader(os.path.join(cfg.root, "shaders", "se_overlay_ray_trace_shader.glsl"))
+        self.overlay_blend_shader = Shader(os.path.join(cfg.root, "shaders", "se_overlay_blend_shader.glsl"))
         self.line_list = list()
         self.line_list_s = list()
         self.line_va = VertexArray(None, None, attribute_format="xyrgb")
         self.fbo1 = FrameBuffer()
         self.fbo2 = FrameBuffer()
         self.fbo3 = FrameBuffer(100, 100)
-        self.ray_trace_fbo = FrameBuffer()
+        self.ray_trace_fbo_a = FrameBuffer()
+        self.ray_trace_fbo_b = FrameBuffer()
+        self.ndc_screen_va = VertexArray(attribute_format="xy")
+        self.ndc_screen_va.update(VertexBuffer([-1, -1, 1, -1, 1, 1, -1, 1]), IndexBuffer([0, 1, 2, 0, 2, 3]))
+        self.ray_trace_fbo_size = [0.0, 0.0]
 
     def recompile_shaders(self):  # for debugging
         try:
@@ -1814,6 +1828,7 @@ class Renderer:
             self.quad_3d_shader = Shader(os.path.join(cfg.root, "shaders", "se_quad_3d_shader.glsl"))
             self.depth_mask_shader = Shader(os.path.join(cfg.root, "shaders", "se_depth_mask_shader.glsl"))
             self.ray_trace_shader = Shader(os.path.join(cfg.root, "shaders", "se_overlay_ray_trace_shader.glsl"))
+            self.overlay_blend_shader = Shader(os.path.join(cfg.root, "shaders", "se_overlay_blend_shader.glsl"))
         finally:
             pass
 
@@ -2073,17 +2088,23 @@ class Renderer:
         self.line_3d_shader.unbind()
         glDisable(GL_DEPTH_TEST)
 
+
     def ray_trace_overlay(self, window_size, se_frame, camera, box_va):
         if se_frame.overlay is None:
             print("SEFrame doesn't have an overlay; remove function call, wherever it was.")
             return
 
-        # 1 - Rendering a depth mask to find where to start sampling rays.
-        self.ray_trace_fbo = FrameBuffer(window_size[0], window_size[1], "rgba32f")  ## TODO: don't re-init FBO every frame.
-        self.ray_trace_fbo.bind()
+        # 1 - Rendering a depth mask to find where to START sampling rays.
+        if self.ray_trace_fbo_size != window_size:
+            self.ray_trace_fbo_size = window_size
+            self.ray_trace_fbo_a = FrameBuffer(window_size[0], window_size[1], "rgba32f")
+            self.ray_trace_fbo_b = FrameBuffer(window_size[0], window_size[1], "rgba32f")
+        self.ray_trace_fbo_a.bind()
         glClearDepth(1.0)
-        glClear(GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_LESS)
+        glDepthMask(GL_TRUE)
+        glClear(GL_DEPTH_BUFFER_BIT)
 
         self.depth_mask_shader.bind()
         self.depth_mask_shader.uniformmat4("vpMat", camera.matrix)
@@ -2091,31 +2112,60 @@ class Renderer:
         glDrawElements(GL_TRIANGLES, box_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
         self.depth_mask_shader.unbind()
         box_va.unbind()
-        self.ray_trace_fbo.unbind((0, 0, window_size[0], window_size[1]))
+        self.ray_trace_fbo_a.unbind((0, 0, window_size[0], window_size[1]))
 
+        # - Rendering a depth mask to find where to STOP sampling rays
+        self.ray_trace_fbo_b.bind()
+        glClearDepth(0.0)
+        glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_GREATER)
+        glDepthMask(GL_TRUE)
+        glClear(GL_DEPTH_BUFFER_BIT)
+
+        self.depth_mask_shader.bind()
+        self.depth_mask_shader.uniformmat4("vpMat", camera.matrix)
+        box_va.bind()
+        glDrawElements(GL_TRIANGLES, box_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        self.depth_mask_shader.unbind()
+        box_va.unbind()
+        self.ray_trace_fbo_b.unbind((0, 0, window_size[0], window_size[1]))
+        glDepthFunc(GL_LESS)
         # 2 - ray tracing
         self.ray_trace_shader.bind()
         self.ray_trace_shader.uniformmat4("ipMat", camera.ipmat)
         self.ray_trace_shader.uniformmat4("ivMat", camera.ivmat)
-        self.ray_trace_shader.uniform1f("far", camera.clip_far)
+        self.ray_trace_shader.uniformmat4("pMat", camera.pmat)
         self.ray_trace_shader.uniform1f("near", camera.clip_near)
+        self.ray_trace_shader.uniform1f("far", camera.clip_far)
         self.ray_trace_shader.uniform2f("viewportSize", window_size)
         self.ray_trace_shader.uniform1f("pixelSize", se_frame.pixel_size)
+        self.ray_trace_shader.uniform2f("imgSize", [se_frame.overlay.size[1], se_frame.overlay.size[0]])
         se_frame.overlay.texture.bind(0)  # overlay image, to read from
         glActiveTexture(GL_TEXTURE0 + 1)  # depth buffer, to read from
-        glBindTexture(GL_TEXTURE_2D, self.ray_trace_fbo.depth_texture_renderer_id)
-        self.ray_trace_fbo.texture.bind_image_slot(2, 1)  # fbo texture, to write to
-        glDispatchCompute(int(window_size[0] // 16), int(window_size[1] // 16), 1)
+        glBindTexture(GL_TEXTURE_2D, self.ray_trace_fbo_a.depth_texture_renderer_id)
+        glActiveTexture(GL_TEXTURE0 + 2)
+        glBindTexture(GL_TEXTURE_2D, self.ray_trace_fbo_b.depth_texture_renderer_id)
+        self.ray_trace_fbo_a.texture.bind_image_slot(3, 1)  # fbo texture, to write to
+        glDispatchCompute(int(window_size[0] // 16) + 1, int(window_size[1] // 16) + 1, 1)
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT)
-        self.ray_trace_fbo.texture.bind(0)
         glDisable(GL_DEPTH_TEST)
-        img = glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT)
-        img = np.frombuffer(img, np.float32).reshape(window_size[1], window_size[0], 4)
-        import matplotlib.pyplot as plt
-        plt.imshow(img[:, :, :3])
-        plt.show()
+        SegmentationEditor.VIEW_REQUIRES_UPDATE = False
 
-
+    def render_overlay_3d(self, alpha, intensity):
+        # add overlay image to whatever has been rendered before.
+        glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA)
+        glBlendEquation(GL_FUNC_ADD)
+        glDisable(GL_DEPTH_TEST)
+        self.overlay_blend_shader.bind()
+        self.overlay_blend_shader.uniform1f("alpha", alpha)
+        self.overlay_blend_shader.uniform1f("intensity", intensity)
+        self.ray_trace_fbo_a.texture.bind(0)
+        self.ndc_screen_va.bind()
+        glDrawElements(GL_TRIANGLES, self.ndc_screen_va.indexBuffer.getCount(), GL_UNSIGNED_SHORT, None)
+        self.ndc_screen_va.unbind()
+        self.overlay_blend_shader.unbind()
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendEquation(GL_FUNC_ADD)
 
     def add_line(self, start_xy, stop_xy, colour, subtract=False):
         if subtract:

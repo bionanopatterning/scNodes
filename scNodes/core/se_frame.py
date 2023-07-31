@@ -303,6 +303,9 @@ class Overlay:
         self.texture = Texture(format="rgba32f")
         self.texture.update(self.pxd)
 
+    @property
+    def size(self):
+        return self.pxd.shape
 
 class Segmentation:
     idgen = count(0)

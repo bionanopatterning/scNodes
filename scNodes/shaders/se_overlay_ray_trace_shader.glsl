@@ -2,21 +2,24 @@
 #version 430
 
 layout(binding = 0) uniform sampler2D overlay;
-layout(binding = 1) uniform sampler2D depth;
-layout(binding = 2, rgba32f) writeonly uniform image2D target;
+layout(binding = 1) uniform sampler2D depth_start;
+layout(binding = 2) uniform sampler2D depth_stop;
+layout(binding = 3, rgba32f) writeonly uniform image2D target;
 layout(local_size_x = 16, local_size_y=16) in;
 
 uniform mat4 ipMat;
 uniform mat4 ivMat;
-uniform float far;
-uniform float near;
+uniform mat4 pMat;
 uniform vec2 viewportSize;
 uniform float pixelSize;
+uniform vec2 imgSize;
+uniform float near;
+uniform float far;
 
-float world_pos_from_depth(float depth)
+float linearizeDepth(float depth)
 {
-    float z = 2.0 * depth - 1.0;
-    return 2.0 * near * far / (near + far - ((2.0 * depth) - 1.0) * (far - near));
+    float z = depth * 2.0 - 1.0; // Back to NDC
+    return (2.0 * near * far) / (far + near - z * (far - near));
 }
 
 void main()
@@ -26,33 +29,44 @@ void main()
     vec2 uv = vec2(px) / viewportSize;
 
     // Normalized device coordinates to world coordinates.
-    float z = 2.0f * texture(depth, uv).r - 1.0f;
+    float z_start = 2.0f * texture(depth_start, uv).r - 1.0f;
+    float z_stop = 2.0f * texture(depth_stop, uv).r - 1.0f;
     float x = (2.0f * float(px.x)) / viewportSize.x - 1.0f;
     float y = (2.0f * float(px.y)) / viewportSize.y - 1.0f;
-    vec4 ndc = vec4(x, y, z, 1.0);
-    vec4 clip_space_vector = ipMat * ndc;
-    clip_space_vector /= clip_space_vector.w;
 
-    vec4 pos = ivMat * clip_space_vector;
+    vec4 cs_start = ipMat * vec4(x, y, z_start, 1.0);  // clip space (cs) start vec
+    cs_start /= cs_start.w;
+    vec4 cs_stop = ipMat * vec4(x, y, z_stop, 1.0);
+    cs_stop /= cs_stop.w;
 
+    vec3 pos = (ivMat * cs_start).xyz;
+    vec3 stop_pos = (ivMat * cs_stop).xyz;
+    vec3 dir = normalize(stop_pos - pos);  // scale s.t. XY mag == 1.0
+    dir /= length(vec2(dir.x, dir.y));
 
-    // If the depth mask is the clearDepth(1.0f) value, discard ray.
-    if (z == 1.0f)
+    if (z_start == 1.0f)
     {
-        imageStore(target, px, vec4(1.0f, 0.0f, 0.0f, 1.0f));
+        imageStore(target, px, vec4(0.0f, 0.0f, 0.0f, 1.0f));
     }
     else
     {
-        // Find where to start sampling.
-        float dl = 1.0f / 13.92f; // TODO: 1.0 / pixelSize;
-        float l = 0.0f;
-
-        // Start sampling through volume.
-
-        // When reaching depth > depth mask, end sampling.
+        vec2 uv = pos.xy / imgSize + 0.5f;
+        vec4 rayValue = vec4(0.0f);
+        float rayDepth = 2.0f * (pMat * vec4(pos, 1.0f)).z - 1.0f;
+        float stopDepth = z_stop;
+        int MAX_ITER = 1000;
+        int i = 0;
+        while (rayDepth < stopDepth && i < MAX_ITER)
+        {
+            pos += dir;
+            uv = pos.xy / imgSize + 0.5f;
+            rayValue += texture(overlay, uv);
+            rayDepth = 2.0f * (pMat * vec4(pos, 1.0f)).z - 1.0f;;
+            i += 1;
+        }
 
         // Write to texture.
-
-        imageStore(target, px, vec4(pos.xyz / 1000.0f, 1.0f));
+        //imageStore(target, px, vec4(z_start, z_stop, 0.0f, 1.0f));
+        imageStore(target, px, vec4(rayValue.xyz / 50.0f, 1.0f));
     }
 }
