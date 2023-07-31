@@ -15,11 +15,24 @@ uniform float pixelSize;
 uniform vec2 imgSize;
 uniform float near;
 uniform float far;
+uniform float zLim;
+uniform float zQuad;
 
 float linearizeDepth(float depth)
 {
     float z = depth * 2.0 - 1.0; // Back to NDC
     return (2.0 * near * far) / (far + near - z * (far - near));
+}
+
+bool isRayInVolume(vec3 ray)
+{
+    float x = abs(ray.x) / 1.3f;
+    float y = abs(ray.y) / 1.3f;
+    float z = abs(ray.z) / 1.3f;
+    float rx = imgSize.x * pixelSize / 2.0f;
+    float ry = imgSize.y * pixelSize / 2.0f;
+    float rz = zLim;
+    return (x <= rx && y <= ry && z < rz);
 }
 
 void main()
@@ -44,29 +57,30 @@ void main()
     vec3 dir = normalize(stop_pos - pos);  // scale s.t. XY mag == 1.0
     dir /= length(vec2(dir.x, dir.y));
 
+    //    imageStore(target, px, vec4(z_start, z_stop, 0.0f, 1.0f));
+    //    return;
     if (z_start == 1.0f)
     {
         imageStore(target, px, vec4(0.0f, 0.0f, 0.0f, 1.0f));
     }
     else
     {
-        vec2 uv = pos.xy / imgSize + 0.5f;
+        vec2 uv = pos.xy / imgSize * 0.5f + 0.5f;
         vec4 rayValue = vec4(0.0f);
-        float rayDepth = 2.0f * (pMat * vec4(pos, 1.0f)).z - 1.0f;
-        float stopDepth = z_stop;
+        bool rayInVolume = true;
         int MAX_ITER = 1000;
         int i = 0;
-        while (rayDepth < stopDepth && i < MAX_ITER)
+        while (rayInVolume && i < MAX_ITER)
         {
             pos += dir;
-            uv = pos.xy / imgSize + 0.5f;
+            uv = pos.xy / imgSize * 0.5f + 0.5f;
             rayValue += texture(overlay, uv);
-            rayDepth = 2.0f * (pMat * vec4(pos, 1.0f)).z - 1.0f;;
             i += 1;
+            rayInVolume = isRayInVolume(pos);
         }
 
         // Write to texture.
-        //imageStore(target, px, vec4(z_start, z_stop, 0.0f, 1.0f));
+        //imageStore(target, px, vec4(rayDepth, 0.0f, 0.0f, 1.0f));
         imageStore(target, px, vec4(rayValue.xyz / 50.0f, 1.0f));
     }
 }

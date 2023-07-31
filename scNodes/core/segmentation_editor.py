@@ -1107,8 +1107,10 @@ class SegmentationEditor:
 
                     if self.pick_same_folder:
                         files = glob.glob(os.path.join(os.path.dirname(se_frame.path), se_frame.title + "_*.mrc"))
+                        print(f"Filename template: {os.path.dirname(se_frame.path)}, {se_frame.title}, _*.mrc")
                     else:
                         files = glob.glob(os.path.join(self.seg_folder, se_frame.title + "_*.mrc"))
+                        print(f"Filename template: {self.seg_folder}, {se_frame.title}, _*.mrc")
                     for f in sorted(files):
                         cfg.se_surface_models.append(SurfaceModel(f, se_frame.pixel_size))
 
@@ -1419,8 +1421,8 @@ class SegmentationEditor:
                 if cfg.se_active_frame.overlay is not None:
                     if SegmentationEditor.VIEW_REQUIRES_UPDATE:
                         self.renderer.ray_trace_overlay((self.window.width, self.window.height), cfg.se_active_frame, self.camera3d, self.pick_box_quad_va)
-                    overlay_blend_mode = SegmentationEditor.BLEND_MODES[SegmentationEditor.BLEND_MODES_LIST[self.overlay_blend_mode]]
-                    self.renderer.render_overlay_3d(self.overlay_alpha, self.overlay_intensity)
+                    else:
+                        self.renderer.render_overlay_3d(self.overlay_alpha, self.overlay_intensity)
         # MAIN WINDOW
         imgui.set_next_window_position(0, 17, imgui.ONCE)
         imgui.set_next_window_size(SegmentationEditor.MAIN_WINDOW_WIDTH, self.window.height - 17)
@@ -2099,7 +2101,7 @@ class Renderer:
             self.ray_trace_fbo_size = window_size
             self.ray_trace_fbo_a = FrameBuffer(window_size[0], window_size[1], "rgba32f")
             self.ray_trace_fbo_b = FrameBuffer(window_size[0], window_size[1], "rgba32f")
-        self.ray_trace_fbo_a.bind()
+        self.ray_trace_fbo_a.bind()  # UNBIND FBO in such a way that the original rendered scene is the new fbo again.
         glClearDepth(1.0)
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LESS)
@@ -2138,6 +2140,8 @@ class Renderer:
         self.ray_trace_shader.uniform1f("near", camera.clip_near)
         self.ray_trace_shader.uniform1f("far", camera.clip_far)
         self.ray_trace_shader.uniform2f("viewportSize", window_size)
+        self.ray_trace_shader.uniform1f("zLim", se_frame.n_slices * se_frame.pixel_size / 2.0)
+        self.ray_trace_shader.uniform1f("zQuad", (se_frame.current_slice - se_frame.n_slices /2) * se_frame.pixel_size)
         self.ray_trace_shader.uniform1f("pixelSize", se_frame.pixel_size)
         self.ray_trace_shader.uniform2f("imgSize", [se_frame.overlay.size[1], se_frame.overlay.size[0]])
         se_frame.overlay.texture.bind(0)  # overlay image, to read from
@@ -2150,6 +2154,7 @@ class Renderer:
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT)
         glDisable(GL_DEPTH_TEST)
         SegmentationEditor.VIEW_REQUIRES_UPDATE = False
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
     def render_overlay_3d(self, alpha, intensity):
         # add overlay image to whatever has been rendered before.

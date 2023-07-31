@@ -20,6 +20,7 @@ class SEFrame:
         self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')+"000") + uid_counter
         self.path = path
         self.title = os.path.splitext(os.path.basename(self.path))[0]
+        print(os.path.splitext(os.path.basename(self.path)))
         self.n_slices = 0
         self.current_slice = -1
         self.slice_changed = False
@@ -570,8 +571,11 @@ class SurfaceModel:
         SurfaceModel.COLOURS[self.title] = self.colour
 
     def hide_dust(self):
-        for i in self.blobs:
-            self.blobs[i].hide = self.blobs[i].volume < self.dust
+        try:
+            for i in self.blobs:
+                self.blobs[i].hide = self.blobs[i].volume < self.dust
+        except Exception as e:
+            print("Error in hide_dust - maybe SurfaceModel and its thread lost synchronisation.", e)
 
     def generate_model(self):
         if self.process is None:
