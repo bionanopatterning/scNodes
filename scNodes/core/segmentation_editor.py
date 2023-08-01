@@ -42,7 +42,11 @@ class SegmentationEditor:
         BLEND_MODES["Colourize"] = (GL_DST_COLOR, GL_DST_ALPHA, GL_FUNC_ADD, 1)
         BLEND_MODES["Mask"] = (GL_ZERO, GL_SRC_ALPHA, GL_FUNC_ADD, 2)
         BLEND_MODES["Overlay"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_FUNC_ADD, 3)
+        BLEND_MODES_3D = dict()  # blend mode template: (glBlendFunc ARG1, ... ARG2, glBlendEquation ARG1, glsl_side_blend_mode_code)
+        BLEND_MODES_3D["Halo"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_ADD, 0)
+        BLEND_MODES_3D["Binary"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_ADD, 1)
         BLEND_MODES_LIST = list(BLEND_MODES.keys())
+        BLEND_MODES_LIST_3D = list(BLEND_MODES_3D.keys())
 
         pick_tab_index_datasets_segs = False
         VIEW_3D_PIVOT_SPEED = 0.3
@@ -53,7 +57,12 @@ class SegmentationEditor:
         RENDER_BOX = True
         RENDER_CLEAR_COLOUR = cfg.COLOUR_WINDOW_BACKGROUND[:3]
         VIEW_REQUIRES_UPDATE = True
-
+        
+        OVERLAY_ALPHA = 1.0
+        OVERLAY_INTENSITY = 1.0
+        OVERLAY_BLEND_MODE = 0
+        OVERLAY_BLEND_MODE_3D = 0
+        
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
         self.window.clear_color = cfg.COLOUR_WINDOW_BACKGROUND
@@ -93,11 +102,6 @@ class SegmentationEditor:
 
         # crop handles
         self.crop_handles = list()
-
-        # overlays
-        self.overlay_alpha = 1.0
-        self.overlay_intensity = 1.0
-        self.overlay_blend_mode = 0
 
         # picking / 3d renders
         self.seg_folder = ""
@@ -481,18 +485,18 @@ class SegmentationEditor:
                     if cfg.se_active_frame.overlay is not None:
                         imgui.separator()
                         cw = imgui.get_content_region_available_width()
+                        imgui.set_next_item_width(cw - 120)
+                        _, SegmentationEditor.OVERLAY_ALPHA = imgui.slider_float("##alphaslider_se", SegmentationEditor.OVERLAY_ALPHA, 0.0, 1.0, format=f"overlay alpha = {SegmentationEditor.OVERLAY_ALPHA:.2f}")
+                        imgui.same_line()
+                        imgui.set_next_item_width(110)
                         if self.active_tab != "Pick":
-                            imgui.set_next_item_width(cw - 120)
-                            _, self.overlay_alpha = imgui.slider_float("##alphaslider_se", self.overlay_alpha, 0.0, 1.0, format=f"overlay alpha = {self.overlay_alpha:.2f}")
-                            imgui.same_line()
-                            imgui.set_next_item_width(110)
-                            _, self.overlay_blend_mode = imgui.combo("##overlayblending", self.overlay_blend_mode, SegmentationEditor.BLEND_MODES_LIST)
+                            _, SegmentationEditor.OVERLAY_BLEND_MODE = imgui.combo("##overlayblending", SegmentationEditor.OVERLAY_BLEND_MODE, SegmentationEditor.BLEND_MODES_LIST)
                         else:
+                            _, SegmentationEditor.OVERLAY_BLEND_MODE_3D = imgui.combo("##overlayblending", SegmentationEditor.OVERLAY_BLEND_MODE_3D,SegmentationEditor.BLEND_MODES_LIST_3D)
+                            SegmentationEditor.VIEW_REQUIRES_UPDATE |= _
                             imgui.set_next_item_width(cw)
-                            _, self.overlay_alpha = imgui.slider_float("##alphaslider_se", self.overlay_alpha, 0.0, 1.0, format=f"overlay alpha = {self.overlay_alpha:.2f}")
-                            imgui.set_next_item_width(cw)
-                            _, self.overlay_intensity = imgui.slider_float("##inensityslider_se", self.overlay_intensity, 0.0, 10.0, format=f"overlay intensity = {self.overlay_intensity:.1f}")
-
+                            _, SegmentationEditor.OVERLAY_INTENSITY = imgui.slider_float("##inensityslider_se", SegmentationEditor.OVERLAY_INTENSITY, 0.0, 10.0, format=f"overlay intensity = {SegmentationEditor.OVERLAY_INTENSITY:.1f}")
+                            SegmentationEditor.VIEW_REQUIRES_UPDATE |= _
 
                     imgui.pop_style_var(6)
                     imgui.pop_style_color(1)
@@ -1395,8 +1399,8 @@ class SegmentationEditor:
                             box_size = self.trainset_apix * self.trainset_boxsize / 10.0
                             SegmentationEditor.renderer.add_square((box_x_pos, box_y_pos), box_size, clr)
             if self.active_tab != "Pick":
-                overlay_blend_mode = SegmentationEditor.BLEND_MODES[SegmentationEditor.BLEND_MODES_LIST[self.overlay_blend_mode]]
-                SegmentationEditor.renderer.render_overlay(cfg.se_active_frame, self.camera, overlay_blend_mode, self.overlay_alpha)
+                overlay_blend_mode = SegmentationEditor.BLEND_MODES[SegmentationEditor.BLEND_MODES_LIST[SegmentationEditor.OVERLAY_BLEND_MODE]]
+                SegmentationEditor.renderer.render_overlay(cfg.se_active_frame, self.camera, overlay_blend_mode, SegmentationEditor.OVERLAY_INTENSITY)
             else:
                 if SegmentationEditor.RENDER_BOX:
                     # Render 3D box around the volume
@@ -1422,7 +1426,7 @@ class SegmentationEditor:
                     if SegmentationEditor.VIEW_REQUIRES_UPDATE:
                         self.renderer.ray_trace_overlay((self.window.width, self.window.height), cfg.se_active_frame, self.camera3d, self.pick_box_quad_va)
                     else:
-                        self.renderer.render_overlay_3d(self.overlay_alpha, self.overlay_intensity)
+                        self.renderer.render_overlay_3d(SegmentationEditor.OVERLAY_ALPHA, SegmentationEditor.OVERLAY_INTENSITY)
         # MAIN WINDOW
         imgui.set_next_window_position(0, 17, imgui.ONCE)
         imgui.set_next_window_size(SegmentationEditor.MAIN_WINDOW_WIDTH, self.window.height - 17)
@@ -2090,7 +2094,6 @@ class Renderer:
         self.line_3d_shader.unbind()
         glDisable(GL_DEPTH_TEST)
 
-
     def ray_trace_overlay(self, window_size, se_frame, camera, box_va):
         if se_frame.overlay is None:
             print("SEFrame doesn't have an overlay; remove function call, wherever it was.")
@@ -2144,6 +2147,8 @@ class Renderer:
         self.ray_trace_shader.uniform1f("zQuad", (se_frame.current_slice - se_frame.n_slices /2) * se_frame.pixel_size)
         self.ray_trace_shader.uniform1f("pixelSize", se_frame.pixel_size)
         self.ray_trace_shader.uniform2f("imgSize", [se_frame.overlay.size[1], se_frame.overlay.size[0]])
+        self.ray_trace_shader.uniform1i("style", SegmentationEditor.BLEND_MODES_3D[SegmentationEditor.BLEND_MODES_LIST_3D[SegmentationEditor.OVERLAY_BLEND_MODE_3D]][3])
+        self.ray_trace_shader.uniform1f("intensity", SegmentationEditor.OVERLAY_INTENSITY)
         se_frame.overlay.texture.bind(0)  # overlay image, to read from
         glActiveTexture(GL_TEXTURE0 + 1)  # depth buffer, to read from
         glBindTexture(GL_TEXTURE_2D, self.ray_trace_fbo_a.depth_texture_renderer_id)
@@ -2158,8 +2163,9 @@ class Renderer:
 
     def render_overlay_3d(self, alpha, intensity):
         # add overlay image to whatever has been rendered before.
-        glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA)
-        glBlendEquation(GL_FUNC_ADD)
+        blend_mode = SegmentationEditor.BLEND_MODES[SegmentationEditor.BLEND_MODES_LIST[SegmentationEditor.OVERLAY_BLEND_MODE]]
+        glBlendFunc(blend_mode[0], blend_mode[1])
+        glBlendEquation(blend_mode[2])
         glDisable(GL_DEPTH_TEST)
         self.overlay_blend_shader.bind()
         self.overlay_blend_shader.uniform1f("alpha", alpha)

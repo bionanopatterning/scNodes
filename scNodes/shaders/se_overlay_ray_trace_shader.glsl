@@ -17,6 +17,8 @@ uniform float near;
 uniform float far;
 uniform float zLim;
 uniform float zQuad;
+uniform int style;
+uniform float intensity;
 
 float linearizeDepth(float depth)
 {
@@ -74,9 +76,22 @@ void main()
         {
             pos += dir;
             uv = pos.xy / imgSize * 0.5f + 0.5f;
-            rayValue += texture(overlay, uv);
             i += 1;
             rayInVolume = isRayInVolume(pos);
+            if (style == 0)
+            {
+                rayValue += texture(overlay, uv);
+            }
+            else if (style == 1)
+            {
+                vec4 val = texture(overlay, uv);
+                float threshold = intensity / 10.0f;
+                if (val.r > threshold || val.g > threshold || val.b > threshold)
+                {
+                    rayValue = 250.0f * val / intensity;
+                    break;
+                }
+            }
         }
 
         // Write to texture.
