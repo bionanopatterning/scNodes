@@ -20,7 +20,6 @@ class SEFrame:
         self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')+"000") + uid_counter
         self.path = path
         self.title = os.path.splitext(os.path.basename(self.path))[0]
-        print(os.path.splitext(os.path.basename(self.path)))
         self.n_slices = 0
         self.current_slice = -1
         self.slice_changed = False
@@ -117,7 +116,7 @@ class SEFrame:
             self.export_top = self.n_slices
         requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
         self.data = mrc.data[requested_slice, :, :]
-        target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'), np.dtype('int16'): np.dtype('float32')}
+        target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('float32'), np.dtype('int16'): np.dtype('float32')}
         if self.data.dtype not in target_type_dict:
             target_type = float
         else:

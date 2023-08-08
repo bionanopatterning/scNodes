@@ -151,7 +151,6 @@ class SEModel:
             self.absorb = metadata['absorb']
             self.loss = metadata['loss']
         except Exception as e:
-            raise e
             print("Error loading model - see details below", print(e))
 
     def train(self):
@@ -275,14 +274,18 @@ class SEModel:
         return SEModel.AVAILABLE_MODELS[self.model_enum]
 
     def set_slice(self, slice_data, slice_pixel_size, roi, original_size):
-        self.data = np.zeros(original_size)
-        if not self.compiled:
+        try:
+            self.data = np.zeros(original_size)
+            if not self.compiled:
+                return False
+            if not self.active:
+                return False
+            rx, ry = roi
+            self.data[rx[0]:rx[1], ry[0]:ry[1]] = self.apply_to_slice(slice_data[rx[0]:rx[1], ry[0]:ry[1]], slice_pixel_size)
+            return True
+        except Exception as e:
+            print(e)
             return False
-        if not self.active:
-            return False
-        rx, ry = roi
-        self.data[rx[0]:rx[1], ry[0]:ry[1]] = self.apply_to_slice(slice_data[rx[0]:rx[1], ry[0]:ry[1]], slice_pixel_size)
-        return True
 
     def update_texture(self):
         if not self.compiled or not self.active:

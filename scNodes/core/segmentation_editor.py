@@ -7,9 +7,10 @@ import dill as pickle
 from scNodes.core.se_model import *
 from scNodes.core.se_frame import *
 import scNodes.core.widgets as widgets
-from scNodes.core.util import clamp
+from scNodes.core.util import clamp, bin_mrc
 import pyperclip
 
+## TODO: U2OS tomo dataset: int8 of uint8? clipping als naar float
 
 class SegmentationEditor:
     if True:
@@ -222,6 +223,16 @@ class SegmentationEditor:
 
         # key input
         active_frame = cfg.se_active_frame
+        if active_frame in cfg.se_frames:
+            if imgui.is_key_pressed(glfw.KEY_UP):
+                idx = cfg.se_frames.index(active_frame) - 1
+                idx = max(0, idx)
+                SegmentationEditor.set_active_dataset(cfg.se_frames[idx])
+            elif imgui.is_key_pressed(glfw.KEY_DOWN):
+                idx = cfg.se_frames.index(active_frame) + 1
+                idx = min(idx, len(cfg.se_frames) - 1)
+                SegmentationEditor.set_active_dataset(cfg.se_frames[idx])
+
         active_feature = None
         if active_frame is not None:
             active_feature = cfg.se_active_frame.active_feature
@@ -374,9 +385,16 @@ class SegmentationEditor:
                             selected_file = filedialog.askopenfilename(filetypes=[("mrcfile", ".mrc")])
                             s.path = selected_file
                         if imgui.menu_item("Copy path to .mrc")[0]:
-                            pyperclip.copy(cfg.se_active_frame.path)
+                            pyperclip.copy(s.path)
                         if s.overlay is not None and imgui.menu_item("Update overlay")[0]:
                             s.overlay.update()
+                        if imgui.begin_menu("Generate binned version"):
+                            path = s.path
+                            for i in [2, 3, 4, 8]:
+                                if imgui.menu_item(f"bin {i}")[0]:
+                                    bpath = bin_mrc(path, i)
+                                    self.import_dataset(bpath)
+                            imgui.end_menu()
                         imgui.end_popup()
                     self.tooltip(f"{s.title}\nPixel size: {s.pixel_size * 10.0:.4f} Angstrom\nLocation: {s.path}")
                     if _change and _selected:
@@ -436,6 +454,9 @@ class SegmentationEditor:
                         imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_TEXT_DISABLED)
                         imgui.push_style_color(imgui.COLOR_CHECK_MARK, *cfg.COLOUR_TEXT_DISABLED)
                     _c, sef.crop = imgui.checkbox("crop", sef.crop)
+                    if imgui.is_key_pressed(glfw.KEY_C):
+                        sef.crop = not sef.crop
+                        _c = True
                     if _c and not sef.crop:
                         sef.crop_roi = [0, 0, sef.width, sef.height]
                     if self.active_tab in ["Segmentation", "Pick"]:
@@ -486,7 +507,7 @@ class SegmentationEditor:
                         imgui.separator()
                         cw = imgui.get_content_region_available_width()
                         imgui.set_next_item_width(cw - 120)
-                        _, SegmentationEditor.OVERLAY_ALPHA = imgui.slider_float("##alphaslider_se", SegmentationEditor.OVERLAY_ALPHA, 0.0, 1.0, format=f"overlay alpha = {SegmentationEditor.OVERLAY_ALPHA:.2f}")
+                        _, SegmentationEditor.OVERLAY_ALPHA = imgui.slider_float("##alphaslider_se", SegmentationEditor.OVERLAY_ALPHA, 0.0, 1.0, format=f"overlay alpha = {SegmentationEditor.OVERLAY_ALPHA:.2f}") ## TODO 230808 werkt niet meer?
                         imgui.same_line()
                         imgui.set_next_item_width(110)
                         if self.active_tab != "Pick":
@@ -1021,7 +1042,7 @@ class SegmentationEditor:
                 imgui.pop_style_var(3)
 
         def export_tab():
-            if imgui.collapsing_header("Export volumes", None)[0]:
+            if imgui.collapsing_header("Export volumes", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
                 imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
@@ -1584,7 +1605,7 @@ class SegmentationEditor:
         negative = list()
 
         n_done = 0
-        target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'), np.dtype('int16'): np.dtype('float32')}
+        target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('float32'), np.dtype('int16'): np.dtype('float32')}
         for d in datasets:
             mrcf = mrcfile.mmap(d.path, mode="r")
             raw_type = mrcf.data.dtype
@@ -2477,7 +2498,7 @@ class QueuedExport:
             print(f"QueuedExport - loading dataset {self.dataset.path}")
             rx, ry = self.dataset.get_roi_indices()
             mrcd = np.array(mrcfile.open(self.dataset.path, mode='r').data[:, :, :])
-            target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'), np.dtype('int16'): np.dtype('float32')}
+            target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('float32'), np.dtype('int16'): np.dtype('float32')}
             if mrcd.dtype not in target_type_dict:
                 mrcd = mrcd.astype(float, copy=False)
             else:
@@ -2502,7 +2523,7 @@ class QueuedExport:
                             images.append(mrcd[indices[-1], rx[0]:rx[1], ry[0]:ry[1]])
                     seg_images = m.apply_to_multiple_slices(images, self.dataset.pixel_size)
                     for i in range(len(indices)):
-                        segmentations[m_idx, indices[i], rx[0]:rx[1], ry[0]:ry[1]] = np.clip(seg_images[i] * 255, 0, 255)
+                        segmentations[m_idx, indices[i], rx[0]:rx[1], ry[0]:ry[1]] = (seg_images[i] * 255).astype(np.uint8)
                         n_slices_complete += 1
                         self.process.set_progress(min([0.999, n_slices_complete / n_slices_total]))
 
@@ -2528,7 +2549,6 @@ class QueuedExport:
             # apply interactions
             print(f"QueuedExport - model interactions")
             for interaction in ModelInteraction.all:
-                print(interaction)
                 target_model = interaction.parent
                 source_model = interaction.partner
                 if target_model in cfg.se_models and source_model in cfg.se_models:
@@ -2547,7 +2567,6 @@ class QueuedExport:
                 out_path = os.path.join(self.directory, self.dataset.title+"_"+m.title+".mrc")
                 with mrcfile.new(out_path, overwrite=True) as mrc:
                     s = segmentations[i, :, :, :].squeeze()
-                    s = np.clip(s, -128, 127).astype(np.int8)
                     mrc.set_data(s)
                     mrc.voxel_size = self.dataset.pixel_size * 10.0
                 n_slices_complete += n_slices

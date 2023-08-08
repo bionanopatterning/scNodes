@@ -11,6 +11,7 @@ from scipy.ndimage import label
 
 timer = 0.0
 
+
 def coords_from_tsv(coords_path):
     coords = []
     with open(coords_path, 'r') as file:
@@ -18,6 +19,7 @@ def coords_from_tsv(coords_path):
             x, y, z = map(int, line.strip().split('\t'))
             coords.append((x, y, z))
     return coords
+
 
 def extract_particles(vol_path, coords_path, boxsize, two_dimensional=False):
     coords = coords_from_tsv(coords_path)
@@ -33,6 +35,7 @@ def extract_particles(vol_path, coords_path, boxsize, two_dimensional=False):
             imgs.append(data[z - d:z + d, y - d:y + d, x - d:x + d])
     return imgs
 
+
 def get_maxima_3d(mrcpath, threshold=128, min_volume=None, min_weight=None, min_spacing=10.0, save_txt=True, sort_by_weight=True):
     """
     min_volume: minimum volume of selected blobs, in units of nm**3
@@ -43,7 +46,7 @@ def get_maxima_3d(mrcpath, threshold=128, min_volume=None, min_weight=None, min_
 
     print(f"\nLoading {mrcpath}")
     pixel_size = mrcfile.open(mrcpath, header_only=True).voxel_size.x / 10.0
-    print(f"Pixel size is {pixel_size} nm.")
+    print(f"Pixel size is {pixel_size:.2f} nm.")
 
     # threshold data
     print(f"Thresholding at {threshold}")
@@ -161,6 +164,23 @@ class Blob:
     def get_weight(self):
         return np.sum(self.v)
 
+
+def bin_mrc(path, bin_factor):
+    print(f"Loading '{path}'")
+    data = mrcfile.read(path)
+    pxs = mrcfile.open(path, header_only=True).voxel_size.x
+    z, y, x = data.shape
+    b = int(bin_factor)
+    print(f"Binning dataset by factor {b} (dtype = {data.dtype})")
+    data = data[:z // b * b, :y // b * b, :x // b * b]
+    _type = data.dtype
+    data = data.reshape((z // b, b, y // b, b, x // b, b)).mean(5, dtype=_type).mean(3, dtype=_type).mean(1, dtype=_type)
+    out_path = path[:path.rfind('.mrc')]+f"_bin{b}.mrc"
+    print(f"Saving dataset as: '{out_path}'")
+    with mrcfile.new(out_path, overwrite=True) as mrc:
+        mrc.set_data(data)
+        mrc.voxel_size = pxs * b
+    return out_path
 
 def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r"):
     # from: https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters?noredirect=1&lq=1
