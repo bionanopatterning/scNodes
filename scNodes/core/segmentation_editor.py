@@ -1284,6 +1284,17 @@ class SegmentationEditor:
                                     pickle.dump(cfg.se_active_frame, pickle_file)
                         except Exception as e:
                             print(e)
+                    if imgui.menu_item("Save dataset w. map")[0]:
+                        try:
+                            filename = filedialog.asksaveasfilename(filetypes=[("scNodes segmentation", f"{cfg.filetype_segmentation}")], initialfile = os.path.basename(cfg.se_active_frame.path)[:-4])
+                            if filename != '':
+                                if filename[-len(cfg.filetype_segmentation):] != cfg.filetype_segmentation:
+                                    filename += cfg.filetype_segmentation
+                                cfg.se_active_frame.include_map()
+                                with open(filename, 'wb') as pickle_file:
+                                    pickle.dump(cfg.se_active_frame, pickle_file)
+                        except Exception as e:
+                            print(e)
                     if imgui.menu_item("Save model group")[0]:
                         try:
                             filename = filedialog.asksaveasfilename(filetypes=[("scNodes model group", f"{cfg.filetype_semodel_group}")])

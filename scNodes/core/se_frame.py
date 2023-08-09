@@ -24,6 +24,8 @@ class SEFrame:
         self.current_slice = -1
         self.slice_changed = False
         self.data = None
+        self.includes_map = False
+        self.map = None
         self.features = list()
         self.feature_counter = 0
         self.active_feature = None
@@ -103,14 +105,17 @@ class SEFrame:
         self.border_va.update(VertexBuffer(vertex_attributes), IndexBuffer(indices))
 
     def set_slice(self, requested_slice, update_texture=True):
-        if not os.path.isfile(self.path):
-            print(f"Parent .mrc file at {self.path} does not exist!")
+        if not self.includes_map and os.path.isfile(self.path):
+            print(f"Parent .mrc file at {self.path} can no longer be found!")
             return
         self.requires_histogram_update = True
         if requested_slice == self.current_slice:
             return
         self.slice_changed = True
-        mrc = mrcfile.mmap(self.path, mode="r")
+        if self.includes_map:
+            mrc = self.map
+        else:
+            mrc = mrcfile.mmap(self.path, mode="r")
         self.n_slices = mrc.data.shape[0]
         if self.export_top is None:
             self.export_top = self.n_slices
@@ -131,7 +136,10 @@ class SEFrame:
     def get_slice(self, requested_slice=None, as_float=True):
         if requested_slice is None:
             requested_slice = self.current_slice
-        mrc = mrcfile.mmap(self.path, mode="r")
+        if self.includes_map:
+            mrc = self.map
+        else:
+            mrc = mrcfile.mmap(self.path, mode="r")
         self.n_slices = mrc.data.shape[0]
         if self.export_top is None:
             self.export_top = self.n_slices
@@ -210,6 +218,10 @@ class SEFrame:
 
     def set_overlay(self, pxd, parent_clem_frame, overlay_update_function):
         self.overlay = Overlay(pxd, parent_clem_frame, self, overlay_update_function)
+
+    def include_map(self):
+        self.includes_map = True
+        self.map = mrcfile.open(self.path)
 
     def __eq__(self, other):
         if isinstance(other, SEFrame):
