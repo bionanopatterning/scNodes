@@ -29,8 +29,8 @@ class SEFrame:
         self.features = list()
         self.feature_counter = 0
         self.active_feature = None
-        self.height, self.width = mrcfile.mmap(self.path, mode="r").data.shape[1:3]
-        self.pixel_size = mrcfile.open(self.path, header_only=True).voxel_size.x / 10.0
+        self.height, self.width = mrcfile.mmap(self.path, mode="r", permissive=True).data.shape[1:3]
+        self.pixel_size = mrcfile.open(self.path, header_only=True, permissive=True).voxel_size.x / 10.0
         self.transform = Transform()
         self.clem_frame = None
         self.overlay = None
@@ -105,7 +105,7 @@ class SEFrame:
         self.border_va.update(VertexBuffer(vertex_attributes), IndexBuffer(indices))
 
     def set_slice(self, requested_slice, update_texture=True):
-        if not self.includes_map and os.path.isfile(self.path):
+        if not self.includes_map and not os.path.isfile(self.path):
             print(f"Parent .mrc file at {self.path} can no longer be found!")
             return
         self.requires_histogram_update = True
@@ -115,7 +115,7 @@ class SEFrame:
         if self.includes_map:
             mrc = self.map
         else:
-            mrc = mrcfile.mmap(self.path, mode="r")
+            mrc = mrcfile.mmap(self.path, mode="r", permissive=True)
         self.n_slices = mrc.data.shape[0]
         if self.export_top is None:
             self.export_top = self.n_slices
@@ -139,7 +139,7 @@ class SEFrame:
         if self.includes_map:
             mrc = self.map
         else:
-            mrc = mrcfile.mmap(self.path, mode="r")
+            mrc = mrcfile.mmap(self.path, mode="r", permissive=True)
         self.n_slices = mrc.data.shape[0]
         if self.export_top is None:
             self.export_top = self.n_slices
@@ -221,7 +221,7 @@ class SEFrame:
 
     def include_map(self):
         self.includes_map = True
-        self.map = mrcfile.open(self.path)
+        self.map = mrcfile.open(self.path, permissive=True)
 
     def __eq__(self, other):
         if isinstance(other, SEFrame):
@@ -319,6 +319,7 @@ class Overlay:
     def size(self):
         return self.pxd.shape
 
+
 class Segmentation:
     idgen = count(0)
 
@@ -332,7 +333,6 @@ class Segmentation:
                        (0 / 255, 247 / 255, 255 / 255),
                        (0 / 255, 255 / 255, 0 / 255)]
 
-
     def __init__(self, parent_frame, title):
         uid_counter = next(Segmentation.idgen)
         self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f') + "000") + uid_counter
@@ -343,7 +343,7 @@ class Segmentation:
         self.height = self.parent.height
         self.title = title
         self.colour = Segmentation.DEFAULT_COLOURS[(self.parent.feature_counter - 1) % len(Segmentation.DEFAULT_COLOURS)]
-        self.alpha = 0.33
+        self.alpha = 1.0
         self.hide = False
         self.contour = False
         self.expanded = False
@@ -366,6 +366,7 @@ class Segmentation:
         uid_counter = next(Segmentation.idgen)
         self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f') + "000") + uid_counter
         self.texture = Texture(format="r32f")
+        self.texture.set_linear_interpolation()
         cslice = self.current_slice
         self.current_slice = -1
         self.set_slice(cslice)
@@ -448,7 +449,7 @@ class Segmentation:
                             f.write(f"{box[0]}\t{box[1]}\t{z}\n")
             print(f"Coordinates saved to: {fpath}")
         except Exception as e:
-            print(e)
+            cfg.set_error(e, "Could not save particle positions, see details below.")
 
     def save_current_slice(self):
         fpath = os.path.splitext(self.parent.path)[0] + "_" + self.title + f"_slice_{self.current_slice}.mrc"
@@ -460,7 +461,7 @@ class Segmentation:
                 mrc.voxel_size = self.parent.pixel_size * 10.0
             print(f"Slice saved to: {fpath}")
         except Exception as e:
-            print(e)
+            cfg.set_error(e, "Could not save current slice, see details below.")
 
     def save_volume(self):
         fpath = os.path.splitext(self.parent.path)[0] + "_" + self.title + f"_annotated_volume.mrc"

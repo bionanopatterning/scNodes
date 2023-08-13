@@ -168,7 +168,7 @@ class Blob:
 def bin_mrc(path, bin_factor):
     print(f"Loading '{path}'")
     data = mrcfile.read(path)
-    pxs = mrcfile.open(path, header_only=True).voxel_size.x
+    pxs = mrcfile.open(path, header_only=True, permissive=True).voxel_size.x
     z, y, x = data.shape
     b = int(bin_factor)
     print(f"Binning dataset by factor {b} (dtype = {data.dtype})")
