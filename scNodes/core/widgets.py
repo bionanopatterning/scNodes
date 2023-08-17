@@ -63,4 +63,3 @@ def select_file(label, path, filetypes):
             path = selected_dir
     imgui.pop_style_var(2)
     return changed, path
-

@@ -1,6 +1,4 @@
 import os
-
-import scipy.ndimage
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,11 +7,12 @@ import glob
 from scNodes.core import config as cfg
 import time
 import mrcfile
-from scipy.ndimage import label, center_of_mass
+from scipy.ndimage import label, center_of_mass, distance_transform_edt
 from skimage.feature import peak_local_max
 from skimage.segmentation import watershed
 
 timer = 0.0
+
 
 def coords_from_tsv(coords_path):
     coords = []
@@ -57,7 +56,7 @@ def get_maxima_3d_watershed(mrcpath, threshold=128, min_spacing=10.0, min_weight
 
     print(f"Thresholding & computing distance map")
     binary_vol = data > threshold
-    distance = scipy.ndimage.distance_transform_edt(binary_vol)
+    distance = distance_transform_edt(binary_vol)
     min_distance = int(min_spacing / pixel_size)
 
     print("Finding local maxima")
@@ -270,6 +269,23 @@ class Blob:
     def get_weight(self):
         return np.sum(self.v)
 
+
+def bin_mrc(path, bin_factor):
+    print(f"Loading '{path}'")
+    data = mrcfile.read(path)
+    pxs = mrcfile.open(path, header_only=True, permissive=True).voxel_size.x
+    z, y, x = data.shape
+    b = int(bin_factor)
+    print(f"Binning dataset by factor {b} (dtype = {data.dtype})")
+    data = data[:z // b * b, :y // b * b, :x // b * b]
+    _type = data.dtype
+    data = data.reshape((z // b, b, y // b, b, x // b, b)).mean(5, dtype=_type).mean(3, dtype=_type).mean(1, dtype=_type)
+    out_path = path[:path.rfind('.mrc')]+f"_bin{b}.mrc"
+    print(f"Saving dataset as: '{out_path}'")
+    with mrcfile.new(out_path, overwrite=True) as mrc:
+        mrc.set_data(data)
+        mrc.voxel_size = pxs * b
+    return out_path
 
 def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r"):
     # from: https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters?noredirect=1&lq=1

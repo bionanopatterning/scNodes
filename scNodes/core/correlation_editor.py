@@ -115,7 +115,7 @@ class CorrelationEditor:
         ex_pxnm = 10.0
         ex_img_size = [0, 0]
         ex_path = ""
-        ex_png = True
+        ex_type = 0 # 0 for png, 1 for tiff, 2 for mrc
         EXPORT_FBO = None
         EXPORT_TILE_SIZE = 1000 # must be a multiple of 4
         EXPORT_SIZE_CHANGE_SPEED = 0.05
@@ -749,13 +749,14 @@ class CorrelationEditor:
                 CorrelationEditor.ex_img_size = [int(1000.0 * (lims[2] - lims[0]) / CorrelationEditor.ex_pxnm), int(1000.0 * (lims[3] - lims[1]) / CorrelationEditor.ex_pxnm)]
                 imgui.text(f"Output size: {CorrelationEditor.ex_img_size[0]} x {CorrelationEditor.ex_img_size[1]}")
                 imgui.text("Export as:")
-                imgui.text(" ")
-                imgui.same_line()
-                if imgui.radio_button(".png", CorrelationEditor.ex_png):
-                    CorrelationEditor.ex_png = not CorrelationEditor.ex_png
-                imgui.same_line(spacing = 20)
-                if imgui.radio_button(".tif stack", not CorrelationEditor.ex_png):
-                    CorrelationEditor.ex_png = not CorrelationEditor.ex_png
+                if imgui.radio_button(".png", CorrelationEditor.ex_type == 0):
+                    CorrelationEditor.ex_type = 0
+                imgui.same_line(spacing=15)
+                if imgui.radio_button(".tif", CorrelationEditor.ex_type == 1):
+                    CorrelationEditor.ex_type = 1
+                imgui.same_line(spacing=15)
+                if imgui.radio_button(".mrc", CorrelationEditor.ex_type == 2):
+                    CorrelationEditor.ex_type = 2
                 imgui.text("Filename:")
                 imgui.set_next_item_width(150)
                 _c, CorrelationEditor.ex_path = imgui.input_text("##outpath", CorrelationEditor.ex_path, 256)
@@ -992,7 +993,7 @@ class CorrelationEditor:
         return pxd
 
     def export_image(self):
-        def export_png():
+        def export_png(export_path):
             # Set up
             camera = Camera()
             camera.set_projection_matrix(CorrelationEditor.EXPORT_TILE_SIZE, CorrelationEditor.EXPORT_TILE_SIZE)
@@ -1040,9 +1041,9 @@ class CorrelationEditor:
             out_img[out_img < 0] = 0
             out_img[out_img > 255] = 255
             out_img = out_img.astype(np.uint8)
-            util.save_png(out_img, CorrelationEditor.ex_path, alpha=True)
+            util.save_png(out_img, export_path, alpha=True)
 
-        def export_tiff_stack():
+        def export_stack(path):
             # Set up
             camera = Camera()
             camera.set_projection_matrix(CorrelationEditor.EXPORT_TILE_SIZE, CorrelationEditor.EXPORT_TILE_SIZE)
@@ -1060,44 +1061,65 @@ class CorrelationEditor:
             tiles_v = int(np.ceil((CorrelationEditor.ex_lims[3] - CorrelationEditor.ex_lims[1]) / tile_size))
             camera.zoom = CorrelationEditor.DEFAULT_WORLD_PIXEL_SIZE / pixel_size * CorrelationEditor.DEFAULT_ZOOM
             camera_start_position = [CorrelationEditor.ex_lims[0], CorrelationEditor.ex_lims[3]]
-            tiff_path = CorrelationEditor.ex_path
-            if not (tiff_path[-5:] == ".tiff" or tiff_path[-4:] == ".tif"):
-                tiff_path += ".tif"
             glEnable(GL_DEPTH_TEST)
             glDepthFunc(GL_ALWAYS)
-            with tifffile.TiffWriter(tiff_path) as tiffw:
-                for frame in reversed(cfg.ce_frames):
-                    if frame.hide:
-                        continue
-                    out_img = np.zeros((out_size_pixels[0], out_size_pixels[1]), dtype=np.float32)
-                    frame.force_lut_grayscale()
-                    for i in range(tiles_h):
-                        for j in range(tiles_v):
-                            offset_x = (0.5 + i) * tile_size
-                            offset_y = (0.5 + j) * tile_size
-                            camera.position[0] = -(camera_start_position[0] + offset_x)
-                            camera.position[1] = -(camera_start_position[1] - offset_y)
-                            camera.on_update()
-                            CorrelationEditor.EXPORT_FBO.clear((0.0, 0.0, 0.0, 1.0))
-                            CorrelationEditor.EXPORT_FBO.bind()
-                            glClearDepth(0.0)
-                            glClear(GL_DEPTH_BUFFER_BIT)
-                            CorrelationEditor.renderer.render_frame_quad(camera, frame, override_blending=True)
-                            tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_RED, GL_FLOAT)
-                            out_img[i * T:min([(i + 1) * T, W]), j * T:min([(j + 1) * T, H])] = np.rot90(tile, 1, (1, 0))[:min([T, W - (i * T)]), :min([T, H - (j * T)])]
-                    out_img = np.rot90(out_img, -1, (1, 0))
-                    out_img = out_img[::-1, :]
-                    tiffw.write(out_img, description=frame.title, resolution=(1./(1e-7 * pixel_size), 1./(1e-7 * pixel_size), 'CENTIMETER'))
-                    frame.update_lut()
+
+            # generate stack
+            stack = list()
+            titles = list()
+            for frame in reversed(cfg.ce_frames):
+                if frame.hide:
+                    continue
+                out_img = np.zeros((out_size_pixels[0], out_size_pixels[1]), dtype=np.float32)
+                frame.force_lut_grayscale()
+                for i in range(tiles_h):
+                    for j in range(tiles_v):
+                        offset_x = (0.5 + i) * tile_size
+                        offset_y = (0.5 + j) * tile_size
+                        camera.position[0] = -(camera_start_position[0] + offset_x)
+                        camera.position[1] = -(camera_start_position[1] - offset_y)
+                        camera.on_update()
+                        CorrelationEditor.EXPORT_FBO.clear((0.0, 0.0, 0.0, 1.0))
+                        CorrelationEditor.EXPORT_FBO.bind()
+                        glClearDepth(0.0)
+                        glClear(GL_DEPTH_BUFFER_BIT)
+                        CorrelationEditor.renderer.render_frame_quad(camera, frame, override_blending=True)
+                        tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_RED, GL_FLOAT)
+                        out_img[i * T:min([(i + 1) * T, W]), j * T:min([(j + 1) * T, H])] = np.rot90(tile, 1, (1, 0))[:min([T, W - (i * T)]), :min([T, H - (j * T)])]
+                out_img = np.rot90(out_img, -1, (1, 0))
+                out_img = out_img[::-1, :]
+                stack.append(out_img)
+                titles.append(frame.title)
+                frame.update_lut()
             glDisable(GL_DEPTH_TEST)
             CorrelationEditor.EXPORT_FBO.unbind()
 
+            if ".mrc" in path:
+                with mrcfile.new(path, overwrite=True) as mrcw:
+                    mrcw.set_data(np.asarray(stack).astype(np.float32))
+                    mrcw.voxel_size = pixel_size * 10.0
+            else:
+                with tifffile.TiffWriter(path, bigtiff=True) as tiffw:
+                    for i in range(len(stack)):
+                        tiffw.write(stack[i], description=titles[i], resolution=(1. / (1e-7 * pixel_size), 1. / (1e-7 * pixel_size), 'CENTIMETER'))
+
         if CorrelationEditor.ex_path == "":
             return
-        if CorrelationEditor.ex_png:
-            export_png()
+        export_path = CorrelationEditor.ex_path
+        if CorrelationEditor.ex_type == 0:
+            if export_path[-4:] != ".png":
+                export_path += ".png"
+        if CorrelationEditor.ex_type == 1:
+            if export_path[-4:] != ".tif":
+                export_path += ".tif"
+        if CorrelationEditor.ex_type == 2:
+            if export_path[-4:] != ".mrc":
+                export_path += ".mrc"
+
+        if CorrelationEditor.ex_type==0:
+            export_png(export_path)
         else:
-            export_tiff_stack()
+            export_stack(export_path)
 
     def _frame_context_menu(self, f, title_edit_field=True):
         if title_edit_field:

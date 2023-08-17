@@ -17,6 +17,7 @@ import time
 # Python 3.9, CUDA D11.8, cuDNN 8.6, tensorflow 2.8.0, protobuf 3.20.0, and adding
 # LIBRARY_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\lib\x64 to the PyCharm run configuration environment variables.
 
+#TODO: in process_slice, check the volume of data that is processed by any model at one time. It should fit in the GPU, or tf throws an error that causes a QueuedExport to stop. Ensure that batch size is smaller than available data.
 
 class SEModel:
     idgen = count(0)
@@ -32,8 +33,12 @@ class SEModel:
                        (0 / 255, 136 / 255, 266 / 255),
                        (0 / 255, 247 / 255, 255 / 255),
                        (0 / 255, 255 / 255, 0 / 255)]
+    DEFAULT_MODEL_ENUM = 1
 
     def __init__(self):
+        if not SEModel.MODELS_LOADED:
+            SEModel.load_models()
+
         uid_counter = next(SEModel.idgen)
         self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f') + "000") + uid_counter
         self.title = "Unnamed model"
@@ -42,7 +47,7 @@ class SEModel:
         self.compiled = False
         self.box_size = -1
         self.model = None
-        self.model_enum = 4
+        self.model_enum = SEModel.DEFAULT_MODEL_ENUM
         self.epochs = 25
         self.batch_size = 32
         self.train_data_path = ""
@@ -69,8 +74,6 @@ class SEModel:
         self.emit = False
         self.absorb = False
         self.interactions = list()  # list of ModelInteraction objects.
-        if not SEModel.MODELS_LOADED:
-            SEModel.load_models()
 
     def delete(self):
         for interaction in self.interactions:
@@ -151,7 +154,6 @@ class SEModel:
             self.absorb = metadata['absorb']
             self.loss = metadata['loss']
         except Exception as e:
-            raise e
             print("Error loading model - see details below", print(e))
 
     def train(self):
@@ -275,14 +277,18 @@ class SEModel:
         return SEModel.AVAILABLE_MODELS[self.model_enum]
 
     def set_slice(self, slice_data, slice_pixel_size, roi, original_size):
-        self.data = np.zeros(original_size)
-        if not self.compiled:
+        try:
+            self.data = np.zeros(original_size)
+            if not self.compiled:
+                return False
+            if not self.active:
+                return False
+            rx, ry = roi
+            self.data[rx[0]:rx[1], ry[0]:ry[1]] = self.apply_to_slice(slice_data[rx[0]:rx[1], ry[0]:ry[1]], slice_pixel_size)
+            return True
+        except Exception as e:
+            print(e)
             return False
-        if not self.active:
-            return False
-        rx, ry = roi
-        self.data[rx[0]:rx[1], ry[0]:ry[1]] = self.apply_to_slice(slice_data[rx[0]:rx[1], ry[0]:ry[1]], slice_pixel_size)
-        return True
 
     def update_texture(self):
         if not self.compiled or not self.active:
@@ -372,6 +378,8 @@ class SEModel:
                 cfg.set_error(e, "Could not load SegmentationEditor model at path: "+file)
         SEModel.MODELS_LOADED = True
         SEModel.AVAILABLE_MODELS = list(SEModel.MODELS.keys())
+        if 'VGGNet' in SEModel.AVAILABLE_MODELS:
+            SEModel.DEFAULT_MODEL_ENUM = SEModel.AVAILABLE_MODELS.index('VGGNet')
 
     def __eq__(self, other):
         if isinstance(other, SEModel):
