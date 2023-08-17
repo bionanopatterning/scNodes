@@ -52,17 +52,21 @@ class SegmentationEditor:
         VIEW_3D_PIVOT_SPEED = 0.3
         VIEW_3D_MOVE_SPEED = 100.0
         PICKING_FRAME_ALPHA = 1.0
-        SELECTED_RENDER_STYLE = 0
+        SELECTED_RENDER_STYLE = 1
         RENDER_STYLES = ["Cartoon", "Phong", "Flat", "Misc."]
-        RENDER_BOX = True
+        RENDER_BOX = False
         RENDER_CLEAR_COLOUR = cfg.COLOUR_WINDOW_BACKGROUND[:3]
+        RENDER_LIGHT_COLOUR = (1.0, 1.0, 1.0)
         VIEW_REQUIRES_UPDATE = True
         
         OVERLAY_ALPHA = 1.0
         OVERLAY_INTENSITY = 1.0
         OVERLAY_BLEND_MODE = 0
         OVERLAY_BLEND_MODE_3D = 0
-        
+
+        LIGHT_SPOT = None
+        LIGHT_AMBIENT_STRENGTH = 0.5
+
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
         self.window.clear_color = cfg.COLOUR_WINDOW_BACKGROUND
@@ -71,6 +75,7 @@ class SegmentationEditor:
         self.imgui_implementation = imgui_impl
 
         self.camera = Camera()
+        SegmentationEditor.LIGHT_SPOT = Light3D()
         self.camera3d = Camera3D()
         SegmentationEditor.DEFAULT_ZOOM = cfg.window_height / SegmentationEditor.DEFAULT_HORIZONTAL_FOV_WIDTH  # now it is DEFAULT_HORIZONTAL_FOV_WIDTH
         SegmentationEditor.DEFAULT_WORLD_PIXEL_SIZE = 1.0 / SegmentationEditor.DEFAULT_ZOOM
@@ -1089,10 +1094,17 @@ class SegmentationEditor:
 
         def picking_tab():
             if imgui.collapsing_header("Volumes", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+
                 imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
                 imgui.push_style_color(imgui.COLOR_CHECK_MARK, 0.0, 0.0, 0.0)
+
+                if not self.pick_same_folder:
+                    imgui.text("Segmentation (.mrc) folder:")
+                    _, self.seg_folder = widgets.select_directory('browse', self.seg_folder)
+
+                _, self.pick_same_folder = imgui.checkbox("shared folder     ", self.pick_same_folder)
 
                 # list the segmentations found for the currently selected dataset.
                 def update_picking_tab_for_new_active_frame():
@@ -1149,7 +1161,7 @@ class SegmentationEditor:
                     _, s.colour = imgui.color_edit3(s.title, *s.colour[:3], imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
 
                     imgui.same_line()
-                    imgui.text(f"{s.title}")
+                    imgui.text(f"{s.title} ({s.size_mb:.1f} mb)")
                     imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
                     imgui.push_style_var(imgui.STYLE_GRAB_MIN_SIZE, 9)
                     imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
@@ -1192,39 +1204,49 @@ class SegmentationEditor:
                 imgui.pop_style_var(3)
                 imgui.pop_style_color(1)
 
-
-            if imgui.collapsing_header("Settings", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+            SegmentationEditor.LIGHT_SPOT.compute_vec(dyaw=-self.camera3d.yaw)
+            if imgui.collapsing_header("Graphics settings", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (2, 2))
                 cw = imgui.get_content_region_available_width()
-
+                imgui.align_text_to_frame_padding()
+                imgui.text("Volume render style:")
+                imgui.same_line()
+                imgui.push_item_width(cw - 150)
+                _, SegmentationEditor.SELECTED_RENDER_STYLE = imgui.combo("##Graphics style", SegmentationEditor.SELECTED_RENDER_STYLE, SegmentationEditor.RENDER_STYLES)
+                imgui.pop_item_width()
                 _, SegmentationEditor.RENDER_CLEAR_COLOUR = imgui.color_edit3("##clrclr", *SegmentationEditor.RENDER_CLEAR_COLOUR[:3], imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
                 imgui.same_line()
                 imgui.align_text_to_frame_padding()
-                imgui.text("Background colour   ")
+                imgui.text(" Background colour      ")
                 imgui.same_line()
-                imgui.push_item_width(cw - 200)
-                _, SegmentationEditor.SELECTED_RENDER_STYLE = imgui.combo("Style", SegmentationEditor.SELECTED_RENDER_STYLE, SegmentationEditor.RENDER_STYLES)
-                imgui.pop_item_width()
+                _, SegmentationEditor.LIGHT_SPOT.colour = imgui.color_edit3("##lightclr", *SegmentationEditor.LIGHT_SPOT.colour[ :3], imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
+                imgui.same_line()
+                imgui.align_text_to_frame_padding()
+                imgui.text(" Light colour")
 
                 imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
-
                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 10)
+                imgui.push_item_width(cw)
+                _, SegmentationEditor.LIGHT_AMBIENT_STRENGTH = imgui.slider_float("##ambient lighting", SegmentationEditor.LIGHT_AMBIENT_STRENGTH, 0.0, 1.0, f"ambient strength = %.2f")
+                _, SegmentationEditor.LIGHT_SPOT.strength = imgui.slider_float("##spot lighting", SegmentationEditor.LIGHT_SPOT.strength, 0.0, 1.0, f"spot strength = %.2f")
+                _yaw, SegmentationEditor.LIGHT_SPOT.yaw = imgui.drag_float("##yaw", SegmentationEditor.LIGHT_SPOT.yaw, 0.5, format=f"spot yaw = %.1f")
+                _pitch, SegmentationEditor.LIGHT_SPOT.pitch = imgui.slider_float("##pitch", SegmentationEditor.LIGHT_SPOT.pitch, -90.0, 90.0, format=f"spot pitch = %.1f")
+                imgui.pop_item_width()
+
                 imgui.push_style_color(imgui.COLOR_CHECK_MARK, 0.0, 0.0, 0.0)
-
-                if not self.pick_same_folder:
-                    imgui.text("Segmentation (.mrc) folder:")
-                    _, self.seg_folder = widgets.select_directory('browse', self.seg_folder)
-                _, self.pick_same_folder = imgui.checkbox("shared folder     ", self.pick_same_folder)
+                _, SegmentationEditor.RENDER_BOX = imgui.checkbox(" render bounding box     ", SegmentationEditor.RENDER_BOX)
                 imgui.same_line()
-                _, SegmentationEditor.RENDER_BOX = imgui.checkbox("render bounding box", SegmentationEditor.RENDER_BOX)
-
-                imgui.pop_style_var(2)
+                _render_frame = SegmentationEditor.PICKING_FRAME_ALPHA != 0.0
+                _r, _render_frame = imgui.checkbox(" render frame", _render_frame)
+                if _r:
+                    SegmentationEditor.PICKING_FRAME_ALPHA = float(_render_frame)
+                imgui.pop_style_var(4)
                 imgui.pop_style_color(1)
 
                 if widgets.centred_button('Recompile Shaders', 150, 20):
                     self.renderer.recompile_shaders()
-                if hasattr(self.renderer.ray_trace_fbo_a, "texture"):
-                    imgui.image(self.renderer.ray_trace_fbo_a.texture.renderer_id, 256, 256)
                 imgui.pop_style_var(1)
 
 
@@ -1411,7 +1433,7 @@ class SegmentationEditor:
 
                 # Render surface models in 3D
                 if not imgui.is_key_down(glfw.KEY_SPACE):
-                    self.renderer.render_surface_models(cfg.se_surface_models, self.camera3d)
+                    self.renderer.render_surface_models(cfg.se_surface_models, self.camera3d, SegmentationEditor.LIGHT_AMBIENT_STRENGTH, SegmentationEditor.LIGHT_SPOT)
 
                 # Render the frame
                 pxd = SegmentationEditor.renderer.render_filtered_frame(cfg.se_active_frame, self.camera, self.window, self.filters, camera3d=self.camera3d)
@@ -1731,6 +1753,7 @@ class SegmentationEditor:
                 world_delta = self.camera3d.cursor_delta_to_world_delta((dx, dy))
                 self.camera3d.focus[0] += world_delta[0]
                 self.camera3d.focus[1] += world_delta[1]
+                self.camera3d.focus[2] += world_delta[2]
                 if dx != 0 or dy != 0:
                     SegmentationEditor.VIEW_REQUIRES_UPDATE = True
 
@@ -2062,16 +2085,19 @@ class Renderer:
         self.icon_shader.unbind()
         h_va.unbind()
 
-    def render_surface_models(self, surface_models, camera):
+    def render_surface_models(self, surface_models, camera, ambient_strength, spot_light):
         glEnable(GL_DEPTH_TEST)
-        # TODO: fix flickering when depth test is ON. Maybe clip_far is too high?
         # TODO: fix moving the camera.
         # TODO: add shading styles, as described in the glsl
-        # TODO: make filters work in 3d view.
         self.surface_model_shader.bind()
         self.surface_model_shader.uniformmat4("vpMat", camera.matrix)
-        self.surface_model_shader.uniform3f("lightDir", camera.get_view_direction())
+        self.surface_model_shader.uniform3f("viewDir", camera.get_forward())
+        self.surface_model_shader.uniform3f("lightDir", spot_light.vec)
+        self.surface_model_shader.uniform1f("ambientStrength", ambient_strength)
+        self.surface_model_shader.uniform1f("lightStrength", spot_light.strength)
+        self.surface_model_shader.uniform3f("lightColour", spot_light.colour)
         self.surface_model_shader.uniform1i("style", SegmentationEditor.SELECTED_RENDER_STYLE)
+        glEnable(GL_DEPTH_TEST)
         for s in surface_models:
             if s.hide:
                 continue
@@ -2320,6 +2346,26 @@ class Camera:
         self.view_projection_matrix = np.matmul(self.projection_matrix, self.view_matrix)
 
 
+class Light3D:
+    def __init__(self):
+        self.colour = (1.0, 1.0, 1.0)
+        self.vec = (0.0, 1.0, 0.0)
+        self.yaw = 20.0
+        self.pitch = 0.0
+        self.strength = 0.5
+
+    def compute_vec(self, dyaw=0, dpitch=0):
+        # Calculate the camera forward vector based on pitch and yaw
+        cos_pitch = np.cos(np.radians(self.pitch + dpitch))
+        sin_pitch = np.sin(np.radians(self.pitch + dpitch))
+        cos_yaw = np.cos(np.radians(self.yaw + dyaw))
+        sin_yaw = np.sin(np.radians(self.yaw + dyaw))
+
+        forward = np.array([-cos_pitch * sin_yaw, sin_pitch, -cos_pitch * cos_yaw])
+        self.vec = forward
+
+
+
 class Camera3D:
     def __init__(self):
         self.view_matrix = np.eye(4)
@@ -2328,7 +2374,8 @@ class Camera3D:
         self.focus = np.zeros(3)
         self.pitch = 0.0
         self.yaw = 180.0
-        self.distance = 2000.0
+        self.fov = 60.0
+        self.distance = 1120.0
         self.clip_near = 1e-1
         self.clip_far = 1e4
         self.projection_width = 1
@@ -2341,9 +2388,10 @@ class Camera3D:
         self.update_projection_matrix()
 
     def cursor_delta_to_world_delta(self, cursor_delta):
+        self.yaw *= -1
         camera_right = np.cross([0, 1, 0], self.get_forward())
-        camera_forward = np.cross(camera_right, self.get_forward())
-        return cursor_delta[0] * camera_right + cursor_delta[1] * camera_forward
+        self.yaw *= -1
+        return cursor_delta[0] * camera_right - cursor_delta[1] * np.array([0, 1, 0])
 
     def get_forward(self):
         # Calculate the camera forward vector based on pitch and yaw
@@ -2389,7 +2437,7 @@ class Camera3D:
 
     def update_projection_matrix(self):
         aspect_ratio = self.projection_width / self.projection_height
-        self.projection_matrix = Camera3D.create_perspective_matrix(60.0, aspect_ratio, self.clip_near, self.clip_far)
+        self.projection_matrix = Camera3D.create_perspective_matrix(self.fov, aspect_ratio, self.clip_near, self.clip_far)
         self.update_view_projection_matrix()
 
     @staticmethod

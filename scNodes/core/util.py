@@ -1,4 +1,6 @@
 import os
+
+import scipy.ndimage
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,7 +9,9 @@ import glob
 from scNodes.core import config as cfg
 import time
 import mrcfile
-from scipy.ndimage import label
+from scipy.ndimage import label, center_of_mass
+from skimage.feature import peak_local_max
+from skimage.segmentation import watershed
 
 timer = 0.0
 
@@ -19,8 +23,10 @@ def coords_from_tsv(coords_path):
             coords.append((x, y, z))
     return coords
 
-def extract_particles(vol_path, coords_path, boxsize, two_dimensional=False):
+
+def extract_particles(vol_path, coords_path, boxsize, unbin=1, two_dimensional=False, normalize=True):
     coords = coords_from_tsv(coords_path)
+    coords = np.array(coords) * unbin
     data = mrcfile.mmap(vol_path, mode='r').data
     imgs = list()
 
@@ -31,7 +37,110 @@ def extract_particles(vol_path, coords_path, boxsize, two_dimensional=False):
             imgs.append(data[z, y - d:y + d, x - d:x + d])
         else:
             imgs.append(data[z - d:z + d, y - d:y + d, x - d:x + d])
+
+    if normalize:
+        for i in range(len(imgs)):
+            img = np.array(imgs[i]).astype(np.float32)
+            print(img.dtype)
+            img -= np.mean(img)
+            img /= np.std(img)
+            imgs[i] = img
     return imgs
+
+
+def get_maxima_3d_watershed(mrcpath, threshold=128, min_spacing=10.0, min_weight=None, save_txt=True, sort_by_weight=True):
+    print(f"\nLoading {mrcpath}")
+    data = mrcfile.read(mrcpath)
+
+    pixel_size = mrcfile.open(mrcpath, header_only=True).voxel_size.x / 10.0
+    print(f"Pixel size is {pixel_size:.2f} nm.")
+
+    print(f"Thresholding & computing distance map")
+    binary_vol = data > threshold
+    distance = scipy.ndimage.distance_transform_edt(binary_vol)
+    min_distance = int(min_spacing / pixel_size)
+
+    print("Finding local maxima")
+    local_max = peak_local_max(distance, indices=False, footprint=np.ones((min_distance, min_distance, min_distance)), labels=binary_vol)
+    markers, _ = label(local_max)
+
+    print("Watershedding")
+    labels = watershed(-distance, markers, mask=binary_vol)
+    Z, Y, X = np.nonzero(labels)
+    # parse blobs
+    blobs = dict()
+    for i in range(len(X)):
+        z = Z[i]
+        y = Y[i]
+        x = X[i]
+
+        l = labels[z, y, x]
+        if l not in blobs:
+            blobs[l] = Blob()
+
+        blobs[l].x.append(x)
+        blobs[l].y.append(y)
+        blobs[l].z.append(z)
+        blobs[l].v.append(data[z, y, x])
+
+    if min_weight:
+        to_pop = list()
+        for key in blobs:
+            weight = blobs[key].get_weight()
+            if weight < min_weight:
+                to_pop.append(key)
+        for key in to_pop:
+            blobs.pop(key)
+        print(f"Removing {len(to_pop)} blobs because their sum weight is too little. N = {len(blobs)} blobs remaining.")
+
+    blobs = list(blobs.values())
+    metrics = list()
+    print(f"Sorting blobs by {'summed prediction weight' if sort_by_weight else 'volume'}.")
+    for blob in blobs:
+        if sort_by_weight:
+            metrics.append(blob.get_weight())
+        else:
+            metrics.append(blob.get_volume())
+
+    indices = np.argsort(metrics)[::-1]
+    coordinates = list()
+    for i in indices:
+        coordinates.append(blobs[i].get_centroid())
+
+    # remove points that are too close to others.
+    remove = list()
+    i = 0
+    while i < len(coordinates):
+        for j in range(0, i):
+            if i in remove:
+                continue
+            p = np.array(coordinates[i])
+            q = np.array(coordinates[j])
+            d = np.sum((p - q) ** 2) ** 0.5 * pixel_size
+            if d < min_spacing:
+                remove.append(j)
+        i += 1
+
+    print(f"Removing N = {len(remove)} blobs due to proximity to better blobs.")
+    for i in reversed(remove):
+        coordinates.pop(i)
+
+    if not save_txt:
+        print(f"Found N = {len(coordinates)} blobs.")
+        return len(coordinates)
+
+    out_path = mrcpath[:-4] + "_coords.txt"
+    print(f"Converting the final N = {len(coordinates)} to integers and saving to file: {out_path}")
+    with open(out_path, 'w') as out_file:
+        for i in range(len(coordinates)):
+            x = int(coordinates[i][0])
+            y = int(coordinates[i][1])
+            z = int(coordinates[i][2])
+            out_file.write(f"{x}\t{y}\t{z}\n")
+
+    return len(coordinates)
+
+
 
 def get_maxima_3d(mrcpath, threshold=128, min_volume=None, min_weight=None, min_spacing=10.0, save_txt=True, sort_by_weight=True):
     """
@@ -43,7 +152,7 @@ def get_maxima_3d(mrcpath, threshold=128, min_volume=None, min_weight=None, min_
 
     print(f"\nLoading {mrcpath}")
     pixel_size = mrcfile.open(mrcpath, header_only=True).voxel_size.x / 10.0
-    print(f"Pixel size is {pixel_size} nm.")
+    print(f"Pixel size is {pixel_size:.2f} nm.")
 
     # threshold data
     print(f"Thresholding at {threshold}")

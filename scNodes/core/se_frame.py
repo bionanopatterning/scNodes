@@ -7,7 +7,7 @@ import scNodes.core.config as cfg
 import scNodes.core.settings as settings
 from scNodes.core.se_model import BackgroundProcess
 from skimage import measure
-from scipy.ndimage import label
+from scipy.ndimage import label, binary_dilation
 
 
 class SEFrame:
@@ -20,7 +20,6 @@ class SEFrame:
         self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')+"000") + uid_counter
         self.path = path
         self.title = os.path.splitext(os.path.basename(self.path))[0]
-        print(os.path.splitext(os.path.basename(self.path)))
         self.n_slices = 0
         self.current_slice = -1
         self.slice_changed = False
@@ -308,6 +307,7 @@ class Overlay:
     def size(self):
         return self.pxd.shape
 
+
 class Segmentation:
     idgen = count(0)
 
@@ -525,11 +525,8 @@ class SurfaceModel:
                        (0 / 255, 255 / 255, 0 / 255)]
     DEFAULT_COLOURS_IDX = 0
 
-    TILE_SIZE = 128
-
     def __init__(self, path, pixel_size):
         self.uid = next(SurfaceModel.idgen)
-        print(f"Creating new SurfaceModel object from data at path: {path}")
         self.path = path
         self.title = os.path.splitext(os.path.basename(self.path))[0]
         self.title = self.title[1+self.title.rfind("_"):]
@@ -540,6 +537,7 @@ class SurfaceModel:
         # check whether there are any models or features with the same name, if so, give it that color:
         self.set_colour()
         self.data = None
+        self.size_mb = os.path.getsize(self.path) * 1e-6
         self.binned_data = None
 
         self.blobs = dict()
@@ -547,6 +545,9 @@ class SurfaceModel:
         self.last_level = 0
         self.dust = 10
         self.bin = 2
+        header = mrcfile.open(self.path, header_only=True, mode='r').header
+        n_voxels = header.nx * header.ny * header.nz
+        self.bin = np.round(n_voxels**0.5 / 4e3)
         self.latest_bin = -1
         self.hide = False
         self.alpha = 1.0
@@ -594,7 +595,7 @@ class SurfaceModel:
         new_blobs = dict()
 
         # 1: scipy.ndimage.label
-        labels, N = label(data > self.level)
+        labels, N = label(data >= self.level)
         process.set_progress(0.1)
 
         # 2: convert nonzero blobs to SurfaceBlob objects.
@@ -616,7 +617,8 @@ class SurfaceModel:
             try:
                 new_blobs[i].compute_mesh()
             except Exception as e:
-                print(e)
+                #cfg.set_error(e, "Error marching cubes in SurfaceModelBlob.compute_mesh()")
+                pass
             process.set_progress(0.2 + 0.699 * ((i + 1) / len(new_blobs)))
 
         for i in self.blobs:
@@ -664,40 +666,43 @@ class SurfaceModelBlob:
         self.hide = False
 
     def compute_mesh(self):
-        # make a box that contains this voxel model
-        if False:
-            self.volume = len(self.x) * self.pixel_size ** 3
-            rx = (np.amin(self.x), np.amax(self.x))
-            ry = (np.amin(self.y), np.amax(self.y))
-            rz = (np.amin(self.z), np.amax(self.z))
-            print(self.x)
-            box = self.data[rz[0]:rz[1], ry[0]:ry[1], rx[0]:rx[1]].transpose(2, 1, 0)
-            vertices, faces, normals, _ = measure.marching_cubes(box, level=self.level)
-            vertices += np.array([rx[0], ry[0], rz[0]])
-        else:
-            self.volume = len(self.x) * self.pixel_size**3
-            self.x = np.array(self.x)
-            self.y = np.array(self.y)
-            self.z = np.array(self.z)
-            dx = np.amin(self.x)
-            dy = np.amin(self.y)
-            dz = np.amin(self.z)
+        self.volume = len(self.x) * self.pixel_size**3
+        self.x = np.array(self.x)
+        self.y = np.array(self.y)
+        self.z = np.array(self.z)
 
-            self.x -= dx
-            self.y -= dy
-            self.z -= dz
+        rx = (np.amin(self.x), np.amax(self.x)+2)
+        ry = (np.amin(self.y), np.amax(self.y)+2)
+        rz = (np.amin(self.z), np.amax(self.z)+2)
+        box = np.zeros((1 + rz[1]-rz[0] + 1, 1 + ry[1]-ry[0] + 1, 1 + rx[1]-rx[0] + 1))
+        box[1:-1, 1:-1, 1:-1] = self.data[rz[0]:rz[1], ry[0]:ry[1], rx[0]:rx[1]]
+        mask = np.zeros((1 + rz[1]-rz[0] + 1, 1 + ry[1]-ry[0] + 1, 1 + rx[1]-rx[0] + 1), dtype=bool)
 
-            box_size = (np.amax(self.x), np.amax(self.y), np.amax(self.z))
-            if len(np.nonzero(box_size)[0]) != 3:
-                return
-            box = np.zeros((box_size[0] + 3, box_size[1] + 3, box_size[2] + 3))
+        mx = self.x - rx[0] + 1
+        my = self.y - ry[0] + 1
+        mz = self.z - rz[0] + 1
+        for x, y, z in zip(mx, my, mz):
+            mask[z, y, x] = True
+        mask = binary_dilation(mask, iterations=2)
+        box *= mask
+        vertices, faces, normals, _ = measure.marching_cubes(box, level=self.level)
+        vertices += np.array([rz[0], ry[0], rx[0]])
+        vertices = vertices[:, [2, 1, 0]]
+        normals = normals[:, [2, 1, 0]]
+        #
+        # # make a box that contains this voxel model
+        # self.volume = len(self.x) * self.pixel_size ** 3
+        # rx = (np.amin(self.x), np.amax(self.x))
+        # ry = (np.amin(self.y), np.amax(self.y))
+        # rz = (np.amin(self.z), np.amax(self.z))
+        # box = np.zeros((2 + rx[1]-rx[0], 2 + ry[1]-ry[0], 2 + rz[1]-rz[0]))
+        # mask = np.zeros((2 + rx[1] - rx[0], 2 + ry[1] - ry[0], 2 + rz[1] - rz[0]), dtype=bool)
+        # box[1:-1, 1:-1, 1:-1] = self.data[rz[0]:rz[1], ry[0]:ry[1], rx[0]:rx[1]].transpose(2, 1, 0)
+        # mask[1 + self.x - rx[0], 1 + self.y - ry[0], 1 + self.z - rz[0]] = True
+        # mask = binary_dilation(mask, iterations=2)
+        # vertices, faces, normals, _ = measure.marching_cubes(box, level=self.level, mask=mask)
+        # vertices += np.array([rx[0], ry[0], rz[0]])
 
-            for i in range(len(self.x)):
-                box[self.x[i] + 1, self.y[i] + 1, self.z[i] + 1] = 1.0
-
-            vertices, faces, normals, _ = measure.marching_cubes(box, level=0.5)
-
-            vertices += np.array([dx, dy, dz]) - 1
         vertices *= self.pixel_size
         vertices -= np.array([self.origin[2], self.origin[1], self.origin[0]])
         self.vertices = np.hstack((vertices, normals)).flatten()

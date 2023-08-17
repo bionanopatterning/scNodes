@@ -22,42 +22,45 @@ out vec4 fragColour;
 
 uniform vec4 color;
 uniform vec3 lightDir;
+uniform vec3 viewDir;
 uniform int style;
+uniform float ambientStrength;
+uniform float lightStrength;
+uniform vec3 lightColour;
 
 void main()
 {
     if (style == 0) // Cartoon
     {
-        float F_AMBIENT = 0.8;
-        float F_DIFFUSE = 0.5;
+        float F_AMBIENT = ambientStrength;
         vec3 ambient = F_AMBIENT * color.rgb;
-        float d = dot(fnormal, lightDir);
-        if (d < 0.33)
+        vec3 diffuse = F_AMBIENT * color.rgb * max(0.0, dot(fnormal, lightDir));
+        float d = dot(fnormal, viewDir);
+        if (d < 0.03)
         {
-            ambient *= 0.0;
+            ambient *= -1.0;
         }
-        vec3 diffuse = max(d, 0.0) * F_DIFFUSE * vec3(1.0f, 1.0f, 1.0f);
         fragColour = vec4(ambient + diffuse, color.a);
     }
     else if (style == 1) // Phong
     {
-        float F_AMBIENT = 0.0;
-        float F_DIFFUSE = 1.0;
-        float F_SPECULAR = 0.0;
-        float F_EMISSIVE = 0.4;
+        float F_AMBIENT = ambientStrength;
+        float F_DIFFUSE = lightStrength;
+        float F_SPECULAR = 0.0f * lightStrength;
+        float F_EMISSIVE = ambientStrength * 0.2;
 
-        float SPEC_POWER = 8.0f;
+        float SPEC_POWER = 16.0f;
 
         vec3 ambient = F_AMBIENT * color.rgb;
 
-        vec3 diffuse = dot(normalize(fnormal), lightDir) * F_DIFFUSE * color.rgb;
+        vec3 diffuse = max(0.0, dot(normalize(fnormal), lightDir)) * F_DIFFUSE * lightColour * color.rgb;
 
         vec3 viewDir = normalize(gl_FragCoord.xyz);
         vec3 reflDir = reflect(-lightDir, fnormal);
         float specIntensity = pow(max(dot(viewDir, reflDir), 0.0), SPEC_POWER);
         vec3 specular = F_SPECULAR * specIntensity * vec3(1.0, 1.0, 1.0);
 
-        vec3 emissive = dot(normalize(fnormal), lightDir) * F_EMISSIVE * vec3(1.0, 1.0, 1.0);
+        vec3 emissive = dot(normalize(fnormal), viewDir) * F_EMISSIVE * color.rgb;
         fragColour = vec4(ambient + diffuse + specular + emissive, color.a);
     }
     else if (style == 2) // Flat
@@ -66,6 +69,6 @@ void main()
     }
     else if (style == 3)
     {
-        fragColour = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        fragColour = vec4(fnormal * 0.5f + 0.5f, 1.0f);
     }
 }

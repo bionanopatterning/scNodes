@@ -174,6 +174,7 @@ def start_log():
         os.path.join(root, logpath)
     with open(os.path.join(root, logpath), "w") as f:
         f.write(app_name+" version "+version+" "+license+"\n"+datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
+        # TODO: write python version and versions of at least these modules: tensorflow, protobuf. Also: OS, GPU.
 
 
 COLOUR_TEST_A = (1.0, 0.0, 1.0, 1.0)
