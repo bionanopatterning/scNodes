@@ -5,21 +5,29 @@ from scNodes.core.opengl_classes import *
 import datetime
 import scNodes.core.config as cfg
 import scNodes.core.settings as settings
+from scNodes.core.util import bin_2d_array, get_maxima_3d_watershed
 from scNodes.core.se_model import BackgroundProcess
 from skimage import measure
 from scipy.ndimage import label, binary_dilation
-
+from bs4 import BeautifulSoup as soup
+import tifffile
 
 class SEFrame:
     idgen = count(0)
 
     HISTOGRAM_BINS = 40
 
-    def __init__(self, path):
+    def __init__(self, path, SPA=False):
         uid_counter = next(SEFrame.idgen)
         self.uid = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')+"000") + uid_counter
+        self.spa = SPA  # when False, datasets are assumed 3D arrays (tomograms). When True, datasets are assumed to have a structure of folders within folders, with some bottom folder called 'Data' containing either .tiffs or .mrcs.
+        self.spa_paths = list()
+        self.spa_bin = 8
         self.path = path
-        self.title = os.path.splitext(os.path.basename(self.path))[0]
+        if not self.spa:
+            self.title = os.path.splitext(os.path.basename(self.path))[0]
+        else:
+            self.title = os.path.basename(path)
         self.n_slices = 0
         self.current_slice = -1
         self.slice_changed = False
@@ -29,8 +37,13 @@ class SEFrame:
         self.features = list()
         self.feature_counter = 0
         self.active_feature = None
-        self.height, self.width = mrcfile.mmap(self.path, mode="r", permissive=True).data.shape[1:3]
-        self.pixel_size = mrcfile.open(self.path, header_only=True, permissive=True).voxel_size.x / 10.0
+        if not self.spa:
+            self.height, self.width = mrcfile.mmap(self.path, mode="r", permissive=True).data.shape[1:3]
+            self.pixel_size = mrcfile.open(self.path, header_only=True, permissive=True).voxel_size.x / 10.0
+        else:
+            self.height, self.width = 0, 0
+            self.pixel_size = 0.1
+            self.init_spa_dataset()
         self.transform = Transform()
         self.clem_frame = None
         self.overlay = None
@@ -46,6 +59,7 @@ class SEFrame:
         self.autocontrast = True
         self.sample = True
         self.export = False
+        self.pick = False
         self.export_bottom = 0
         self.export_top = None
         self.hist_vals = list()
@@ -104,29 +118,73 @@ class SEFrame:
         indices = [0, 1, 1, 2, 2, 3, 3, 0]
         self.border_va.update(VertexBuffer(vertex_attributes), IndexBuffer(indices))
 
+    def init_spa_dataset(self):
+        # Find all root dirs in the selected dir, and list all .tiff or .mrc's in that folder.
+        for dirpath, dirnames, filenames in os.walk(self.path):
+            print(dirnames)
+            if not dirnames:
+                for file in filenames:
+                    if file.endswith('.tiff') or file.endswith('.tif'):
+                        self.spa_paths.append(os.path.join(dirpath, file))
+
+        # Get the pixel size by checking the xml of the i=0 spa_path.
+        xml_path = os.path.splitext(self.spa_paths[0])[0]+".xml"
+        with open(xml_path, 'r') as f:
+            data = f.read()
+            bsd = soup(data, "xml")
+            pixelsize = str(bsd.find('pixelSize').find('x').find('numericValue'))
+            self.pixel_size = float(pixelsize[pixelsize.find('>') + 1:pixelsize.rfind('<')])*1e10
+        self.n_slices = len(self.spa_paths)
+        self.height, self.width = SEFrame.read_spa_image(self.spa_paths[0]).shape
+        print(self.pixel_size, self.n_slices, self.width, self.height)
+
+    @staticmethod
+    def read_spa_image(path, bin=None):
+        ext = os.path.splitext(path)[-1]
+        if ext in ['.tiff', '.tif']:
+            with tifffile.TiffFile(path) as tif:
+                img = tif.asarray()
+                if bin:
+                    img = bin_2d_array(img, bin)
+                return img
+        elif ext in ['.mrc']:
+            with mrcfile.read(path) as mrc:
+                img = mrc.data
+                if bin:
+                    img = bin_2d_array(img, bin)
+                return img
+        else:
+            print(f"Could not read SPA image - reading images with extension {ext} is not implemented.")
+
     def set_slice(self, requested_slice, update_texture=True):
-        if not self.includes_map and not os.path.isfile(self.path):
-            print(f"Parent .mrc file at {self.path} can no longer be found!")
-            return
-        self.requires_histogram_update = True
         if requested_slice == self.current_slice:
             return
-        self.slice_changed = True
-        if self.includes_map:
-            mrc = self.map
+        if self.spa:
+            self.requires_histogram_update = True
+            self.slice_changed = True
+            requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
+            self.data = SEFrame.read_spa_image(self.spa_paths[requested_slice], self.spa_bin)
         else:
-            mrc = mrcfile.mmap(self.path, mode="r", permissive=True)
-        self.n_slices = mrc.data.shape[0]
-        if self.export_top is None:
-            self.export_top = self.n_slices
-        requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
-        self.data = mrc.data[requested_slice, :, :]
-        target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('float32'), np.dtype('int16'): np.dtype('float32')}
-        if self.data.dtype not in target_type_dict:
-            target_type = float
-        else:
-            target_type = target_type_dict[self.data.dtype]
-        self.data = np.array(self.data.astype(target_type, copy=False), dtype=float)
+            if not self.includes_map and not os.path.isfile(self.path):
+                print(f"Parent .mrc file at {self.path} can no longer be found!")
+                return
+            self.requires_histogram_update = True
+            self.slice_changed = True
+            if self.includes_map:
+                mrc = self.map
+            else:
+                mrc = mrcfile.mmap(self.path, mode="r", permissive=True)
+            self.n_slices = mrc.data.shape[0]
+            if self.export_top is None:
+                self.export_top = self.n_slices
+            requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
+            self.data = mrc.data[requested_slice, :, :]
+            target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('float32'), np.dtype('int16'): np.dtype('float32')}
+            if self.data.dtype not in target_type_dict:
+                target_type = float
+            else:
+                target_type = target_type_dict[self.data.dtype]
+            self.data = np.array(self.data.astype(target_type, copy=False), dtype=float)
         self.current_slice = requested_slice
         for s in self.features:
             s.set_slice(self.current_slice)
@@ -136,23 +194,27 @@ class SEFrame:
     def get_slice(self, requested_slice=None, as_float=True):
         if requested_slice is None:
             requested_slice = self.current_slice
-        if self.includes_map:
-            mrc = self.map
-        else:
-            mrc = mrcfile.mmap(self.path, mode="r", permissive=True)
-        self.n_slices = mrc.data.shape[0]
-        if self.export_top is None:
-            self.export_top = self.n_slices
         requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
-        out_data = mrc.data[requested_slice, :, :]
-        if as_float:
-            target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'), np.dtype('int16'): np.dtype('float32')}
-            if out_data.dtype not in target_type_dict:
-                target_type = float
+        if self.spa:
+            image_path = self.spa_paths[requested_slice]
+            return SEFrame.read_spa_image(image_path, self.spa_bin)
+        else:
+            if self.includes_map:
+                mrc = self.map
             else:
-                target_type = target_type_dict[out_data.dtype]
-            out_data = np.array(out_data.astype(target_type, copy=False), dtype=float)
-        return out_data
+                mrc = mrcfile.mmap(self.path, mode="r", permissive=True)
+            self.n_slices = mrc.data.shape[0]
+            if self.export_top is None:
+                self.export_top = self.n_slices
+            out_data = mrc.data[requested_slice, :, :]
+            if as_float:
+                target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'), np.dtype('int16'): np.dtype('float32')}
+                if out_data.dtype not in target_type_dict:
+                    target_type = float
+                else:
+                    target_type = target_type_dict[out_data.dtype]
+                out_data = np.array(out_data.astype(target_type, copy=False), dtype=float)
+            return out_data
 
     def get_roi_indices(self):
         """Returns a tuple of tuples (x_indices, y_indices), where x_indices is (x_start, x_stop)"""
@@ -220,6 +282,9 @@ class SEFrame:
         self.overlay = Overlay(pxd, parent_clem_frame, self, overlay_update_function)
 
     def include_map(self):
+        if self.spa:
+            print("Including maps not possible for SPA type datasets.")
+            return
         self.includes_map = True
         self.map = mrcfile.open(self.path, permissive=True)
 
@@ -566,6 +631,8 @@ class SurfaceModel:
         self.process = None
         self.pixel_size = pixel_size
 
+        self.coordinates = None
+
     def set_colour(self):
         if self.title in SurfaceModel.COLOURS:
             self.colour = SurfaceModel.COLOURS[self.title]
@@ -654,6 +721,12 @@ class SurfaceModel:
         for i in self.blobs:
             self.blobs[i].update_if_necessary()
 
+    def find_coordinates(self, threshold, min_weight, min_spacing):
+        if self.data is None:
+            self.data = mrcfile.read(self.path)
+        self.coordinates = get_maxima_3d_watershed(array=self.data, array_pixel_size=self.pixel_size, threshold=threshold, min_weight=min_weight, min_spacing=min_spacing, return_coords=True)
+        print(self.coordinates)
+
     def __eq__(self, other):
         if isinstance(other, type(self)):
             return self.uid == other.uid
@@ -701,19 +774,6 @@ class SurfaceModelBlob:
         vertices += np.array([rz[0], ry[0], rx[0]])
         vertices = vertices[:, [2, 1, 0]]
         normals = normals[:, [2, 1, 0]]
-        #
-        # # make a box that contains this voxel model
-        # self.volume = len(self.x) * self.pixel_size ** 3
-        # rx = (np.amin(self.x), np.amax(self.x))
-        # ry = (np.amin(self.y), np.amax(self.y))
-        # rz = (np.amin(self.z), np.amax(self.z))
-        # box = np.zeros((2 + rx[1]-rx[0], 2 + ry[1]-ry[0], 2 + rz[1]-rz[0]))
-        # mask = np.zeros((2 + rx[1] - rx[0], 2 + ry[1] - ry[0], 2 + rz[1] - rz[0]), dtype=bool)
-        # box[1:-1, 1:-1, 1:-1] = self.data[rz[0]:rz[1], ry[0]:ry[1], rx[0]:rx[1]].transpose(2, 1, 0)
-        # mask[1 + self.x - rx[0], 1 + self.y - ry[0], 1 + self.z - rz[0]] = True
-        # mask = binary_dilation(mask, iterations=2)
-        # vertices, faces, normals, _ = measure.marching_cubes(box, level=self.level, mask=mask)
-        # vertices += np.array([rx[0], ry[0], rz[0]])
 
         vertices *= self.pixel_size
         vertices -= np.array([self.origin[2], self.origin[1], self.origin[0]])

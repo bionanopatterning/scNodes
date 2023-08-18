@@ -34,7 +34,7 @@ void main()
     {
         float F_AMBIENT = ambientStrength;
         vec3 ambient = F_AMBIENT * color.rgb;
-        vec3 diffuse = F_AMBIENT * color.rgb * max(0.0, dot(fnormal, lightDir));
+        vec3 diffuse = F_AMBIENT * color.rgb * max(0.0, dot(fnormal, viewDir));
         float d = dot(fnormal, viewDir);
         if (d < 0.03)
         {
@@ -46,10 +46,10 @@ void main()
     {
         float F_AMBIENT = ambientStrength;
         float F_DIFFUSE = lightStrength;
-        float F_SPECULAR = 0.0f * lightStrength;
-        float F_EMISSIVE = ambientStrength * 0.2;
+        float F_SPECULAR = 0.5f * lightStrength;
+        float F_EMISSIVE = ambientStrength * 0.3f;
 
-        float SPEC_POWER = 16.0f;
+        float SPEC_POWER = 2.0f;
 
         vec3 ambient = F_AMBIENT * color.rgb;
 
