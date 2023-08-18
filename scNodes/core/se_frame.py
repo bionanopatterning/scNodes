@@ -9,7 +9,6 @@ from scNodes.core.util import bin_2d_array, get_maxima_3d_watershed
 from scNodes.core.se_model import BackgroundProcess
 from skimage import measure
 from scipy.ndimage import label, binary_dilation
-from bs4 import BeautifulSoup as soup
 import tifffile
 
 class SEFrame:

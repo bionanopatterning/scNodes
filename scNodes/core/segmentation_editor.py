@@ -426,6 +426,7 @@ class SegmentationEditor:
                         if imgui.menu_item("Relink dataset")[0]:
                             selected_file = filedialog.askopenfilename(filetypes=[("mrcfile", ".mrc")])
                             s.path = selected_file
+                            s.title = os.path.splitext(os.path.basename(s.path))[0]
                         if imgui.menu_item("Copy path to .mrc")[0]:
                             pyperclip.copy(s.path)
                         if s.overlay is not None and imgui.menu_item("Update overlay")[0]:
