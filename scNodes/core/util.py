@@ -40,7 +40,6 @@ def extract_particles(vol_path, coords_path, boxsize, unbin=1, two_dimensional=F
     if normalize:
         for i in range(len(imgs)):
             img = np.array(imgs[i]).astype(np.float32)
-            print(img.dtype)
             img -= np.mean(img)
             img /= np.std(img)
             imgs[i] = img

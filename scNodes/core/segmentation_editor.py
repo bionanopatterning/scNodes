@@ -50,7 +50,7 @@ class SegmentationEditor:
         BLEND_MODES_LIST = list(BLEND_MODES.keys())
         BLEND_MODES_LIST_3D = list(BLEND_MODES_3D.keys())
 
-        pick_tab_index_datasets_segs = False
+        pick_tab_index_datasets_segs = False  # Set to True to trigger the Pick tab to re-load all segmentation .mrc's belonging to the currently active frame.
         VIEW_3D_PIVOT_SPEED = 0.3
         VIEW_3D_MOVE_SPEED = 100.0
         PICKING_FRAME_ALPHA = 1.0
@@ -70,7 +70,12 @@ class SegmentationEditor:
         DATASETS_EXPORT_PANEL_EXPANDED = False
         DATASETS_EXPORT_PANEL_EXPANDED_HEIGHT = 300
         DATASETS_EXPORT_SELECT_ALL = False
-        
+
+        EXTRACT_THRESHOLD = 128
+        EXTRACT_MIN_WEIGHT = 1000
+        EXTRACT_MIN_SPACING = 10.0  # Angstrom
+        EXTRACT_SELECTED_FEATURE_TITLE = ""
+
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
         self.window.clear_color = cfg.COLOUR_WINDOW_BACKGROUND
@@ -1194,7 +1199,6 @@ class SegmentationEditor:
                     self.pick_box_va.update(VertexBuffer(vertices), IndexBuffer(line_indices))
                     self.pick_box_quad_va.update(VertexBuffer(vertices), IndexBuffer(quad_indices))
 
-
                 if SegmentationEditor.pick_tab_index_datasets_segs:
                     update_picking_tab_for_new_active_frame()
 
@@ -1250,8 +1254,28 @@ class SegmentationEditor:
                 imgui.pop_style_var(3)
                 imgui.pop_style_color(1)
 
+            if imgui.collapsing_header("Extract coordinates", None)[0]:
+                imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
+                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
+                imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+                imgui.text("Feature")
+                imgui.begin_child("extract_feature", 0.0, 120, True)
+                cw = imgui.get_content_region_available_width()
+                available_features = [s.title for s in cfg.se_surface_models]
+                selected_feature_idx = 0 if SegmentationEditor.EXTRACT_SELECTED_FEATURE_TITLE not in available_features else available_features.index(
+                    SegmentationEditor.EXTRACT_SELECTED_FEATURE_TITLE)
+                selected_surface_model = cfg.se_surface_models[selected_feature_idx]
 
-            if imgui.collapsing_header("Settings", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+
+                imgui.push_item_width(cw)
+                _, selected_feature_idx = imgui.combo("##sel_ext_ftr", selected_feature_idx, available_features)
+                _, SegmentationEditor.EXTRACT_THRESHOLD = imgui.slider_int("##ext_thr", SegmentationEditor.EXTRACT_THRESHOLD, 0, 255, format=f"threshold = {SegmentationEditor.EXTRACT_THRESHOLD}")
+                _, SegmentationEditor.EXTRACT_MIN_WEIGHT = imgui.slider_int("##ext_mw", SegmentationEditor.EXTRACT_MIN_WEIGHT, 10, 10000, format=f"min weight = {SegmentationEditor.EXTRACT_MIN_WEIGHT}", flags=imgui.SLIDER_FLAGS_LOGARITHMIC)
+                _, SegmentationEditor.EXTRACT_MIN_SPACING = imgui.slider_int("##ext_ms", SegmentationEditor.EXTRACT_MIN_SPACING, 10, 300, format=f"min spacing = {SegmentationEditor.EXTRACT_MIN_SPACING} A")
+                imgui.end_child()
+
+
+            if imgui.collapsing_header("Graphics settings", None)[0]:
                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
                 cw = imgui.get_content_region_available_width()
 
@@ -1272,7 +1296,7 @@ class SegmentationEditor:
                 if not self.pick_same_folder:
                     imgui.text("Segmentation (.mrc) folder:")
                     _, self.seg_folder = widgets.select_directory('browse', self.seg_folder)
-                _, self.pick_same_folder = imgui.checkbox("shared folder       ", self.pick_same_folder)
+                _, self.pick_same_folder = imgui.checkbox("shared folder      ", self.pick_same_folder)
                 imgui.same_line()
                 _, SegmentationEditor.RENDER_BOX = imgui.checkbox("render bounding box", SegmentationEditor.RENDER_BOX)
 

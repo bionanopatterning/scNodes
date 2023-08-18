@@ -1,45 +1,36 @@
 from util import *
 
-# # Annotation to coordinates:
-# paths = glob.glob("U:/mgflast/14. scSegmentation/IgG3NHS_process_all/bin8_SIRT_ali_IgG3NHS-*_C1_complex.mrc")
-#
-# n = 0
-# for path in paths:
-# 	n += get_maxima_3d(path, threshold=50, min_weight=7000, min_spacing=10, save_txt=True)
-# 	print(f"Tally: {n}")
-#
-# print(f"\nFound {n} particles in total, in {len(paths)} volumes.")
+# Annotation to coordinates:
+paths = glob.glob("U:/mgflast/14. scSegmentation/Fig4/bin8_SIRT_ali_IgG3_049_corrected_rec_Antibody_platforms.mrc")
+EXTRACT_COORDINATES = False
+EXTRACT_BOXES = True
+if EXTRACT_COORDINATES:
+    n = 0
+    i = 0
+    I = len(paths)
+    for path in paths:
+        i += 1
+        n += get_maxima_3d(path, threshold=40, min_volume=1000, min_spacing=20, save_txt=True)
+        print(f"Tally: {n}  (tomo {i}/{I})")
+
+    print(f"\nFound {n} particles in total, in {len(paths)} volumes.")
 
 
+if EXTRACT_BOXES:
+    paths = glob.glob("Z:/mgflast/230812_Esther/ali/bin2_WBP/*.mrc")
+    imgs = list()
+    for p in paths:
+        v = p
+        c = p.replace("2_WBP.mrc", "8_SIRT_Ribosome_coords.txt")
+        if os.path.exists(c):
+            imgs += extract_particles(v, c, 128, unbin=4, normalize=False)
 
-#
-paths = glob.glob("U:/mgflast/14. scSegmentation/IgG3NHS_process_all/bin8_SIRT_ali_IgG3NHS-*_rec.mrc")
-imgs = list()
-for p in paths:
-    v = p
-    c = p.replace(".mrc", "_C1_complex_coords.txt")
-    if os.path.exists(c):
-        imgs += extract_particles(v, c, 64)
+    path = "Z:/mgflast/230816_Ribosome_reconstruction/boxes_bin2_WBP/"
+    for i in range(len(imgs)):
+        print(f"Saving box {i+1}/{len(imgs)}")
+        with mrcfile.new(path + f"box_{i}.mrc", overwrite=True) as mrc:
+            norm_img = imgs[i] - np.mean(imgs[i])
+            norm_img /= np.std(imgs[i])
+            mrc.set_data(imgs[i])
 
-path = "U:/mgflast/14. scSegmentation/IgG3NHS_process_all/boxes/"
-for i in range(len(imgs)):
-    with mrcfile.new(path + f"box_{i}.mrc", overwrite=True) as mrc:
-        mrc.set_data(imgs[i])
 
-# # Moving some files on Eta
-#src = "Z:\\mgflast\\230808_Fig5"
-#
-# import os
-# import shutil
-#
-# for i in range(11, 50):
-#     #os.rename(src+f"\\tomo_{i}\\tomo_{i}.tlt", src+f"\\tomo_{i}\\tomo_{i}.rawtlt")
-#     f = glob.glob(src+f"\\tomo_{i}\\tomo_{i}_rec.mrc")
-#     for _f in f:
-#         if not os.path.is_file(f"W:/mgflast/14. scSegmentation/Fig5/EMPIAR-10349/tomo_{i}_rec.mrc"):
-#             shutil.copy(_f, f"W:/mgflast/14. scSegmentation/Fig5/EMPIAR-10349/tomo_{i}_rec.mrc")
-#     # tgt = src+"\\"+name
-#     # f = glob.glob(src+"\\"+name+".*")
-#     # for _f in f:
-#     #     basename = os.path.basename(_f)
-#     #     os.rename(_f, src+"\\"+name+"\\"+basename)
