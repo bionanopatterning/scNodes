@@ -4,8 +4,7 @@ import dill as pickle
 import os
 from datetime import datetime
 
-# TODO: add particle picking based on segmentation results
-# TODO: save model groups & interactions
+# TODO: add File -> Recent; drop down menu
 
 frozen = False
 root = ""
