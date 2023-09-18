@@ -302,9 +302,11 @@ class ParticleFittingNode(Node):
                 new_maxima_x = frame.particles["x [nm]"]
             if "y [nm]" in frame.particles:
                 new_maxima_y = frame.particles["y [nm]"]
-            for _x, _y in zip(new_maxima_x, new_maxima_y):
-                new_maxima.append([_y, _x])
-            frame.maxima = new_maxima
+            frame.maxima = list()
+            if not isinstance(new_maxima_x, float):
+                for _x, _y in zip(new_maxima_x, new_maxima_y):
+                    new_maxima.append([_y, _x])
+                frame.maxima = new_maxima
             return frame
 
     def get_particle_data_impl(self):

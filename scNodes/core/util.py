@@ -64,7 +64,7 @@ def get_maxima_3d_watershed(mrcpath="", threshold=128, min_spacing=10.0, min_wei
     if process:
         process.set_progress(0.3)
     print("Finding local maxima")
-    local_max = peak_local_max(distance, indices=False, footprint=np.ones((min_distance, min_distance, min_distance)), labels=binary_vol)
+    local_max = peak_local_max(distance, footprint=np.ones((min_distance, min_distance, min_distance)), labels=binary_vol)
     markers, _ = label(local_max)
     if process:
         process.set_progress(0.4)

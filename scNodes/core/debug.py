@@ -1,16 +1,16 @@
 from util import *
 
 # Annotation to coordinates:
-paths = glob.glob("U:/mgflast/14. scSegmentation/Fig4/bin8_SIRT_ali_IgG3_049_corrected_rec_Antibody_platforms.mrc")
-EXTRACT_COORDINATES = False
-EXTRACT_BOXES = True
+paths = glob.glob("Z:/mgflast/230812_Esther/ali/bin8_SIRT/*_Ribosome.mrc")
+EXTRACT_COORDINATES = True
+EXTRACT_BOXES = False
 if EXTRACT_COORDINATES:
     n = 0
     i = 0
     I = len(paths)
     for path in paths:
         i += 1
-        n += get_maxima_3d(path, threshold=40, min_volume=1000, min_spacing=20, save_txt=True)
+        n += get_maxima_3d_watershed(path, threshold=200, min_weight=5000, min_spacing=20, save_txt=True)
         print(f"Tally: {n}  (tomo {i}/{I})")
 
     print(f"\nFound {n} particles in total, in {len(paths)} volumes.")

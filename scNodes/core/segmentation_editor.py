@@ -1588,7 +1588,7 @@ class SegmentationEditor:
                             SegmentationEditor.renderer.add_square((box_x_pos, box_y_pos), box_size, clr)
             if self.active_tab != "Pick":
                 overlay_blend_mode = SegmentationEditor.BLEND_MODES[SegmentationEditor.BLEND_MODES_LIST[SegmentationEditor.OVERLAY_BLEND_MODE]]
-                SegmentationEditor.renderer.render_overlay(cfg.se_active_frame, self.camera, overlay_blend_mode, SegmentationEditor.OVERLAY_INTENSITY)
+                SegmentationEditor.renderer.render_overlay(cfg.se_active_frame, self.camera, overlay_blend_mode, SegmentationEditor.OVERLAY_ALPHA)
             else:
                 if SegmentationEditor.RENDER_BOX:
                     # Render 3D box around the volume
