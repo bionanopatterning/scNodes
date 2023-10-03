@@ -1145,7 +1145,7 @@ class SegmentationEditor:
 
                 imgui.text("Export settings")
                 imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
-                imgui.begin_child("export_settings", 0.0, 72.0, True)
+                imgui.begin_child("export_settings", 0.0, 58.0, True)
                 _, self.export_dir = widgets.select_directory("browse", self.export_dir)
                 imgui.set_next_item_width(imgui.get_content_region_available_width())
                 _, self.export_limit_range = imgui.checkbox(" limit range ", self.export_limit_range)
@@ -1197,7 +1197,8 @@ class SegmentationEditor:
                         files = glob.glob(os.path.join(self.seg_folder, se_frame.title + "_*.mrc"))
                         print(f"Filename template: {self.seg_folder}, {se_frame.title}, _*.mrc")
                     for f in sorted(files):
-                        cfg.se_surface_models.append(SurfaceModel(f, se_frame.pixel_size))
+                        if not 'overlay' in f:
+                            cfg.se_surface_models.append(SurfaceModel(f, se_frame.pixel_size))
 
                     # set the size of the volume spanning box
                     w, h, d = se_frame.width / 2, se_frame.height / 2, se_frame.n_slices / 2
@@ -1613,8 +1614,7 @@ class SegmentationEditor:
                 if cfg.se_active_frame.overlay is not None:
                     if SegmentationEditor.VIEW_REQUIRES_UPDATE:
                         self.renderer.ray_trace_overlay((self.window.width, self.window.height), cfg.se_active_frame, self.camera3d, self.pick_box_quad_va)
-                    else:
-                        self.renderer.render_overlay_3d(SegmentationEditor.OVERLAY_ALPHA, SegmentationEditor.OVERLAY_INTENSITY)
+                    self.renderer.render_overlay_3d(SegmentationEditor.OVERLAY_ALPHA, SegmentationEditor.OVERLAY_INTENSITY)
         # MAIN WINDOW
         imgui.set_next_window_position(0, 17, imgui.ONCE)
         imgui.set_next_window_size(SegmentationEditor.MAIN_WINDOW_WIDTH, self.window.height - 17)
@@ -1905,8 +1905,11 @@ class SegmentationEditor:
         new_se_frame = SEFrame(clemframe.path)
         new_se_frame.clem_frame = clemframe
         new_se_frame.pixel_size = clemframe.pixel_size
+        new_se_frame.autocontrast = False
         new_se_frame.title = clemframe.title
+        new_se_frame.contrast_lims = clemframe.contrast_lims
         new_se_frame.set_slice(clemframe.current_slice)
+
         cfg.se_frames.append(new_se_frame)
         SegmentationEditor.set_active_dataset(cfg.se_frames[-1])
 
@@ -2400,6 +2403,7 @@ class Renderer:
         box_va.unbind()
         self.ray_trace_fbo_b.unbind((0, 0, window_size[0], window_size[1]))
         glDepthFunc(GL_LESS)
+        glClearDepth(1.0)
         # 2 - ray tracing
         self.ray_trace_shader.bind()
         self.ray_trace_shader.uniformmat4("ipMat", camera.ipmat)
@@ -2422,9 +2426,7 @@ class Renderer:
         self.ray_trace_fbo_a.texture.bind_image_slot(3, 1)  # fbo texture, to write to
         glDispatchCompute(int(window_size[0] // 16) + 1, int(window_size[1] // 16) + 1, 1)
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT)
-        glDisable(GL_DEPTH_TEST)
         SegmentationEditor.VIEW_REQUIRES_UPDATE = False
-        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
     def render_overlay_3d(self, alpha, intensity):
         # add overlay image to whatever has been rendered before.
@@ -2764,11 +2766,11 @@ class QueuedExport:
             print(f"QueuedExport - loading dataset {self.dataset.path}")
             rx, ry = self.dataset.get_roi_indices()
             mrcd = np.array(mrcfile.open(self.dataset.path, mode='r', permissive=True).data[:, :, :])
-            target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('float32'), np.dtype('int16'): np.dtype('float32')}
+            target_type_dict = {np.float32: np.dtype('float32'), float: np.dtype('float32'), np.dtype('int8'): np.dtype('float32'), np.dtype('int16'): np.dtype('float32')}
             if mrcd.dtype not in target_type_dict:
                 mrcd = mrcd.astype(float, copy=False)
             else:
-                mrcd = np.array(mrcd.astype(target_type_dict[mrcd.dtype], copy=False), dtype=float)
+                mrcd = np.array(mrcd.astype(target_type_dict[mrcd.dtype], copy=False), dtype=np.dtype('float32'))
             self.check_stop_request()
             n_slices = mrcd.shape[0]
             n_slices_total = (self.dataset.export_top - self.dataset.export_bottom) * max(1, len(self.models))

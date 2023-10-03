@@ -209,10 +209,11 @@ class CLEMFrame:
             frame.transform.translation[0] += translation[0]
             frame.transform.translation[1] += translation[1]
 
-    def pivoted_rotation(self, pivot, angle):
-        if self.locked:
+    def pivoted_rotation(self, pivot, angle, ignore_children=False, ignore_lock=False):
+        if self.locked and not ignore_lock:
             return
-        for frame in self.list_all_children(include_self=True):
+        affected_frames = [self] if ignore_children else self.list_all_children(include_self=True)
+        for frame in affected_frames:
             frame.transform.rotation += angle
             p = np.matrix([frame.transform.translation[0] - pivot[0], frame.transform.translation[1] - pivot[1]]).T
             rotation_mat = np.identity(2)

@@ -67,7 +67,7 @@ void main()
     }
     else
     {
-        vec2 uv = pos.xy / imgSize * 0.5f + 0.5f;
+        vec2 uv = pos.xy / imgSize * 1.0f + 0.5f;
         vec4 rayValue = vec4(0.0f);
         bool rayInVolume = true;
         int MAX_ITER = 1000;
@@ -75,7 +75,7 @@ void main()
         while (rayInVolume && i < MAX_ITER)
         {
             pos += dir;
-            uv = pos.xy / imgSize * 0.5f + 0.5f;
+            uv = pos.xy / imgSize * 1.0f + 0.5f;
             i += 1;
             rayInVolume = isRayInVolume(pos);
             if (style == 0)

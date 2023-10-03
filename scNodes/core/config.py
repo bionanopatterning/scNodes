@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 
 # TODO: add File -> Recent; drop down menu
+# TODO: when generating a binned SE_frame, if overlay, bin it as well.
 
 frozen = False
 root = ""

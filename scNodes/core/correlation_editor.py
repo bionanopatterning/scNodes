@@ -958,6 +958,12 @@ class CorrelationEditor:
 
     @staticmethod
     def render_frame_overlay_to_image(frame):
+        ## Make the 'frame' the parent of all other frames, and set its rotation to 0 degrees (to avoid having to rotate the camera).
+        angle = frame.transform.rotation
+        pivot = frame.pivot_point
+        for f in cfg.ce_frames:
+            f.pivoted_rotation(pivot, -angle, ignore_children=True, ignore_lock=True)
+            f.update_model_matrix()
         height, width = frame.height, frame.width
         # Make a texture with the same size as frame, then make a camera to render in an FBO of that size.
         fbo = FrameBuffer(width, height, texture_format="rgba32f")
@@ -968,8 +974,8 @@ class CorrelationEditor:
         camera.set_projection_matrix(width, height)
         camera.zoom = CorrelationEditor.DEFAULT_WORLD_PIXEL_SIZE / frame.pixel_size * CorrelationEditor.DEFAULT_ZOOM
         camera.position = [-frame.transform.translation[0], -frame.transform.translation[1], 0.0]
-        camera.rotation = -frame.transform.rotation
-        camera.set_pivoted_rotation_matrix([frame.transform.translation[0], frame.transform.translation[1]])  ## TODO: make this work for rotated quads
+        camera.rotation = 0.0
+        camera.set_pivoted_rotation_matrix([frame.transform.translation[0], frame.transform.translation[1]])
 
         found_starting_frame = False
         for f in reversed(cfg.ce_frames):
@@ -990,6 +996,9 @@ class CorrelationEditor:
             pxd = np.flip(pxd, axis=1)
         if not frame.flip_v:
             pxd = np.flip(pxd, axis=0)
+        for f in cfg.ce_frames:
+            f.pivoted_rotation(pivot, angle, ignore_children=True, ignore_lock=True)
+            f.update_model_matrix()
         return pxd
 
     def export_image(self):
