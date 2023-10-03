@@ -151,6 +151,22 @@ class SegmentationEditor:
             self.icon_stop.update(pxd_icon_stop)
             self.icon_stop.set_linear_interpolation()
 
+            self.icon_obj = Texture(format="rgba32f")
+            self.icon_blender = Texture(format="rgba32f")
+            self.icon_chimerax = Texture(format="rgba32f")
+            pxd = np.asarray(Image.open(os.path.join(icon_dir, "icon_obj_256.png"))).astype(np.float32) / 255.0
+            print(pxd.shape)
+            self.icon_obj.update(pxd)
+            pxd = np.asarray(Image.open(os.path.join(icon_dir, "icon_blender_256.png"))).astype(np.float32) / 255.0
+            print(pxd.shape)
+            self.icon_blender.update(pxd)
+            pxd = np.asarray(Image.open(os.path.join(icon_dir, "icon_chimerax_256.png"))).astype(np.float32) / 255.0
+            print(pxd.shape)
+            self.icon_chimerax.update(pxd)
+            self.icon_obj.set_linear_interpolation()
+            self.icon_chimerax.set_linear_interpolation()
+            self.icon_blender.set_linear_interpolation()
+
     @staticmethod
     def set_active_dataset(dataset):
         SegmentationEditor.pick_tab_index_datasets_segs = True
@@ -1397,6 +1413,29 @@ class SegmentationEditor:
                     self.renderer.recompile_shaders()
 
                 imgui.pop_style_var(1)
+
+            if imgui.collapsing_header("Export 3D scene", None)[0]:
+                cw = imgui.get_content_region_available_width()
+                spacing = 10
+                s = (cw - 2 * spacing * 2 - 3) / 3
+                imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 100)
+                imgui.push_style_color(imgui.COLOR_BUTTON_HOVERED, *cfg.COLOUR_FRAME_DARK)
+                imgui.push_style_color(imgui.COLOR_BORDER, *cfg.COLOUR_FRAME_DARK)
+                imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
+                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_FRAME_EXTRA_DARK)
+                if imgui.image_button(self.icon_obj.renderer_id, s, s):
+                    pass
+                imgui.same_line(spacing=spacing)
+                if imgui.image_button(self.icon_blender.renderer_id, s, s):
+                    pass
+                imgui.same_line(spacing=spacing)
+                if imgui.image_button(self.icon_chimerax.renderer_id, s, s):
+                    pass
+                imgui.pop_style_var(2)
+                imgui.pop_style_color(3)
+                # Open in Blender
+                # Save to .obj
+                # Open in ChimeraX
 
 
         def menu_bar():
