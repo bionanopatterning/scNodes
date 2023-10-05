@@ -9,7 +9,7 @@ from scNodes.core.se_frame import *
 import scNodes.core.widgets as widgets
 from scNodes.core.util import clamp, bin_mrc, get_maxima_3d_watershed
 import pyperclip
-
+import os
 
 ## TODO: U2OS tomo dataset: int8 of uint8? clipping als naar float
 
@@ -1941,6 +1941,9 @@ class SegmentationEditor:
 
     @staticmethod
     def seframe_from_clemframe(clemframe):
+        if not os.path.exists(clemframe.path):
+            cfg.set_error(Exception(f"No file exists at path {clemframe.path}"), "Could not convert CLEMFrame to SEFrame - see below.")
+            return
         new_se_frame = SEFrame(clemframe.path)
         new_se_frame.clem_frame = clemframe
         new_se_frame.pixel_size = clemframe.pixel_size

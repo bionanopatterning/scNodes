@@ -1151,35 +1151,35 @@ class CorrelationEditor:
             duplicate = f.duplicate()
             duplicate.setup_opengl_objects()
             cfg.ce_frames.insert(0, duplicate)
-        if imgui.begin_menu("Flip"):
-            if imgui.menu_item("Horizontally")[0]:
-                f.flip(include_children=True)
-            if imgui.menu_item("Vertically")[0]:
-                f.flip(horizontally=False, include_children=True)
-            if imgui.menu_item("Horizontally (- children)")[0]:
-                f.flip()
-            if imgui.menu_item("Vertically (- children)")[0]:
-                f.flip(horizontally=False)
-            imgui.end_menu()
-        if imgui.begin_menu("Render binned"):
-            if imgui.menu_item("None", selected=f.binning == 1)[0]:
-                f.binning = 1
-            if imgui.menu_item("1.5 x", selected=f.binning == 1.5)[0]:
-                f.binning = 1.5
-            elif imgui.menu_item("2 x", selected=f.binning == 2)[0]:
-                f.binning = 2
-            elif imgui.menu_item("3 x", selected=f.binning == 3)[0]:
-                f.binning = 3
-            elif imgui.menu_item("4 x", selected=f.binning == 4)[0]:
-                f.binning = 4
-            elif imgui.menu_item("8 x", selected=f.binning == 8)[0]:
-                f.binning = 8
-            imgui.end_menu()
         if f.has_slices:
             if imgui.menu_item("add to Segmentation Editor")[0]:
                 cfg.segmentation_editor.seframe_from_clemframe(f)
                 overlay = CorrelationEditor.render_frame_overlay_to_image(f)
                 cfg.se_frames[-1].set_overlay(overlay, f, CorrelationEditor.render_frame_overlay_to_image)
+        if imgui.begin_menu("Flip"):
+            if imgui.menu_item("Horizontally")[0]:
+                f.flip(include_children=False)
+            if imgui.menu_item("Vertically")[0]:
+                f.flip(horizontally=False, include_children=False)
+            if imgui.menu_item("Horizontally (+ children)")[0]:
+                f.flip(include_children=True)
+            if imgui.menu_item("Vertically (+ children)")[0]:
+                f.flip(horizontally=False, include_children=True)
+            imgui.end_menu()
+        # if imgui.begin_menu("Render binned"):
+        #     if imgui.menu_item("None", selected=f.binning == 1)[0]:
+        #         f.binning = 1
+        #     if imgui.menu_item("1.5 x", selected=f.binning == 1.5)[0]:
+        #         f.binning = 1.5
+        #     elif imgui.menu_item("2 x", selected=f.binning == 2)[0]:
+        #         f.binning = 2
+        #     elif imgui.menu_item("3 x", selected=f.binning == 3)[0]:
+        #         f.binning = 3
+        #     elif imgui.menu_item("4 x", selected=f.binning == 4)[0]:
+        #         f.binning = 4
+        #     elif imgui.menu_item("8 x", selected=f.binning == 8)[0]:
+        #         f.binning = 8
+        #     imgui.end_menu()
 
 
     def objects_info_window(self):

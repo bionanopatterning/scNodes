@@ -49,10 +49,10 @@ class SEFrame:
         self.texture = None
         self.quad_va = None
         self.border_va = None
-        self.interpolate = False
+        self.interpolate = True
         self.alpha = 1.0
         self.filters = list()
-        self.invert = True
+        self.invert = False
         self.crop = False
         self.crop_roi = [0, 0, self.width, self.height]
         self.autocontrast = True
@@ -70,6 +70,8 @@ class SEFrame:
         self.contrast_lims = [0, 512.0]
         self.compute_autocontrast()
         self.compute_histogram()
+        if self.interpolate:
+            self.toggle_interpolation()
 
     def setup_opengl_objects(self):
         self.texture = Texture(format="r32f")
