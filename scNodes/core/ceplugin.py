@@ -1,5 +1,7 @@
 import imgui
 from scNodes.core.clemframe import *
+from tkinter import filedialog
+
 import time
 
 
@@ -56,6 +58,16 @@ class CEPlugin:
         else:
             imgui.text("No frame selected.")
             return None
+
+    @staticmethod
+    def widget_select_file(label, path):
+        cw = imgui.get_content_region_available_width()
+        imgui.set_next_item_width(cw - 50)
+        _, path = imgui.input_text(label, path, 256)
+        imgui.same_line()
+        if imgui.button("...", 45, 20):
+            path = filedialog.askopenfilename()
+        return _, path
 
     @staticmethod
     def widget_select_frame_no_rgb(label, current_frame):

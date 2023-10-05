@@ -33,7 +33,7 @@ class LoadDataNode(Node):
         # Set up node-specific vars
         self.dataset = Dataset()
         self.params["path"] = ""
-        self.params["pixel_size"] = 64.0
+        self.params["pixel_size"] = 67.8
         self.pixel_size = self.params["pixel_size"]
         self.params["load_on_the_fly"] = True
         self.done_loading = False
