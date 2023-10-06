@@ -326,7 +326,7 @@ def loadfolder(path, tag=None):
     return data
 
 
-def loadtiff(path):
+def loadtiff(path, dtype=np.int16):
     "Loads stack as 3d array with dimensions (frames, width, height)"
     _data = Image.open(path)
     _frame = np.asarray(_data)
@@ -334,13 +334,22 @@ def loadtiff(path):
     width = _frame.shape[0]
     height = _frame.shape[1]
     depth = _data.n_frames
-    data = np.zeros((depth, width, height), dtype=np.int16)
+    data = np.zeros((depth, width, height), dtype=dtype)
     for f in range(0, depth):
         printProgressBar(f, depth - 1, prefix="Loading tiff file\t", length=30, printEnd="\r")
         _data.seek(f)
         data[f, :, :] = np.asarray(_data)
     data = np.squeeze(data)
     return data
+
+
+def tiff_to_mrc(path_in, path_out, apix=1.0):
+    data = loadtiff(path_in, dtype=np.float32)
+    if path_out[-4:] != ".mrc":
+        path_out += ".mrc"
+    with mrcfile.new(path_out, overwrite=True) as mrc:
+        mrc.set_data(data)
+        mrc.voxel_size = apix
 
 
 def tic():

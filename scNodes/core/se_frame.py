@@ -39,6 +39,8 @@ class SEFrame:
         if not self.spa:
             self.height, self.width = mrcfile.mmap(self.path, mode="r", permissive=True).data.shape[1:3]
             self.pixel_size = mrcfile.open(self.path, header_only=True, permissive=True).voxel_size.x / 10.0
+            if self.pixel_size == 0.0:
+                self.pixel_size = 1.0
         else:
             self.height, self.width = 0, 0
             self.pixel_size = 0.1
@@ -49,7 +51,7 @@ class SEFrame:
         self.texture = None
         self.quad_va = None
         self.border_va = None
-        self.interpolate = True
+        self.interpolate = False
         self.alpha = 1.0
         self.filters = list()
         self.invert = False
@@ -70,8 +72,7 @@ class SEFrame:
         self.contrast_lims = [0, 512.0]
         self.compute_autocontrast()
         self.compute_histogram()
-        if self.interpolate:
-            self.toggle_interpolation()
+        self.toggle_interpolation()
 
     def setup_opengl_objects(self):
         self.texture = Texture(format="r32f")
