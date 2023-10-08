@@ -7,7 +7,6 @@ directory = directory[:directory.rfind("\\")]
 sys.path.insert(0, os.path.abspath(".."))
 sys.path.append(directory)
 
-
 if __name__ == "__main__":
     if 'install' in sys.argv:
         from scNodes.install import install

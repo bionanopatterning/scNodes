@@ -3,12 +3,14 @@ import traceback
 import dill as pickle
 import os
 from datetime import datetime
+import sys
+import platform
 
 # TODO: add File -> Recent; drop down menu
 # TODO: when generating a binned SE_frame, if overlay, bin it as well.
 
 frozen = False
-root = ""
+root = os.path.dirname(os.path.dirname(__file__))
 app_name = "scNodes"
 version = "1.1.19"
 license = "GNU GPL v3"
@@ -99,7 +101,6 @@ se_active_model = None
 se_path = "..."
 se_surface_models = list()
 
-
 def set_active_node(node, keep_active=False):
     global focused_node, active_node, next_active_node
     """
@@ -173,14 +174,25 @@ def start_log():
     if os.path.join(root, logpath):
         os.path.join(root, logpath)
     with open(os.path.join(root, logpath), "w") as f:
-        f.write(app_name+" version "+version+" "+license+"\n"+datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
-        # TODO: write python version and versions of at least these modules: tensorflow, protobuf. Also: OS, GPU.
+        f.write(app_name+" version "+version+" "+license+"\n"+datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\n")
+        f.write(f"OS: {platform.platform()}")
+        f.write(f"Python version: {sys.version}")
 
+def parse_settings():
+    sdict = dict()
+    with open(os.path.join(root, "core", "settings.txt"), 'r') as f:
+        for line in f:
+            key, value = line.strip().split('=')
+            sdict[key] = value
+    return sdict
+
+
+settings = parse_settings()
 
 COLOUR_TEST_A = (1.0, 0.0, 1.0, 1.0)
 COLOUR_TEST_B = (0.0, 1.0, 1.0, 1.0)
 COLOUR_TEST_C = (1.0, 1.0, 0.0, 1.0)
-COLOUR_TEST_D  = (1.0, 1.0, 1.0, 1.0)
+COLOUR_TEST_D = (1.0, 1.0, 1.0, 1.0)
 
 COLOUR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 0.94)
 COLOUR_PANEL_BACKGROUND = (0.94, 0.94, 0.94, 0.94)

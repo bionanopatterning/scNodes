@@ -10,8 +10,7 @@ import scNodes.core.widgets as widgets
 from scNodes.core.util import clamp, bin_mrc, get_maxima_3d_watershed
 import pyperclip
 import os
-
-## TODO: U2OS tomo dataset: int8 of uint8? clipping als naar float
+import subprocess
 
 
 class SegmentationEditor:
@@ -146,8 +145,7 @@ class SegmentationEditor:
             self.icon_close.set_linear_interpolation()
 
             self.icon_stop = Texture(format="rgba32f")
-            pxd_icon_stop = np.asarray(Image.open(os.path.join(icon_dir, "icon_stop_256.png"))).astype(
-                np.float32) / 255.0
+            pxd_icon_stop = np.asarray(Image.open(os.path.join(icon_dir, "icon_stop_256.png"))).astype(np.float32) / 255.0
             self.icon_stop.update(pxd_icon_stop)
             self.icon_stop.set_linear_interpolation()
 
@@ -155,13 +153,10 @@ class SegmentationEditor:
             self.icon_blender = Texture(format="rgba32f")
             self.icon_chimerax = Texture(format="rgba32f")
             pxd = np.asarray(Image.open(os.path.join(icon_dir, "icon_obj_256.png"))).astype(np.float32) / 255.0
-            print(pxd.shape)
             self.icon_obj.update(pxd)
             pxd = np.asarray(Image.open(os.path.join(icon_dir, "icon_blender_256.png"))).astype(np.float32) / 255.0
-            print(pxd.shape)
             self.icon_blender.update(pxd)
             pxd = np.asarray(Image.open(os.path.join(icon_dir, "icon_chimerax_256.png"))).astype(np.float32) / 255.0
-            print(pxd.shape)
             self.icon_chimerax.update(pxd)
             self.icon_obj.set_linear_interpolation()
             self.icon_chimerax.set_linear_interpolation()
@@ -259,7 +254,7 @@ class SegmentationEditor:
         imgui.CONFIG_DOCKING_ENABLE = False
 
     def input(self):
-        if self.active_tab not in ["Segmentation", "Pick"] and cfg.se_active_frame is not None and cfg.se_active_frame.crop:
+        if self.active_tab not in ["Segmentation", "Render"] and cfg.se_active_frame is not None and cfg.se_active_frame.crop:
             SegmentationEditor.renderer.render_crop_handles(cfg.se_active_frame, self.camera, self.crop_handles)
         if cfg.se_active_frame is not None:
             sef = cfg.se_active_frame
@@ -272,15 +267,16 @@ class SegmentationEditor:
 
         # key input
         active_frame = cfg.se_active_frame
-        if active_frame in cfg.se_frames:
-            if imgui.is_key_pressed(glfw.KEY_LEFT):
-                idx = cfg.se_frames.index(active_frame) - 1
-                idx = max(0, idx)
-                SegmentationEditor.set_active_dataset(cfg.se_frames[idx])
-            elif imgui.is_key_pressed(glfw.KEY_RIGHT):
-                idx = cfg.se_frames.index(active_frame) + 1
-                idx = min(idx, len(cfg.se_frames) - 1)
-                SegmentationEditor.set_active_dataset(cfg.se_frames[idx])
+        if not self.active_tab == "Render":
+            if active_frame in cfg.se_frames:
+                if imgui.is_key_pressed(glfw.KEY_LEFT):
+                    idx = cfg.se_frames.index(active_frame) - 1
+                    idx = max(0, idx)
+                    SegmentationEditor.set_active_dataset(cfg.se_frames[idx])
+                elif imgui.is_key_pressed(glfw.KEY_RIGHT):
+                    idx = cfg.se_frames.index(active_frame) + 1
+                    idx = min(idx, len(cfg.se_frames) - 1)
+                    SegmentationEditor.set_active_dataset(cfg.se_frames[idx])
 
         active_feature = None
         if active_frame is not None:
@@ -326,7 +322,7 @@ class SegmentationEditor:
                         active_feature.add_box(pixel_coordinate)
                     elif imgui.is_mouse_clicked(1):
                         active_feature.remove_box(pixel_coordinate)
-        elif self.active_tab != "Pick" and active_frame is not None and active_frame.crop:
+        elif self.active_tab != "Render" and active_frame is not None and active_frame.crop:
             if not self.crop_handles[0].moving_entire_roi:
                 any_handle_active = False
                 for h in self.crop_handles:
@@ -493,7 +489,7 @@ class SegmentationEditor:
 
                     _minc, sef.contrast_lims[0] = imgui.slider_float("min", sef.contrast_lims[0], sef.hist_bins[0], sef.hist_bins[-1], format='min %.1f')
                     _maxc, sef.contrast_lims[1] = imgui.slider_float("max", sef.contrast_lims[1], sef.hist_bins[0], sef.hist_bins[-1], format='max %.1f')
-                    if self.active_tab == "Pick":
+                    if self.active_tab == "Render":
                         _, SegmentationEditor.PICKING_FRAME_ALPHA = imgui.slider_float("alpha", SegmentationEditor.PICKING_FRAME_ALPHA, 0.0, 1.0, format="alpha %.1f")
                     if _minc or _maxc:
                         sef.autocontrast = False
@@ -515,13 +511,13 @@ class SegmentationEditor:
                             sef.texture.set_no_interpolation()
                             SegmentationEditor.renderer.fbo1.texture.set_no_interpolation()
                             SegmentationEditor.renderer.fbo2.texture.set_no_interpolation()
-                    if self.active_tab in ["Segmentation", "Pick"]:
+                    if self.active_tab in ["Segmentation", "Render"]:
                         imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_TEXT_DISABLED)
                         imgui.push_style_color(imgui.COLOR_CHECK_MARK, *cfg.COLOUR_TEXT_DISABLED)
                     _c, sef.crop = imgui.checkbox("crop", sef.crop)
                     if _c and not sef.crop:
                         sef.crop_roi = [0, 0, sef.width, sef.height]
-                    if self.active_tab in ["Segmentation", "Pick"]:
+                    if self.active_tab in ["Segmentation", "Render"]:
                         imgui.pop_style_color(2)
                     imgui.separator()
                     fidx = 0
@@ -572,7 +568,7 @@ class SegmentationEditor:
                         _, SegmentationEditor.OVERLAY_ALPHA = imgui.slider_float("##alphaslider_se", SegmentationEditor.OVERLAY_ALPHA, 0.0, 1.0, format=f"overlay alpha = {SegmentationEditor.OVERLAY_ALPHA:.2f}") ## TODO 230808 werkt niet meer?
                         imgui.same_line()
                         imgui.set_next_item_width(110)
-                        if self.active_tab != "Pick":
+                        if self.active_tab != "Render":
                             _, SegmentationEditor.OVERLAY_BLEND_MODE = imgui.combo("##overlayblending", SegmentationEditor.OVERLAY_BLEND_MODE, SegmentationEditor.BLEND_MODES_LIST)
                         else:
                             _, SegmentationEditor.OVERLAY_BLEND_MODE_3D = imgui.combo("##overlayblending", SegmentationEditor.OVERLAY_BLEND_MODE_3D,SegmentationEditor.BLEND_MODES_LIST_3D)
@@ -1268,7 +1264,7 @@ class SegmentationEditor:
                     if _ and original_level != s.level:
                         req_gen_models = True
 
-                    _, s.dust = imgui.slider_float("##dust", s.dust, 10.0, 1000000.0, f"dust < {s.dust:.1f} nm³", imgui.SLIDER_FLAGS_LOGARITHMIC)
+                    _, s.dust = imgui.slider_float("##dust", s.dust, 1.0, 1000000.0, f"dust < {s.dust:.1f} nm³", imgui.SLIDER_FLAGS_LOGARITHMIC)
                     s.hide_dust()
                     imgui.pop_item_width()
                     imgui.push_item_width((cw - 7) / 2)
@@ -1424,18 +1420,17 @@ class SegmentationEditor:
                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
                 imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, *cfg.COLOUR_FRAME_EXTRA_DARK)
                 if imgui.image_button(self.icon_obj.renderer_id, s, s):
-                    pass
+                    SegmentationEditor.save_surface_models_as_objs()
                 imgui.same_line(spacing=spacing)
                 if imgui.image_button(self.icon_blender.renderer_id, s, s):
-                    pass
+                    obj_paths = SegmentationEditor.save_surface_models_as_objs()
+                    # then open Blender.
+                    SegmentationEditor.open_objs_in_blender(obj_paths)
                 imgui.same_line(spacing=spacing)
                 if imgui.image_button(self.icon_chimerax.renderer_id, s, s):
                     pass
                 imgui.pop_style_var(2)
                 imgui.pop_style_color(3)
-                # Open in Blender
-                # Save to .obj
-                # Open in ChimeraX
 
 
         def menu_bar():
@@ -1585,7 +1580,7 @@ class SegmentationEditor:
         # Render the currently active frame
 
         if cfg.se_active_frame is not None:
-            if self.active_tab != "Pick":
+            if self.active_tab != "Render":
                 pxd = SegmentationEditor.renderer.render_filtered_frame(cfg.se_active_frame, self.camera, self.window, self.filters, emphasize_roi=self.active_tab != "Segmentation") ## todo: save the output pxd to the corresponding frame, and render this pxd in subsequent app frames where the data is not changed instead of applying the filters on GPU every frame - which it turns out is fairly expensive
                 if pxd is not None:
                     cfg.se_active_frame.compute_histogram(pxd)
@@ -1626,7 +1621,7 @@ class SegmentationEditor:
                             box_y_pos = frame_xy[1] + (box[1] - f.parent.height / 2) * f.parent.pixel_size
                             box_size = self.trainset_apix * self.trainset_boxsize / 10.0
                             SegmentationEditor.renderer.add_square((box_x_pos, box_y_pos), box_size, clr)
-            if self.active_tab != "Pick":
+            if self.active_tab != "Render":
                 overlay_blend_mode = SegmentationEditor.BLEND_MODES[SegmentationEditor.BLEND_MODES_LIST[SegmentationEditor.OVERLAY_BLEND_MODE]]
                 SegmentationEditor.renderer.render_overlay(cfg.se_active_frame, self.camera, overlay_blend_mode, SegmentationEditor.OVERLAY_ALPHA)
             else:
@@ -1682,7 +1677,7 @@ class SegmentationEditor:
                 imgui.end_tab_item()
             if imgui.begin_tab_item(" Render ")[0]:
                 self.window.clear_color = [*SegmentationEditor.RENDER_CLEAR_COLOUR, 1.0]
-                self.active_tab = "Pick"
+                self.active_tab = "Render"
                 picking_tab()
                 imgui.end_tab_item()
             imgui.end_tab_bar()
@@ -2005,10 +2000,37 @@ class SegmentationEditor:
         except Exception as e:
             cfg.set_error(e, "Error saving model group, see details below")
 
+    @staticmethod
+    def save_surface_models_as_objs():
+        obj_path = os.path.dirname(cfg.se_active_frame.path)
+        paths = list()
+        for m in cfg.se_surface_models:
+            m_path = m.save_as_obj(path=os.path.join(obj_path, m.title + ".obj"))
+            if m_path is not None:
+                paths.append(m_path)
+        return paths
+
+    @staticmethod
+    def open_objs_in_blender(paths):
+        try:
+            with open(os.path.join(cfg.root, "core", "open_in_blender.py"), "r") as f:
+                lines = f.readlines()
+
+            lines = [f"obj_paths = {paths}\n" if "obj_paths = [" in line else line for line in lines]
+
+            with open(os.path.join(cfg.root, "core", "open_in_blender.py"), "w") as f:
+                f.writelines(lines)
+
+            subprocess.Popen([cfg.settings["BLENDER_EXE"], "--python", os.path.join(cfg.root, "core", "open_in_blender.py")])
+
+        except Exception as e:
+            cfg.set_error(e, "Could not open models in Blender - is the path to the Blender executable set in settings.txt?")
+
+
     def camera_control(self):
         if imgui.get_io().want_capture_mouse or imgui.get_io().want_capture_keyboard:
             return None
-        if self.active_tab != "Pick":
+        if self.active_tab != "Render":
             if self.window.get_mouse_button(glfw.MOUSE_BUTTON_MIDDLE):
                 delta_cursor = self.window.cursor_delta
                 self.camera.position[0] += delta_cursor[0] / self.camera.zoom

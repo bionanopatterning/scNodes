@@ -1,0 +1,1 @@
+BLENDER_EXE=C:/Program Files/Blender Foundation/Blender 3.6/blender.exe

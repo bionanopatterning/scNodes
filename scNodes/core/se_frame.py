@@ -622,7 +622,7 @@ class SurfaceModel:
         self.blobs = dict()
         self.level = 128
         self.last_level = 0
-        self.dust = 10
+        self.dust = 1.0
         self.bin = 2
         header = mrcfile.open(self.path, header_only=True, mode='r').header
         n_voxels = header.nx * header.ny * header.nz
@@ -634,6 +634,7 @@ class SurfaceModel:
         self.pixel_size = pixel_size
 
         self.coordinates = None
+        self.initialized = False
 
     def set_colour(self):
         if self.title in SurfaceModel.COLOURS:
@@ -660,6 +661,7 @@ class SurfaceModel:
             print("Error in hide_dust - maybe SurfaceModel and its thread lost synchronisation.", e)
 
     def generate_model(self):
+        self.initialized = True
         if self.process is None:
             self.process = BackgroundProcess(self._generate_model, (), name=f"{self.title} generate model (SurfaceModel)")
             self.process.start()
@@ -698,7 +700,6 @@ class SurfaceModel:
             try:
                 new_blobs[i].compute_mesh()
             except Exception as e:
-                #cfg.set_error(e, "Error marching cubes in SurfaceModelBlob.compute_mesh()")
                 pass
             process.set_progress(0.2 + 0.699 * ((i + 1) / len(new_blobs)))
 
@@ -727,7 +728,35 @@ class SurfaceModel:
         if self.data is None:
             self.data = mrcfile.read(self.path)
         self.coordinates = get_maxima_3d_watershed(array=self.data, array_pixel_size=self.pixel_size, threshold=threshold, min_weight=min_weight, min_spacing=min_spacing, return_coords=True)
-        print(self.coordinates)
+
+    def save_as_obj(self, path):
+        if self.hide or not self.initialized:
+            return
+        with open(path, 'w') as f:
+            f.write(f"# colour {self.colour[0]:.3f} {self.colour[1]:.3f} {self.colour[2]:.3f}\n")
+            f_idx = 1
+            for b in self.blobs.values():
+                if b.hide:
+                    continue
+                n = b.vertices.shape[0]
+                print(f"Adding {n} positions and normals")
+                for i in range(n):
+                    xyz = b.vertices[i, :]
+                    f.write(f"v {xyz[0]:.4f} {xyz[1]:.4f} {xyz[2]:.4f}\n")
+                for i in range(n):
+                    nxnynz = b.normals[i, :]
+                    f.write(f"vn {nxnynz[0]:.4f} {nxnynz[1]:.4f} {nxnynz[2]:.4f}\n")
+                n = b.indices.shape[0]
+                for i in range(int(n / 3)):
+                    v0 = b.indices[3 * i + 0] + f_idx
+                    v1 = b.indices[3 * i + 1] + f_idx
+                    v2 = b.indices[3 * i + 2] + f_idx
+                    f.write(f"f {v0}//{v0} {v1}//{v1} {v2}//{v2}\n")
+                f_idx += (1 + np.max(b.indices))
+                print(f"Incrementing f_idx by {np.max(b.indices)}")
+        return path
+
+
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
@@ -747,6 +776,8 @@ class SurfaceModelBlob:
         self.volume = 0
         self.indices = list()
         self.vertices = list()
+        self.normals = list()
+        self.vao_data = list()
         self.va = VertexArray(attribute_format="xyznxnynz")
         self.va_requires_update = False
         self.complete = False
@@ -774,18 +805,18 @@ class SurfaceModelBlob:
         box *= mask
         vertices, faces, normals, _ = measure.marching_cubes(box, level=self.level)
         vertices += np.array([rz[0], ry[0], rx[0]])
-        vertices = vertices[:, [2, 1, 0]]
-        normals = normals[:, [2, 1, 0]]
+        self.vertices = vertices[:, [2, 1, 0]]
+        self.normals = normals[:, [2, 1, 0]]
 
-        vertices *= self.pixel_size
-        vertices -= np.array([self.origin[2], self.origin[1], self.origin[0]])
-        self.vertices = np.hstack((vertices, normals)).flatten()
+        self.vertices *= self.pixel_size
+        self.vertices -= np.array([self.origin[2], self.origin[1], self.origin[0]])
+        self.vao_data = np.hstack((self.vertices, self.normals)).flatten()
         self.indices = faces.flatten()
         self.va_requires_update = True
 
     def update_if_necessary(self):
         if self.va_requires_update:
-            self.va.update(VertexBuffer(self.vertices), IndexBuffer(self.indices, long=True))
+            self.va.update(VertexBuffer(self.vao_data), IndexBuffer(self.indices, long=True))
             self.va_requires_update = False
             self.complete = True
 
