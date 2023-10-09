@@ -121,24 +121,23 @@ class SEFrame:
         self.border_va.update(VertexBuffer(vertex_attributes), IndexBuffer(indices))
 
     def init_spa_dataset(self):
+        pass
         # Find all root dirs in the selected dir, and list all .tiff or .mrc's in that folder.
-        for dirpath, dirnames, filenames in os.walk(self.path):
-            print(dirnames)
-            if not dirnames:
-                for file in filenames:
-                    if file.endswith('.tiff') or file.endswith('.tif'):
-                        self.spa_paths.append(os.path.join(dirpath, file))
-
-        # Get the pixel size by checking the xml of the i=0 spa_path.
-        xml_path = os.path.splitext(self.spa_paths[0])[0]+".xml"
-        with open(xml_path, 'r') as f:
-            data = f.read()
-            bsd = soup(data, "xml")
-            pixelsize = str(bsd.find('pixelSize').find('x').find('numericValue'))
-            self.pixel_size = float(pixelsize[pixelsize.find('>') + 1:pixelsize.rfind('<')])*1e10
-        self.n_slices = len(self.spa_paths)
-        self.height, self.width = SEFrame.read_spa_image(self.spa_paths[0]).shape
-        print(self.pixel_size, self.n_slices, self.width, self.height)
+        # for dirpath, dirnames, filenames in os.walk(self.path):
+        #     if not dirnames:
+        #         for file in filenames:
+        #             if file.endswith('.tiff') or file.endswith('.tif'):
+        #                 self.spa_paths.append(os.path.join(dirpath, file))
+        #
+        # # Get the pixel size by checking the xml of the i=0 spa_path.
+        # xml_path = os.path.splitext(self.spa_paths[0])[0]+".xml"
+        # with open(xml_path, 'r') as f:
+        #     data = f.read()
+        #     bsd = soup(data, "xml")
+        #     pixelsize = str(bsd.find('pixelSize').find('x').find('numericValue'))
+        #     self.pixel_size = float(pixelsize[pixelsize.find('>') + 1:pixelsize.rfind('<')])*1e10
+        # self.n_slices = len(self.spa_paths)
+        # self.height, self.width = SEFrame.read_spa_image(self.spa_paths[0]).shape
 
     @staticmethod
     def read_spa_image(path, bin=None):
@@ -181,7 +180,7 @@ class SEFrame:
                 self.export_top = self.n_slices
             requested_slice = min([max([requested_slice, 0]), self.n_slices - 1])
             self.data = mrc.data[requested_slice, :, :]
-            target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('float32'), np.dtype('int16'): np.dtype('float32')}
+            target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'), np.dtype('int16'): np.dtype('float32')}
             if self.data.dtype not in target_type_dict:
                 target_type = float
             else:

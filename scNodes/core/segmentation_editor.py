@@ -1237,7 +1237,12 @@ class SegmentationEditor:
                 for s in cfg.se_surface_models:
                     req_gen_models = False
                     s.on_update()
-                    #imgui.push_style_color(imgui.COLOR_CHILD_BACKGROUND, *s.colour, 0.0 if s.hide else 0.2)
+                    if s.process is not None:
+                        imgui.push_style_color(imgui.COLOR_CHILD_BACKGROUND, *s.colour, (1.0 - s.process.progress) * 0.3)
+                        imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_TEXT_DISABLED)
+                    else:
+                        imgui.push_style_color(imgui.COLOR_CHILD_BACKGROUND, *s.colour, 0.0)
+                        imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_TEXT)
                     imgui.begin_child(f"{s.title}_surfm", 0.0, 82, True)
                     cw = imgui.get_content_region_available_width()
                     _, s.colour = imgui.color_edit3(s.title, *s.colour[:3], imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP)
@@ -1281,6 +1286,7 @@ class SegmentationEditor:
 
                     imgui.pop_item_width()
                     imgui.pop_style_var(3)
+                    imgui.pop_style_color(2)
                     imgui.end_child()
 
                 imgui.pop_style_var(3)
@@ -1428,7 +1434,11 @@ class SegmentationEditor:
                     SegmentationEditor.open_objs_in_blender(obj_paths)
                 imgui.same_line(spacing=spacing)
                 if imgui.image_button(self.icon_chimerax.renderer_id, s, s):
-                    pass
+                    models = list()
+                    for m in cfg.se_surface_models:
+                        if m.initialized and not m.hide:
+                            models.append(m)
+                    SegmentationEditor.open_in_chimerax(models)
                 imgui.pop_style_var(2)
                 imgui.pop_style_color(3)
 
@@ -2026,6 +2036,34 @@ class SegmentationEditor:
         except Exception as e:
             cfg.set_error(e, "Could not open models in Blender - is the path to the Blender executable set in settings.txt?")
 
+    @staticmethod
+    def open_in_chimerax(surface_models):
+        try:
+            paths = list()
+            level = list()
+            colour = list()
+            dust = list()
+            for m in surface_models:
+                paths.append(m.path)
+                level.append(m.level)
+                colour.append(m.colour)
+                dust.append(m.dust)
+            with open(os.path.join(cfg.root, "core", "open_in_chimerax.py"), "r") as f:
+                lines = f.readlines()
+
+            # super inefficient, but it works ...
+            lines = [f"paths = {paths}\n" if "paths = [" in line else line for line in lines]
+            lines = [f"level = {level}\n" if "level = [" in line else line for line in lines]
+            lines = [f"colour = {colour}\n" if "colour = [" in line else line for line in lines]
+            lines = [f"dust = {dust}\n" if "dust = [" in line else line for line in lines]
+            lines = [f"bgclr = {SegmentationEditor.RENDER_CLEAR_COLOUR}\n" if "bgclr = [" in line else line for line in lines]
+
+            with open(os.path.join(cfg.root, "core", "open_in_chimerax.py"), "w") as f:
+                f.writelines(lines)
+
+            subprocess.Popen([cfg.settings["CHIMERAX_EXE"], os.path.join(cfg.root, "core", "open_in_chimerax.py")])
+        except Exception as e:
+            cfg.set_error(e, "Could not open volumes in ChimeraX - is the path to the ChimeraX executable set in settings.txt?")
 
     def camera_control(self):
         if imgui.get_io().want_capture_mouse or imgui.get_io().want_capture_keyboard:
