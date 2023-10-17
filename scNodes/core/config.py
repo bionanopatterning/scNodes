@@ -9,6 +9,7 @@ import platform
 # TODO: add File -> Recent; drop down menu
 # TODO: when generating a binned SE_frame, if overlay, bin it as well.
 # TODO: 2D overlay in SE render.
+# TODO: check BakeStackNode in line with LoadData->Register(gpureg)->BakeStack->TemporalFilter - seems to be a bug 231015
 
 frozen = False
 root = os.path.dirname(os.path.dirname(__file__))

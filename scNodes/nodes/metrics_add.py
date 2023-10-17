@@ -21,7 +21,7 @@ class AddMetric(Node):
     size = 190
     sortid = 3951
 
-    DEFAULT_METRICS = ["mean", "std", "1st moment", "2nd moment"]
+    DEFAULT_METRICS = ["mean", "std", "1st moment", "2nd moment", "sum"]
 
     def __init__(self):
         super().__init__()
@@ -43,7 +43,6 @@ class AddMetric(Node):
             imgui.spacing()
             imgui.separator()
             imgui.spacing()
-
             imgui.text("Dataset to sample:")
             imgui.spacing()
             self.connectable_attributes["sample_in"].render_start()
@@ -60,9 +59,10 @@ class AddMetric(Node):
 
     def get_image_impl(self, idx=None):
         source = self.connectable_attributes["dataset_in"].get_incoming_node()
-        if source:
+        sample = self.connectable_attributes["sample_in"].get_incoming_node()
+        if source and sample:
             frame = source.get_image(idx)
-            pxd = frame.load()
+            pxd = sample.get_image(idx).load()
 
             if self.params["metric_type"] == "mean":
                 frame_metric_value = np.mean(pxd)
@@ -72,6 +72,8 @@ class AddMetric(Node):
                 frame_metric_value = stats.moment(pxd, moment=1, axis=None)
             if self.params["metric_type"] == "2nd moment":
                 frame_metric_value = stats.moment(pxd, moment=2, axis=None)
+            if self.params["metric_type"] == "sum":
+                frame_metric_value = np.sum(pxd)
 
             frame.scalar_metrics[self.params["metric_name"]] = frame_metric_value
             return frame

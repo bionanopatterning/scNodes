@@ -49,7 +49,7 @@ class ParticleFittingNode(Node):
         self.n_frames_discarded = 0
         self.frames_to_fit = list()
         self.particle_data = ParticleData()
-        self.params["batch_size"] = 5
+        self.params["batch_size"] = 1
         self.time_start = 0
         self.time_stop = 0
 
@@ -80,6 +80,7 @@ class ParticleFittingNode(Node):
             imgui.spacing()
             imgui.set_next_item_width(200)
             _c, self.params["estimator"] = imgui.combo("Estimator", self.params["estimator"], ParticleFittingNode.ESTIMATORS)
+            self.any_change = _c or self.any_change
             imgui.set_next_item_width(148)
             if self.params["estimator"] != 2:
                 _c, self.params["psf"] = imgui.combo("PSF", self.params["psf"], ParticleFittingNode.PSFS)

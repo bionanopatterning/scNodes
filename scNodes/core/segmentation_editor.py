@@ -377,6 +377,7 @@ class SegmentationEditor:
                     if not hasattr(seframe, 'includes_map'):
                         seframe.includes_map = False
                         seframe.map = None
+                    seframe.spa = False
                     if seframe.includes_map:
                         seframe.path = filename[:-len(cfg.filetype_segmentation)]+".mrc"  # 'virtual' file path, pointing at the location of the .scns file but ending with .mrc s.t. model output regex doesn't get messed up
                 self.parse_available_features()
@@ -437,8 +438,9 @@ class SegmentationEditor:
                             self.parse_available_features()
                         if imgui.menu_item("Relink dataset")[0]:
                             selected_file = filedialog.askopenfilename(filetypes=[("mrcfile", ".mrc")])
-                            s.path = selected_file
-                            s.title = os.path.splitext(os.path.basename(s.path))[0]
+                            if selected_file != "":
+                                s.path = selected_file
+                                s.title = os.path.splitext(os.path.basename(s.path))[0]
                         if imgui.menu_item("Copy path to .mrc")[0]:
                             pyperclip.copy(s.path)
                         if s.overlay is not None and imgui.menu_item("Update overlay")[0]:
@@ -1356,7 +1358,7 @@ class SegmentationEditor:
             #     if imgui.button("Export all", w, 20):
             #         self.launch_export_coordinates(selected_surface_model.title)
             #     if selected_surface_model.coordinates is not None:
-            #         print("TODO: render particle ROIs")  ## TODO
+            #         print("TODO: render particle ROIs")
             #
             #     ## extract progress bar & cancel option:
             #     if self.queued_extracts:
@@ -1951,7 +1953,6 @@ class SegmentationEditor:
             return
         new_se_frame = SEFrame(clemframe.path)
         new_se_frame.clem_frame = clemframe
-        new_se_frame.pixel_size = clemframe.pixel_size
         new_se_frame.autocontrast = False
         new_se_frame.title = clemframe.title
         new_se_frame.contrast_lims = clemframe.contrast_lims

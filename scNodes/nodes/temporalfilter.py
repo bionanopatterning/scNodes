@@ -32,7 +32,7 @@ class TemporalFilterNode(Node):
         self.connectable_attributes["dataset_out"] = ConnectableAttribute(ConnectableAttribute.TYPE_DATASET, ConnectableAttribute.OUTPUT, parent=self)
 
         self.params["filter"] = 0
-        self.params["negative_handling"] = 1
+        self.params["negative_handling"] = 2
         self.params["skip"] = 1
         self.params["group_size"] = 11
         self.params["group_background_index"] = 1
