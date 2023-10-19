@@ -84,6 +84,8 @@ class SegmentationEditor:
         EXTRACT_MIN_SPACING = 10.0  # Angstrom
         EXTRACT_SELECTED_FEATURE_TITLE = ""
 
+        trainset_apix = 10.0
+
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
         self.window.clear_color = cfg.COLOUR_WINDOW_BACKGROUND
@@ -108,7 +110,6 @@ class SegmentationEditor:
         self.trainset_num_boxes_positive = 0
         self.trainset_num_boxes_negative = 0
         self.trainset_boxsize = 64
-        self.trainset_apix = 10.0
         self.show_trainset_boxes = False
         self.active_trainset_exports = list()
 
@@ -460,7 +461,7 @@ class SegmentationEditor:
                         SegmentationEditor.set_active_dataset(s)
                         for model in cfg.se_models:
                             model.reset_textures()
-                        self.trainset_apix = s.pixel_size * 10.0
+                        SegmentationEditor.trainset_apix = s.pixel_size * 10.0
 
                     for f in s.features:
                         imgui.same_line(spacing=1)
@@ -777,7 +778,7 @@ class SegmentationEditor:
                 imgui.begin_child("params", 0.0, 80, True)
                 imgui.push_item_width(cw - 53)
                 _, self.trainset_boxsize = imgui.slider_int("boxes", self.trainset_boxsize, 8, 128, format=f"{self.trainset_boxsize} pixel")
-                _, self.trainset_apix = imgui.slider_float("A/pix", self.trainset_apix, 1.0, 20.0, format=f"{self.trainset_apix:.2f}")
+                _, SegmentationEditor.trainset_apix = imgui.slider_float("A/pix", SegmentationEditor.trainset_apix, 1.0, 20.0, format=f"{SegmentationEditor.trainset_apix:.2f}")
                 imgui.pop_item_width()
                 calculate_number_of_boxes()
                 imgui.text(f"Positive samples: {self.trainset_num_boxes_positive}")
@@ -1645,7 +1646,7 @@ class SegmentationEditor:
                         for box in f.boxes[f.current_slice]:
                             box_x_pos = frame_xy[0] + (box[0] - f.parent.width / 2) * f.parent.pixel_size
                             box_y_pos = frame_xy[1] + (box[1] - f.parent.height / 2) * f.parent.pixel_size
-                            box_size = self.trainset_apix * self.trainset_boxsize / 10.0
+                            box_size = SegmentationEditor.trainset_apix * self.trainset_boxsize / 10.0
                             SegmentationEditor.renderer.add_square((box_x_pos, box_y_pos), box_size, clr)
             if self.active_tab != "Render":
                 overlay_blend_mode = SegmentationEditor.BLEND_MODES[SegmentationEditor.BLEND_MODES_LIST[SegmentationEditor.OVERLAY_BLEND_MODE]]
@@ -1875,7 +1876,7 @@ class SegmentationEditor:
                 negative_feature_names.append(f)
         if len(positive_feature_names) == 0:
             return
-        path = filedialog.asksaveasfilename(filetypes=[("scNodes traindata", cfg.filetype_traindata)], initialfile=f"{self.trainset_boxsize}_{self.trainset_apix:.3f}_{positive_feature_names[0]}")
+        path = filedialog.asksaveasfilename(filetypes=[("scNodes traindata", cfg.filetype_traindata)], initialfile=f"{self.trainset_boxsize}_{SegmentationEditor.trainset_apix:.3f}_{positive_feature_names[0]}")
         if path == "":
             return
         if path[-len(cfg.filetype_traindata):] != cfg.filetype_traindata:
@@ -1891,7 +1892,7 @@ class SegmentationEditor:
         n_boxes = self.trainset_num_boxes_positive + self.trainset_num_boxes_negative
         if n_boxes == 0:
             return
-        args = (path, n_boxes, positive_feature_names, negative_feature_names, datasets_to_sample, self.trainset_boxsize, self.trainset_apix)
+        args = (path, n_boxes, positive_feature_names, negative_feature_names, datasets_to_sample, self.trainset_boxsize, SegmentationEditor.trainset_apix)
 
         process = BackgroundProcess(self._create_training_set, args)
         process.start()
