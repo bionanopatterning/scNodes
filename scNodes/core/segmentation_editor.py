@@ -168,7 +168,7 @@ class SegmentationEditor:
         cfg.se_active_frame = dataset
         cfg.se_active_frame.requires_histogram_update = True
         cfg.se_active_frame.slice_changed = True
-        if len(cfg.se_active_frame) == 1:
+        if len(cfg.se_frames) == 1:
             SegmentationEditor.trainset_apix = cfg.se_active_frame.pixel_size * 10.0
         SegmentationEditor.renderer.fbo1 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
         SegmentationEditor.renderer.fbo2 = FrameBuffer(dataset.width, dataset.height, "rgba32f")

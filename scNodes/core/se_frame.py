@@ -737,7 +737,7 @@ class SurfaceModel:
             for b in self.blobs.values():
                 if b.hide:
                     continue
-                n = b.vertices.shape[0]
+                n = len(b.vertices)
                 print(f"Adding {n} positions and normals")
                 for i in range(n):
                     xyz = b.vertices[i, :]
