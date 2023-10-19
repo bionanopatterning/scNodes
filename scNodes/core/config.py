@@ -10,6 +10,8 @@ import platform
 # TODO: when generating a binned SE_frame, if overlay, bin it as well.
 # TODO: 2D overlay in SE render.
 # TODO: check BakeStackNode in line with LoadData->Register(gpureg)->BakeStack->TemporalFilter - seems to be a bug 231015
+# TODO: in SE, add 'Save' and 'Save as' options for dataset
+# TOOD: in SE, key I to toggle inversion.
 
 frozen = False
 root = os.path.dirname(os.path.dirname(__file__))
@@ -180,6 +182,7 @@ def start_log():
         f.write(f"OS: {platform.platform()}")
         f.write(f"Python version: {sys.version}")
 
+
 def parse_settings():
     sdict = dict()
     with open(os.path.join(root, "core", "settings.txt"), 'r') as f:
@@ -190,6 +193,19 @@ def parse_settings():
 
 
 settings = parse_settings()
+
+
+def edit_setting(key, value):
+    global settings
+    settings[key] = value
+    with open(os.path.join(root, "core", "settings.txt"), 'r') as f:
+        lines = f.readlines()
+    for i, line in enumerate(lines):
+        if line.startswith(key+"="):
+            lines[i] = f"{key}={value}\n"
+
+    with open(os.path.join(root, "core", "settings.txt"), 'w') as f:
+        f.writelines(lines)
 
 COLOUR_TEST_A = (1.0, 0.0, 1.0, 1.0)
 COLOUR_TEST_B = (0.0, 1.0, 1.0, 1.0)

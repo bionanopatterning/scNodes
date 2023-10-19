@@ -160,6 +160,7 @@ def get_maxima_3d_watershed(mrcpath="", threshold=128, min_spacing=10.0, min_wei
     else:
         return coordinates
 
+
 class Blob:
     def __init__(self):
         self.x = list()
@@ -183,11 +184,13 @@ class Blob:
     def get_weight(self):
         return np.sum(self.v)
 
+
 def bin_2d_array(a, b):
     y, x = a.shape
     a = a[:y//b*b, :x//b*b]
     a = a.reshape((y//b, b, x//b, b)).mean(3).mean(1)
     return a
+
 
 def bin_mrc(path, bin_factor):
     print(f"Loading '{path}'")
@@ -205,6 +208,7 @@ def bin_mrc(path, bin_factor):
         mrc.set_data(data)
         mrc.voxel_size = pxs * b
     return out_path
+
 
 def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r"):
     # from: https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters?noredirect=1&lq=1

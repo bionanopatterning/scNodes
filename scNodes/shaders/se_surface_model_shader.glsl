@@ -46,10 +46,10 @@ void main()
     {
         float F_AMBIENT = ambientStrength;
         float F_DIFFUSE = lightStrength;
-        float F_SPECULAR = 0.5f * lightStrength;
+        float F_SPECULAR = 0.2f * lightStrength;
         float F_EMISSIVE = ambientStrength * 0.3f;
 
-        float SPEC_POWER = 2.0f;
+        float SPEC_POWER = 12.0f;
 
         vec3 ambient = F_AMBIENT * color.rgb;
 
@@ -57,7 +57,7 @@ void main()
 
         vec3 viewDir = normalize(gl_FragCoord.xyz);
         vec3 reflDir = reflect(-lightDir, fnormal);
-        float specIntensity = pow(max(dot(viewDir, reflDir), 0.0), SPEC_POWER);
+        float specIntensity = pow(min(1.0, max(dot(viewDir, reflDir), 0.0)), SPEC_POWER);
         vec3 specular = F_SPECULAR * specIntensity * vec3(1.0, 1.0, 1.0);
 
         vec3 emissive = dot(normalize(fnormal), viewDir) * F_EMISSIVE * color.rgb;

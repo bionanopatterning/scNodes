@@ -231,6 +231,7 @@ class SEModel:
             negative_x.append(x_rotated)
             negative_y.append(train_y[i])
             n_neg_copied += 1
+        print(f"Loaded a training dataset with {len(positive_x)} positive and {len(negative_x)} negative samples.")
         return np.array(positive_x + negative_x), np.array(positive_y + negative_y)
 
     def _train(self, process):
@@ -329,7 +330,9 @@ class SEModel:
                 out_image[x:x + self.box_size, y:y + self.box_size] += boxes[i]
                 count[x:x + self.box_size, y:y + self.box_size] += 1
                 i += 1
-        count[count == 0] = 1
+        c_mask = count == 0   # edited 231018 to set count=1 tiles to all zero, to get rid of the border errors.
+        count[c_mask] = 1  # edited 231018
+        out_image[c_mask] = 0  # edited 231018
         out_image = out_image / count
         out_image = out_image[:w, :h]
         scale_fac = self.apix / (original_pixel_size * 10.0)
@@ -424,6 +427,7 @@ class ModelInteraction:
             return self.kernel
 
     def apply(self, pixel_size):
+        print(f"Applying model interaction {self.uid}")
         if self.parent.active:
             self.parent.data = self.apply_to_images(pixel_size, self.partner.data, self.parent.data)
 

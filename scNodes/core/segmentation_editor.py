@@ -168,6 +168,8 @@ class SegmentationEditor:
         cfg.se_active_frame = dataset
         cfg.se_active_frame.requires_histogram_update = True
         cfg.se_active_frame.slice_changed = True
+        if len(cfg.se_active_frame) == 1:
+            SegmentationEditor.trainset_apix = cfg.se_active_frame.pixel_size * 10.0
         SegmentationEditor.renderer.fbo1 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
         SegmentationEditor.renderer.fbo2 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
         SegmentationEditor.renderer.fbo3 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
@@ -1434,6 +1436,12 @@ class SegmentationEditor:
                     obj_paths = SegmentationEditor.save_surface_models_as_objs()
                     # then open Blender.
                     SegmentationEditor.open_objs_in_blender(obj_paths)
+                if imgui.begin_popup_context_window():
+                    if imgui.menu_item("Set path to blender.exe")[0]:
+                        path = filedialog.askopenfilename(filetypes=[("Blender executable", ".exe")])
+                        if path != "":
+                            cfg.edit_setting("BLENDER_EXE", path)
+                    imgui.end_popup()
                 imgui.same_line(spacing=spacing)
                 if imgui.image_button(self.icon_chimerax.renderer_id, s, s):
                     models = list()
@@ -1441,6 +1449,12 @@ class SegmentationEditor:
                         if m.initialized and not m.hide:
                             models.append(m)
                     SegmentationEditor.open_in_chimerax(models)
+                if imgui.begin_popup_context_window():
+                    if imgui.menu_item("Set path to ChimeraX.exe")[0]:
+                        path = filedialog.askopenfilename(filetypes=[("ChimeraX executable", ".exe")])
+                        if path != "":
+                            cfg.edit_setting("CHIMERAX_EXE", path)
+                    imgui.end_popup()
                 imgui.pop_style_var(2)
                 imgui.pop_style_color(3)
 
@@ -1888,7 +1902,7 @@ class SegmentationEditor:
         negative = list()
 
         n_done = 0
-        target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('float32'), np.dtype('int16'): np.dtype('float32')}
+        target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'), np.dtype('int16'): np.dtype('float32')}
         for d in datasets:
             mrcf = mrcfile.mmap(d.path, mode="r", permissive=True)
             raw_type = mrcf.data.dtype
@@ -2869,7 +2883,7 @@ class QueuedExport:
             print(f"QueuedExport - loading dataset {self.dataset.path}")
             rx, ry = self.dataset.get_roi_indices()
             mrcd = np.array(mrcfile.open(self.dataset.path, mode='r', permissive=True).data[:, :, :])
-            target_type_dict = {np.float32: np.dtype('float32'), float: np.dtype('float32'), np.dtype('int8'): np.dtype('float32'), np.dtype('int16'): np.dtype('float32')}
+            target_type_dict = {np.float32: np.dtype('float32'), float: np.dtype('float32'), np.dtype('int8'): np.dtype('uint8'), np.dtype('int16'): np.dtype('float32')}
             if mrcd.dtype not in target_type_dict:
                 mrcd = mrcd.astype(float, copy=False)
             else:

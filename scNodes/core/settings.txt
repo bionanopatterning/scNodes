@@ -1,2 +1,2 @@
 BLENDER_EXE=C:/Program Files/Blender Foundation/Blender 3.6/blender.exe
-CHIMERAX_EXE=C:/Program Files/ChimeraX/bin/ChimeraX.exe
+CHIMERAX_EXE=C:/Program Files/ChimeraX 1.4rc202205290614/bin/ChimeraX.exe
