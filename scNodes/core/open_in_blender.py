@@ -32,7 +32,7 @@ def create_emission_material():
     mat.use_backface_culling = True
     return mat
 
-obj_paths = ['C:\\Users\\mart_\\Desktop\\Wolff_2020_SciMag\\Double membrane.obj', 'C:\\Users\\mart_\\Desktop\\Wolff_2020_SciMag\\Intermediate filament.obj', 'C:\\Users\\mart_\\Desktop\\Wolff_2020_SciMag\\Pore.obj', 'C:\\Users\\mart_\\Desktop\\Wolff_2020_SciMag\\Ribosomes.obj', 'C:\\Users\\mart_\\Desktop\\Wolff_2020_SciMag\\Single membrane.obj', 'C:\\Users\\mart_\\Desktop\\Wolff_2020_SciMag\\Tubulin.obj']
+obj_paths = []
 
 for p in obj_paths:
     # Extract color from the .obj file
@@ -43,7 +43,7 @@ for p in obj_paths:
     # Import mesh
     bpy.ops.import_scene.obj(filepath=p)
     imported_obj = bpy.context.view_layer.objects.selected[0]
-    imported_obj.data.materials.pop(index=0)
+    #imported_obj.data.materials.pop(index=0)
 
     # Create and assign materials
     color_material = create_material_with_color(color)
