@@ -3,18 +3,31 @@ import traceback
 import dill as pickle
 import os
 from datetime import datetime
+import sys
+import platform
+
+# TODO: add File -> Recent; drop down menu
+# TODO: when generating a binned SE_frame, if overlay, bin it as well.
+# TODO: 2D overlay in SE render.
+# TODO: check BakeStackNode in line with LoadData->Register(gpureg)->BakeStack->TemporalFilter - seems to be a bug 231015
+# TODO: in SE, add 'Save' and 'Save as' options for dataset
+# TOOD: in SE, key I to toggle inversion.
 
 frozen = False
-root = ""
+root = os.path.dirname(os.path.dirname(__file__))
 app_name = "scNodes"
-version = "1.1.17"
+version = "1.2.0"
 license = "GNU GPL v3"
 logpath = "scNodes.log"
 filetype_project = ".scnp"
 filetype_node_setup = ".scn"
 filetype_scene = ".scnscene"
+filetype_segmentation = ".scns"
+filetype_traindata = ".scnt"
+filetype_semodel = ".scnm"
+filetype_semodel_group = ".scnmgroup"
 
-ce_controls = [
+controls = [
     ("0/H/V", "Toggle frame visibility"),
     ("1-6", "Change blending mode"),
     ("-/+", "De-/increase frame alpha"),
@@ -32,21 +45,6 @@ ce_controls = [
     ("Delete", "Delete frame"),
     ("Page up/down", "Move frame up/down in render stack. +SHIFT: move to top/bottom"),
     ("Spacebar", "Focus camera on currently selected frame"),
-]
-
-iv_controls = [
-    ("Shift + scroll", "De-/increase zoom"),
-    ("- or +/=", "De-/increase zoom"),
-    ("Arrows left/right", "Previous/next frame"),
-    ("Ctrl + shift + C", "Open contrast settings window"),
-    ("Spacebar", "Compute autocontast (when ^ open)"),
-    ("Spacebar + CTRL/SHIFT", "Toggle always autocontrast"),
-    ("Ctrl + W", "Close contrast settings window"),
-    ("Delete", "Remove frame from dataset"),
-    ("Tab", "Switch editor"),
-    ("Ctrl + S", "Save current frame"),
-    ("Ctrl + A", "Add frame to Correlation Editor"),
-    ("Ctrl + I", "Invert LUT")
 ]
 
 nodes = list()
@@ -83,12 +81,15 @@ batch_size = n_cpus_max * 3
 image_viewer = None
 node_editor = None
 correlation_editor = None
+segmentation_editor = None
 ce_tool_menu_names = {'Transform': True, 'Visuals': True, 'Export': True, 'Measure': True, 'Plugins': True, 'Particle picking': True}
 node_editor_relink = False
 correlation_editor_relink = False
 pickle_temp = dict()
 
-active_editor = 0  # 0 for node editor, 1 for correlation
+editors = ["Node Editor", "Correlation Editor"]##, "Segmentation Editor"]
+se_enabled = True
+active_editor = 0  # 0 for node editor, 1 for correlation, 2 for segmentation editor
 ce_frames = list()
 ce_active_frame = None
 ce_clear_colour = (1.0, 1.0, 1.0, 1.0)
@@ -97,6 +98,12 @@ ce_flip_on_load = True
 ce_selected_position = [0, 0]
 ce_va_subdivision = 8
 
+se_frames = list()
+se_active_frame = None
+se_models = list()
+se_active_model = None
+se_path = "..."
+se_surface_models = list()
 
 def set_active_node(node, keep_active=False):
     global focused_node, active_node, next_active_node
@@ -140,41 +147,70 @@ def save_scene(filename):
         pickle.dump(ce_frames, pickle_file)
 
 
-def load_scene(filename):
+def load_scene(filename, append=False):
     global ce_frames, correlation_editor_relink
     try:
         with open(filename, 'rb') as pickle_file:
-            ce_frames = pickle.load(pickle_file)
-            for cef in ce_frames:
+            imported_ce_frames = pickle.load(pickle_file)
+            for cef in imported_ce_frames:
                 if not hasattr(cef, "sum_slices"):
                     cef.sum_slices = 1
                 if not hasattr(cef, "current_sum_slices"):
                     cef.current_sum_slices = 1
                 if not hasattr(cef, "locked"):
                     cef.locked = False
+            if append:
+                ce_frames += imported_ce_frames
+            else:
+                ce_frames = imported_ce_frames
             correlation_editor_relink = True
     except Exception as e:
         set_error(e, "Error loading scene")
 
 
 def write_to_log(text):
-    try:
-        with open(root+logpath, "a") as f:
-            f.write("\n\n ____________________ \n\n")
-            f.write(text)
-    except Exception as e:
-        print("Could not access log\n", e)
+    with open(os.path.join(root, logpath), "a") as f:
+        f.write("\n\n ____________________ \n\n")
+        f.write(text)
 
 
 def start_log():
-    try:
-        if os.path.exists(root+logpath):
-            os.remove(root+logpath)
-        with open(root+logpath, "a") as f:
-            f.write(app_name+" version "+version+" "+license+"\n"+datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
-    except Exception as e:
-        print("Could not start log\n", e)
+    if os.path.join(root, logpath):
+        os.path.join(root, logpath)
+    with open(os.path.join(root, logpath), "w") as f:
+        f.write(app_name+" version "+version+" "+license+"\n"+datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\n")
+        f.write(f"OS: {platform.platform()}")
+        f.write(f"Python version: {sys.version}")
 
+
+def parse_settings():
+    sdict = dict()
+    with open(os.path.join(root, "core", "settings.txt"), 'r') as f:
+        for line in f:
+            key, value = line.strip().split('=')
+            sdict[key] = value
+    return sdict
+
+
+settings = parse_settings()
+
+
+def edit_setting(key, value):
+    global settings
+    settings[key] = value
+    with open(os.path.join(root, "core", "settings.txt"), 'r') as f:
+        lines = f.readlines()
+    for i, line in enumerate(lines):
+        if line.startswith(key+"="):
+            lines[i] = f"{key}={value}\n"
+
+    with open(os.path.join(root, "core", "settings.txt"), 'w') as f:
+        f.writelines(lines)
+
+COLOUR_TEST_A = (1.0, 0.0, 1.0, 1.0)
+COLOUR_TEST_B = (0.0, 1.0, 1.0, 1.0)
+COLOUR_TEST_C = (1.0, 1.0, 0.0, 1.0)
+COLOUR_TEST_D = (1.0, 1.0, 1.0, 1.0)
 
 COLOUR_WINDOW_BACKGROUND = (0.94, 0.94, 0.94, 0.94)
 COLOUR_PANEL_BACKGROUND = (0.94, 0.94, 0.94, 0.94)
@@ -193,6 +229,7 @@ COLOUR_HEADER = COLOUR_FRAME_DARK
 COLOUR_HEADER_ACTIVE = COLOUR_FRAME_ACTIVE
 COLOUR_HEADER_HOVERED = COLOUR_FRAME_EXTRA_DARK
 COLOUR_TEXT = (0.0, 0.0, 0.0, 1.0)
+COLOUR_TEXT_ACTIVE = (0.0, 0.0, 0.2, 1.0)
 COLOUR_TEXT_DISABLED = (0.7, 0.7, 0.7, 1.0)
 COLOUR_TEXT_FADE = COLOUR_FRAME_EXTRA_DARK
 WINDOW_ROUNDING = 5.0
@@ -204,6 +241,12 @@ COLOUR_ERROR_WINDOW_HEADER_NEW = (0.87, 0.87, 0.83, 0.96)
 COLOUR_ERROR_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
 COLOUR_CM_WINDOW_TEXT = (0.0, 0.0, 0.0, 1.0)
 COLOUR_CM_OPTION_HOVERED = (1.0, 1.0, 1.0, 1.0)
+COLOUR_TRANSPARENT = (1.0, 1.0, 1.0, 0.0)
+COLOUR_FRAME_BACKGROUND_BLUE = (0.76, 0.76, 0.83, 1.0)
+COLOUR_POSITIVE = (0.1, 0.8, 0.1, 1.0)
+COLOUR_NEGATIVE = (0.8, 0.1, 0.1, 1.0)
+COLOUR_NEUTRAL = (0.6, 0.6, 0.6, 1.0)
+COLOUR_NEUTRAL_LIGHT = (0.8, 0.8, 0.8, 1.0)
 
 TOOLTIP_APPEAR_DELAY = 1.0
 TOOLTIP_HOVERED_TIMER = 0.0

@@ -103,8 +103,7 @@ class ImageViewer:
         self.current_dataset = Dataset()
         self.frame_info = ""
 
-        self.show_control_info_window = False
-        pyGPUreg.init()  # todo: this initialization shouldn't be here.
+        pyGPUreg.init()
 
     def set_mode(self, mode):
         if mode in ["R", "RGB"]:
@@ -223,42 +222,11 @@ class ImageViewer:
     def close(self):
         self.imgui_implementation.shutdown()
 
-    def menu_bar(self):
-        def help_window():
-            expanded, opened = imgui.begin("Controls", True, imgui.WINDOW_NO_COLLAPSE)
-            if opened or expanded:
-                imgui.columns(2, "##control_info_columns")
-                imgui.separator()
-                imgui.text("Key")
-                imgui.set_column_width(0, 150)
-
-                imgui.next_column()
-                imgui.text("Description")
-                imgui.next_column()
-                imgui.separator()
-                for key_description_pair in cfg.iv_controls:
-                    key = key_description_pair[0]
-                    dsc = key_description_pair[1]
-                    imgui.text(key)
-                    imgui.next_column()
-                    imgui.text(dsc)
-                    imgui.next_column()
-                imgui.end()
-            if not opened:
-                self.show_control_info_window = False
-        if self.show_control_info_window:
-            help_window()
-        if imgui.begin_main_menu_bar():
-            if imgui.menu_item("Help")[0]:
-                self.show_control_info_window = True
-            imgui.end_main_menu_bar()
-
     def _gui_main(self):
         if self.show_frame_select_window and self.current_dataset.initialized and not self.mode == "RGB" and not self.node_blocking_frame_window:
             self._frame_info_window()
 
         # Context menu
-        self.menu_bar()
         if not self.context_menu_open:
             if self.window.get_mouse_event(glfw.MOUSE_BUTTON_RIGHT, glfw.PRESS, 0):
                 self.context_menu_position = self.window.cursor_pos
@@ -314,12 +282,8 @@ class ImageViewer:
             if _always_auto_changed and self.autocontrast[self.contrast_window_channel]:
                 self._compute_auto_contrast()
 
-            imgui.set_next_item_width(40)
+            imgui.set_next_item_width(80)
             _c, settings.autocontrast_saturation = imgui.drag_float("Saturate %", settings.autocontrast_saturation, 0.1, 0.1, 50.0, format= '%.2f')
-            imgui.same_line()
-            _c, settings.invert_lut = imgui.checkbox("invert", settings.invert_lut)
-            if _c:
-                self.invert_lut()
             if imgui.is_window_focused():
                 if self.window.get_key_event(glfw.KEY_SPACE, glfw.PRESS):
                     self._compute_auto_contrast()
@@ -492,14 +456,6 @@ class ImageViewer:
         if self.window.get_key_event(glfw.KEY_S, glfw.PRESS, glfw.MOD_CONTROL):
             if self.image_pxd is not None:
                 self.save_current_image()
-        elif self.window.get_key_event(glfw.KEY_A, glfw.PRESS, glfw.MOD_CONTROL):
-            if self.image is not None:
-                self.image._ce_lut = self.current_lut + 1  # note: idx + 1 as ImageViewer has an extra 'auto' lut option at index 0.
-                self.image._ce_clims = [self.contrast_min[0], self.contrast_max[0], self.contrast_min[1], self.contrast_max[1], self.contrast_min[2], self.contrast_max[2]]
-                cfg.correlation_editor.add_frame(self.image)
-        elif self.window.get_key_event(glfw.KEY_I, glfw.PRESS, glfw.MOD_CONTROL):
-            settings.invert_lut = not settings.invert_lut
-            self.invert_lut()
         elif self.window.get_key_event(glfw.KEY_MINUS) or self.window.get_key_event(glfw.KEY_KP_SUBTRACT):
             self.camera.centred_zoom(-ImageViewer.CAMERA_ZOOM_STEP)
         elif self.window.get_key_event(glfw.KEY_EQUAL) or self.window.get_key_event(glfw.KEY_KP_ADD):
@@ -507,8 +463,11 @@ class ImageViewer:
         elif self.window.get_key_event(glfw.KEY_DELETE, glfw.PRESS, 0) or self.window.get_key_event(glfw.KEY_DELETE, glfw.REPEAT, 0):
             self.current_dataset.delete_by_index(self.current_dataset.current_frame)
             self.new_image_requested = True
-        elif self.window.get_key_event(glfw.KEY_TAB, glfw.PRESS):
-            cfg.active_editor = 1 - cfg.active_editor
+        if self.window.get_key_event(glfw.KEY_TAB, glfw.PRESS):
+            if self.window.get_key(glfw.KEY_LEFT_SHIFT):  # todo: fix - maybe get rid of input via Window, use imgui instead.
+                cfg.active_editor = (cfg.active_editor - 1) % len(cfg.editors)
+            else:
+                cfg.active_editor = (cfg.active_editor + 1) % len(cfg.editors)
 
     def _context_menu(self):
         imgui.set_next_window_position(self.context_menu_position[0] - 3, self.context_menu_position[1] - 3)
@@ -545,8 +504,6 @@ class ImageViewer:
                 key_clicked, _ = imgui.menu_item(key)
                 if key_clicked:
                     self.set_lut(settings.lut_names.index(key))
-                    if settings.invert_lut:
-                        self.invert_lut()
             imgui.end_menu()
         imgui.end()
 
@@ -607,17 +564,14 @@ class ImageViewer:
             self.hist_bins[2] = np.delete(self.hist_bins[2], 0)
             self.hist_counts[1] = np.log(self.hist_counts[1] + 1)
             self.hist_counts[2] = np.log(self.hist_counts[2] + 1)
-
     def _compute_auto_contrast(self, channel=None):
         img_subsample = self.image_pxd[::settings.autocontrast_subsample, ::settings.autocontrast_subsample, :]
         n = img_subsample.shape[0] * img_subsample.shape[1]
         for i in range(3):
             if self.autocontrast[i] or channel == i:
                 img_sorted = np.sort(img_subsample[:, :, i].flatten())
-                min_idx = min([int(settings.autocontrast_saturation / 100.0 * n), n-1])
-                max_idx = max([int((1.0 - settings.autocontrast_saturation / 100.0) * n), 0])
-                self.contrast_min[i] = img_sorted[min_idx]
-                self.contrast_max[i] = img_sorted[max_idx]
+                self.contrast_min[i] = img_sorted[int(settings.autocontrast_saturation / 100.0 * n)]
+                self.contrast_max[i] = img_sorted[int((1.0 - settings.autocontrast_saturation / 100.0) * n)]
 
     def center_camera(self):
         self.camera.zoom = 1
@@ -632,10 +586,6 @@ class ImageViewer:
             if self.lut_array.shape[1] == 3:
                 self.lut_array = np.reshape(self.lut_array, (self.lut_array.shape[0], 1, self.lut_array.shape[1]))  ## was lut_array = -> now self.lut_array
             self.lut_texture.update(self.lut_array)
-
-    def invert_lut(self):
-        self.lut_array = np.flipud(self.lut_array)
-        self.lut_texture.update(self.lut_array)
 
     def get_cursor_image_coordinates(self):
         c_pos = self.window.cursor_pos  # cursor position
@@ -693,5 +643,3 @@ class Camera:
             self.zoom *= fac
             self.position[0] *= fac
             self.position[1] *= fac
-
-
