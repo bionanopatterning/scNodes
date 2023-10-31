@@ -249,9 +249,6 @@ class CorrelationEditor:
         imgui.get_io().display_size = self.window.width, self.window.height
         imgui.new_frame()
 
-        # Handle frames sent to CE from external source
-        if len(CorrelationEditor.incoming_files) > 0:
-            self.load_externally_dropped_files(CorrelationEditor.incoming_files)
 
         # GUI
         self.editor_control()
@@ -299,22 +296,32 @@ class CorrelationEditor:
             CorrelationEditor.active_frame = new_frame
         CorrelationEditor.incoming_frame_buffer = list()
 
+        # Handle frames sent to CE from external source
+        if len(CorrelationEditor.incoming_files) > 0:
+            self.load_externally_dropped_files(CorrelationEditor.incoming_files)
+
         # end content
         imgui.render()
         self.imgui_implementation.render(imgui.get_draw_data())
 
     def load_externally_dropped_files(self, paths):
         path = paths[0]
+        print(path)
         paths.pop(0)
-        incoming = ImportedFrameData(path)
-        clem_frame = incoming.to_CLEMFrame()
-        if clem_frame:
-            clem_frame.toggle_interpolation()
-            pos = deepcopy(self.camera.position)
-            clem_frame.transform.translation = [-pos[0], -pos[1]]
-            clem_frame.pivot_point = [-pos[0], -pos[1]]
-            cfg.ce_frames.insert(0, clem_frame)
-            CorrelationEditor.active_frame = clem_frame
+        if os.path.splitext(path)[-1]==cfg.filetype_scene:
+            print("scnscene")
+            cfg.load_scene(path, append=True)
+        else:
+            print("import data")
+            incoming = ImportedFrameData(path)
+            clem_frame = incoming.to_CLEMFrame()
+            if clem_frame:
+                clem_frame.toggle_interpolation()
+                pos = deepcopy(self.camera.position)
+                clem_frame.transform.translation = [-pos[0], -pos[1]]
+                clem_frame.pivot_point = [-pos[0], -pos[1]]
+                cfg.ce_frames.insert(0, clem_frame)
+                CorrelationEditor.active_frame = clem_frame
 
     @staticmethod
     def relink_after_load():
@@ -397,7 +404,7 @@ class CorrelationEditor:
                             cfg.save_scene(filename)
                     except Exception as e:
                         cfg.set_error(e, "Error saving scene - see details below")
-                if imgui.menu_item("Load scene")[0]:
+                if imgui.menu_item("Open scene")[0]:
                     try:
                         filename = filedialog.askopenfilename(filetypes=[("scNodes scene", cfg.filetype_scene)])
                         if filename != '':
@@ -413,7 +420,7 @@ class CorrelationEditor:
                         cfg.set_error(e, "Error appending scene - see details below")
                 if imgui.menu_item("Import data")[0]:
                     try:
-                        filenames = filedialog.askopenfilenames(filetypes=[("Compatible image types", ".mrc .tif .tiff .png")])
+                        filenames = filedialog.askopenfilenames(filetypes=[("Compatible image types", f".mrc .tif .tiff .png {cfg.filetype_scene}")])
                         if filenames != '':
                             for file in filenames:
                                 self.window.dropped_files.append(file.replace('/', '\\'))
@@ -523,6 +530,7 @@ class CorrelationEditor:
                 pixel_size_changed, pxsf = imgui.drag_float("##Pixel size", af.pixel_size, CorrelationEditor.SCALE_SPEED, 0.01, 0.0, '%.3f nm')
                 if pixel_size_changed:
                     af.pivoted_scale(af.pivot_point, pxsf/pxsi)
+                af.pixel_size = max([0.01, af.pixel_size])
                 imgui.spacing()
 
         # Visuals info

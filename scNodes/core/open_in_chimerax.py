@@ -1,10 +1,10 @@
 from chimerax.core.commands import run
 
-paths = ['U:\\mgflast\\14. scSegmentation\\IgG3_reanalyze\\bin8_SIRT_ali_IgG3_040_corrected_rec_Antibody platform.mrc', 'U:\\mgflast\\14. scSegmentation\\IgG3_reanalyze\\bin8_SIRT_ali_IgG3_040_corrected_rec_Carbon.mrc', 'U:\\mgflast\\14. scSegmentation\\IgG3_reanalyze\\bin8_SIRT_ali_IgG3_040_corrected_rec_Membrane.mrc']
-level = [63, 82, 95]
-colour = [(1.0, 0.40784314274787903, 0.0), (1.0, 0.9529411792755127, 0.0), (0.25882354378700256, 0.8392156958580017, 0.6431372761726379)]
-dust = [1.0, 1.0, 1.0]
-bgclr = (9.999999974752427e-07, 9.99999883788405e-07, 9.999899930335232e-07)
+paths = ['C:\\Users\\mart_\\Desktop\\Wolff_2020_SciMag\\g70502_volb4_rotx_Double membrane.mrc', 'C:\\Users\\mart_\\Desktop\\Wolff_2020_SciMag\\g70502_volb4_rotx_Intermediate filament.mrc', 'C:\\Users\\mart_\\Desktop\\Wolff_2020_SciMag\\g70502_volb4_rotx_Pore.mrc', 'C:\\Users\\mart_\\Desktop\\Wolff_2020_SciMag\\g70502_volb4_rotx_Ribosomes.mrc', 'C:\\Users\\mart_\\Desktop\\Wolff_2020_SciMag\\g70502_volb4_rotx_Single membrane.mrc', 'C:\\Users\\mart_\\Desktop\\Wolff_2020_SciMag\\g70502_volb4_rotx_Tubulin.mrc']
+level = [72, 84, 92, 78, 84, 87]
+colour = [(0.059523582458496094, 1.0, 0.0), (1.0, 0.40784314274787903, 0.0), (0.25882354378700256, 0.8392156958580017, 0.6431372761726379), (1.0, 0.05098039284348488, 0.0), (0.25882354378700256, 0.8392156958580017, 0.6431372761726379), (1.0, 0.9529411792755127, 0.0)]
+dust = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+bgclr = (0.9399999976158142, 0.9399999976158142, 0.9399999976158142)
 
 for i in range(len(paths)):
     run(session, f'open "{paths[i]}"')
