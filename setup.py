@@ -13,7 +13,11 @@ from setuptools import setup, find_packages
 
 setup(
     name='scNodes',
+<<<<<<< HEAD
     version='1.1.18',
+=======
+    version='1.1.17',
+>>>>>>> fb16609eebd986a9b6f5a35268fe67bdd14c5fdf
     packages=find_packages(),
     url='https://github.com/bionanopatterning/scNodes',
     license='GPL v3',

@@ -644,4 +644,3 @@ class Camera:
             self.position[0] *= fac
             self.position[1] *= fac
 
-

@@ -174,7 +174,8 @@ class LoadDataNode(Node):
         self.dataset = cfg.pickle_temp["dataset"]
 
     def on_load(self):
-        self.on_select_file()
+        if self.params["path"] != "":
+            self.on_select_file()
 
     def extra_context_menu_options(self):
         if imgui.menu_item("Append dataset")[0]:
