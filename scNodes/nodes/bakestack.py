@@ -150,7 +150,9 @@ class BakeStackNode(Node):
         return self.detection_roi
 
     def get_image_impl(self, idx=None):
+        print(f"BakeStacknode get_image_impl idx ={idx}")
         if self.has_dataset and idx in range(0, self.dataset.n_frames):
+            print("Has dataset and index is within range. Returning baked frame.")
             retimg = copy.deepcopy(self.dataset.get_indexed_image(idx))
             retimg.clean()
             if self.has_coordinates:
@@ -161,6 +163,7 @@ class BakeStackNode(Node):
                 retimg.scalar_metrics = json.load(file)
             return retimg
         else:
+            print("Digging up frame from source.")
             datasource = self.connectable_attributes["dataset_in"].get_incoming_node()
             if datasource:
                 return datasource.get_image(idx)

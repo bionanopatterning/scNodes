@@ -33,7 +33,7 @@ class LoadDataNode(Node):
         # Set up node-specific vars
         self.dataset = Dataset()
         self.params["path"] = ""
-        self.params["pixel_size"] = 64.0
+        self.params["pixel_size"] = 67.8
         self.pixel_size = self.params["pixel_size"]
         self.params["load_on_the_fly"] = True
         self.done_loading = False
@@ -114,8 +114,11 @@ class LoadDataNode(Node):
                      "Separate by a semicolon. When the positive and negative\n"
                      "selection criteria contradict, frames are retained.")
         if imgui.button("Filter", av_width / 2 - 5, 25):
-            self.dataset.filter_frames_by_title(self.params["file_filter_positive_raw"], self.params["file_filter_negative_raw"])
-            self.any_change = True
+            try:
+                self.dataset.filter_frames_by_title(self.params["file_filter_positive_raw"], self.params["file_filter_negative_raw"])
+                self.any_change = True
+            except Exception as e:
+                cfg.set_error(e, "Could not apply filter in LoadImage node, see details below.")
         imgui.same_line(spacing=10)
         if imgui.button("Reset", av_width / 2 - 5, 25):
             self.on_select_file()
@@ -174,3 +177,9 @@ class LoadDataNode(Node):
         if self.params["path"] != "":
             self.on_select_file()
 
+    def extra_context_menu_options(self):
+        if imgui.menu_item("Append dataset")[0]:
+            selected_file = filedialog.askopenfilename()
+            if type(selected_file) is str:
+                if get_filetype(selected_file) in ['.tiff', '.tif']:
+                    self.dataset.append_dataset(selected_file)

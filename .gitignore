@@ -8,3 +8,4 @@ imgui.ini
 /scNodes/dist/
 /scNodes/__main__.spec
 .log
+/scNodes/scNodes.log

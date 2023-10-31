@@ -1,6 +1,7 @@
 colorcet==3.0.0
 dill==0.3.5.1
 glfw==2.5.5
+imgui==2.0.0
 joblib==1.1.0
 matplotlib==3.5.3
 mrcfile==1.4.3
@@ -11,8 +12,9 @@ Pillow==9.2.0
 psutil==5.9.2
 PyOpenGl==3.1.6
 PyWavelets==1.3.0
-pyimgui-wheels==2.0.1
 pyperclip==1.8.2
 pystackreg==0.2.6.post1
 scikit-image==0.19.3
 tifffile==2022.8.12
+tensorflow>=2.12.0
+tensorflow_addons==0.18.0

@@ -21,10 +21,11 @@ class CorrelationEditor:
         BLEND_MODES[" Transparency"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_FUNC_ADD)
         BLEND_MODES[" Sum"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_ADD)
         BLEND_MODES[" Multiply"] = (GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA, GL_FUNC_ADD)
-        BLEND_MODES[" Subtract"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_REVERSE_SUBTRACT)
-        BLEND_MODES[" Subtract (inverted)"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_SUBTRACT)
+        BLEND_MODES[" Difference"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_REVERSE_SUBTRACT)
+        BLEND_MODES[" Difference (inverted)"] = (GL_SRC_ALPHA, GL_DST_ALPHA, GL_FUNC_SUBTRACT)
         BLEND_MODES[" Retain minimum"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_MIN)
         BLEND_MODES[" Retain maximum"] = (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_MAX)
+        BLEND_MODES[" Colourize"] = (GL_DST_COLOR, GL_DST_ALPHA, GL_FUNC_ADD)
         BLEND_MODES_LIST = list(BLEND_MODES.keys())
         N_BLEND_MODES = len(BLEND_MODES_LIST)
 
@@ -74,8 +75,6 @@ class CorrelationEditor:
         # editing
         MOUSE_SHORT_PRESS_MAX_DURATION = 0.25  # seconds
         ARROW_KEY_TRANSLATION = 100.0  # nm
-        ARROW_KEY_TRANSLATION_FAST = 1000.0  # nm
-        ARROW_KEY_TRANSLATION_SLOW = 10.0
         LONG_MOUSE_PRESS_EVENT_DURATION = 0.55
         mouse_left_press_world_pos = [0, 0]
         mouse_left_release_world_pos = [0, 0]
@@ -116,9 +115,9 @@ class CorrelationEditor:
         ex_pxnm = 10.0
         ex_img_size = [0, 0]
         ex_path = ""
-        ex_png = True
+        ex_type = 0 # 0 for png, 1 for tiff, 2 for mrc
         EXPORT_FBO = None
-        EXPORT_TILE_SIZE = 1000
+        EXPORT_TILE_SIZE = 1000 # must be a multiple of 4
         EXPORT_SIZE_CHANGE_SPEED = 0.05
         EXPORT_RESOLUTION_CHANGE_SPEED = 0.05
         EXPORT_ROI_LINE_COLOUR = (255 / 255, 202 / 255, 28 / 255, 1.0)
@@ -228,14 +227,16 @@ class CorrelationEditor:
         if self.window.focused:
             self.imgui_implementation.process_inputs()
 
-
-        if imgui.get_io().want_capture_keyboard is False and imgui.is_key_pressed(glfw.KEY_TAB):
-            cfg.active_editor = 0
-
+        if not imgui.get_io().want_capture_keyboard and imgui.is_key_pressed(glfw.KEY_TAB):
+            if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
+                cfg.active_editor = (cfg.active_editor - 1) % len(cfg.editors)
+            else:
+                cfg.active_editor = (cfg.active_editor + 1) % len(cfg.editors)
         if cfg.correlation_editor_relink:
             CorrelationEditor.relink_after_load()
             cfg.correlation_editor_relink = False
-            self.camera.focus_on_frame(cfg.ce_frames[0])
+            self.camera.focus_on_frame(cfg.ce_frames[-1])
+
 
         cfg.ce_active_frame = CorrelationEditor.active_frame
         CorrelationEditor.incoming_files += deepcopy(self.window.dropped_files)
@@ -248,9 +249,6 @@ class CorrelationEditor:
         imgui.get_io().display_size = self.window.width, self.window.height
         imgui.new_frame()
 
-        # Handle frames sent to CE from external source
-        if len(CorrelationEditor.incoming_files) > 0:
-            self.load_externally_dropped_files(CorrelationEditor.incoming_files)
 
         # GUI
         self.editor_control()
@@ -298,22 +296,32 @@ class CorrelationEditor:
             CorrelationEditor.active_frame = new_frame
         CorrelationEditor.incoming_frame_buffer = list()
 
+        # Handle frames sent to CE from external source
+        if len(CorrelationEditor.incoming_files) > 0:
+            self.load_externally_dropped_files(CorrelationEditor.incoming_files)
+
         # end content
         imgui.render()
         self.imgui_implementation.render(imgui.get_draw_data())
 
     def load_externally_dropped_files(self, paths):
         path = paths[0]
+        print(path)
         paths.pop(0)
-        incoming = ImportedFrameData(path)
-        clem_frame = incoming.to_CLEMFrame()
-        if clem_frame:
-            clem_frame.toggle_interpolation()
-            pos = deepcopy(self.camera.position)
-            clem_frame.transform.translation = [-pos[0], -pos[1]]
-            clem_frame.pivot_point = [-pos[0], -pos[1]]
-            cfg.ce_frames.insert(0, clem_frame)
-            CorrelationEditor.active_frame = clem_frame
+        if os.path.splitext(path)[-1]==cfg.filetype_scene:
+            print("scnscene")
+            cfg.load_scene(path, append=True)
+        else:
+            print("import data")
+            incoming = ImportedFrameData(path)
+            clem_frame = incoming.to_CLEMFrame()
+            if clem_frame:
+                clem_frame.toggle_interpolation()
+                pos = deepcopy(self.camera.position)
+                clem_frame.transform.translation = [-pos[0], -pos[1]]
+                clem_frame.pivot_point = [-pos[0], -pos[1]]
+                cfg.ce_frames.insert(0, clem_frame)
+                CorrelationEditor.active_frame = clem_frame
 
     @staticmethod
     def relink_after_load():
@@ -368,7 +376,7 @@ class CorrelationEditor:
                 CorrelationEditor.renderer.render_particle_rois(self.camera, self.active_frame, CorrelationEditor.picking_va, all_groups=True)
         self.menu_bar()
         self.context_menu()
-        self.tool_info_window()
+        self.tool_window()
         self.objects_info_window()
         self.visuals_window()
         self.frame_xray_window()
@@ -396,16 +404,23 @@ class CorrelationEditor:
                             cfg.save_scene(filename)
                     except Exception as e:
                         cfg.set_error(e, "Error saving scene - see details below")
-                if imgui.menu_item("Load scene")[0]:
+                if imgui.menu_item("Open scene")[0]:
                     try:
                         filename = filedialog.askopenfilename(filetypes=[("scNodes scene", cfg.filetype_scene)])
                         if filename != '':
                             cfg.load_scene(filename)
                     except Exception as e:
                         cfg.set_error(e, "Error loading scene - see details below")
+                if imgui.menu_item("Append scene")[0]:
+                    try:
+                        filename = filedialog.askopenfilename(filetypes=[("scNodes scene", cfg.filetype_scene)])
+                        if filename != '':
+                            cfg.load_scene(filename, append=True)
+                    except Exception as e:
+                        cfg.set_error(e, "Error appending scene - see details below")
                 if imgui.menu_item("Import data")[0]:
                     try:
-                        filenames = filedialog.askopenfilenames(filetypes=[("Compatible image types", ".mrc .tif .tiff .png")])
+                        filenames = filedialog.askopenfilenames(filetypes=[("Compatible image types", f".mrc .tif .tiff .png {cfg.filetype_scene}")])
                         if filenames != '':
                             for file in filenames:
                                 self.window.dropped_files.append(file.replace('/', '\\'))
@@ -419,7 +434,7 @@ class CorrelationEditor:
                 _c, CorrelationEditor.ARROW_KEY_TRANSLATION = imgui.input_float("Arrow key step size (nm)", CorrelationEditor.ARROW_KEY_TRANSLATION, 0.0, 0.0, "%.1f")
                 _c, CorrelationEditor.snap_enabled = imgui.checkbox("Allow snapping", CorrelationEditor.snap_enabled)
                 _c, cfg.ce_flip_on_load = imgui.checkbox("Flip images when loading", cfg.ce_flip_on_load)
-                if imgui.menu_item("Re-initialize plugin library")[0]:
+                if imgui.menu_item("Reinitialize plugin library")[0]:
                     CorrelationEditor.selected_tool = 0
                     CorrelationEditor.current_tool = None
                     CorrelationEditor.init_toolkit(reinitialize=True)
@@ -434,10 +449,10 @@ class CorrelationEditor:
                 imgui.pop_style_var(1)
                 imgui.end_menu()
             if imgui.begin_menu("Editor"):
-                select_node_editor, _ = imgui.menu_item("Node Editor", None, False)
-                select_correlation_editor, _ = imgui.menu_item("Correlation", None, True)
-                if select_node_editor:
-                    cfg.active_editor = 0
+                for i in range(len(cfg.editors)):
+                    select, _ = imgui.menu_item(cfg.editors[i], None, False)
+                    if select:
+                        cfg.active_editor = i
                 imgui.end_menu()
             imgui.end_main_menu_bar()
         imgui.pop_style_color(6)
@@ -467,8 +482,7 @@ class CorrelationEditor:
             if not opened:
                 CorrelationEditor.show_control_info_window = False
 
-
-    def tool_info_window(self):
+    def tool_window(self):
         if not (True in cfg.ce_tool_menu_names.values()):
             return
         af = CorrelationEditor.active_frame
@@ -516,6 +530,7 @@ class CorrelationEditor:
                 pixel_size_changed, pxsf = imgui.drag_float("##Pixel size", af.pixel_size, CorrelationEditor.SCALE_SPEED, 0.01, 0.0, '%.3f nm')
                 if pixel_size_changed:
                     af.pivoted_scale(af.pivot_point, pxsf/pxsi)
+                af.pixel_size = max([0.01, af.pixel_size])
                 imgui.spacing()
 
         # Visuals info
@@ -640,7 +655,7 @@ class CorrelationEditor:
                 lims = np.asarray(CorrelationEditor.ex_lims) / 1000.0
                 imgui.text(" X:")
                 imgui.same_line()
-                _a, lims[0] = imgui.drag_float("##export_xmin", lims[0], CorrelationEditor.EXPORT_SIZE_CHANGE_SPEED, format = f'{lims[0]:.2f}')
+                _a, lims[0] = imgui.drag_float("##export_xmin", lims[0], CorrelationEditor.EXPORT_SIZE_CHANGE_SPEED, format=f'{lims[0]:.2f}')
                 imgui.same_line()
                 imgui.text("to")
                 imgui.same_line()
@@ -742,13 +757,14 @@ class CorrelationEditor:
                 CorrelationEditor.ex_img_size = [int(1000.0 * (lims[2] - lims[0]) / CorrelationEditor.ex_pxnm), int(1000.0 * (lims[3] - lims[1]) / CorrelationEditor.ex_pxnm)]
                 imgui.text(f"Output size: {CorrelationEditor.ex_img_size[0]} x {CorrelationEditor.ex_img_size[1]}")
                 imgui.text("Export as:")
-                imgui.text(" ")
-                imgui.same_line()
-                if imgui.radio_button(".png", CorrelationEditor.ex_png):
-                    CorrelationEditor.ex_png = not CorrelationEditor.ex_png
-                imgui.same_line(spacing = 20)
-                if imgui.radio_button(".tif stack", not CorrelationEditor.ex_png):
-                    CorrelationEditor.ex_png = not CorrelationEditor.ex_png
+                if imgui.radio_button(".png", CorrelationEditor.ex_type == 0):
+                    CorrelationEditor.ex_type = 0
+                imgui.same_line(spacing=15)
+                if imgui.radio_button(".tif", CorrelationEditor.ex_type == 1):
+                    CorrelationEditor.ex_type = 1
+                imgui.same_line(spacing=15)
+                if imgui.radio_button(".mrc", CorrelationEditor.ex_type == 2):
+                    CorrelationEditor.ex_type = 2
                 imgui.text("Filename:")
                 imgui.set_next_item_width(150)
                 _c, CorrelationEditor.ex_path = imgui.input_text("##outpath", CorrelationEditor.ex_path, 256)
@@ -948,8 +964,53 @@ class CorrelationEditor:
         imgui.end()
         imgui.pop_style_color(3)
 
+    @staticmethod
+    def render_frame_overlay_to_image(frame):
+        ## Make the 'frame' the parent of all other frames, and set its rotation to 0 degrees (to avoid having to rotate the camera).
+        angle = frame.transform.rotation
+        pivot = frame.pivot_point
+        for f in cfg.ce_frames:
+            f.pivoted_rotation(pivot, -angle, ignore_children=True, ignore_lock=True)
+            f.update_model_matrix()
+        height, width = frame.height, frame.width
+        # Make a texture with the same size as frame, then make a camera to render in an FBO of that size.
+        fbo = FrameBuffer(width, height, texture_format="rgba32f")
+        fbo.clear([0.0, 0.0, 0.0, 1.0])
+        fbo.bind()
+        # Position and orient the camera s.t. frame is exactly contained within FBO.
+        camera = Camera()
+        camera.set_projection_matrix(width, height)
+        camera.zoom = CorrelationEditor.DEFAULT_WORLD_PIXEL_SIZE / frame.pixel_size * CorrelationEditor.DEFAULT_ZOOM
+        camera.position = [-frame.transform.translation[0], -frame.transform.translation[1], 0.0]
+        camera.rotation = 0.0
+        camera.set_pivoted_rotation_matrix([frame.transform.translation[0], frame.transform.translation[1]])
+
+        found_starting_frame = False
+        for f in reversed(cfg.ce_frames):
+            if not found_starting_frame:  # only render frames higher in the render stack than the frame of interest
+                if f == frame:
+                    found_starting_frame = True
+                continue
+            original_blend_mode = f.blend_mode
+            if f.blend_mode == 7:
+                f.blend_mode = 1
+            CorrelationEditor.renderer.render_frame_quad(camera, f)
+            f.blend_mode = original_blend_mode
+        pxd = glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT)
+        pxd = np.frombuffer(pxd, np.float32).reshape(height, width, 4)
+        pxd = np.flipud(pxd)
+        fbo.unbind()
+        if frame.flip_h:
+            pxd = np.flip(pxd, axis=1)
+        if not frame.flip_v:
+            pxd = np.flip(pxd, axis=0)
+        for f in cfg.ce_frames:
+            f.pivoted_rotation(pivot, angle, ignore_children=True, ignore_lock=True)
+            f.update_model_matrix()
+        return pxd
+
     def export_image(self):
-        def export_png():
+        def export_png(export_path):
             # Set up
             camera = Camera()
             camera.set_projection_matrix(CorrelationEditor.EXPORT_TILE_SIZE, CorrelationEditor.EXPORT_TILE_SIZE)
@@ -969,7 +1030,6 @@ class CorrelationEditor:
             out_img = np.zeros((out_size_pixels[0], out_size_pixels[1], 4))
             alpha_mask = np.zeros((out_size_pixels[0], out_size_pixels[1]))
             glEnable(GL_DEPTH_TEST)
-
             glDepthFunc(GL_ALWAYS)
             for i in range(tiles_h):
                 for j in range(tiles_v):
@@ -980,7 +1040,7 @@ class CorrelationEditor:
                     camera.on_update()
                     CorrelationEditor.EXPORT_FBO.clear([*self.window.clear_color[0:3], 1.0])
                     CorrelationEditor.EXPORT_FBO.bind()
-                    glClearDepth(0.0)
+                    glClearDepth(0.0)  ## 0.0 is the minimum, should be 1.0!! But it works, so not touching it now.
                     glClear(GL_DEPTH_BUFFER_BIT)
                     for frame in reversed(cfg.ce_frames):
                         CorrelationEditor.renderer.render_frame_quad(camera, frame)
@@ -998,9 +1058,9 @@ class CorrelationEditor:
             out_img[out_img < 0] = 0
             out_img[out_img > 255] = 255
             out_img = out_img.astype(np.uint8)
-            util.save_png(out_img, CorrelationEditor.ex_path, alpha=True)
+            util.save_png(out_img, export_path, alpha=True)
 
-        def export_tiff_stack():
+        def export_stack(path):
             # Set up
             camera = Camera()
             camera.set_projection_matrix(CorrelationEditor.EXPORT_TILE_SIZE, CorrelationEditor.EXPORT_TILE_SIZE)
@@ -1018,47 +1078,67 @@ class CorrelationEditor:
             tiles_v = int(np.ceil((CorrelationEditor.ex_lims[3] - CorrelationEditor.ex_lims[1]) / tile_size))
             camera.zoom = CorrelationEditor.DEFAULT_WORLD_PIXEL_SIZE / pixel_size * CorrelationEditor.DEFAULT_ZOOM
             camera_start_position = [CorrelationEditor.ex_lims[0], CorrelationEditor.ex_lims[3]]
-            tiff_path = CorrelationEditor.ex_path
-            if not (tiff_path[-5:] == ".tiff" or tiff_path[-4:] == ".tif"):
-                tiff_path += ".tif"
             glEnable(GL_DEPTH_TEST)
             glDepthFunc(GL_ALWAYS)
-            with tifffile.TiffWriter(tiff_path) as tiffw:
-                for frame in reversed(cfg.ce_frames):
-                    if frame.hide:
-                        continue
-                    out_img = np.zeros((out_size_pixels[0], out_size_pixels[1]), dtype=np.float32)
-                    frame.force_lut_grayscale()
-                    for i in range(tiles_h):
-                        for j in range(tiles_v):
-                            offset_x = (0.5 + i) * tile_size
-                            offset_y = (0.5 + j) * tile_size
-                            camera.position[0] = -(camera_start_position[0] + offset_x)
-                            camera.position[1] = -(camera_start_position[1] - offset_y)
-                            camera.on_update()
-                            CorrelationEditor.EXPORT_FBO.clear((0.0, 0.0, 0.0, 1.0))
-                            CorrelationEditor.EXPORT_FBO.bind()
-                            glClearDepth(0.0)
-                            glClear(GL_DEPTH_BUFFER_BIT)
-                            CorrelationEditor.renderer.render_frame_quad(camera, frame, override_blending=True)
-                            tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_RED, GL_FLOAT)
-                            out_img[i * T:min([(i + 1) * T, W]), j * T:min([(j + 1) * T, H])] = np.rot90(tile, 1, (1, 0))[:min([T, W - (i * T)]), :min([T, H - (j * T)])]
-                    out_img = np.rot90(out_img, -1, (1, 0))
-                    out_img = out_img[::-1, :]
-                    tiffw.write(out_img, description=frame.title, resolution=(1./(1e-7 * pixel_size), 1./(1e-7 * pixel_size), 'CENTIMETER'))
-                    frame.update_lut()
+
+            # generate stack
+            stack = list()
+            titles = list()
+            for frame in reversed(cfg.ce_frames):
+                if frame.hide:
+                    continue
+                out_img = np.zeros((out_size_pixels[0], out_size_pixels[1]), dtype=np.float32)
+                frame.force_lut_grayscale()
+                for i in range(tiles_h):
+                    for j in range(tiles_v):
+                        offset_x = (0.5 + i) * tile_size
+                        offset_y = (0.5 + j) * tile_size
+                        camera.position[0] = -(camera_start_position[0] + offset_x)
+                        camera.position[1] = -(camera_start_position[1] - offset_y)
+                        camera.on_update()
+                        CorrelationEditor.EXPORT_FBO.clear((0.0, 0.0, 0.0, 1.0))
+                        CorrelationEditor.EXPORT_FBO.bind()
+                        glClearDepth(0.0)
+                        glClear(GL_DEPTH_BUFFER_BIT)
+                        CorrelationEditor.renderer.render_frame_quad(camera, frame, override_blending=True)
+                        tile = glReadPixels(0, 0, tile_size_pixels, tile_size_pixels, GL_RED, GL_FLOAT)
+                        out_img[i * T:min([(i + 1) * T, W]), j * T:min([(j + 1) * T, H])] = np.rot90(tile, 1, (1, 0))[:min([T, W - (i * T)]), :min([T, H - (j * T)])]
+                out_img = np.rot90(out_img, -1, (1, 0))
+                out_img = out_img[::-1, :]
+                stack.append(out_img)
+                titles.append(frame.title)
+                frame.update_lut()
             glDisable(GL_DEPTH_TEST)
             CorrelationEditor.EXPORT_FBO.unbind()
 
+            if ".mrc" in path:
+                with mrcfile.new(path, overwrite=True) as mrcw:
+                    mrcw.set_data(np.asarray(stack).astype(np.float32))
+                    mrcw.voxel_size = pixel_size * 10.0
+            else:
+                with tifffile.TiffWriter(path, bigtiff=True) as tiffw:
+                    for i in range(len(stack)):
+                        tiffw.write(stack[i], description=titles[i], resolution=(1. / (1e-7 * pixel_size), 1. / (1e-7 * pixel_size), 'CENTIMETER'))
+
         if CorrelationEditor.ex_path == "":
             return
-        if CorrelationEditor.ex_png:
-            export_png()
-        else:
-            export_tiff_stack()
+        export_path = CorrelationEditor.ex_path
+        if CorrelationEditor.ex_type == 0:
+            if export_path[-4:] != ".png":
+                export_path += ".png"
+        if CorrelationEditor.ex_type == 1:
+            if export_path[-4:] != ".tif":
+                export_path += ".tif"
+        if CorrelationEditor.ex_type == 2:
+            if export_path[-4:] != ".mrc":
+                export_path += ".mrc"
 
-    @staticmethod
-    def _frame_context_menu(f, title_edit_field=True):
+        if CorrelationEditor.ex_type==0:
+            export_png(export_path)
+        else:
+            export_stack(export_path)
+
+    def _frame_context_menu(self, f, title_edit_field=True):
         if title_edit_field:
             _c, f.title = imgui.input_text("##fname", f.title, 30)
         if f.title == "":
@@ -1072,37 +1152,43 @@ class CorrelationEditor:
         elif imgui.menu_item("Lower one step")[0]:
             f.move_backwards()
         elif imgui.menu_item("Rotate +90° (ccw)")[0]:
-            f.transform.rotation += 90.0
+            f.pivoted_rotation(f.pivot_point, 90.0)
         elif imgui.menu_item("Rotate -90° (cw)")[0]:
-            f.transform.rotation -= 90.0
+            f.pivoted_rotation(f.pivot_point, -90.0)
         elif imgui.menu_item("Duplicate")[0]:
             duplicate = f.duplicate()
             duplicate.setup_opengl_objects()
             cfg.ce_frames.insert(0, duplicate)
+        if f.has_slices:
+            if imgui.menu_item("add to Segmentation Editor")[0]:
+                cfg.segmentation_editor.seframe_from_clemframe(f)
+                overlay = CorrelationEditor.render_frame_overlay_to_image(f)
+                cfg.se_frames[-1].set_overlay(overlay, f, CorrelationEditor.render_frame_overlay_to_image)
         if imgui.begin_menu("Flip"):
             if imgui.menu_item("Horizontally")[0]:
-                f.flip()
+                f.flip(include_children=False)
             if imgui.menu_item("Vertically")[0]:
-                f.flip(horizontally=False)
+                f.flip(horizontally=False, include_children=False)
             if imgui.menu_item("Horizontally (+ children)")[0]:
                 f.flip(include_children=True)
             if imgui.menu_item("Vertically (+ children)")[0]:
                 f.flip(horizontally=False, include_children=True)
             imgui.end_menu()
-        if imgui.begin_menu("Render binned"):
-            if imgui.menu_item("None", selected=f.binning == 1)[0]:
-                f.binning = 1
-            if imgui.menu_item("1.5 x", selected=f.binning == 1.5)[0]:
-                f.binning = 1.5
-            elif imgui.menu_item("2 x", selected=f.binning == 2)[0]:
-                f.binning = 2
-            elif imgui.menu_item("3 x", selected=f.binning == 3)[0]:
-                f.binning = 3
-            elif imgui.menu_item("4 x", selected=f.binning == 4)[0]:
-                f.binning = 4
-            elif imgui.menu_item("8 x", selected=f.binning == 8)[0]:
-                f.binning = 8
-            imgui.end_menu()
+        # if imgui.begin_menu("Render binned"):
+        #     if imgui.menu_item("None", selected=f.binning == 1)[0]:
+        #         f.binning = 1
+        #     if imgui.menu_item("1.5 x", selected=f.binning == 1.5)[0]:
+        #         f.binning = 1.5
+        #     elif imgui.menu_item("2 x", selected=f.binning == 2)[0]:
+        #         f.binning = 2
+        #     elif imgui.menu_item("3 x", selected=f.binning == 3)[0]:
+        #         f.binning = 3
+        #     elif imgui.menu_item("4 x", selected=f.binning == 4)[0]:
+        #         f.binning = 4
+        #     elif imgui.menu_item("8 x", selected=f.binning == 8)[0]:
+        #         f.binning = 8
+        #     imgui.end_menu()
+
 
     def objects_info_window(self):
         content_width = 0
@@ -1133,11 +1219,11 @@ class CorrelationEditor:
             label_width = CorrelationEditor.FRAMES_IN_SCENE_WINDOW_WIDTH - indent * CorrelationEditor.FRAME_LIST_INDENT_WIDTH - 87 - (0 if f.is_rgb else 15)
             if f.hide:
                 imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_TEXT_DISABLED)
-            _c, selected = imgui.selectable(""+f.title+f"###fuid{f.uid}", selected=CorrelationEditor.active_frame == f, width=label_width)
+            _c, selected = imgui.selectable(""+f.title+f"###fuid{f.uid}", selected=CorrelationEditor.active_frame == f, width=label_width)  ## TODO: make collapsable
             if f.hide:
                 imgui.pop_style_color(1)
             if imgui.begin_popup_context_item():
-                CorrelationEditor._frame_context_menu(f)
+                self._frame_context_menu(f)
                 imgui.end_popup()
             if selected:
                 CorrelationEditor.active_frame = f
@@ -1405,7 +1491,7 @@ class CorrelationEditor:
 
         # particle picking, if active, takes precedence over other input
         if CorrelationEditor.picking_enabled and CorrelationEditor.active_frame is not None:
-
+            # TODO: fix removing particles not working
             if self.window.get_key(glfw.KEY_ESCAPE):
                 CorrelationEditor.picking_enabled = False
                 return
@@ -1597,20 +1683,16 @@ class CorrelationEditor:
             ctrl = imgui.is_key_down(glfw.KEY_LEFT_CONTROL) or imgui.is_key_down(glfw.KEY_RIGHT_CONTROL)
             shift = imgui.is_key_down(glfw.KEY_LEFT_SHIFT) or imgui.is_key_down(glfw.KEY_RIGHT_SHIFT)
             translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION
-            if ctrl: translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION_SLOW
-            if shift: translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION_FAST
+            if ctrl: translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION * 0.1
+            if shift: translation_step = CorrelationEditor.ARROW_KEY_TRANSLATION * 10.0
             if imgui.is_key_pressed(glfw.KEY_LEFT, repeat=True):
-                CorrelationEditor.active_frame.transform.translation[0] -= translation_step
-                CorrelationEditor.active_frame.pivot_point[0] -= translation_step
+                CorrelationEditor.active_frame.translate([-translation_step, 0])
             elif imgui.is_key_pressed(glfw.KEY_RIGHT, repeat=True):
-                CorrelationEditor.active_frame.transform.translation[0] += translation_step
-                CorrelationEditor.active_frame.pivot_point[0] += translation_step
+                CorrelationEditor.active_frame.translate([translation_step, 0])
             elif imgui.is_key_pressed(glfw.KEY_UP, repeat=True):
-                CorrelationEditor.active_frame.transform.translation[1] += translation_step
-                CorrelationEditor.active_frame.pivot_point[1] += translation_step
+                CorrelationEditor.active_frame.translate([0, translation_step])
             elif imgui.is_key_pressed(glfw.KEY_DOWN, repeat=True):
-                CorrelationEditor.active_frame.transform.translation[1] -= translation_step
-                CorrelationEditor.active_frame.pivot_point[1] -= translation_step
+                CorrelationEditor.active_frame.translate([0, -translation_step])
             elif imgui.is_key_pressed(glfw.KEY_DELETE, repeat=True):
                 if CorrelationEditor.active_frame is not None:
                     CorrelationEditor.delete_frame(CorrelationEditor.active_frame)
@@ -1667,10 +1749,11 @@ class CorrelationEditor:
             elif imgui.is_key_pressed(glfw.KEY_SPACE):
                 self.camera.focus_on_frame(CorrelationEditor.active_frame)
             elif imgui.is_key_pressed(glfw.KEY_S):
-                self.snap_enabled = not self.snap_enabled
+                CorrelationEditor.snap_enabled = not CorrelationEditor.snap_enabled
             elif imgui.is_key_pressed(glfw.KEY_C):
                 if CorrelationEditor.active_frame:
                     CorrelationEditor.active_frame.lut_clamp_mode = (CorrelationEditor.active_frame.lut_clamp_mode + 1) % 3
+                    CorrelationEditor.active_frame.update_lut()
 
     def _warning_window(self):
         def ww_context_menu():
@@ -1727,7 +1810,7 @@ class CorrelationEditor:
                 imgui.set_next_window_position(self.context_menu_position[0] - 3, self.context_menu_position[1] - 3)
                 imgui.begin("##ce_cm", False, imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_SAVED_SETTINGS)
                 ## context menu options
-                CorrelationEditor._frame_context_menu(frame, title_edit_field=False)
+                self._frame_context_menu(frame, title_edit_field=False)
                 if self.window.get_mouse_button(glfw.MOUSE_BUTTON_LEFT) and not imgui.is_window_hovered(imgui.HOVERED_CHILD_WINDOWS | imgui.HOVERED_ALLOW_WHEN_BLOCKED_BY_POPUP):
                     self.context_menu_open = False
                 imgui.end()
@@ -1806,8 +1889,9 @@ class CorrelationEditor:
 
     @staticmethod
     def delete_frame(frame):
-        for child in frame.children:
-            child.parent_to(frame.parent)
+        for c in cfg.ce_frames:
+            if c.parent == frame:
+                c.parent_to(frame.parent)
         frame.unparent()
         if CorrelationEditor.active_frame == frame:
             CorrelationEditor.active_frame = None
@@ -2011,6 +2095,7 @@ class Camera:
         self.projection_matrix = np.identity(4)
         self.view_projection_matrix = np.identity(4)
         self.position = np.zeros(3)
+        self.rotation = 0.0
         self.zoom = 1.0
         self.projection_width = 1
         self.projection_height = 1
@@ -2046,18 +2131,74 @@ class Camera:
         self.projection_height = window_height
 
     def on_update(self):
-        self.view_matrix = np.matrix([
-            [self.zoom, 0.0, 0.0, self.position[0] * self.zoom],
-            [0.0, self.zoom, 0.0, self.position[1] * self.zoom],
+        translation_matrix = np.matrix([
+            [1.0, 0.0, 0.0, self.position[0] * self.zoom],
+            [0.0, 1.0, 0.0, self.position[1] * self.zoom],
             [0.0, 0.0, 1.0, self.position[2]],
             [0.0, 0.0, 0.0, 1.0],
         ])
+
+        scale_matrix = np.matrix([
+            [self.zoom, 0.0, 0.0, 0.0],
+            [0.0, self.zoom, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+
+        theta = np.radians(self.rotation)
+        rotation_matrix = np.matrix([
+            [np.cos(theta), -np.sin(theta), 0.0, 0.0],
+            [np.sin(theta), np.cos(theta), 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+
+        self.view_matrix = translation_matrix * rotation_matrix * scale_matrix
+        self.view_projection_matrix = np.matmul(self.projection_matrix, self.view_matrix)
+
+    def set_pivoted_rotation_matrix(self, pivot):
+        pivot_translation_matrix = np.matrix([
+            [1.0, 0.0, 0.0, pivot[0]],
+            [0.0, 1.0, 0.0, pivot[1]],
+            [0.0, 0.0, 1.0, 0],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+
+        inv_pivot_translation_matrix = np.matrix([
+            [1.0, 0.0, 0.0, -pivot[0]],
+            [0.0, 1.0, 0.0, -pivot[1]],
+            [0.0, 0.0, 1.0, 0],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+
+        translation_matrix = np.matrix([
+            [1.0, 0.0, 0.0, self.position[0] * self.zoom],
+            [0.0, 1.0, 0.0, self.position[1] * self.zoom],
+            [0.0, 0.0, 1.0, self.position[2]],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+
+        scale_matrix = np.matrix([
+            [self.zoom, 0.0, 0.0, 0.0],
+            [0.0, self.zoom, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+
+        theta = np.radians(self.rotation)
+        rotation_matrix = np.matrix([
+            [np.cos(theta), -np.sin(theta), 0.0, 0.0],
+            [np.sin(theta), np.cos(theta), 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+
+        self.view_matrix = translation_matrix * pivot_translation_matrix * rotation_matrix * inv_pivot_translation_matrix * scale_matrix
         self.view_projection_matrix = np.matmul(self.projection_matrix, self.view_matrix)
 
     def focus_on_frame(self, clemframe):
         self.position[0] = -clemframe.transform.translation[0]
         self.position[1] = -clemframe.transform.translation[1]
-        # set zoom as well:
         img_width = clemframe.width * clemframe.pixel_size
         img_height = clemframe.height * clemframe.pixel_size
         size = max([img_width, img_height])
@@ -2197,6 +2338,10 @@ class ImportedFrameData:
                 with mrcfile.open(self.path, header_only=True) as mrc:
                     self.pixel_size = float(mrc.voxel_size.x / 10.0)
                     self.pixel_size_z = float(mrc.voxel_size.z / 10.0)
+                    if self.pixel_size == 0.0:
+                        self.pixel_size = 1.0
+                    if self.pixel_size_z == 0.0:
+                        self.pixel_size_z = 1.0
                 mrc = mrcfile.mmap(self.path, mode="r")
                 if len(mrc.data.shape) == 2:
                     self.pxd = mrc.data
@@ -2213,6 +2358,13 @@ class ImportedFrameData:
                     self.pxd = self.pxd.astype(np.uint16)
                 if isinstance(self.pxd, np.memmap):
                     self.pxd = np.asarray(self.pxd)
+                target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'),
+                                    np.dtype('int16'): np.dtype('float32')}
+                if self.pxd.dtype not in target_type_dict:
+                    target_type = float
+                else:
+                    target_type = target_type_dict[self.pxd.dtype]
+                self.pxd = np.array(self.pxd.astype(target_type, copy=False), dtype=float)
             else:
                 raise Exception(f"Could not import file with extension '{self.extension}'")
         except Exception as e:

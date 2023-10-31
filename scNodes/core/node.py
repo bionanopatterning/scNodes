@@ -3,11 +3,13 @@ import imgui
 import time
 import datetime
 from scNodes.core.datatypes import *
+import threading
 import matplotlib.pyplot as plt
 from scNodes.core import settings
 from joblib import Parallel, delayed
 from joblib.externals.loky import set_loky_pickler
 set_loky_pickler("dill")
+
 
 class Node:
     title = "NullNode"
@@ -118,6 +120,8 @@ class Node:
         imgui.push_style_color(imgui.COLOR_CHECK_MARK, *self.colour)
         imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, *self.colour)
         imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, *self.colour_brighten(self.colour))
+        imgui.push_style_color(imgui.COLOR_TAB_ACTIVE, *self.colour)
+        imgui.push_style_color(imgui.COLOR_TAB, *self.colour_whiten(self.colour))
         if cfg.focused_node == self:
             imgui.push_style_color(imgui.COLOR_WINDOW_BACKGROUND, *self.colour_whiten(self.colour))
             imgui.push_style_var(imgui.STYLE_WINDOW_BORDERSIZE, Node.FOCUSED_NODE_BORDER_THICKNESS)
@@ -217,12 +221,14 @@ class Node:
             if imgui.begin_menu("About this node"):
                 imgui.text(self.description)
                 imgui.end_menu()
+
+            self.extra_context_menu_options()
             imgui.end_popup()
         if cfg.profiling and self.does_profiling_time:
             imgui.separator()
             imgui.text(f"Time processing: {self.profiler_time:.2f}")
             imgui.text(f"Frames requested: {self.profiler_count}")
-        imgui.pop_style_color(23)
+        imgui.pop_style_color(25)
         imgui.pop_style_var(5)
         imgui.pop_id()
         imgui.pop_clip_rect()
@@ -474,6 +480,9 @@ class Node:
     def on_receive_drop(self, files):
         pass
 
+    def extra_context_menu_options(self):
+        pass
+
 
 class NullNode(Node):
     def __init__(self):
@@ -712,3 +721,32 @@ class ConnectableAttribute:
         return False
 
 
+class BackgroundProcess:
+    idgen = count(0)
+
+    def __init__(self, function, args, name=None):
+        self.uid = next(BackgroundProcess.idgen)
+        self.function = function
+        self.args = args
+        self.name = name
+        self.thread = None
+        self.progress = 0.0
+        self.stop_request = threading.Event()
+
+    def start(self):
+        _name = f"BackgroundProcess {self.uid} - "+(self.name if self.name is not None else "")
+        self.thread = threading.Thread(daemon=True, target=self._run, name=_name)
+        self.thread.start()
+
+    def _run(self):
+        self.function(*self.args, self)
+
+    def set_progress(self, progress):
+        self.progress = progress
+
+    def stop(self):
+        self.stop_request.set()
+        self.progress = 1.0
+
+    def __str__(self):
+        return f"BackgroundProcess {self.uid} with function {self.function} and args {self.args}"

@@ -89,22 +89,48 @@ class CLEMFrame:
         my_copy.setup_opengl_objects()
         return my_copy
 
-    def flip(self, horizontally=True, include_children=False):
+    def adjust_position_on_flip(self, axis):
+        P = np.array(self.transform.translation[0:2])
+        A = np.array(axis[0:2])
+        U = np.array(axis[2:4])
+        AP = np.subtract(P, A)
+        print(P, A, AP, U)
+        P_new = np.add(A, AP - 2 * np.dot(AP, U) * U)
+        self.transform.translation[0] = P_new[0]
+        self.transform.translation[1] = P_new[1]
+
+    def flip(self, horizontally=True, include_children=False, axis=None):
         if horizontally:
             self.flip_h = not self.flip_h
             self.data = np.flip(self.data, axis=1)
             for group in self.particle_groups:
                 for i in range(len(group.coordinates)):
                     group.coordinates[i][0] = self.width - group.coordinates[i][0]
+            if axis is not None:
+                self.adjust_position_on_flip(axis)
+            else:
+                theta = -self.transform.rotation / 180.0 * np.pi
+                u = (np.cos(theta), -np.sin(theta))
+                a = tuple(self.transform.translation[0:2])
+                axis = (*a, *u)
+                self.adjust_position_on_flip(axis)
         else:
             self.flip_v = not self.flip_v
             self.data = np.flip(self.data, axis=0)
             for group in self.particle_groups:
                 for i in range(len(group.coordinates)):
                     group.coordinates[i][1] = -(self.height + group.coordinates[i][1])
+            if axis is not None:
+                self.adjust_position_on_flip(axis)
+            else:
+                theta = -self.transform.rotation / 180.0 * np.pi
+                u = (np.sin(theta), np.cos(theta))
+                a = tuple(self.transform.translation[0:2])
+                axis = (*a, *u)
+                self.adjust_position_on_flip(axis)
         if include_children:
             for child in self.children:
-                child.flip(horizontally=horizontally, include_children=True)
+                child.flip(horizontally=horizontally, include_children=True, axis=axis)
         self.update_image_texture(compute_histogram=False)
 
     def setup_opengl_objects(self):
@@ -157,11 +183,11 @@ class CLEMFrame:
                 mrc = mrcfile.mmap(self.path, mode="r")
                 self.n_slices = mrc.data.shape[0]
                 self.data = mrc.data[slices.pop(0), :, :]
-                target_type_dict = {np.float32: float, float: float, np.int8: np.uint8, np.int16: np.uint16}
-                if type(self.data[0, 0]) not in target_type_dict:
+                target_type_dict = {np.float32: float, float: float, np.dtype('int8'): np.dtype('uint8'), np.dtype('int16'): np.dtype('float32')}
+                if self.data.dtype not in target_type_dict:
                     target_type = float
                 else:
-                    target_type = target_type_dict[type(self.data[0, 0])]
+                    target_type = target_type_dict[self.data.dtype]
                 self.data = np.array(self.data.astype(target_type, copy=False), dtype=float)
                 for idx in slices:
                     self.data += np.array(mrc.data[idx, :, :].astype(target_type, copy=False), dtype=float)
@@ -183,10 +209,11 @@ class CLEMFrame:
             frame.transform.translation[0] += translation[0]
             frame.transform.translation[1] += translation[1]
 
-    def pivoted_rotation(self, pivot, angle):
-        if self.locked:
+    def pivoted_rotation(self, pivot, angle, ignore_children=False, ignore_lock=False):
+        if self.locked and not ignore_lock:
             return
-        for frame in self.list_all_children(include_self=True):
+        affected_frames = [self] if ignore_children else self.list_all_children(include_self=True)
+        for frame in affected_frames:
             frame.transform.rotation += angle
             p = np.matrix([frame.transform.translation[0] - pivot[0], frame.transform.translation[1] - pivot[1]]).T
             rotation_mat = np.identity(2)

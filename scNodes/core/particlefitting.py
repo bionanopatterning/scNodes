@@ -2,6 +2,7 @@ import numpy as np
 import pygpufit.gpufit as gf
 from scNodes.core.util import tic, toc
 
+
 def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constraints=(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1), uncertainty_estimator=0, camera_offset=0):
     """
     uncertainty_type: 0 for Thompson et al. 2002, 1 for Mortsensen et al. 2010
