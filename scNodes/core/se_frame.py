@@ -5,11 +5,12 @@ from scNodes.core.opengl_classes import *
 import datetime
 import scNodes.core.config as cfg
 import scNodes.core.settings as settings
-from scNodes.core.util import bin_2d_array, get_maxima_3d_watershed
+from scNodes.core.util import bin_2d_array#, get_maxima_3d_watershed
 from scNodes.core.se_model import BackgroundProcess
 from skimage import measure
 from scipy.ndimage import label, binary_dilation
 import tifffile
+
 
 class SEFrame:
     idgen = count(0)
@@ -536,7 +537,7 @@ class Segmentation:
                 vol = np.zeros((self.parent.n_slices, self.parent.height, self.parent.width), dtype=np.uint8)
                 for i in self.edited_slices:
                     vol[i] = self.slices[i]
-                outf.set_data(vol)
+                outf.set_data(vol * 255)
                 outf.voxel_size = self.parent.pixel_size * 10.0
             print(f"Volume saved to: {fpath}")
         except Exception as e:
@@ -723,10 +724,10 @@ class SurfaceModel:
         for i in self.blobs:
             self.blobs[i].update_if_necessary()
 
-    def find_coordinates(self, threshold, min_weight, min_spacing):
-        if self.data is None:
-            self.data = mrcfile.read(self.path)
-        self.coordinates = get_maxima_3d_watershed(array=self.data, array_pixel_size=self.pixel_size, threshold=threshold, min_weight=min_weight, min_spacing=min_spacing, return_coords=True)
+    # def find_coordinates(self, threshold, min_weight, min_spacing):
+    #     if self.data is None:
+    #         self.data = mrcfile.read(self.path)
+    #     self.coordinates = get_maxima_3d_watershed(array=self.data, array_pixel_size=self.pixel_size, threshold=threshold, min_weight=min_weight, min_spacing=min_spacing, return_coords=True)
 
     def save_as_obj(self, path):
         if self.hide or not self.initialized:

@@ -7,7 +7,7 @@ import dill as pickle
 from scNodes.core.se_model import *
 from scNodes.core.se_frame import *
 import scNodes.core.widgets as widgets
-from scNodes.core.util import clamp, bin_mrc, get_maxima_3d_watershed
+from scNodes.core.util import clamp, bin_mrc
 import pyperclip
 import os
 import subprocess
@@ -85,6 +85,10 @@ class SegmentationEditor:
         EXTRACT_SELECTED_FEATURE_TITLE = ""
 
         trainset_apix = 10.0
+        seg_folder = ""
+
+        SHOW_BOOT_SPRITE = True
+        ICON = Image.open(os.path.join(cfg.root, "icons", "LOGO_Pom_128.png"))
 
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
@@ -163,6 +167,13 @@ class SegmentationEditor:
             self.icon_chimerax.set_linear_interpolation()
             self.icon_blender.set_linear_interpolation()
 
+            self.boot_sprite_texture = Texture(format="rgba32f")
+            pxd = np.asarray(Image.open(os.path.join(icon_dir, "LOGO_Pom_2048.png"))).astype(np.float32) / 255.0
+            self.boot_sprite_texture.update(pxd)
+            self.boot_sprite_width, self.boot_sprite_height = pxd.shape[0:2]
+            self.boot_sprite_texture.set_linear_interpolation()
+
+
     @staticmethod
     def set_active_dataset(dataset):
         SegmentationEditor.pick_tab_index_datasets_segs = True
@@ -171,6 +182,7 @@ class SegmentationEditor:
         cfg.se_active_frame.slice_changed = True
         if len(cfg.se_frames) == 1:
             SegmentationEditor.trainset_apix = cfg.se_active_frame.pixel_size * 10.0
+            SegmentationEditor.seg_folder = os.path.dirname(cfg.se_active_frame.path)
         SegmentationEditor.renderer.fbo1 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
         SegmentationEditor.renderer.fbo2 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
         SegmentationEditor.renderer.fbo3 = FrameBuffer(dataset.width, dataset.height, "rgba32f")
@@ -422,6 +434,28 @@ class SegmentationEditor:
             imgui.push_style_color(imgui.COLOR_DRAG_DROP_TARGET, *cfg.COLOUR_DROP_TARGET)
             imgui.push_style_color(imgui.COLOR_SCROLLBAR_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND[:3], 0.0)
             imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, cfg.WINDOW_ROUNDING)
+
+        def boot_sprite():
+            if SegmentationEditor.SHOW_BOOT_SPRITE:
+                imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND[0:3], 0.0)
+                imgui.push_style_color(imgui.COLOR_TITLE_BACKGROUND_ACTIVE, *cfg.COLOUR_WINDOW_BACKGROUND[0:3], 0.0)
+                imgui.push_style_color(imgui.COLOR_TEXT, *(0.0, 0.0, 0.0, 1.0))
+
+                _w = self.boot_sprite_width * 0.25
+                _h = self.boot_sprite_height * 0.25
+                imgui.set_next_window_position(SegmentationEditor.MAIN_WINDOW_WIDTH + (cfg.window_width - SegmentationEditor.MAIN_WINDOW_WIDTH) / 2.0 - (_w / 2.0), (cfg.window_height - _h) / 2.0 - 25)
+                self.show_boot_img = imgui.begin("##boot_sprite", True,imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_BACKGROUND | imgui.WINDOW_NO_SCROLLBAR)[1]
+                imgui.image(self.boot_sprite_texture.renderer_id, _w, _h)
+                imgui.push_style_color(imgui.COLOR_POPUP_BACKGROUND, *cfg.COLOUR_WINDOW_BACKGROUND)
+                if imgui.begin_popup_context_window():
+                    imgui.text(f"Welcome to {cfg.app_name}!")
+                    imgui.text(f"version {cfg.version}\nsource: github.com/bionanopatterning/Pom")
+                    imgui.end_popup()
+                if self.window.focused and imgui.is_mouse_clicked(glfw.MOUSE_BUTTON_LEFT) and not imgui.is_window_hovered():
+                    SegmentationEditor.SHOW_BOOT_SPRITE = False
+                imgui.pop_style_color(1)
+                imgui.end()
+                imgui.pop_style_color(3)
 
         def shared_gui():
             if imgui.collapsing_header("Datasets", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
@@ -1162,7 +1196,7 @@ class SegmentationEditor:
 
                 imgui.text("Export settings")
                 imgui.push_style_var(imgui.STYLE_GRAB_ROUNDING, 20)
-                imgui.begin_child("export_settings", 0.0, 58.0, True)
+                imgui.begin_child("export_settings", 0.0, 53.0, True)
                 _, self.export_dir = widgets.select_directory("browse", self.export_dir)
                 imgui.set_next_item_width(imgui.get_content_region_available_width())
                 _, self.export_limit_range = imgui.checkbox(" limit range ", self.export_limit_range)
@@ -1187,6 +1221,8 @@ class SegmentationEditor:
 
         def picking_tab():
             if imgui.collapsing_header("Volumes", None, imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+                src_folder_changed, SegmentationEditor.seg_folder = widgets.select_directory("...", SegmentationEditor.seg_folder)
+                self.tooltip("Specify the directory in which to look for segmentations for the active dataset.")
                 imgui.push_style_var(imgui.STYLE_FRAME_ROUNDING, 10)
                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1)
                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0, 0))
@@ -1207,12 +1243,9 @@ class SegmentationEditor:
                     SegmentationEditor.pick_tab_index_datasets_segs = False
                     # find segmentations in the selected dataset's folder.
 
-                    if self.pick_same_folder:
-                        files = glob.glob(os.path.join(os.path.dirname(se_frame.path), se_frame.title + "_*.mrc"))
-                        print(f"Filename template: {os.path.dirname(se_frame.path)}, {se_frame.title}, _*.mrc")
-                    else:
-                        files = glob.glob(os.path.join(self.seg_folder, se_frame.title + "_*.mrc"))
-                        print(f"Filename template: {self.seg_folder}, {se_frame.title}, _*.mrc")
+
+                    files = glob.glob(os.path.join(SegmentationEditor.seg_folder, se_frame.title + "_*.mrc"))
+                    print(f"Filename template: {SegmentationEditor.seg_folder}, {se_frame.title}, _*.mrc")
                     for f in sorted(files):
                         if not 'overlay' in f:
                             cfg.se_surface_models.append(SurfaceModel(f, se_frame.pixel_size))
@@ -1236,7 +1269,7 @@ class SegmentationEditor:
                     self.pick_box_quad_va.update(VertexBuffer(vertices), IndexBuffer(quad_indices))
 
 
-                if SegmentationEditor.pick_tab_index_datasets_segs:
+                if SegmentationEditor.pick_tab_index_datasets_segs or src_folder_changed:
                     update_picking_tab_for_new_active_frame()
 
                 for s in cfg.se_surface_models:
@@ -1604,6 +1637,7 @@ class SegmentationEditor:
         # START GUI:
         # Menu bar
         menu_bar()
+
         # Render the currently active frame
 
         if cfg.se_active_frame is not None:
@@ -1713,6 +1747,7 @@ class SegmentationEditor:
 
         slicer_window()
         self._warning_window()
+        boot_sprite()
         imgui.pop_style_color(32)
         imgui.pop_style_var(1)
 
@@ -1830,34 +1865,35 @@ class SegmentationEditor:
         if not imgui.is_any_item_hovered():
             SegmentationEditor.TOOLTIP_HOVERED_TIMER = 0.0
 
-    def launch_export_coordinates(self, feature_title):
-        try:
-            if not os.path.isdir(self.export_dir):
-                os.makedirs(self.export_dir)
-            datasets = [d for d in cfg.se_frames if d.export]
-            if not datasets:
-                return
-
-            feature_tag = f"_{feature_title}"
-            for d in datasets:
-                feature_mrc_path = os.path.splitext(d.path)[0]+feature_tag+".mrc"
-                if os.path.isfile(feature_mrc_path):
-                    self.queued_extracts.append(QueuedExtract(feature_mrc_path, SegmentationEditor.EXTRACT_THRESHOLD, SegmentationEditor.EXTRACT_MIN_WEIGHT, SegmentationEditor.EXTRACT_MIN_SPACING, self.export_dir))
-                else:
-                    print(f"Feature with tag {feature_title} not found for dataset at {d.path}")
-            if self.queued_extracts:
-                self.queued_extracts[0].start()
-        except Exception as e:
-            cfg.set_error(e, "Could not launch QueuedExtract jobs - see details below:")
+    # def launch_export_coordinates(self, feature_title):
+    #     try:
+    #         if not os.path.isdir(self.export_dir):
+    #             os.makedirs(self.export_dir)
+    #         datasets = [d for d in cfg.se_frames if d.export]
+    #         if not datasets:
+    #             return
+    #
+    #         feature_tag = f"_{feature_title}"
+    #         for d in datasets:
+    #             feature_mrc_path = os.path.splitext(d.path)[0]+feature_tag+".mrc"
+    #             if os.path.isfile(feature_mrc_path):
+    #                 self.queued_extracts.append(QueuedExtract(feature_mrc_path, SegmentationEditor.EXTRACT_THRESHOLD, SegmentationEditor.EXTRACT_MIN_WEIGHT, SegmentationEditor.EXTRACT_MIN_SPACING, self.export_dir))
+    #             else:
+    #                 print(f"Feature with tag {feature_title} not found for dataset at {d.path}")
+    #         if self.queued_extracts:
+    #             self.queued_extracts[0].start()
+    #     except Exception as e:
+    #         cfg.set_error(e, "Could not launch QueuedExtract jobs - see details below:")
 
     def launch_export_volumes(self):
         try:
-            if not os.path.isdir(self.export_dir):
-                os.makedirs(self.export_dir)
             datasets = [d for d in cfg.se_frames if d.export]
             models = [m for m in cfg.se_models if m.export]
             if not datasets:
                 return
+            if not os.path.isdir(self.export_dir):
+                os.makedirs(self.export_dir)
+
             for d in datasets:
                 self.queued_exports.append(QueuedExport(self.export_dir, d, models, self.export_batch_size, self.export_overlays))
 
@@ -2994,29 +3030,29 @@ class QueuedExport:
         if self.process.thread is not None:
             self.process.stop_request.set()
 
-
-class QueuedExtract:
-    def __init__(self, mrcpath, threshold, min_weight, min_spacing, save_dir):
-        self.path = mrcpath
-        self.threshold = threshold
-        self.min_weight = min_weight
-        self.min_spacing = min_spacing
-        self.dir = save_dir
-        self.process = BackgroundProcess(self.do_export, (), name=f"{self.path} find coords.")
-
-    def do_export(self, process):
-        try:
-            get_maxima_3d_watershed(mrcpath=self.path, threshold=self.threshold, min_spacing=self.min_spacing, min_weight=self.min_weight, save_dir=self.dir, process=self.process)
-        except Exception as e:
-            cfg.set_error(e, "Error in QueuedExtract (finding coordinates in a .mrc) - see details below.")
-        process.set_progress(1.0)
-
-    def start(self):
-        self.process.start()
-
-    def stop(self):
-        if self.process.thread is not None:
-            self.process.stop_request.set()
+#
+# class QueuedExtract:
+#     def __init__(self, mrcpath, threshold, min_weight, min_spacing, save_dir):
+#         self.path = mrcpath
+#         self.threshold = threshold
+#         self.min_weight = min_weight
+#         self.min_spacing = min_spacing
+#         self.dir = save_dir
+#         self.process = BackgroundProcess(self.do_export, (), name=f"{self.path} find coords.")
+#
+#     def do_export(self, process):
+#         try:
+#             get_maxima_3d_watershed(mrcpath=self.path, threshold=self.threshold, min_spacing=self.min_spacing, min_weight=self.min_weight, save_dir=self.dir, process=self.process)
+#         except Exception as e:
+#             cfg.set_error(e, "Error in QueuedExtract (finding coordinates in a .mrc) - see details below.")
+#         process.set_progress(1.0)
+#
+#     def start(self):
+#         self.process.start()
+#
+#     def stop(self):
+#         if self.process.thread is not None:
+#             self.process.stop_request.set()
 
 
 class WorldSpaceIcon:
@@ -3146,3 +3182,4 @@ class WorldSpaceIcon:
         ab = [B[0] - A[0], B[1] - A[1]]
         ad = [D[0] - A[0], D[1] - A[1]]
         return (0 < ap[0] * ab[0] + ap[1] * ab[1] < ab[0] ** 2 + ab[1] ** 2) and (0 < ap[0] * ad[0] + ap[1] * ad[1] < ad[0] ** 2 + ad[1] ** 2)
+
