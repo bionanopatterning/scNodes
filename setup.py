@@ -39,7 +39,7 @@ setup(
         "PyWavelets>=1.3.0",
         "pyperclip>=1.8.2",
         "pystackreg>=0.2.6.post1",
-        "pyimgui-wheels",
+        "imgui>=2.0.0",
         "scikit-image>=0.19.3",
         "tifffile>=2021.11.2" ## was 2022.8.12
     ]

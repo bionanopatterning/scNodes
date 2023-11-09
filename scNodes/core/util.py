@@ -46,7 +46,7 @@ def extract_particles(vol_path, coords_path, boxsize, unbin=1, two_dimensional=F
     return imgs
 
 
-def get_maxima_3d_watershed(mrcpath="", threshold=128, min_spacing=10.0, min_weight=None, save_txt=True, sort_by_weight=True, save_dir=None, process=None, array=None, array_pixel_size=None, return_coords=False):
+def get_maxima_3d_watershed(mrcpath="", threshold=128, min_spacing=10.0, min_size=None, min_weight=None, save_txt=True, sort_by_weight=True, save_dir=None, process=None, array=None, array_pixel_size=None, return_coords=False):
     if array is None:
         print(f"\nLoading {mrcpath}")
         data = mrcfile.read(mrcpath)
@@ -57,22 +57,22 @@ def get_maxima_3d_watershed(mrcpath="", threshold=128, min_spacing=10.0, min_wei
     else:
         data = array
         pixel_size = array_pixel_size
+
     print(f"Thresholding & computing distance map")
     binary_vol = data > threshold
     distance = distance_transform_edt(binary_vol)
     min_distance = int(min_spacing / pixel_size)
-    if process:
-        process.set_progress(0.3)
+
     print("Finding local maxima")
     local_max = peak_local_max(distance, footprint=np.ones((min_distance, min_distance, min_distance)), labels=binary_vol)
-    markers, _ = label(local_max)
-    if process:
-        process.set_progress(0.4)
+    markers = np.zeros_like(distance)
+    markers[tuple(local_max.T)] = 1
+    markers = label(markers)[0]
+
     print("Watershedding")
     labels = watershed(-distance, markers, mask=binary_vol)
     Z, Y, X = np.nonzero(labels)
-    if process:
-        process.set_progress(0.5)
+
     # parse blobs
     blobs = dict()
     for i in range(len(X)):
@@ -88,8 +88,7 @@ def get_maxima_3d_watershed(mrcpath="", threshold=128, min_spacing=10.0, min_wei
         blobs[l].y.append(y)
         blobs[l].z.append(z)
         blobs[l].v.append(data[z, y, x])
-    if process:
-        process.set_progress(0.6)
+
     if min_weight:
         to_pop = list()
         for key in blobs:
@@ -99,11 +98,18 @@ def get_maxima_3d_watershed(mrcpath="", threshold=128, min_spacing=10.0, min_wei
         for key in to_pop:
             blobs.pop(key)
         print(f"Removing {len(to_pop)} blobs because their sum weight is too little. N = {len(blobs)} blobs remaining.")
-    if process:
-        process.set_progress(0.7)
+    if min_size:
+        to_pop = list()
+        for key in blobs:
+            size = blobs[key].get_volume()*pixel_size**3
+            if size < min_size:
+                to_pop.append(key)
+        for key in to_pop:
+            blobs.pop(key)
+        print(f"Removing {len(to_pop)} blobs because their size is too small. N = {len(blobs)} blobs remaining.")
+
     blobs = list(blobs.values())
     metrics = list()
-    print(f"Sorting blobs by {'summed prediction weight' if sort_by_weight else 'volume'}.")
     for blob in blobs:
         if sort_by_weight:
             metrics.append(blob.get_weight())
@@ -112,15 +118,12 @@ def get_maxima_3d_watershed(mrcpath="", threshold=128, min_spacing=10.0, min_wei
 
     indices = np.argsort(metrics)[::-1]
     coordinates = list()
-    print(f"Finding centroids.")
     for i in indices:
         coordinates.append(blobs[i].get_centroid())
-    if process:
-        process.set_progress(0.8)
+
     # remove points that are too close to others.
     remove = list()
     i = 0
-    print(f"Removing particles that are too close to better ones.")
     while i < len(coordinates):
         for j in range(0, i):
             if i in remove:
@@ -131,8 +134,6 @@ def get_maxima_3d_watershed(mrcpath="", threshold=128, min_spacing=10.0, min_wei
             if d < min_spacing:
                 remove.append(j)
         i += 1
-    if process:
-        process.set_progress(0.9)
 
     print(f"Removing N = {len(remove)} blobs due to proximity to better blobs.")
     remove.sort()
