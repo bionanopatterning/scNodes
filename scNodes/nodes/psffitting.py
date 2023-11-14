@@ -164,6 +164,8 @@ class ParticleFittingNode(Node):
         self.params["batch_size"] = max([1, self.params["batch_size"]])
         imgui.spacing()
         _c, self.params["custom_bounds"] = imgui.checkbox("Use custom parameter bounds", self.params["custom_bounds"])
+        if _c and self.params["custom_bounds"]:
+            print("Note that the lower bound for the intensity and offset is hard-coded to be > 0.0; otherwise, uncertainty values are undefined.")
         Node.tooltip("Edit the bounds for particle parameters intensity, sigma, and offset.")
         if self.params["custom_bounds"]:
             imgui.push_item_width(45)
@@ -262,11 +264,11 @@ class ParticleFittingNode(Node):
             if self.params["estimator"] in [0, 1]:
                 if self.params["psf"] == 0:
                     particles = pfit.frame_to_particles(frame, self.params["initial_sigma"], self.params["estimator"], self.params["crop_radius"],
-                                                        constraints=[self.params["intensity_min"],
+                                                        constraints=[1.0,
                                                                      self.params["intensity_max"], -1, -1, -1, -1,
                                                                      self.params["sigma_min"],
                                                                      self.params["sigma_max"],
-                                                                     self.params["offset_min"],
+                                                                     1.0,
                                                                      self.params["offset_max"]],
                                                         uncertainty_estimator=self.params["uncertainty_estimator"],
                                                         camera_offset=self.params["camera_offset"])

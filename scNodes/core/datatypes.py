@@ -321,7 +321,7 @@ class ParticleData:
         self.parameters['visible'] = np.ones_like(self.parameters['x [nm]'])
         self.parameters['colour_idx'] = np.ones_like(self.parameters['x [nm]'])
         for key in self.parameters:
-            print(key)
+            print(key, np.amin(self.parameters[key]), np.amax(self.parameters[key]))
             self.histogram_counts[key], self.histogram_bins[key] = np.histogram(self.parameters[key], bins=ParticleData.HISTOGRAM_BINS)
             self.histogram_counts[key] = self.histogram_counts[key].astype(np.float32)
             self.histogram_counts[key] = np.delete(self.histogram_counts[key], 0)
