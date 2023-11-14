@@ -179,7 +179,7 @@ def start_log():
         os.path.join(root, logpath)
     with open(os.path.join(root, logpath), "w") as f:
         f.write(app_name+" version "+version+" "+license+"\n"+datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\n")
-        f.write(f"OS: {platform.platform()}")
+        f.write(f"OS: {platform.platform()}\n")
         f.write(f"Python version: {sys.version}")
 
 
