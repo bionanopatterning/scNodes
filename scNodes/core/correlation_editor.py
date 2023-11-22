@@ -1174,20 +1174,6 @@ class CorrelationEditor:
             if imgui.menu_item("Vertically (+ children)")[0]:
                 f.flip(horizontally=False, include_children=True)
             imgui.end_menu()
-        # if imgui.begin_menu("Render binned"):
-        #     if imgui.menu_item("None", selected=f.binning == 1)[0]:
-        #         f.binning = 1
-        #     if imgui.menu_item("1.5 x", selected=f.binning == 1.5)[0]:
-        #         f.binning = 1.5
-        #     elif imgui.menu_item("2 x", selected=f.binning == 2)[0]:
-        #         f.binning = 2
-        #     elif imgui.menu_item("3 x", selected=f.binning == 3)[0]:
-        #         f.binning = 3
-        #     elif imgui.menu_item("4 x", selected=f.binning == 4)[0]:
-        #         f.binning = 4
-        #     elif imgui.menu_item("8 x", selected=f.binning == 8)[0]:
-        #         f.binning = 8
-        #     imgui.end_menu()
 
 
     def objects_info_window(self):

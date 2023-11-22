@@ -74,6 +74,7 @@ class SEFrame:
         self.compute_autocontrast()
         self.compute_histogram()
         self.toggle_interpolation()
+        self.set_slice(self.n_slices // 2, True)
 
     def setup_opengl_objects(self):
         self.texture = Texture(format="r32f")
@@ -96,7 +97,7 @@ class SEFrame:
         w, h = self.width * 0.5, self.height * 0.5
         vertex_attributes = list()
         indices = list()
-        n = cfg.ce_va_subdivision
+        n = 4
         for i in range(n):
             for j in range(n):
                 x = ((2 * i / (n - 1)) - 1) * w
