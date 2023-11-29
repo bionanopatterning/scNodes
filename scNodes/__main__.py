@@ -18,7 +18,7 @@ if __name__ == "__main__":
         from scNodes.core.imageviewer import *
         from scNodes.core.reconstruction import *
         if cfg.se_enabled:
-            from scNodes.core.segmentation_editor import *
+            from Ais.core.segmentation_editor import SegmentationEditor
         from joblib.externals.loky import set_loky_pickler
         set_loky_pickler("cloudpickle")
 

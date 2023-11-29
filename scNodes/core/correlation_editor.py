@@ -306,13 +306,10 @@ class CorrelationEditor:
 
     def load_externally_dropped_files(self, paths):
         path = paths[0]
-        print(path)
         paths.pop(0)
         if os.path.splitext(path)[-1]==cfg.filetype_scene:
-            print("scnscene")
             cfg.load_scene(path, append=True)
         else:
-            print("import data")
             incoming = ImportedFrameData(path)
             clem_frame = incoming.to_CLEMFrame()
             if clem_frame:
@@ -1161,9 +1158,9 @@ class CorrelationEditor:
             cfg.ce_frames.insert(0, duplicate)
         if f.has_slices:
             if imgui.menu_item("add to Segmentation Editor")[0]:
-                cfg.segmentation_editor.seframe_from_clemframe(f)
+                se_frame = cfg.segmentation_editor.seframe_from_clemframe(f)
                 overlay = CorrelationEditor.render_frame_overlay_to_image(f)
-                cfg.se_frames[-1].set_overlay(overlay, f, CorrelationEditor.render_frame_overlay_to_image)
+                se_frame.set_overlay(overlay, f, CorrelationEditor.render_frame_overlay_to_image)
         if imgui.begin_menu("Flip"):
             if imgui.menu_item("Horizontally")[0]:
                 f.flip(include_children=False)
