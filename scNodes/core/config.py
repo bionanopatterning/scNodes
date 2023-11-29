@@ -18,7 +18,7 @@ import platform
 frozen = False
 root = os.path.dirname(os.path.dirname(__file__))
 app_name = "scNodes"
-version = "1.2.0"
+version = "1.2.3"
 license = "GNU GPL v3"
 logpath = "scNodes.log"
 filetype_project = ".scnp"
@@ -184,30 +184,6 @@ def start_log():
         f.write(f"OS: {platform.platform()}\n")
         f.write(f"Python version: {sys.version}")
 
-
-def parse_settings():
-    sdict = dict()
-    with open(os.path.join(root, "core", "settings.txt"), 'r') as f:
-        for line in f:
-            key, value = line.strip().split('=')
-            sdict[key] = value
-    return sdict
-
-
-settings = parse_settings()
-
-
-def edit_setting(key, value):
-    global settings
-    settings[key] = value
-    with open(os.path.join(root, "core", "settings.txt"), 'r') as f:
-        lines = f.readlines()
-    for i, line in enumerate(lines):
-        if line.startswith(key+"="):
-            lines[i] = f"{key}={value}\n"
-
-    with open(os.path.join(root, "core", "settings.txt"), 'w') as f:
-        f.writelines(lines)
 
 COLOUR_TEST_A = (1.0, 0.0, 1.0, 1.0)
 COLOUR_TEST_B = (0.0, 1.0, 1.0, 1.0)

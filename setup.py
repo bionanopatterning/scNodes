@@ -13,7 +13,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='scNodes',
-    version='1.2.0',
+    version='1.2.3',
     packages=find_packages(),
     url='https://github.com/bionanopatterning/scNodes',
     license='GPL v3',
@@ -23,7 +23,7 @@ setup(
     package_data={'': ['*.png', '*.glsl', '*.whl', '*.tar.gz', '*.pdf', '*.scn']},
     include_package_data=False,  # weirdly, the above filetypes _are_ included when this parameter is set to False.
     install_requires=[
-        "Ais-cryoET>=0.0.18",
+        "Ais-cryoET>=0.0.19",
         "colorcet>=3.0.0",
         "dill>=0.3.5.1",
         "glfw>=2.5.5",
