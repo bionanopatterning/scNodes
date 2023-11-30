@@ -121,7 +121,10 @@ class LoadDataNode(Node):
                 cfg.set_error(e, "Could not apply filter in LoadImage node, see details below.")
         imgui.same_line(spacing=10)
         if imgui.button("Reset", av_width / 2 - 5, 25):
+            original_active_frame = self.dataset.frames[self.dataset.current_frame]
             self.on_select_file()
+            if original_active_frame in self.dataset.frames:
+                self.dataset.current_frame = self.dataset.frames.index(original_active_frame)
             self.any_change = True
 
     def on_receive_drop(self, files):

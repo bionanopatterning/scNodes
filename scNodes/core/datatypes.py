@@ -212,6 +212,10 @@ class Frame:
             sstr += f"\n{len(self.maxima)} particles found."
         return sstr
 
+    def __eq__(self, other):
+        if isinstance(other, Frame):
+            return self.path == other.path and self.framenr == other.framenr
+        return False
 
 class ParticleData:
     HISTOGRAM_BINS = 50
@@ -336,6 +340,8 @@ class ParticleData:
         self.parameters['dy [nm]'] = np.zeros_like(self.parameters['y [nm]'])
 
     def apply_filter(self, parameter_key, min_val, max_val, logic_not=False):
+        if parameter_key not in self.parameters:
+            return
         vals = self.parameters[parameter_key]
         visible = np.zeros_like(self.parameters['visible'])
         for i in range(self.n_particles):

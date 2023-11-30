@@ -6,14 +6,15 @@ from datetime import datetime
 import sys
 import platform
 
+
 # TODO: add File -> Recent; drop down menu
 # TODO: when generating a binned SE_frame, if overlay, bin it as well.
-# TODO: in SE, add 'Save' and 'Save as' options for dataset
 # TODO: make flipping images in CE nicer.
 # TODO: add a right click context menu in the CE when the background is right lclicked. Add an option for an empty placeholder image. Also: 'add marker' option.
 # TODO: make frames with hierarchies of children in the CE 'Frames in scene' menu collapsible
 # TODO: disallow deleting frame when frame is locked
-# TODO: SE frame 2d overlay in 3d render is offset relative to frame too much
+# TODO: FIX, in Ais 3d render, difference between overlay 3d UV size and frame quad size!!!
+# TODO: in CE on-frame context menu, add 'set pivot point here' option
 
 frozen = False
 root = os.path.dirname(os.path.dirname(__file__))

@@ -13,8 +13,9 @@ from setuptools import setup, find_packages
 
 setup(
     name='scNodes',
-    version='1.2.3',
+    version='1.2.4',
     packages=find_packages(),
+    entry_points={'console_scripts': ['scNodes=scNodes.__main__:main', 'scNodes_install=scNodes.__main__:install']},
     url='https://github.com/bionanopatterning/scNodes',
     license='GPL v3',
     author='mgflast',
@@ -27,6 +28,7 @@ setup(
         "colorcet>=3.0.0",
         "dill>=0.3.5.1",
         "glfw>=2.5.5",
+        "imgui>=2.0.0",
         "joblib>=1.1.0",
         "matplotlib>=3.5.3",
         "mrcfile>=1.4.3",
@@ -40,7 +42,6 @@ setup(
         "PyWavelets>=1.3.0",
         "pyperclip>=1.8.2",
         "pystackreg>=0.2.6.post1",
-        "imgui>=2.0.0",
         "scikit-image>=0.19.3",
         "tifffile>=2021.11.2" ## was 2022.8.12
     ]
