@@ -19,6 +19,7 @@ if __name__ == "__main__":
         from scNodes.core.reconstruction import *
         if cfg.se_enabled:
             from Ais.core.segmentation_editor import SegmentationEditor
+            SegmentationEditor.set_log_path(os.path.join(cfg.root, 'Ais.log'))
         from joblib.externals.loky import set_loky_pickler
         set_loky_pickler("cloudpickle")
 

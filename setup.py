@@ -23,7 +23,7 @@ setup(
     package_data={'': ['*.png', '*.glsl', '*.whl', '*.tar.gz', '*.pdf', '*.scn']},
     include_package_data=False,  # weirdly, the above filetypes _are_ included when this parameter is set to False.
     install_requires=[
-        "Ais-cryoET>=0.0.19",
+        "Ais-cryoET>=0.0.2",
         "colorcet>=3.0.0",
         "dill>=0.3.5.1",
         "glfw>=2.5.5",
