@@ -83,14 +83,15 @@ class GetImageNode(Node):
 
     def on_update(self):
         if self.params["mode"] == 1 and self.image is None:
-                self.generate_projection()
+            self.generate_projection()
 
     def generate_projection(self):
         data_source = self.connectable_attributes["dataset_in"].get_incoming_node()
         if data_source:
             frame = data_source.get_image(0)
             n_frames = Node.get_source_load_data_node(self).dataset.n_frames
-            projection_image = np.zeros((frame.width, frame.height, n_frames))
+            input_frame = data_source.get_image(0).load()
+            projection_image = np.zeros((*input_frame.shape, n_frames))
             for i in range(n_frames):
                 projection_image[:, :, i] = data_source.get_image(i).load()
             if self.params["projection"] == 0:

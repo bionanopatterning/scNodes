@@ -63,6 +63,7 @@ class NodeEditor:
         if self.window.focused:
             self.imgui_implementation.process_inputs()
         cfg.ne_dropped_files = self.window.dropped_files
+        self.window.clear_color = cfg.COLOUR_WINDOW_BACKGROUND
         self.window.on_update()
         if self.window.window_size_changed:
             cfg.window_width = self.window.width

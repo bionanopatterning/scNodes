@@ -2,9 +2,9 @@ from util import *
 
 # Annotation to coordinates:
 feature_paths = glob.glob("U:/mgflast/14. scSegmentation/IgG3_reanalyze/*_Antibody platform.mrc")
-tomo_paths = glob.glob("U:/labendstein/TEM/Talos/AntibodySubclasses/202107-08-TomoIgGSubclasses/IgG3/Tomo/bin2*_rec.mrc")#U:/mgflast/14. scSegmentation/IgG3_reanalyze/*_corrected_rec.mrc")
+tomo_paths = glob.glob("U:/labendstein/TEM/Talos/AntibodySubclasses/202107-08-TomoIgGSubclasses/IgG3/Tomo/bin8_SIRT_*rec.mrc")#U:/mgflast/14. scSegmentation/IgG3_reanalyze/*_corrected_rec.mrc")
 coord_paths = glob.glob("U:/mgflast/14. scSegmentation/IgG3_reanalyze/*coords.txt")
-box_folder = "U:/mgflast/14. scSegmentation/IgG3_reanalyze/box_WBP2/"
+box_folder = "U:/mgflast/14. scSegmentation/IgG3_reanalyze/box_test/"
 replace = [""]
 EXTRACT_COORDINATES = False
 EXTRACT_BOXES = True
@@ -30,7 +30,7 @@ if EXTRACT_BOXES:
             if key in f:
                 c = f
         if c is not None and os.path.exists(c):
-            imgs += extract_particles(p, c, 196, unbin=4, normalize=False, two_dimensional=False)
+            imgs += extract_particles(p, c, 32, normalize=False, two_dimensional=False)
 
     for i in range(len(imgs)):
         print(f"Saving box {i+1}/{len(imgs)}")

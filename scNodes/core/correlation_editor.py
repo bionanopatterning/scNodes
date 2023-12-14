@@ -222,6 +222,7 @@ class CorrelationEditor:
 
     def on_update(self):
         imgui.set_current_context(self.imgui_context)
+        self.window.clear_color = cfg.ce_clear_colour
         self.window.make_current()
         self.window.set_full_viewport()
         if self.window.focused:
@@ -972,7 +973,7 @@ class CorrelationEditor:
         height, width = frame.height, frame.width
         # Make a texture with the same size as frame, then make a camera to render in an FBO of that size.
         fbo = FrameBuffer(width, height, texture_format="rgba32f")
-        fbo.clear([0.0, 0.0, 0.0, 1.0])
+        fbo.clear([0.0, 0.0, 0.0, 0.0])
         fbo.bind()
         # Position and orient the camera s.t. frame is exactly contained within FBO.
         camera = Camera()
@@ -993,6 +994,7 @@ class CorrelationEditor:
                 f.blend_mode = 1
             CorrelationEditor.renderer.render_frame_quad(camera, f)
             f.blend_mode = original_blend_mode
+        glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT)
         pxd = glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT)
         pxd = np.frombuffer(pxd, np.float32).reshape(height, width, 4)
         pxd = np.flipud(pxd)
@@ -1159,6 +1161,7 @@ class CorrelationEditor:
         if f.has_slices:
             if imgui.menu_item("add to Segmentation Editor")[0]:
                 se_frame = cfg.segmentation_editor.seframe_from_clemframe(f)
+                import matplotlib.pyplot as plt
                 overlay = CorrelationEditor.render_frame_overlay_to_image(f)
                 se_frame.set_overlay(overlay, f, CorrelationEditor.render_frame_overlay_to_image)
         if imgui.begin_menu("Flip"):
