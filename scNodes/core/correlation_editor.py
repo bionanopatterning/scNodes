@@ -1680,11 +1680,12 @@ class CorrelationEditor:
             elif imgui.is_key_pressed(glfw.KEY_DOWN, repeat=True):
                 CorrelationEditor.active_frame.translate([0, -translation_step])
             elif imgui.is_key_pressed(glfw.KEY_DELETE, repeat=True):
-                if CorrelationEditor.active_frame is not None:
+                if CorrelationEditor.active_frame is not None and not CorrelationEditor.active_frame.locked:
                     CorrelationEditor.delete_frame(CorrelationEditor.active_frame)
 
             for number_key in range(0, min([CorrelationEditor.N_BLEND_MODES, 9])):
                 if imgui.is_key_down(glfw.KEY_1 + number_key):
+                    CorrelationEditor.active_frame.hide = False
                     CorrelationEditor.active_frame.blend_mode = number_key
             if imgui.is_key_pressed(glfw.KEY_0) or imgui.is_key_pressed(glfw.KEY_H) or imgui.is_key_pressed(glfw.KEY_V):
                 CorrelationEditor.active_frame.hide = not CorrelationEditor.active_frame.hide
