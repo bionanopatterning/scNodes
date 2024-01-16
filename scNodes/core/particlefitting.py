@@ -70,16 +70,14 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
     parameters[:, 2] += xy[:, 0]  # offsetting back into image coordinates
     converged = states == 0
 
-    ## 230207
     frame_particle_data = dict()
     accepted_particles = np.zeros_like(parameters[:, 3])
     for i in range(parameters[:, 3].shape[0]):
         accepted_particles[i] = converged[i] and parameters[i, 3] != constraint_values[0, 7]
     n_particles = int(accepted_particles.sum(0))
-
     accepted_particles = accepted_particles.nonzero()
 
-    frame_particle_data["frame"] = list(np.ones(n_particles, dtype=np.float32) * frame.framenr)
+    frame_particle_data["frame"] = list(np.ones(n_particles, dtype=np.float32) * frame.framenr) if n_particles>1 else frame.framenr
     frame_particle_data["x [nm]"] = parameters[accepted_particles, 1].squeeze().tolist()
     frame_particle_data["y [nm]"] = parameters[accepted_particles, 2].squeeze().tolist()
     frame_particle_data["sigma [nm]"] = parameters[accepted_particles, 3].squeeze().tolist()
@@ -88,10 +86,9 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
     if uncertainty_estimator == 0:
         frame_particle_data["bkgstd [counts]"] = background_stdev[accepted_particles].squeeze().tolist()
     frame_particle_data["chi_square"] = chi_squares[accepted_particles].squeeze().tolist()
-
     if n_particles==1:
         for key in frame_particle_data:
-            frame_particle_data[key] = list[2 * frame_particle_data[key]] # very ugly solution to single-element lists causing downstream problems
+            frame_particle_data[key] = [frame_particle_data[key]] * 2 # very ugly solution to single-element lists causing downstream problems
     return frame_particle_data
 
 def frame_to_particles_3d(frame, initial_sigma=2.0, method=0, crop_radius=4, constraints=(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1), uncertainty_estimator=0, camera_offset=0):
