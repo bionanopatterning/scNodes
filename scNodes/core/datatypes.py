@@ -125,8 +125,10 @@ class Dataset:
         if not self.initialized or not new_dataset.initialized:
             return
         if self.img_width != new_dataset.img_width:
+            print("Original dataset and dataset to append are not the same size!")
             return
         if self.img_height != new_dataset.img_height:
+            print("Original dataset and dataset to append are not the same size!")
             return
         for f in new_dataset.frames:
             self.frames.append(f)
@@ -285,8 +287,8 @@ class ParticleData:
         elif self.uncertainty_estimator == 1:
             self.parameters["intensity [photons]"] = self.parameters["intensity [counts]"] * self.photons_per_count
             self.parameters["offset [photons]"] = self.parameters["offset [counts]"] * self.photons_per_count
-            self.parameters.pop("intensity [counts]")
-            self.parameters.pop("offset [counts]")
+            # self.parameters.pop("intensity [counts]")
+            # self.parameters.pop("offset [counts]")
             intensity = self.parameters["intensity [photons]"]
             background = self.parameters["offset [photons]"]
 

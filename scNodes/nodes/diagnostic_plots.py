@@ -30,7 +30,7 @@ class DiagnosticPlotsNode(Node):
         self.available_parameters = list()
         self.params["x_param"] = 0
         self.params["y_param"] = 0
-        self.params["colourize"] = False
+        self.colourize = False
         self.params["alpha"] = 1.0
         self.params["c_param"] = 0
         self.params["cmin"] = 0.0
@@ -68,13 +68,13 @@ class DiagnosticPlotsNode(Node):
                 _, self.params["y_param"] = imgui.combo("Y axis", self.params["y_param"], self.available_parameters)
                 # colourize:
                 imgui.set_next_item_width(170)
-                _c, self.params["colourize"] = imgui.checkbox("Colourize", self.params["colourize"])
-                if _c:
+                _c, self.colourize = imgui.checkbox("Colourize", self.colourize)
+                if _c and self.colourize:
                     self.update_lut()
                     self.get_histogram_values()
                     self.params["cmin"] = float(self.histogram_bins[0])
                     self.params["cmax"] = float(self.histogram_bins[-1])
-                if self.params["colourize"]:
+                if self.colourize and len(self.histogram_values) > 2:
                     imgui.set_next_item_width(170)
                     _c, self.params["c_param"] = imgui.combo("Colour by", self.params["c_param"], self.available_parameters)
                     if _c:
@@ -112,13 +112,16 @@ class DiagnosticPlotsNode(Node):
             super().render_end()
 
     def get_histogram_values(self):
-        datasource = self.connectable_attributes["reconstruction_in"].get_incoming_node()
-        if datasource:
-            particledata = datasource.get_particle_data()
-            self.available_parameters = list(particledata.histogram_bins.keys())
-            if self.available_parameters[self.params["c_param"]] in list(particledata.histogram_counts.keys()):
-                self.histogram_values = particledata.histogram_counts[self.available_parameters[self.params["c_param"]]]
-                self.histogram_bins = particledata.histogram_bins[self.available_parameters[self.params["c_param"]]]
+        try:
+            datasource = self.connectable_attributes["reconstruction_in"].get_incoming_node()
+            if datasource:
+                particledata = datasource.get_particle_data()
+                self.available_parameters = list(particledata.histogram_bins.keys())
+                if self.available_parameters[self.params["c_param"]] in list(particledata.histogram_counts.keys()):
+                    self.histogram_values = particledata.histogram_counts[self.available_parameters[self.params["c_param"]]]
+                    self.histogram_bins = particledata.histogram_bins[self.available_parameters[self.params["c_param"]]]
+        except Exception as e:
+            cfg.set_error(e, "Could not find any data to plot a histogram for in DiagnosticPlotsNode - see details below.")
 
     def make_and_show_plot(self):
         try:
@@ -135,20 +138,21 @@ class DiagnosticPlotsNode(Node):
                 # plot scatter plot
                 xdata = particledata.parameters[self.available_parameters[self.params["x_param"]]]
                 ydata = particledata.parameters[self.available_parameters[self.params["y_param"]]]
-                xdata = xdata[particledata.parameters["visible"] == 1]
-                ydata = ydata[particledata.parameters["visible"] == 1]
+                selected_particles = particledata.parameters["visible"] == 1
+                xdata = xdata[selected_particles]
+                ydata = ydata[selected_particles]
                 # colour
-                if self.params["colourize"]:
+                if self.colourize:
                     cdata = particledata.parameters[self.available_parameters[self.params["c_param"]]]
-                    n_particles = particledata.n_particles
+                    cdata = cdata[selected_particles]
+                    n_particles = len(cdata)
                     lut_len = self.cmap.shape[1]
                     colour = np.zeros((n_particles, 4))
                     _min = self.params["cmin"]
                     _denom = self.params["cmax"] - _min
                     for i in range(n_particles):
-                        c_idx = (cdata[i] - _min) / (_denom)
-                        c_idx = int(c_idx * lut_len)
-                        c_idx = np.max([np.min([lut_len - 1, c_idx]), 0])
+                        c_idx = max(min(1.0, (cdata[i] - _min) / _denom), 0.0)
+                        c_idx = int(c_idx * (lut_len - 1))
                         colour[i, :3] = self.cmap[0, c_idx, :]
                     colour[:, 3] = self.params["alpha"]
                     plt.scatter(xdata, ydata, s=3, color=colour)
@@ -156,7 +160,7 @@ class DiagnosticPlotsNode(Node):
                     plt.scatter(xdata, ydata, s=3, color=(0.0, 0.0, 0.0, self.params["alpha"]))
                 plt.xlabel(self.available_parameters[self.params["x_param"]])
                 plt.ylabel(self.available_parameters[self.params["y_param"]])
-                if self.params["colourize"]:
+                if self.colourize:
                     plt.title(f'Scatter plot of particle {self.available_parameters[self.params["x_param"]]} vs {self.available_parameters[self.params["y_param"]]}, coloured by {self.available_parameters[self.params["c_param"]]}')
                 else:
                     plt.title(f'Scatter plot of particle {self.available_parameters[self.params["x_param"]]} vs {self.available_parameters[self.params["y_param"]]}')

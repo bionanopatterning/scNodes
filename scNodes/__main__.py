@@ -83,4 +83,33 @@ if __name__ == "__main__":
             node_editor.delete_temporary_files()
 
 
+def init_node_backend():
+    from scNodes.core.window import Window
+    from scNodes.core.nodeeditor import NodeEditor
+    from scNodes.core.imageviewer import ImageViewer
+    import scNodes.core.config as cfg
+    import imgui
+    import glfw
+
+    if not glfw.init():
+        raise Exception("Could not initialize GLFW library!")
+
+    # Init the main window, its imgui context, and a glfw rendering impl.
+    main_window = Window(cfg.window_width, cfg.window_height, 'hidden scNodes main window', hidden=True)
+    main_window.set_callbacks()
+    main_window_imgui_context = imgui.create_context()
+    main_window_imgui_glfw_implementation = GlfwRenderer(main_window.glfw_window)
+    main_window.set_mouse_callbacks()
+    main_window.set_window_callbacks()
+    # set up editors
+    node_editor = NodeEditor(main_window, main_window_imgui_context, main_window_imgui_glfw_implementation)
+    image_viewer_window = Window(cfg.iv_window_width, cfg.iv_window_height, 'hidden scNodes secondary window', hidden=True)
+    image_viewer_window_imgui_context = imgui.create_context(main_window_imgui_glfw_implementation.io.fonts)
+    image_viewer_window_glfw_implementation = GlfwRenderer(image_viewer_window.glfw_window)
+    image_viewer = ImageViewer(image_viewer_window, image_viewer_window_imgui_context, image_viewer_window_glfw_implementation)
+    image_viewer_window.set_callbacks()
+    image_viewer_window.set_window_callbacks()
+    node_editor.delete_temporary_files()
+    cfg.node_editor = node_editor
+    cfg.image_viewer = image_viewer
 

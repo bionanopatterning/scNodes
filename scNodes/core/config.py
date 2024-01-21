@@ -46,6 +46,7 @@ controls = [
     ("Spacebar", "Focus camera on currently selected frame"),
 ]
 
+windowless = False
 nodes = list()
 active_node = None
 focused_node = None

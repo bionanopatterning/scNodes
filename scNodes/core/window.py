@@ -3,11 +3,13 @@ from OpenGL.GL import *
 
 
 class Window:
-    def __init__(self, width, height, title):
+    def __init__(self, width, height, title, hidden=False):
         self.width = width
         self.height = height
         self.title = title
         self.clear_color = (0.0, 0.0, 0.0, 1.0)
+        if hidden:
+            glfw.window_hint(glfw.VISIBLE, glfw.FALSE)
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
         glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)

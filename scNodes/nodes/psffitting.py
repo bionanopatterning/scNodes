@@ -5,6 +5,7 @@ from scNodes.core.util import tic, toc
 def create():
     return ParticleFittingNode()
 
+# TODO: add two parameters to the particle parameters: 1) peak value in the detection frame, 2) value of input data at coordinate of detection
 
 class ParticleFittingNode(Node):
     description = "Perform PSF fitting in the input frames at the location of the input coordinates. This node uses\n" \

@@ -132,7 +132,7 @@ class ReconstructionRendererNode(Node):
                 if imgui.button("Render", 70, 30):
                     self.build_reconstruction()
 
-            if pxs_changed:
+            if pxs_changed and self.params["pixel_size"] != 0:
                 roi = self.get_particle_data().reconstruction_roi
                 img_width = int((roi[3] - roi[1]) / self.params["pixel_size"])
                 img_height = int((roi[2] - roi[0]) / self.params["pixel_size"])
