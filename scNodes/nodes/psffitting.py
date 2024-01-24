@@ -258,9 +258,12 @@ class ParticleFittingNode(Node):
                 frame.particles = None
                 self.n_frames_discarded += 1
                 return frame
-            coordinates = coord_source.get_coordinates(idx)
+            detection_frame = coord_source.get_image(idx)
+            coordinates = detection_frame.maxima
+            detection_values = detection_frame.maxima_values
             self.detection_roi = coord_source.get_roi()
             frame.maxima = coordinates
+            frame.maxima_values = detection_values
             particles = list()
             if self.params["estimator"] in [0, 1]:
                 if self.params["psf"] == 0:
@@ -272,7 +275,8 @@ class ParticleFittingNode(Node):
                                                                      1.0,
                                                                      self.params["offset_max"]],
                                                         uncertainty_estimator=self.params["uncertainty_estimator"],
-                                                        camera_offset=self.params["camera_offset"])
+                                                        camera_offset=self.params["camera_offset"],
+                                                        detected_maxima_values=frame.maxima_values)
                 elif self.params["psf"] == 1:
                     particles = pfit.frame_to_particles_3d(frame, self.params["initial_sigma"], self.params["estimator"], self.params["crop_radius"],
                                                            constraints=[self.params["intensity_min"],
@@ -284,7 +288,8 @@ class ParticleFittingNode(Node):
                                                                         self.params["offset_min"],
                                                                         self.params["offset_max"]],
                                                            uncertainty_estimator=self.params["uncertainty_estimator"],
-                                                           camera_offset=self.params["camera_offset"])
+                                                           camera_offset=self.params["camera_offset"],
+                                                           detected_maxima_values=frame.maxima_values)
             elif self.params["estimator"] == 2:
                 x = np.empty(len(frame.maxima))
                 y = np.empty(len(frame.maxima))

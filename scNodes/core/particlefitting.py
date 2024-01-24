@@ -3,7 +3,7 @@ import pygpufit.gpufit as gf
 from scNodes.core.util import tic, toc
 
 
-def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constraints=(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1), uncertainty_estimator=0, camera_offset=0):
+def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constraints=(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1), uncertainty_estimator=0, camera_offset=0, detected_maxima_values=None):
     """
     uncertainty_type: 0 for Thompson et al. 2002, 1 for Mortsensen et al. 2010
     """
@@ -39,12 +39,15 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
     # Prepare data for gpufit
     data = np.empty((n_particles, (crop_radius * 2 + 1)**2), dtype=np.float32)
     params = np.empty((n_particles, 5), dtype=np.float32)
+    original_image_intensity = np.zeros(n_particles, dtype=np.float32)
     for i in range(n_particles):
         x, y = xy[i]
         data[i, :] = pxd[x - crop_radius:x + crop_radius + 1, y - crop_radius:y + crop_radius + 1].flatten() - camera_offset
         initial_offset = data[i, :].min()
         initial_intensity = pxd[x, y] - initial_offset
         params[i, :] = [initial_intensity, crop_radius, crop_radius, initial_sigma, initial_offset]
+
+        original_image_intensity[i] = pxd[x, y]
     estimator = gf.EstimatorID.LSE if method == 0 else gf.EstimatorID.MLE
 
     # Set up constraints
@@ -77,6 +80,10 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
     n_particles = int(accepted_particles.sum(0))
     accepted_particles = accepted_particles.nonzero()
 
+    if detected_maxima_values is not None:
+        frame_particle_data["detection intensity"] = detected_maxima_values[accepted_particles].squeeze().tolist()
+        frame_particle_data["original intensity"] = original_image_intensity[accepted_particles].squeeze().tolist()
+
     frame_particle_data["frame"] = list(np.ones(n_particles, dtype=np.float32) * frame.framenr) if n_particles>1 else frame.framenr
     frame_particle_data["x [nm]"] = parameters[accepted_particles, 1].squeeze().tolist()
     frame_particle_data["y [nm]"] = parameters[accepted_particles, 2].squeeze().tolist()
@@ -86,12 +93,13 @@ def frame_to_particles(frame, initial_sigma=2.0, method=0, crop_radius=4, constr
     if uncertainty_estimator == 0:
         frame_particle_data["bkgstd [counts]"] = background_stdev[accepted_particles].squeeze().tolist()
     frame_particle_data["chi_square"] = chi_squares[accepted_particles].squeeze().tolist()
-    if n_particles==1:
+
+    if n_particles == 1:
         for key in frame_particle_data:
             frame_particle_data[key] = [frame_particle_data[key]] * 2 # very ugly solution to single-element lists causing downstream problems
     return frame_particle_data
 
-def frame_to_particles_3d(frame, initial_sigma=2.0, method=0, crop_radius=4, constraints=(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1), uncertainty_estimator=0, camera_offset=0):
+def frame_to_particles_3d(frame, initial_sigma=2.0, method=0, crop_radius=4, constraints=(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1), uncertainty_estimator=0, camera_offset=0, detected_maxima_values=None):
     """
     frame_to_particles_3d differs from frame_to_particles in the model that is used:
     gf.ModelID.GAUSS_2D_ELLIPTIC vs. gf.ModelID.GAUSS_2D
@@ -131,6 +139,7 @@ def frame_to_particles_3d(frame, initial_sigma=2.0, method=0, crop_radius=4, con
     # Prepare data for gpufit
     data = np.empty((n_particles, (crop_radius * 2 + 1)**2), dtype=np.float32)
     params = np.empty((n_particles, 6), dtype=np.float32)
+    original_image_intensity = np.zeros(n_particles, dtype=np.float32)
     for i in range(n_particles):
         x, y = xy[i]
         data[i, :] = pxd[x - crop_radius:x + crop_radius + 1, y - crop_radius:y + crop_radius + 1].flatten() - camera_offset
@@ -138,6 +147,7 @@ def frame_to_particles_3d(frame, initial_sigma=2.0, method=0, crop_radius=4, con
         initial_intensity = pxd[x, y] - initial_offset
         params[i, :] = [initial_intensity, crop_radius, crop_radius, initial_sigma, initial_sigma, initial_offset]
 
+        original_image_intensity[i] = pxd[x, y]
     estimator = gf.EstimatorID.LSE if method == 0 else gf.EstimatorID.MLE
 
     # Set up constraints
@@ -171,6 +181,11 @@ def frame_to_particles_3d(frame, initial_sigma=2.0, method=0, crop_radius=4, con
     n_particles = int(accepted_particles.sum(0))
 
     accepted_particles = accepted_particles.nonzero()
+
+    if detected_maxima_values is not None:
+        frame_particle_data["detection intensity"] = detected_maxima_values[accepted_particles].squeeze().tolist()
+        frame_particle_data["original intensity"] = original_image_intensity[accepted_particles].squeeze().tolist()
+
     frame_particle_data["frame"] = list(np.ones(n_particles, dtype=np.float32) * frame.framenr)
     frame_particle_data["x [nm]"] = parameters[accepted_particles, 1].squeeze().tolist()
     frame_particle_data["y [nm]"] = parameters[accepted_particles, 2].squeeze().tolist()

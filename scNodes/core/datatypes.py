@@ -163,6 +163,7 @@ class Frame:
         self.discard = False
         self.translation = [0.0, 0.0]
         self.maxima = list()
+        self.maxima_values = list()
         self.particles = list()
         self.pixel_size = 100
         self.gpu_data_buffer = None

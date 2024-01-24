@@ -36,6 +36,8 @@ class ParticleDetectionNode(Node):
         self.params["max_fac"] = 0.75
         self.params["min_fac"] = 5.0
 
+        self.threshold_value = -1
+
         self.active_roi = [0, 0, 1, 1]
 
     def render(self):
@@ -56,6 +58,14 @@ class ParticleDetectionNode(Node):
             #self.any_change = self.any_change or _c
             _c, self.params["thresholding"] = imgui.combo("Threshold method", self.params["thresholding"], ParticleDetectionNode.THRESHOLD_OPTIONS)
             self.any_change = self.any_change or _c
+
+            _c, self.params["n_max"] = imgui.slider_int("Max particles", self.params["n_max"], 100, 5000)
+            Node.tooltip("Maximum amount of particles output per frame. Ctrl + click to override the slider\n"
+                         "and enter a custom value.")
+            self.any_change = self.any_change or _c
+
+            imgui.pop_item_width()
+            imgui.push_item_width(100)
             if self.params["thresholding"] == 0:
                 _c, self.params["threshold"] = imgui.input_int("Value", self.params["threshold"], 0, 0)
                 self.any_change = self.any_change or _c
@@ -74,13 +84,12 @@ class ParticleDetectionNode(Node):
             Node.tooltip("The final threshold value is determined by this factor x the metric (sigma, mean, etc.)\n"
                          "chosen above. In case of Threshold method 'Value', the value entered here is the final \n"
                          "threshold value. Note that the metric is calculated for the ROI only.")
-            _c, self.params["n_max"] = imgui.slider_int("Max particles", self.params["n_max"], 100, 2500)
-            Node.tooltip("Maximum amount of particles output per frame. Ctrl + click to override the slider\n"
-                         "and enter a custom value.")
-            self.any_change = self.any_change or _c
+            if self.params["thresholding"] != 0:
+                imgui.same_line()
+                imgui.text(f" = {self.threshold_value:.1f}")
 
-            imgui.pop_item_width()
-            imgui.push_item_width(100)
+
+
             _c, self.params["d_min"] = imgui.input_int("Minimum distance (px)", self.params["d_min"], 1, 10)
             self.any_change = self.any_change or _c
             self.params["d_min"] = max([1, self.params["d_min"]])
@@ -106,8 +115,10 @@ class ParticleDetectionNode(Node):
                 threshold = self.params["max_fac"] * np.amax(image)
             elif self.params["thresholding"] == 4:
                 threshold = self.params["min_fac"] * np.abs(np.amin(image))
+            self.threshold_value = threshold
             # Perform requested detection method
             coordinates = peak_local_max(image, threshold_abs = threshold, num_peaks = self.params["n_max"], min_distance = self.params["d_min"])
+            values = image[coordinates[:, 0], coordinates[:, 1]]
             if self.use_roi:
                 coordinates += np.asarray([self.roi[1], self.roi[0]])
                 Node.get_source_load_data_node(self).dataset.reconstruction_roi = self.roi
@@ -116,6 +127,7 @@ class ParticleDetectionNode(Node):
                 Node.get_source_load_data_node(self).dataset.reconstruction_roi = [0, 0, image.shape[0], image.shape[1]]
                 self.active_roi = [0, 0, image.shape[1], image.shape[0]]
             image_obj.maxima = coordinates
+            image_obj.maxima_values = values
             return image_obj
 
     def get_roi(self):
@@ -126,9 +138,12 @@ class ParticleDetectionNode(Node):
             if cfg.profiling:
                 time_start = time.time()
                 self.profiler_count += 1
-            retval = self.get_image_impl(idx).maxima
+
+            out_image = self.get_image_impl(idx)
+            retval = out_image.maxima, out_image.maxima_values
             if cfg.profiling:
                 self.profiler_time += time.time() - time_start
             return retval
         except Exception as e:
             cfg.set_error(e, "Error returning coordinates "+str(e))
+

@@ -22,6 +22,8 @@ class NodeEditor:
     NODE_FACTORY = dict()
     NODE_GROUPS = dict()
 
+    PREFAB_SETUPS = dict()
+
     def __init__(self, window, imgui_context, imgui_impl):
         self.window = window
         self.window.clear_color = cfg.COLOUR_WINDOW_BACKGROUND
@@ -285,6 +287,13 @@ class NodeEditor:
                     for i in range(len(cfg.nodes)):
                         cfg.nodes[0].delete()
                     cfg.nodes = list()
+
+                if len(NodeEditor.PREFAB_SETUPS) > 0 and imgui.begin_menu("Preconfigured setups"):
+                    for key in NodeEditor.PREFAB_SETUPS:
+                        if imgui.menu_item(key)[0]:
+                            cfg.nodes = list()
+                            NodeEditor.append_node_setup(NodeEditor.PREFAB_SETUPS[key])
+                    imgui.end_menu()
                 imgui.end_menu()
             if imgui.begin_menu('Settings'):
                 if imgui.menu_item("Install a node")[0]:
@@ -398,6 +407,15 @@ class NodeEditor:
 
         if not reinitialize:
             cfg.nodes = list()
+
+        # load prefab setups
+        NodeEditor.PREFAB_SETUPS = dict()
+        prefab_files_pattern = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'nodesetups', '*.scn')
+        prefab_paths = glob.glob(prefab_files_pattern)
+        for p in prefab_paths:
+            prefab_name = os.path.splitext(os.path.basename(p))[0]
+            prefab_name = prefab_name.replace("_", " ")
+            NodeEditor.PREFAB_SETUPS[prefab_name] = p
 
     @staticmethod
     def save_node_setup(path):
