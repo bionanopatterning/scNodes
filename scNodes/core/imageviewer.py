@@ -525,8 +525,11 @@ class ImageViewer:
             self.set_mode("R")
         else:
             self.set_mode("RGB")
-        self.image_amax = np.amax(self.image_pxd, axis = (0, 1))
-        self.image_amin = np.amin(self.image_pxd, axis = (0, 1))
+        try:
+            self.image_amax = np.amax(self.image_pxd, axis = (0, 1))
+            self.image_amin = np.amin(self.image_pxd, axis = (0, 1))
+        except Exception as e:
+            cfg.set_error(e, "Could not update image in ImageViewer - see details below.")
         if self.autocontrast[0]:
             self._compute_auto_contrast(0)
         if self.autocontrast[1]:

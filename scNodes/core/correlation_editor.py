@@ -529,6 +529,10 @@ class CorrelationEditor:
                 if pixel_size_changed:
                     af.pivoted_scale(af.pivot_point, pxsf/pxsi)
                 af.pixel_size = max([0.01, af.pixel_size])
+
+                if af.flip_h or af.flip_v:
+                    tag = "H + V" if af.flip_h and af.flip_v else ("H" if af.flip_h else "V")
+                    imgui.text("image flipped: "+tag)
                 imgui.spacing()
 
         # Visuals info
@@ -1158,12 +1162,15 @@ class CorrelationEditor:
             duplicate = f.duplicate()
             duplicate.setup_opengl_objects()
             cfg.ce_frames.insert(0, duplicate)
-        if f.has_slices:
-            if imgui.menu_item("add to Segmentation Editor")[0]:
+        elif f.has_slices and imgui.menu_item("Add to Segmentation Editor")[0]:
                 se_frame = cfg.segmentation_editor.seframe_from_clemframe(f)
-                import matplotlib.pyplot as plt
                 overlay = CorrelationEditor.render_frame_overlay_to_image(f)
-                se_frame.set_overlay(overlay, f, CorrelationEditor.render_frame_overlay_to_image)
+                if se_frame is not None:
+                    se_frame.set_overlay(overlay, f, CorrelationEditor.render_frame_overlay_to_image)
+        elif f.has_slices and imgui.menu_item("Relink file")[0]:
+                selected_file = filedialog.askopenfilename()
+                if selected_file != "":
+                    f.path = selected_file
         if imgui.begin_menu("Flip"):
             if imgui.menu_item("Horizontally")[0]:
                 f.flip(include_children=False)
@@ -1397,6 +1404,8 @@ class CorrelationEditor:
             imgui.begin("Select frame:", False, imgui.WINDOW_ALWAYS_AUTO_RESIZE | imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE | imgui.WINDOW_NO_SAVED_SETTINGS)
             close_window = False
             for frame in CorrelationEditor.frame_xray_window_frames:
+                if frame.hide:
+                    continue
                 imgui.push_id(f"xrayselection{frame.uid}")
                 if imgui.menu_item(frame.title)[0]:
                     CorrelationEditor.active_frame = frame
@@ -1952,6 +1961,7 @@ class Renderer:
             self.quad_shader.uniformmat4("cameraMatrix", camera.view_projection_matrix)
             self.quad_shader.uniform1f("alpha", frame.alpha)
             self.quad_shader.uniformmat4("modelMatrix", frame.transform.matrix)
+            self.quad_shader.uniform1i("blendMode", frame.blend_mode)
             if frame.is_rgb:
                 self.quad_shader.uniform1f("rgbMode", 1.0)
                 l = frame.rgb_contrast_lims

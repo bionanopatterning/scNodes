@@ -31,6 +31,7 @@ uniform float rgbMode;
 uniform float hpix;
 uniform float vpix;
 uniform float binning;
+uniform int blendMode;
 
 void main()
 {
@@ -57,6 +58,11 @@ void main()
         {
             discard;
         }
-        fragmentColor = vec4(pixelColor.rgb, alpha);
+        float blendFac = 1.0f;
+        if (blendMode > 2)
+        {
+            blendFac = alpha;
+        }
+        fragmentColor = vec4(blendFac * pixelColor.rgb, alpha);
     }
 }

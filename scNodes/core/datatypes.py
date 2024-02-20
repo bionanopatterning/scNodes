@@ -353,7 +353,7 @@ class ParticleData:
                 visible[i] = 1
         if logic_not:
             visible = 1 - visible
-        self.parameters['visible'] = visible
+        self.parameters['visible'][visible == 0] = 0
 
     def set_reconstruction_roi(self, roi):
         """

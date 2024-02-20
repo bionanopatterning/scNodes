@@ -94,7 +94,6 @@ class CLEMFrame:
         A = np.array(axis[0:2])
         U = np.array(axis[2:4])
         AP = np.subtract(P, A)
-        print(P, A, AP, U)
         P_new = np.add(A, AP - 2 * np.dot(AP, U) * U)
         self.transform.translation[0] = P_new[0]
         self.transform.translation[1] = P_new[1]

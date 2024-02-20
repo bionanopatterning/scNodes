@@ -138,7 +138,7 @@ class ParticleFilterNode(Node):
 
         def render(self):
             content_width = imgui.get_content_region_available_width()
-            imgui.plot_histogram("##histogram", self.vals, graph_size = (content_width, 40))
+            imgui.plot_histogram("##histogram", self.vals, graph_size=(content_width, 40))
             imgui.text("{:.2f}".format(self.bins[0]))
             imgui.same_line(position=content_width - imgui.get_font_size() * len(str(self.bins[-1])) / 2)
             imgui.text("{:.2f}".format(self.bins[-1]))
