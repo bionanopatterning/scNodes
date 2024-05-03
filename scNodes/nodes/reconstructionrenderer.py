@@ -78,7 +78,6 @@ class ReconstructionRendererNode(Node):
             imgui.same_line()
             _c, self.params["pixel_size"] = imgui.input_float("##Pixel size", self.params["pixel_size"], 0.0, 0.0, format='%.2f (nm)')
             pxs_changed = _c
-            self.any_change = _c or self.any_change
             imgui.text(f"Final image size: {self.reconstruction_image_size[0]} x {self.reconstruction_image_size[1]} px")
 
             # Colourize optionsx
@@ -136,7 +135,6 @@ class ReconstructionRendererNode(Node):
                 roi = self.get_particle_data().reconstruction_roi
                 img_width = int((roi[3] - roi[1]) / self.params["pixel_size"])
                 img_height = int((roi[2] - roi[0]) / self.params["pixel_size"])
-                print(roi)
                 self.reconstruction_image_size = (img_height, img_width)
 
             header_expanded, _ = imgui.collapsing_header("Advanced", None)

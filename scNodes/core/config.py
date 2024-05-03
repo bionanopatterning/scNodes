@@ -11,7 +11,8 @@ import platform
 # TODO: add a right click context menu in the CE when the background is right lclicked. Add an option for an empty placeholder image. Also: 'add marker' option.
 # TODO: make frames with hierarchies of children in the CE 'Frames in scene' menu collapsible
 # TODO: in CE on-frame context menu, add 'set pivot point here' option
-
+# TODO: add button input for [ and ] to rotate active frame, similar to KEY_LEFT etc. for movement.
+# TODO: button input: shift+H/V: flip horizontally/vertically
 frozen = False
 root = os.path.dirname(os.path.dirname(__file__))
 app_name = "scNodes"
@@ -26,7 +27,7 @@ filetype_traindata = ".scnt"
 filetype_semodel = ".scnm"
 filetype_semodel_group = ".scnmgroup"
 
-controls = [
+ce_controls = [
     ("0/H/V", "Toggle frame visibility"),
     ("1-6", "Change blending mode"),
     ("-/+", "De-/increase frame alpha"),
@@ -159,6 +160,8 @@ def load_scene(filename, append=False):
                     cef.current_sum_slices = 1
                 if not hasattr(cef, "locked"):
                     cef.locked = False
+                if not hasattr(cef, "collapse_children"):
+                    cef.collapse_children = False
             if append:
                 ce_frames += imported_ce_frames
             else:

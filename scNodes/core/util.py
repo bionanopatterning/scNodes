@@ -23,7 +23,7 @@ def coords_from_tsv(coords_path):
     return coords
 
 
-def extract_particles(vol_path, coords_path, boxsize, unbin=1, two_dimensional=False, normalize=True):
+def extract_particles(vol_path, coords_path, boxsize, unbin=1, two_dimensional=False, normalize=True, two_dimensional_average_n=None):
     coords = coords_from_tsv(coords_path)
     coords = np.array(coords) * unbin
     data = mrcfile.mmap(vol_path, mode='r').data
@@ -33,7 +33,11 @@ def extract_particles(vol_path, coords_path, boxsize, unbin=1, two_dimensional=F
     for p in coords:
         x, y, z = p
         if two_dimensional:
-            imgs.append(data[z, y - d:y + d, x - d:x + d])
+            if two_dimensional_average_n is not None:
+                dz = two_dimensional_average_n // 2
+                imgs.append(data[z - dz:z + dz, y - d:y + d, x - d:x + d].mean(0))
+            else:
+                imgs.append(data[z, y - d:y + d, x - d:x + d])
         else:
             imgs.append(data[z - d:z + d, y - d:y + d, x - d:x + d])
 

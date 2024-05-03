@@ -208,6 +208,16 @@ class CorrelationEditor:
             self.icon_unlocked.update(pxd_icon_unlocked)
             self.icon_unlocked.set_linear_interpolation()
 
+            self.icon_collapsed = Texture(format="rgba32f")
+            pxd_icon_collapsed = np.asarray(Image.open(os.path.join(icon_dir, "icon_expand_256.png"))).astype(np.float32) / 255.0
+            self.icon_collapsed.update(pxd_icon_collapsed)
+            self.icon_collapsed.set_linear_interpolation()
+
+            self.icon_unfolded = Texture(format="rgba32f")
+            pxd_icon_unfolded = np.asarray(Image.open(os.path.join(icon_dir, "icon_expanded_256.png"))).astype(np.float32) / 255.0
+            self.icon_unfolded.update(pxd_icon_unfolded)
+            self.icon_unfolded.set_linear_interpolation()
+
             # Particle picking ROI va
             n_segments = 32
             vertices = list()
@@ -616,6 +626,7 @@ class CorrelationEditor:
                     _c, af.contrast_lims[0] = imgui.slider_float("min", af.contrast_lims[0], af.hist_bins[0], af.hist_bins[-1], format='min %.1f')
                     _c, af.contrast_lims[1] = imgui.slider_float("max", af.contrast_lims[1], af.hist_bins[0], af.hist_bins[-1], format='max %.1f')
                     imgui.pop_item_width()
+                    imgui.align_text_to_frame_padding()
                     imgui.text("Saturation:")
                     imgui.same_line()
                     _cw = imgui.get_content_region_available_width()
@@ -1209,10 +1220,10 @@ class CorrelationEditor:
             # Name
             imgui.bullet_text("")
             imgui.same_line()
-            label_width = CorrelationEditor.FRAMES_IN_SCENE_WINDOW_WIDTH - indent * CorrelationEditor.FRAME_LIST_INDENT_WIDTH - 87 - (0 if f.is_rgb else 15)
+            label_width = CorrelationEditor.FRAMES_IN_SCENE_WINDOW_WIDTH - indent * CorrelationEditor.FRAME_LIST_INDENT_WIDTH - 87 - (0 if f.is_rgb else 15) - (0 if len(f.children) == 0 else 15)
             if f.hide:
                 imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_TEXT_DISABLED)
-            _c, selected = imgui.selectable(""+f.title+f"###fuid{f.uid}", selected=CorrelationEditor.active_frame == f, width=label_width)  ## TODO: make collapsable
+            _c, selected = imgui.selectable(""+f.title+f"###fuid{f.uid}", selected=CorrelationEditor.active_frame == f, width=label_width)
             if f.hide:
                 imgui.pop_style_color(1)
             if imgui.begin_popup_context_item():
@@ -1244,6 +1255,11 @@ class CorrelationEditor:
 
             if enable_widgets:
                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 1.0)
+                if len(f.children) > 0:
+                    imgui.same_line(position=content_width - 65.0)
+                    collapse_icon = self.icon_collapsed if f.collapse_children else self.icon_unfolded
+                    if imgui.image_button(collapse_icon.renderer_id, 13, 13):
+                        f.collapse_children = not f.collapse_children
                 if not f.is_rgb:
                     imgui.same_line(position=content_width - 50.0)
                     _c, f.colour = imgui.color_edit4("##Background colour", *f.colour, flags=imgui.COLOR_EDIT_NO_INPUTS | imgui.COLOR_EDIT_NO_LABEL | imgui.COLOR_EDIT_NO_TOOLTIP | imgui.COLOR_EDIT_NO_DRAG_DROP | imgui.COLOR_EDIT_DISPLAY_HEX | imgui.COLOR_EDIT_DISPLAY_RGB)
@@ -1269,8 +1285,9 @@ class CorrelationEditor:
             if indent != 0:
                 imgui.unindent(CorrelationEditor.FRAME_LIST_INDENT_WIDTH * indent)
 
-            for child in f.children:
-                frame_info_gui(child, indent+1, enable_drag, enable_widgets)
+            if not f.collapse_children:
+                for child in f.children:
+                    frame_info_gui(child, indent+1, enable_drag, enable_widgets)
             if f.parent is None:
                 imgui.pop_style_color(1)
             imgui.pop_id()
@@ -1706,9 +1723,9 @@ class CorrelationEditor:
                 CorrelationEditor.alpha_wobbler_active = False
             elif imgui.is_key_pressed(glfw.KEY_A):
                 if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
-                    CorrelationEditor.active_frame.compute_autocontrast(settings.autocontrast_saturation * 100.0)
+                    CorrelationEditor.active_frame.compute_autocontrast(0.03 * 100.0)
                 elif imgui.is_key_down(glfw.KEY_LEFT_CONTROL):
-                    CorrelationEditor.active_frame.compute_autocontrast(settings.autocontrast_saturation * 500.0)
+                    CorrelationEditor.active_frame.compute_autocontrast(0.03 * 500.0)
                 else:
                     CorrelationEditor.active_frame.compute_autocontrast()
             elif imgui.is_key_pressed(glfw.KEY_I):

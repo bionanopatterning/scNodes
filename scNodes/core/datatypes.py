@@ -276,9 +276,10 @@ class ParticleData:
         self.baked_by_renderer = False
 
         for key in self.parameters:
-            self.parameters[key] = np.asarray(self.parameters[key])
+            self.parameters[key] = np.array([v for a in self.parameters[key] for v in (a if isinstance(a, list) else [a])])
 
         self.n_particles = len(self.parameters["x [nm]"])
+        print("n_particles:", self.n_particles)
 
         if self.uncertainty_estimator == 0:
             bkgstd = self.parameters["bkgstd [counts]"]
@@ -394,14 +395,31 @@ class ParticleData:
         return particle_data_obj
 
     def save_as_csv(self, path):
-        _colour_idx = self.parameters.pop("colour_idx")
-        _visible = self.parameters.pop("visible")
-        dx = self.parameters.pop("dx [nm]")
-        dy = self.parameters.pop("dy [nm]")
+        _cidx = False
+        if "colour_idx" in self.parameters:
+            _colour_idx = self.parameters.pop("colour_idx")
+            _cidx = True
+        _v = False
+        if "visible" in self.parameters:
+            _visible = self.parameters.pop("visible")
+            _v = True
+
+        _dx = False
+        _dy = False
+        if "dx [nm]" in self.parameters:
+            dx = self.parameters.pop("dx [nm]")
+            _dx = True
+        if "dy [nm]" in self.parameters:
+            dy = self.parameters.pop("dy [nm]")
+            _dy = True
         self.parameters["x [nm]"] += dx
         self.parameters["y [nm]"] += dy
         pd.DataFrame.from_dict(self.parameters).to_csv(path, index=False)
-        self.parameters["colour_idx"] = _colour_idx
-        self.parameters["visible"] = _visible
-        self.parameters["dx [nm]"] = dx
-        self.parameters["dy [nm]"] = dy
+        if _cidx:
+            self.parameters["colour_idx"] = _colour_idx
+        if _v:
+            self.parameters["visible"] = _visible
+        if _dx:
+            self.parameters["dx [nm]"] = dx
+        if _dy:
+            self.parameters["dy [nm]"] = dy

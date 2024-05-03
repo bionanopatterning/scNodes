@@ -27,6 +27,7 @@ class CLEMFrame:
         else:
             raise Exception("CLEMFrame not able to import image data with dimensions other than (XY) or (XYC). How did you manage..?")
         self.children = list()
+        self.collapse_children = False
         self.parent = None
         self.title = "Frame "+str(uid_counter)
         self.path = None
