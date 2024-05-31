@@ -791,7 +791,10 @@ class CorrelationEditor:
                 imgui.new_line()
                 imgui.same_line(spacing=(_cw - _button_width) / 2.0)
                 if imgui.button("Export##button", _button_width, _button_height):
-                    self.export_image()
+                    try:
+                        self.export_image()
+                    except Exception as e:
+                        cfg.set_error(e, "Error saving image - is the pixel size a reasonable number?")
                 imgui.pop_style_var()
                 imgui.spacing()
 
@@ -1795,8 +1798,7 @@ class CorrelationEditor:
             imgui.push_style_color(imgui.COLOR_TEXT, *cfg.COLOUR_ERROR_WINDOW_TEXT)
             imgui.push_style_var(imgui.STYLE_WINDOW_ROUNDING, 3.0)
             imgui.set_next_window_size(self.window.width, cfg.ERROR_WINDOW_HEIGHT)
-            window_vertical_offset = 0 if cfg.error_window_active else cfg.ERROR_WINDOW_HEIGHT - 19
-            imgui.set_next_window_position(0, self.window.height - cfg.ERROR_WINDOW_HEIGHT + window_vertical_offset)
+            imgui.set_next_window_position(0, self.window.height - cfg.ERROR_WINDOW_HEIGHT)
             _, stay_open = imgui.begin("Notification", True, imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_COLLAPSE)
             if imgui.is_window_focused():
                 cfg.error_window_active = True

@@ -109,6 +109,24 @@ class CEPlugin:
         return _c, selected_frame
 
     @staticmethod
+    def widget_select_frame_tomogram(label, current_frame):
+        _cw = imgui.get_content_region_available_width()
+        imgui.push_item_width(_cw)
+        current_idx = 0
+        tomo_clemframes = [f.title for f in cfg.ce_frames if f.n_slices > 1 and f.extension == ".mrc"]
+        if current_frame is not None and current_frame.title in tomo_clemframes:
+            current_idx = tomo_clemframes.index(current_frame.title)
+        imgui.text(label)
+        _c, idx = imgui.combo("##" + label, current_idx, tomo_clemframes)
+        # selected title:
+        if _c:
+            f_titles = [f.title for f in cfg.ce_frames]
+            current_frame = cfg.ce_frames[f_titles.index(tomo_clemframes[idx])]
+        imgui.pop_item_width()
+        selected_frame = current_frame
+        return _c, selected_frame
+
+    @staticmethod
     def widget_select_frame_any(label, current_frame):
         """Wrapper for an imgui combo (drop-down) menu with all of the current
         frames in the Correlation Editor available for selection.

@@ -52,7 +52,7 @@ class LoadDataNode(Node):
             imgui.spacing()
             imgui.text("Select source file")
             imgui.push_item_width(150)
-            _, self.params["path"] = imgui.input_text("##intxt", self.params["path"], 256, imgui.INPUT_TEXT_ALWAYS_OVERWRITE)
+            _, self.params["path"] = imgui.input_text("##intxt", self.params["path"], 256)
             imgui.pop_item_width()
             imgui.same_line()
             if imgui.button("...", 26, 19):

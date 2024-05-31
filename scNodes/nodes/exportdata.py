@@ -65,7 +65,7 @@ class ExportDataNode(Node):
                 _, self.use_roi = imgui.checkbox("use ROI", self.use_roi)
             imgui.text("Output path")
             imgui.push_item_width(160)
-            _, self.params["path"] = imgui.input_text("##intxt", self.params["path"], 256, imgui.INPUT_TEXT_ALWAYS_OVERWRITE)
+            _, self.params["path"] = imgui.input_text("##intxt", self.params["path"], 256)
             imgui.pop_item_width()
             imgui.same_line()
             if imgui.button("...", 26, 19):

@@ -8,6 +8,8 @@ iv_window_title = "scNodes image viewer"
 
 luts = dict()
 luts["Gray"] = cc.linear_grey_0_100_c0
+luts["Cerulean"] = np.zeros((256, 3))
+luts["Amber"] = np.zeros((256, 3))
 luts["Red"] = cc.linear_ternary_red_0_50_c52
 luts["Green"] = cc.linear_kgy_5_95_c69
 luts["Green"][0] = [0.0, 0.0, 0.0]
@@ -22,11 +24,12 @@ luts["Neon"] = cc.linear_worb_100_25_c53
 #luts["Isoluminant hue"] = cc.isoluminant_cgo_80_c38
 luts["Over/under A"] = cc.diverging_linear_bjr_30_55_c53
 luts["Over/under B"] = cc.diverging_gwr_55_95_c38
-luts["Diverging green/red"] = np.zeros((256, 3))
-luts["Diverging magenta/cyan"] = np.zeros((256, 3))
+
+cerulean = np.array([63.0 / 255, 222.0 / 255, 255.0 / 255])
+amber = np.array([255.0 / 255, 185.0 / 255, 22.0 / 255])
 for i in range(256):
-    luts["Diverging green/red"][i, :] = [1.0 - i / 256, i / 256, 0.0]
-    luts["Diverging magenta/cyan"][i, :] = [1.0 - i / 256, i / 256, 1.0]
+    luts["Amber"][i, :] = (i / 255) * amber
+    luts["Cerulean"][i, :] = (i / 255) * cerulean
 luts["Glasbey"] = cc.glasbey_bw_minc_20_minl_30
 lut_names = list(luts.keys())
 

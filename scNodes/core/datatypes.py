@@ -334,6 +334,7 @@ class ParticleData:
             self.histogram_counts[key], self.histogram_bins[key] = np.histogram(self.parameters[key], bins=ParticleData.HISTOGRAM_BINS)
             self.histogram_counts[key] = self.histogram_counts[key].astype(np.float32)
             self.histogram_counts[key] = np.delete(self.histogram_counts[key], 0)
+            self.histogram_counts[key] = np.log(self.histogram_counts[key] + 1)
             self.histogram_bins[key] = (self.histogram_bins[key][1], self.histogram_bins[key][-1])
 
         self.x_min = np.min(self.parameters['x [nm]'])
@@ -412,8 +413,10 @@ class ParticleData:
         if "dy [nm]" in self.parameters:
             dy = self.parameters.pop("dy [nm]")
             _dy = True
-        self.parameters["x [nm]"] += dx
-        self.parameters["y [nm]"] += dy
+        if _dx:
+            self.parameters["x [nm]"] += dx
+        if _dy:
+            self.parameters["y [nm]"] += dy
         pd.DataFrame.from_dict(self.parameters).to_csv(path, index=False)
         if _cidx:
             self.parameters["colour_idx"] = _colour_idx

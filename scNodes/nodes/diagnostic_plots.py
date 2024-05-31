@@ -20,7 +20,7 @@ class DiagnosticPlotsNode(Node):
     size = 250
     sortid = 1006
 
-    PLOT_TYPES = ["Histogram", "Scatter plot"]
+    PLOT_TYPES = ["Histogram", "Scatter plot", "Localizations per frame"]
 
     def __init__(self):
         super().__init__()
@@ -58,7 +58,8 @@ class DiagnosticPlotsNode(Node):
             imgui.set_next_item_width(170)
             _, self.params["plot_type"] = imgui.combo("Plot type", self.params["plot_type"], DiagnosticPlotsNode.PLOT_TYPES)
             imgui.set_next_item_width(170)
-            _, self.params["x_param"] = imgui.combo("X axis", self.params["x_param"], self.available_parameters)
+            if self.params["plot_type"] in [0, 1]:
+                _, self.params["x_param"] = imgui.combo("X axis", self.params["x_param"], self.available_parameters)
             if self.params["plot_type"] == 0:
                 imgui.set_next_item_width(60)
                 _, self.params["n_bins"] = imgui.input_int("# bins", self.params["n_bins"], 0, 0)
@@ -164,6 +165,18 @@ class DiagnosticPlotsNode(Node):
                     plt.title(f'Scatter plot of particle {self.available_parameters[self.params["x_param"]]} vs {self.available_parameters[self.params["y_param"]]}, coloured by {self.available_parameters[self.params["c_param"]]}')
                 else:
                     plt.title(f'Scatter plot of particle {self.available_parameters[self.params["x_param"]]} vs {self.available_parameters[self.params["y_param"]]}')
+            elif self.params["plot_type"] == 2:
+                f = particledata.parameters["frame"]
+                frames = np.array(range(int(np.amin(f)), int(np.amax(f))))
+                counts = np.zeros_like(frames)
+                for i, fi in enumerate(frames):
+                    counts[i] = np.sum(f == fi)
+                plt.plot(frames, counts)
+                plt.plot(frames, np.cumsum(counts) / np.sum(counts) * np.amax(counts))
+                plt.xlabel("Frame")
+                plt.ylabel("Number of localizations")
+                plt.title("Number of localization plotted vs. frame number")
+
             plt.show()
         except Exception as e:
             cfg.set_error(e, "Error in DiagnosticPlotNode:")

@@ -320,6 +320,8 @@ class ImageViewer:
             glActiveTexture(GL_TEXTURE0)
             self.marker.render_start(self.roi_shader, self.camera, ImageViewer.MARKER_COLOUR)
             for coordinate in self.image.maxima:
+                if isinstance(coordinate, float):
+                    break
                 translation = [coordinate[1], coordinate[0]]
                 self.marker.render(self.roi_shader, translation)
             self.marker.render_end(self.roi_shader)
