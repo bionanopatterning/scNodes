@@ -13,7 +13,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='scNodes',
-    version='1.2.4',
+    version='1.2.41',
     packages=find_packages(),
     entry_points={'console_scripts': ['scNodes=scNodes.__main__:main', 'scNodes_install=scNodes.__main__:install']},
     url='https://github.com/bionanopatterning/scNodes',
@@ -24,7 +24,6 @@ setup(
     package_data={'': ['*.png', '*.glsl', '*.whl', '*.tar.gz', '*.pdf', '*.scn']},
     include_package_data=False,  # weirdly, the above filetypes _are_ included when this parameter is set to False.
     install_requires=[
-        "Ais-cryoET>=0.0.24",
         "colorcet>=3.0.0",
         "dill>=0.3.5.1",
         "glfw>=2.5.5",
@@ -33,7 +32,6 @@ setup(
         "matplotlib>=3.5.3",
         "mrcfile>=1.4.3",
         "numpy>=1.3.0",
-        "opencv-python>=4.6.0.66",
         "pandas>=1.3.5",
         "Pillow>=9.2.0",
         "psutil>=5.9.2",
@@ -43,6 +41,6 @@ setup(
         "pyperclip>=1.8.2",
         "pystackreg>=0.2.6.post1",
         "scikit-image>=0.19.3",
-        "tifffile>=2021.11.2" ## was 2022.8.12
+        "tifffile>=2021.11.2"
     ]
 )

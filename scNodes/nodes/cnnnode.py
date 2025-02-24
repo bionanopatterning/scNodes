@@ -2,7 +2,7 @@ from scNodes.core.node import *
 import scNodes.core.widgets as widgets
 import os
 import importlib
-from tensorflow.keras.callbacks import Callback
+#from tensorflow.keras.callbacks import Callback
 
 
 def create():
@@ -14,7 +14,7 @@ class CNNNode(Node):
     title = "Neural network"
     group = "Neural networks"
     colour = (138 / 255, 200 / 255, 186 / 255, 1.0)
-
+    enabled = False
     MODEL_DICT = dict()
     MODEL_NAMES = list()
 

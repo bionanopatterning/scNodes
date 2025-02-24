@@ -1,7 +1,6 @@
 from scNodes.core.node import *
 from pystackreg import StackReg
 import pyGPUreg
-import cv2
 
 
 def create():

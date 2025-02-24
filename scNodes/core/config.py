@@ -13,10 +13,11 @@ import platform
 # TODO: in CE on-frame context menu, add 'set pivot point here' option
 # TODO: add button input for [ and ] to rotate active frame, similar to KEY_LEFT etc. for movement.
 # TODO: button input: shift+H/V: flip horizontally/vertically
+
 frozen = False
 root = os.path.dirname(os.path.dirname(__file__))
 app_name = "scNodes"
-version = "1.2.3"
+version = "1.2.41"
 license = "GNU GPL v3"
 logpath = "scNodes.log"
 filetype_project = ".scnp"
